@@ -80,7 +80,7 @@ jobs:
           cmake --build rp/build --target hongsub-rp
           mkdir -p out
           cp rp/build/hongsub-rp.exe out/
-          ntldd -R out/hongsub-rp.exe | grep -i mingw64 | sed -E 's/.*=> *([^ ]+) .*/\1/' | while read f; do cp "$(cygpath -u "$f")" out/ ; done
+          ntldd -R out/hongsub-rp.exe | grep -i mingw64 | sed -E 's/.*=> *([^ ]+) .*/\1/' | while read -r f; do cp "$(cygpath -u "$f")" out/ ; done
           ls -la out
           ./out/hongsub-rp.exe version
           cp rp/chiaki-ng/COPYING out/CHIAKI-NG-LICENSE-AGPL3.txt
