@@ -67,6 +67,7 @@ public class CaptureService extends Service {
 
     private Prefs prefs;
     private Gemini gem;
+    private Groq groq;
     private final Handler main = new Handler(Looper.getMainLooper());
     private HandlerThread bgThread;
     private Handler bg;
@@ -108,6 +109,7 @@ public class CaptureService extends Service {
         super.onCreate();
         prefs = new Prefs(this);
         gem = new Gemini(prefs);
+        groq = new Groq(prefs);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         bgThread = new HandlerThread("hongsub-bg");
         bgThread.start();
@@ -349,6 +351,22 @@ public class CaptureService extends Service {
         return sb.toString();
     }
 
+    private static final String SHAPE_SUB = "{\"speaker\":\"\",\"en\":\"\",\"vi\":\"\"}";
+    private static final String SHAPE_ALL = "{\"items\":[{\"en\":\"\",\"vi\":\"\"}]}";
+
+    /** Gemini first; Groq when Gemini is out of quota or failing (or when only Groq keys exist). */
+    private JSONObject ask(String prompt, String b64, JSONObject schema, String shape) throws Exception {
+        if (!prefs.keys().isEmpty()) {
+            try {
+                return gem.ask(prompt, b64, schema);
+            } catch (Exception e) {
+                if (prefs.groqKeys().isEmpty()) throw e;
+            }
+        }
+        if (!prefs.groqKeys().isEmpty()) return groq.ask(prompt, b64, shape);
+        throw new Exception("Cần nhập mã Gemini hoặc Groq");
+    }
+
     private void translate(Bitmap region) throws Exception {
         JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"speaker\":{\"type\":\"STRING\"},\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}");
         String prompt = "You translate video game subtitles for a Vietnamese player.\n"
@@ -357,7 +375,7 @@ public class CaptureService extends Service {
                 + "2. If a speaker name is shown (e.g. \"ATREUS:\"), put it in \"speaker\" without the colon and do not repeat it in \"en\".\n"
                 + "3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns that fit the relationship.\n"
                 + "4. If there is no readable English subtitle, return \"en\":\"\" and \"vi\":\"\".\n" + context();
-        JSONObject r = gem.ask(prompt, jpeg(region, 900, 85), schema);
+        JSONObject r = ask(prompt, jpeg(region, 900, 85), schema, SHAPE_SUB);
         if (r == null) return;
         String en = r.optString("en", "").trim();
         String vi = r.optString("vi", "").trim();
@@ -378,8 +396,8 @@ public class CaptureService extends Service {
                 if (full == null) return;
                 setStatus("Đang dịch cả màn hình...");
                 JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"items\":{\"type\":\"ARRAY\",\"items\":{\"type\":\"OBJECT\",\"properties\":{\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}}},\"required\":[\"items\"]}");
-                JSONObject r = gem.ask("Read all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group words that belong to the same line or paragraph. Ignore button glyphs, numbers-only labels and app overlays. Translate each into natural Vietnamese; keep names as they are.\n" + context(),
-                        jpeg(full, 1280, 85), schema);
+                JSONObject r = ask("Read all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group words that belong to the same line or paragraph. Ignore button glyphs, numbers-only labels and app overlays. Translate each into natural Vietnamese; keep names as they are.\n" + context(),
+                        jpeg(full, 1280, 85), schema, SHAPE_ALL);
                 JSONArray items = r != null ? r.optJSONArray("items") : null;
                 main.post(() -> showPanel(items));
             } catch (Gemini.CoolException ce) {
@@ -592,7 +610,7 @@ public class CaptureService extends Service {
         playBtn.setText(translating ? "⏸ Dừng" : "▶ Dịch");
         if (translating) {
             if (editing) toggleEdit();
-            if (prefs.keys().isEmpty()) {
+            if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) {
                 translating = false;
                 playBtn.setText("▶ Dịch");
                 bubbleText("", "Chưa có mã Gemini. Mở app Hóng Sub để nhập mã.", null, 6000);

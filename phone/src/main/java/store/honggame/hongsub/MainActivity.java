@@ -37,7 +37,7 @@ public class MainActivity extends Activity {
     private static final String REMOTE_PLAY_PKG = "com.playstation.remoteplay";
 
     private Prefs prefs;
-    private EditText keysEt, tvEt, gameEt, notesEt;
+    private EditText keysEt, groqEt, tvEt, gameEt, notesEt;
     private TextView keyMsg, status;
     private Button startBtn;
     private final List<Button> speedBtns = new ArrayList<>();
@@ -170,6 +170,13 @@ public class MainActivity extends Activity {
         kr.addView(sp, new LinearLayout.LayoutParams(dp(8), 1));
         kr.addView(button("Kiểm tra mã", false, v -> checkKeys()));
         k.addView(kr);
+        gap(k, 14);
+        k.addView(text("Mã Groq dự phòng (không bắt buộc), dùng khi Gemini hết lượt.", 13, MUTED, false));
+        gap(k, 8);
+        groqEt = input("gsk_...", prefs.groqRaw(), true);
+        k.addView(groqEt);
+        gap(k, 8);
+        k.addView(button("Lấy mã Groq miễn phí", false, v -> open("https://console.groq.com/keys")));
         keyMsg = text("", 13, MUTED, false);
         keyMsg.setPadding(0, dp(8), 0, 0);
         k.addView(keyMsg);
@@ -242,6 +249,7 @@ public class MainActivity extends Activity {
 
     private void save() {
         prefs.keysRaw(keysEt.getText().toString());
+        prefs.groqRaw(groqEt.getText().toString());
         prefs.tv(tvEt.getText().toString());
         prefs.game(gameEt.getText().toString());
         prefs.notes(notesEt.getText().toString());
@@ -265,38 +273,52 @@ public class MainActivity extends Activity {
     private void checkKeys() {
         save();
         final List<String> ks = prefs.keys();
-        if (ks.isEmpty()) {
+        final List<String> gs = prefs.groqKeys();
+        if (ks.isEmpty() && gs.isEmpty()) {
             keyMsg.setTextColor(Color.rgb(255, 92, 92));
-            keyMsg.setText("Chưa có mã. Bấm \"Lấy mã miễn phí\", tạo mã rồi dán vào ô trên.");
+            keyMsg.setText("Chưa có mã. Bấm \"Lấy mã miễn phí\", tạo mã Gemini rồi dán vào ô trên.");
             return;
         }
         keyMsg.setTextColor(MUTED);
-        keyMsg.setText("Đang kiểm tra " + ks.size() + " mã...");
+        keyMsg.setText("Đang kiểm tra " + (ks.size() + gs.size()) + " mã...");
         new Thread(() -> {
-            int good = 0;
-            List<String> models = null;
+            int good = 0, ggood = 0;
+            List<String> models = null, gmodels = null;
             StringBuilder errs = new StringBuilder();
             for (int i = 0; i < ks.size(); i++) {
                 try {
-                    List<String> m = Gemini.listModels(ks.get(i));
+                    List<String> m2 = Gemini.listModels(ks.get(i));
                     good++;
-                    if (models == null && !m.isEmpty()) models = m;
+                    if (models == null && !m2.isEmpty()) models = m2;
                 } catch (Exception e) {
-                    errs.append(" · Mã ").append(i + 1).append(": ").append(e.getMessage());
+                    errs.append(" · Gemini ").append(i + 1).append(": ").append(e.getMessage());
                 }
             }
-            final int ok = good;
-            final List<String> ms = models;
+            for (int i = 0; i < gs.size(); i++) {
+                try {
+                    List<String> g2 = Groq.listModels(gs.get(i));
+                    ggood++;
+                    if (gmodels == null && !g2.isEmpty()) gmodels = g2;
+                } catch (Exception e) {
+                    errs.append(" · Groq ").append(i + 1).append(": ").append(e.getMessage());
+                }
+            }
+            final int ok = good, gok = ggood;
+            final List<String> ms = models, gms = gmodels;
             final String er = errs.toString();
             runOnUiThread(() -> {
-                if (ok == 0) {
+                if (ok == 0 && gok == 0) {
                     keyMsg.setTextColor(Color.rgb(255, 92, 92));
                     keyMsg.setText("Không dùng được mã nào" + er + ". Kiểm tra đã sao chép đủ mã chưa.");
-                } else {
-                    if (ms != null) prefs.models(ms);
-                    keyMsg.setTextColor(Color.rgb(61, 220, 132));
-                    keyMsg.setText("Dùng được " + ok + "/" + ks.size() + " mã. Máy dịch: " + prefs.models().get(0) + er);
+                    return;
                 }
+                if (ms != null) prefs.models(ms);
+                if (gms != null) prefs.groqModels(gms);
+                StringBuilder sb = new StringBuilder("Dùng được:");
+                if (!ks.isEmpty()) sb.append(" Gemini ").append(ok).append("/").append(ks.size()).append(ok > 0 ? " (" + prefs.models().get(0) + ")" : "");
+                if (!gs.isEmpty()) sb.append(" · Groq ").append(gok).append("/").append(gs.size());
+                keyMsg.setTextColor(ok > 0 ? Color.rgb(61, 220, 132) : Color.rgb(255, 159, 67));
+                keyMsg.setText(sb.toString() + er);
             });
         }).start();
     }
@@ -309,7 +331,7 @@ public class MainActivity extends Activity {
             refresh();
             return;
         }
-        if (prefs.keys().isEmpty()) {
+        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) {
             keyMsg.setTextColor(Color.rgb(255, 92, 92));
             keyMsg.setText("Nhập mã Gemini trước khi bắt đầu.");
             keysEt.requestFocus();

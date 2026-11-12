@@ -25,6 +25,27 @@ final class Prefs {
         return out;
     }
 
+    String groqRaw() { return sp.getString("groq", ""); }
+    void groqRaw(String v) { sp.edit().putString("groq", v == null ? "" : v.trim()).apply(); }
+
+    List<String> groqKeys() {
+        List<String> out = new ArrayList<>();
+        for (String s : groqRaw().split("[\\s,]+")) {
+            if (s.trim().length() > 20) out.add(s.trim());
+        }
+        return out;
+    }
+
+    List<String> groqModels() {
+        List<String> out = new ArrayList<>();
+        for (String s : sp.getString("gmodels", "").split("\n")) {
+            if (!s.trim().isEmpty()) out.add(s.trim());
+        }
+        if (out.isEmpty()) out.addAll(Groq.PREF);
+        return out;
+    }
+    void groqModels(List<String> m) { sp.edit().putString("gmodels", android.text.TextUtils.join("\n", m)).apply(); }
+
     /** Ranked model names, newline separated (fastest first). */
     List<String> models() {
         List<String> out = new ArrayList<>();
