@@ -186,7 +186,7 @@ jobs:
 
   release:
     needs: [ android, windows ]
-    if: always() && needs.android.result == 'success'
+    if: needs.android.result == 'success' && needs.windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
