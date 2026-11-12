@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "HongSubTV"
-include ':app'
+include ':app', ':phone'

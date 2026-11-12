@@ -13,3 +13,7 @@ Phụ đề được dịch bởi [Hóng Sub](https://honggame.store/hong-sub/) 
 File cài mới nhất: mục **Releases** của kho này (tự dựng mỗi lần cập nhật code).
 
 Hỗ trợ: 0949 099 992 · 0367 879 283 · honggame.store
+
+## Hóng Sub cho điện thoại Android (thử nghiệm)
+Thư mục `phone/`. App ghi màn hình để đọc phụ đề trong app PS Remote Play chạy trên cùng điện thoại, dịch bằng Gemini, hiện chữ nổi, đọc giọng Việt và gửi lên Hóng Sub TV.
+Tải: `honggame.store/hongsubapp` (file `hong-sub-android.apk` trong Releases).

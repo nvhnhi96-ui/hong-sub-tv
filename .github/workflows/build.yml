@@ -35,20 +35,26 @@ jobs:
           HSTV_STORE_PASSWORD: ${{ secrets.HSTV_STORE_PASSWORD }}
           HSTV_KEY_ALIAS: ${{ secrets.HSTV_KEY_ALIAS }}
           HSTV_KEY_PASSWORD: ${{ secrets.HSTV_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: gradle :app:assembleRelease :phone:assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/release/app-release.apk hong-sub-tv.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk hong-sub-tv.apk
+          cp phone/build/outputs/apk/release/phone-release.apk hong-sub-android.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: hong-sub-tv
-          path: hong-sub-tv.apk
+          name: hong-sub-apk
+          path: |
+            hong-sub-tv.apk
+            hong-sub-android.apk
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Hóng Sub TV 1.0.${{ github.run_number }}
-          body: Bản tự động. Cài bằng app Downloader trên Android TV / Google TV.
-          files: hong-sub-tv.apk
+          name: Hóng Sub 1.0.${{ github.run_number }} (TV + Android)
+          body: Bản tự động. hong-sub-tv.apk cho Android TV / Google TV (cài bằng Downloader). hong-sub-android.apk cho điện thoại Android, dùng kèm app PS Remote Play.
+          files: |
+            hong-sub-tv.apk
+            hong-sub-android.apk
           make_latest: true
