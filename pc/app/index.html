@@ -393,7 +393,7 @@ body.desk .hs-dk.hs-off{display:none!important}
 
       <div class="hg-way" id="pc">
         <div class="hg-t" role="heading" aria-level="3">Phần mềm Hóng Sub cho Windows</div>
-        <p>Chơi PS5 / PS4 ngay trong Hóng Sub, không cần app của Sony. Phụ đề hiện trên hình game và đọc theo giọng từng nhân vật.</p>
+        <p>Chơi PS5 / PS4 ngay trong Hóng Sub, không cần app của Sony. Phụ đề hiện ngay trên hình game và được đọc to bằng giọng Việt.</p>
         <ol class="hg-steps">
           <li>Tải <a class="hg-ui" href="https://honggame.store/hongsubpc">Hóng Sub cho Windows</a> và mở file vừa tải. Nếu Windows hiện bảng xanh, bấm <b>More info</b> rồi <b>Run anyway</b>.</li>
           <li>Dán mã Gemini vào ô <span class="hg-ui">Mã Gemini</span>.</li>
@@ -439,7 +439,7 @@ body.desk .hs-dk.hs-off{display:none!important}
         <details><summary>Báo "Mã tạm hết lượt"</summary><div class="a">Mã Gemini miễn phí có giới hạn lượt mỗi phút. Dán thêm một mã Gemini nữa (tạo bằng Gmail khác), hoặc thêm mã Groq trong <b>Thêm tùy chọn</b>. Chọn tốc độ quét Tiết kiệm cũng đỡ tốn lượt.</div></details>
         <details><summary>Dịch sai câu hoặc dịch cả chữ khác</summary><div class="a">Bấm <b>Chỉnh vùng phụ đề</b> và kéo sát quanh dòng phụ đề. Nếu game cho chỉnh, tăng cỡ phụ đề và bật nền đen sau chữ.</div></details>
         <details><summary>Hình game bị đen</summary><div class="a">Cửa sổ PS Remote Play đang thu nhỏ hoặc chọn nhầm cửa sổ. Mở lại cửa sổ đó rồi bấm <b>Đổi cửa sổ</b>.</div></details>
-        <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Trên trình duyệt, mở trang này bằng Microsoft Edge. Phần mềm Windows có sẵn giọng Việt.</div></details>
+        <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Trên trình duyệt, mở trang này bằng Microsoft Edge: có giọng nữ HoaiMy và giọng nam NamMinh, Hóng Sub tự chọn giọng theo nhân vật. Phần mềm Windows có sẵn giọng Việt; muốn thêm giọng nam thì bấm <b>Cài giọng tiếng Việt</b> trong phần mềm.</div></details>
         <details><summary>TV không hiện chữ</summary><div class="a">Kiểm tra mã TV, bấm <b>Gửi thử</b>. Trên TV phải bấm <b>Bật phụ đề</b> và cho quyền hiển thị trên ứng dụng khác.</div></details>
       </div>
     </div>
@@ -906,7 +906,7 @@ var NARR='Despina';
 S.cast=load('cast',{}); S.ttsCool=0; S.ttsIdx=0;
 function voiceMode(){var v=$('hsVoice').value; return v||'auto';}
 function optAuto(){
-  return '<option value="auto">Giọng có sẵn (nhanh)</option><option value="ai">Giọng AI Google (hay hơn, chậm hơn)</option>';
+  return '<option value="auto">Tự chọn nam/nữ theo nhân vật</option>'; /* Google AI voice removed: the free key only allows ~3 lines a minute */
 }
 function loadVoices(){
   var sel=$('hsVoice'), want=load('voice','auto');
@@ -1029,12 +1029,14 @@ function devSpeak(t,mode,g){
   if(D){ D.speak(t,devPick(mode,g),rate); return; }
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; var v=webVoice(mode,g); if(v) u.voice=v; speechSynthesis.speak(u);
+  var v=webVoice(mode,g);
+  if(!v){ if(!S.noViWarned){ S.noViWarned=true; status('warn','Máy chưa có giọng tiếng Việt nên chưa đọc to. Mở bằng Edge, hoặc chọn Giọng AI Google.'); } return; } /* never read Vietnamese with an English voice */
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.voice=v; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
   var mode=voiceMode();
-  if(mode==='ai'){ if(!keys().length){status('warn','Giọng AI cần mã Gemini'); devSpeak(SAMPLE,'auto',''); return;} speakAi(SAMPLE,NARR,''); return; }
+  if(mode==='ai') mode='auto';
   stopSpeak(); devSpeak(SAMPLE,mode,'');
 }
 $('hsVoiceTest').addEventListener('click',sample);
@@ -1042,7 +1044,7 @@ function speak(t,res){
   if(!$('hsSpeak').checked||!t) return;
   var mode=voiceMode(), who=(res&&res.speaker)||'', g=((res&&res.gender)||'').toLowerCase();
   var busy=Object.keys(S.cool).some(function(k){return S.cool[k]>Date.now();})||S.inflight>1;
-  if(mode==='ai'&&keys().length&&!(S.ttsCool>Date.now())&&!busy){ speakAi(t,castVoice(who,g),g); return; }
+  if(mode==='ai') mode='auto';
   stopSpeak(); devSpeak(t,mode,g);
 }
 
