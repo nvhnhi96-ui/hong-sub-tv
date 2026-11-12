@@ -87,6 +87,7 @@ jobs:
 
       - name: Save self test pictures to branch selftest-output
         if: always()
+        continue-on-error: true
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
