@@ -405,15 +405,15 @@ body.desk .hs-dk.hs-off{display:none!important}
 
     <div class="hg-way" id="pc">
       <div class="hg-t"><b>Phần mềm Hóng Sub cho Windows</b><span class="hg-tag beta">Mới</span></div>
-      <p>Giống Cách 1 nhưng là phần mềm cài trên máy tính Windows 10/11, tiện hơn khi chơi lâu: tự nhận cửa sổ PS Remote Play, phụ đề Việt hiện trong suốt ngay trên hình game, có phím tắt, và tự đọc chữ trên máy nên tốn ít lượt mã Gemini hơn.</p>
+      <p>Phần mềm cài trên máy tính Windows 10/11, có sẵn Remote Play bên trong nên <b>không cần cài app PS Remote Play của Sony</b>. Phụ đề Việt hiện trong suốt ngay trên hình game, mỗi nhân vật một giọng đọc, có phím tắt, và tốn ít lượt mã Gemini hơn.</p>
       <ol class="hg-steps">
         <li>Bấm <a class="hg-ui" href="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</a> rồi mở file <b>hong-sub-pc.exe</b>. Nếu Windows hiện bảng xanh "Windows đã bảo vệ PC của bạn", bấm <b>Thông tin bổ sung</b> (More info) rồi <b>Vẫn chạy</b> (Run anyway). Phần mềm mới nên Windows chưa nhận ra, không phải virus.</li>
-        <li>Dán mã Gemini (và mã Groq dự phòng) như bước 1 của Cách 1. Mã dùng trên web không tự chuyển sang phần mềm, cần dán lại 1 lần.</li>
-        <li>Mở <b>PS Remote Play</b> trước, rồi mở <b>Hóng Sub</b>. Phần mềm tự chọn cửa sổ Remote Play. Lần đầu kéo khung quanh dòng phụ đề, lần sau mở lên là tự dịch.</li>
-        <li>Phụ đề Việt hiện ở dải chữ trong suốt phía dưới màn hình. Bấm <span class="hg-ui">Di chuyển phụ đề</span> (hoặc F10) để kéo dải chữ tới chỗ muốn.</li>
-        <li>Phím tắt dùng được ngay trong lúc chơi: <b>F7</b> bật/tắt dịch, <b>F8</b> dịch ngay câu đang hiện, <b>F9</b> ẩn/hiện phụ đề, <b>F10</b> di chuyển phụ đề, <b>F11</b> dịch cả màn hình.</li>
+        <li>Dán mã Gemini (và mã Groq dự phòng) như bước 1 của Cách 1.</li>
+        <li>Hóng Sub tự mở cửa sổ <b>Remote Play</b>. Lần đầu cần đăng nhập PSN và ghép máy (làm 1 lần): trong cửa sổ Remote Play bấm <b>bánh răng</b> › <b>Config</b> › <b>Login to PSN</b>, đăng nhập rồi dán địa chỉ trang vào. Sau đó trên PS5 vào <b>Settings › System › Remote Play › Link Device</b> lấy mã 8 số, bấm vào hình máy trong Remote Play và nhập mã. Hướng dẫn chi tiết có trong phần mềm, mục <b>Remote Play có sẵn</b>.</li>
+        <li>Bấm vào máy PS5/PS4 để vào game. Hóng Sub tự nhận cửa sổ, lần đầu kéo khung quanh dòng phụ đề. Lần sau chỉ cần mở Hóng Sub là tự dịch.</li>
+        <li>Phụ đề Việt hiện ở dải chữ trong suốt phía dưới màn hình, bấm <span class="hg-ui">Di chuyển phụ đề</span> (F10) để kéo tới chỗ muốn. Phím tắt: <b>F7</b> bật/tắt dịch, <b>F8</b> dịch ngay, <b>F9</b> ẩn/hiện phụ đề, <b>F11</b> dịch cả màn hình.</li>
       </ol>
-      <div class="hg-tip">Giọng đọc dùng giọng tiếng Việt của Windows. Nếu phần mềm báo chưa có giọng Việt: bấm <b>Cài giọng tiếng Việt</b>, chọn <b>Thêm giọng nói</b>, tìm <b>Tiếng Việt</b> rồi cài. Bấm dấu X chỉ thu Hóng Sub xuống góc phải thanh tác vụ (biểu tượng chữ H), muốn tắt hẳn thì bấm chuột phải vào đó chọn <b>Thoát</b>.</div>
+      <div class="hg-tip"><b>Giọng đọc theo vai:</b> chọn "Tự phân vai · giọng AI Google" để nhân vật nam đọc giọng nam, nữ đọc giọng nữ, mỗi nhân vật một giọng riêng (dùng thêm lượt mã Gemini). Hết lượt thì tự chuyển sang giọng Việt có sẵn trong phần mềm. Remote Play đi kèm là <a href="https://github.com/streetpea/chiaki-ng" target="_blank" rel="noopener">chiaki-ng</a>, phần mềm mã nguồn mở (AGPL-3.0), không phải của Sony; vẫn dùng được app PS Remote Play của Sony nếu muốn.</div>
     </div>
 
     <div class="hg-way">
@@ -461,7 +461,7 @@ body.desk .hs-dk.hs-off{display:none!important}
       <details><summary>Bấm "Chọn màn hình game" không thấy gì, hoặc báo trình duyệt không hỗ trợ</summary><div class="a">Hóng Sub chỉ chạy trên Chrome hoặc Edge ở máy tính. Trên điện thoại, xem app Dịch Phụ Đề Game trong <a href="https://honggame.store/huong-dan-dich-phu-de-game-ps5-tieng-viet/">bài hướng dẫn</a>.</div></details>
       <details><summary>Hình game trong Hóng Sub bị đen</summary><div class="a">Cửa sổ PS Remote Play đang bị thu nhỏ hoặc đã chọn nhầm cửa sổ. Mở lại cửa sổ Remote Play rồi bấm "Đổi màn hình" chọn lại.</div></details>
       <details><summary>Báo "Mã tạm hết lượt"</summary><div class="a">Mã Gemini miễn phí có giới hạn lượt dịch. Chờ ít giây là dịch tiếp. Muốn ít bị hết lượt thì dán thêm <b>mã Groq dự phòng</b>: Gemini hết lượt, Hóng Sub tự chuyển sang Groq. Chọn tốc độ quét "Tiết kiệm" cũng đỡ tốn lượt.</div></details>
-      <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Chrome trên nhiều máy không có giọng Việt. Mở Hóng Sub bằng Microsoft Edge để có giọng Việt tự nhiên (HoaiMy, NamMinh).</div></details>
+      <details><summary>Không có giọng đọc tiếng Việt, hoặc muốn mỗi nhân vật một giọng</summary><div class="a">Ở ô <b>Giọng đọc</b> chọn <b>Tự phân vai · giọng AI Google</b>: dùng mã Gemini để đọc, nhân vật nam giọng nam, nữ giọng nữ, đổi giọng từng nhân vật trong mục <b>Giọng từng nhân vật</b>. Mỗi câu đọc tốn thêm 1 lượt mã. Muốn dùng giọng có sẵn trên máy: mở Hóng Sub bằng Microsoft Edge (giọng HoaiMy nữ, NamMinh nam) và chọn <b>Tự phân vai · giọng có sẵn trên máy</b>.</div></details>
       <details><summary>Dịch sai câu, hoặc dịch cả chữ khác trên màn hình</summary><div class="a">Khung đang rộng quá hoặc lệch. Bấm "Kéo lại khung" và kéo sát quanh dòng phụ đề. Nếu game cho chỉnh, tăng cỡ phụ đề và bật nền đen sau chữ.</div></details>
       <details><summary>Chữ dịch hiện chậm hơn lời thoại</summary><div class="a">Mỗi câu cần khoảng 1 đến 2 giây để đọc và dịch. Chọn tốc độ quét "Nhanh" để hiện sớm hơn (tốn lượt mã hơn), dùng Wi-Fi 5GHz hoặc cắm dây mạng cho PS5.</div></details>
       <details><summary>TV không hiện chữ</summary><div class="a">Kiểm tra mã TV nhập đúng chưa, bấm "Gửi thử lên TV". Trên TV phải bấm "Bật phụ đề" và có quyền "Hiển thị trên ứng dụng khác". Một số TV khoá quyền này, khi đó app TV chưa dùng được trên TV đó.</div></details>
@@ -1086,7 +1086,7 @@ function textPrompt(t){
   return 'You translate video game subtitles for a Vietnamese player.\n'+
     'OCR read the text between <<< and >>> from the subtitle area of the game screen. It may contain OCR mistakes or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
     '1. Fix obvious OCR mistakes and keep ONLY the English dialogue/subtitle text. Ignore HUD, button prompts and labels like "DEMO".\n'+
-    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
+    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en". Only use a name that is written on screen; never guess the speaker.\n'+
     '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '5. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes).\n'+
     '4. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
@@ -1134,7 +1134,7 @@ async function tick(force){
   var prompt='You translate video game subtitles for a Vietnamese player.\n'+
     'The image is a crop of the game screen where dialogue subtitles appear.\n'+
     '1. Read ONLY the subtitle/dialogue text in English. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
-    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
+    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en". Only use a name that is written on screen; never guess the speaker.\n'+
     '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '5. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes).\n'+
     '4. If there is no readable English subtitle, return "en":"" and "vi":"".\n'+context();

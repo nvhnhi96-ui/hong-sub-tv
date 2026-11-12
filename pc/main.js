@@ -361,18 +361,22 @@ async function runSelftest() {
   const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
-  const rl = rpLaunch(false); log('remoteplay launch', JSON.stringify(rl), rpExe() || 'no exe');
-  if (rl.ok) {
-    await new Promise(r => setTimeout(r, 12000));
+  const rl = { ok: !!rpExe() }; log('remoteplay exe', rpExe() || 'none');
+  const tries = [['default', [], {}], ['opengl', ['--opengl'], {}], ['software', [], { QT_QUICK_BACKEND: 'software' }]];
+  for (const [label, args, env] of tries) {
+    const exe = rpExe(); if (!exe) break;
+    let errTxt = '', code = null;
+    const pr = spawn(exe, args, { cwd: path.dirname(exe), env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+    pr.stdout.on('data', d => { errTxt += d; }); pr.stderr.on('data', d => { errTxt += d; });
+    pr.on('exit', c => { code = c; });
+    await new Promise(r => setTimeout(r, 10000));
     const ws = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 960, height: 540 } });
-    log('windows', JSON.stringify(ws.map(w => w.name)));
     const cw = ws.find(w => /chiaki/i.test(w.name));
-    if (cw) fs.writeFileSync(path.join(out, 'remoteplay-window.png'), cw.thumbnail.toPNG());
-    await shot('screen-remoteplay.png');
-    try { process.kill(rpProc ? rpProc.pid : 0); } catch (e) { /* ignore */ }
+    log('rp ' + label + ': exit=' + code + ' window=' + (cw ? cw.name : 'none') + ' out=' + errTxt.slice(-600).replace(/\s+/g, ' '));
+    if (cw) { fs.writeFileSync(path.join(out, 'remoteplay-' + label + '.png'), cw.thumbnail.toPNG()); rl[label] = true; }
+    try { pr.kill(); } catch (e) { /* ignore */ }
+    await new Promise(r => setTimeout(r, 1500));
   }
-  const sp = await ttsCall({ cmd: 'speak', text: b64('Hello from Hong Sub test'), voice: '', rate: 1, any: true }, 30000);
-  log('speak', sp.err ? 'ERR ' + sp.err : 'wav bytes ' + Math.round((sp.wav || '').length * 0.75));
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000), piperOk: !!(pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
   quitting = true; app.quit();
 }
