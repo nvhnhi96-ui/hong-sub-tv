@@ -59,12 +59,34 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: msys2/setup-msys2@v2
+        id: msys1
+        continue-on-error: true
         with:
           msystem: mingw64
           update: false
           install: git
           pacboy: >-
-            cc:p cmake:p ninja:p pkgconf:p openssl:p json-c:p miniupnpc:p libevent:p python:p python-protobuf:p ntldd:p
+            cc:p cmake:p ninja:p pkgconf:p openssl:p json-c:p miniupnpc:p libevent:p python:p python-protobuf:p
+
+      - uses: msys2/setup-msys2@v2
+        if: steps.msys1.outcome == 'failure'
+        id: msys2b
+        continue-on-error: true
+        with:
+          msystem: mingw64
+          update: false
+          install: git
+          pacboy: >-
+            cc:p cmake:p ninja:p pkgconf:p openssl:p json-c:p miniupnpc:p libevent:p python:p python-protobuf:p
+
+      - uses: msys2/setup-msys2@v2
+        if: steps.msys1.outcome == 'failure' && steps.msys2b.outcome == 'failure'
+        with:
+          msystem: mingw64
+          update: false
+          install: git
+          pacboy: >-
+            cc:p cmake:p ninja:p pkgconf:p openssl:p json-c:p miniupnpc:p libevent:p python:p python-protobuf:p
 
       - name: Get chiaki-ng source (AGPL-3.0)
         run: |
@@ -80,7 +102,7 @@ jobs:
           cmake --build rp/build --target hongsub-rp
           mkdir -p out
           cp rp/build/hongsub-rp.exe out/
-          ntldd -R out/hongsub-rp.exe | grep -i mingw64 | sed -E 's/.*=> *([^ ]+) .*/\1/' | while read -r f; do cp "$(cygpath -u "$f")" out/ ; done
+          ldd out/hongsub-rp.exe | grep -i '/mingw64/' | awk '{print $3}' | while read -r f; do cp "$f" out/ ; done
           ls -la out
           ./out/hongsub-rp.exe version
           cp rp/chiaki-ng/COPYING out/CHIAKI-NG-LICENSE-AGPL3.txt
