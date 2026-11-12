@@ -377,9 +377,6 @@ public class CaptureService extends Service {
                     }
                 }
             }
-        } catch (Gemini.CoolException ce) {
-            setStatus("Mã tạm hết lượt, đang chờ...");
-            next = 3000;
         } catch (Exception e) {
             setStatus("Lỗi: " + e.getMessage());
             next = 2000;
