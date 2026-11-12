@@ -164,7 +164,8 @@ final class Gemini {
             if (th != null) gc.put("thinkingConfig", th);
             JSONObject img = new JSONObject().put("inlineData",
                     new JSONObject().put("mimeType", "image/jpeg").put("data", jpegB64));
-            JSONArray parts = new JSONArray().put(new JSONObject().put("text", prompt)).put(img);
+            JSONArray parts = new JSONArray().put(new JSONObject().put("text", prompt));
+            if (jpegB64 != null) parts.put(img);
             JSONObject body = new JSONObject()
                     .put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts)))
                     .put("generationConfig", gc);

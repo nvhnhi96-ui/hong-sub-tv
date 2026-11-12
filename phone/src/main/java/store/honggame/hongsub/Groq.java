@@ -124,9 +124,11 @@ final class Groq {
             String key = pickKey();
             if (key == null) throw new Gemini.CoolException();
             JSONArray content = new JSONArray()
-                    .put(new JSONObject().put("type", "text").put("text", prompt + "\nReply with JSON only, exactly this shape: " + shape))
-                    .put(new JSONObject().put("type", "image_url").put("image_url",
-                            new JSONObject().put("url", "data:image/jpeg;base64," + jpegB64)));
+                    .put(new JSONObject().put("type", "text").put("text", prompt + "\nReply with JSON only, exactly this shape: " + shape));
+            if (jpegB64 != null) {
+                content.put(new JSONObject().put("type", "image_url").put("image_url",
+                        new JSONObject().put("url", "data:image/jpeg;base64," + jpegB64)));
+            }
             JSONObject body = new JSONObject()
                     .put("model", model)
                     .put("temperature", 0.2)

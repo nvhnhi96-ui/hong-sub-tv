@@ -26,6 +26,8 @@ import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,7 +42,7 @@ public class MainActivity extends Activity {
 
     private Prefs prefs;
     private EditText keysEt, groqEt, tvEt, gameEt, notesEt;
-    private TextView keyMsg, status;
+    private TextView keyMsg, status, notesMsg;
     private Button startBtn;
     private final List<Button> speedBtns = new ArrayList<>();
     private TextToSpeech tts;
@@ -199,7 +201,13 @@ public class MainActivity extends Activity {
         g.addView(gameEt);
         gap(g, 8);
         notesEt = input("Nhân vật, cách xưng hô (không bắt buộc)", prefs.notes(), true);
+        notesEt.setMinLines(4);
         g.addView(notesEt);
+        gap(g, 8);
+        g.addView(button("Soạn ghi chú bằng AI", false, v -> aiNotes()));
+        notesMsg = text("Gõ tên game rồi bấm nút trên, AI viết sẵn nhân vật, quan hệ và cách xưng hô.", 13, MUTED, false);
+        notesMsg.setPadding(0, dp(6), 0, 0);
+        g.addView(notesMsg);
 
         // Options
         LinearLayout o = section(root, "Đọc & hiển thị");
@@ -312,6 +320,53 @@ public class MainActivity extends Activity {
         startBtn.setText(run ? "Tắt Hóng Sub" : "Bắt đầu");
         status.setTextColor(run ? Color.rgb(61, 220, 132) : Color.WHITE);
         status.setText(run ? "Đang chạy. Mở PS Remote Play và dùng thanh nổi có chữ H." : "");
+    }
+
+    private void aiNotes() {
+        save();
+        final String name = prefs.game();
+        if (name.isEmpty()) { notesMsg.setText("Gõ tên game trước, ví dụ: Ghost of Tsushima."); gameEt.requestFocus(); return; }
+        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) { notesMsg.setText("Cần nhập mã Gemini trước."); return; }
+        notesMsg.setTextColor(MUTED);
+        notesMsg.setText("AI đang soạn ghi chú cho " + name + "...");
+        new Thread(() -> {
+            String prompt = "You help translate video game dialogue into Vietnamese.\nGame: \"" + name + "\".\n"
+                    + "Write short notes in Vietnamese (at most about 120 words) that a subtitle translator needs:\n"
+                    + "1. Main characters and how they are related.\n"
+                    + "2. How they should address each other in Vietnamese, e.g. \"Kratos gọi Atreus là con, xưng ta; Atreus gọi Kratos là cha\". Pick pronouns that fit the setting.\n"
+                    + "3. Names, places and terms that must stay in English.\n"
+                    + "4. The tone of the dialogue.\n"
+                    + "Only state what you are confident about for this exact game. If you do not know this game well, set \"known\" to false and give neutral pronoun advice instead of guessing names.\n"
+                    + "Return JSON: {\"known\":true,\"notes\":\"...\"}";
+            String res = null, err = null;
+            boolean known = false;
+            try {
+                JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"known\":{\"type\":\"BOOLEAN\"},\"notes\":{\"type\":\"STRING\"}},\"required\":[\"known\",\"notes\"]}");
+                JSONObject r = null;
+                if (!prefs.keys().isEmpty()) {
+                    try { r = new Gemini(prefs).ask(prompt, null, schema); } catch (Exception e) { if (prefs.groqKeys().isEmpty()) throw e; }
+                }
+                if (r == null && !prefs.groqKeys().isEmpty()) r = new Groq(prefs).ask(prompt, null, "{\"known\":true,\"notes\":\"\"}");
+                if (r != null) { res = r.optString("notes", ""); known = r.optBoolean("known", false); }
+            } catch (Gemini.CoolException ce) {
+                err = "Mã tạm hết lượt, thử lại sau ít giây.";
+            } catch (Exception e) {
+                err = "Lỗi: " + e.getMessage();
+            }
+            final String fr = res, fe = err;
+            final boolean fk = known;
+            runOnUiThread(() -> {
+                if (fe != null || fr == null || fr.isEmpty()) {
+                    notesMsg.setTextColor(Color.rgb(255, 92, 92));
+                    notesMsg.setText(fe != null ? fe : "AI không trả lời được, thử lại sau.");
+                    return;
+                }
+                notesEt.setText(fr);
+                prefs.notes(fr);
+                notesMsg.setTextColor(fk ? Color.rgb(61, 220, 132) : Color.rgb(255, 159, 67));
+                notesMsg.setText(fk ? "Đã soạn ghi chú. Đọc lại, sai chỗ nào thì sửa trực tiếp." : "AI không chắc về game này nên chỉ gợi ý chung. Nên tự ghi thêm tên nhân vật.");
+            });
+        }).start();
     }
 
     private void checkKeys() {
