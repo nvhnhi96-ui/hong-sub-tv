@@ -117,6 +117,20 @@ jobs:
           Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
           Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
 
+      - name: Remote Play diagnostics
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem remoteplay -Recurse -Filter chiaki.exe | Select-Object -First 1
+          Write-Host "vulkan-1.dll in System32: $(Test-Path C:\Windows\System32\vulkan-1.dll)"
+          Write-Host "bundled vulkan-1.dll: $((Get-ChildItem remoteplay -Recurse -Filter vulkan-1.dll | Measure-Object).Count)"
+          Get-CimInstance Win32_VideoController | ForEach-Object { Write-Host "GPU: $($_.Name) $($_.DriverVersion)" }
+          $p = Start-Process $exe.FullName -ArgumentList '--help' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\h.txt" -RedirectStandardError "$env:RUNNER_TEMP\he.txt"
+          $p.WaitForExit(20000) | Out-Null
+          Write-Host "help exit: $($p.ExitCode)"; Get-Content "$env:RUNNER_TEMP\h.txt","$env:RUNNER_TEMP\he.txt" -ErrorAction SilentlyContinue | Select-Object -First 30
+          Get-WinEvent -FilterHashtable @{LogName='Application'} -MaxEvents 60 | Where-Object { $_.Message -match 'chiaki' } | Select-Object -First 4 | ForEach-Object { Write-Host '----'; Write-Host $_.Message.Substring(0, [Math]::Min(900, $_.Message.Length)) }
+
       - name: Save self test pictures to branch selftest-output
         if: always()
         continue-on-error: true
