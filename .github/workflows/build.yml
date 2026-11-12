@@ -105,22 +105,6 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npx electron-builder --win nsis --publish never
 
-      - name: Test-only software OpenGL for Remote Play (build machine has no GPU)
-        continue-on-error: true
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $rel = gh api repos/pal1000/mesa-dist-win/releases/latest | ConvertFrom-Json
-          $a = $rel.assets | Where-Object { $_.name -match 'release-msvc\.7z$' } | Select-Object -First 1
-          if (-not $a) { $a = $rel.assets | Where-Object { $_.name -match 'release.*\.7z$' } | Select-Object -First 1 }
-          Write-Host "mesa $($rel.tag_name) $($a.name)"
-          Invoke-WebRequest $a.browser_download_url -OutFile "$env:RUNNER_TEMP\mesa.7z"
-          7z x "$env:RUNNER_TEMP\mesa.7z" "-o$env:RUNNER_TEMP\mesa" -y | Out-Null
-          $dst = (Get-ChildItem dist\win-unpacked\resources\remoteplay -Recurse -Filter chiaki.exe | Select-Object -First 1).DirectoryName
-          Get-ChildItem "$env:RUNNER_TEMP\mesa\x64" -Filter *.dll | ForEach-Object { Copy-Item $_.FullName $dst -Force; Write-Host "copied $($_.Name)" }
-          Rename-Item (Join-Path $dst 'opengl32.dll') 'opengl32sw.dll' -Force
-
       - name: Self test on Windows
         shell: pwsh
         env:
