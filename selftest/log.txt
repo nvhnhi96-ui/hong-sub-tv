@@ -1,12 +1,12 @@
-version 1.0.18
+version 1.0.24
 state-visible {"test":{"ocr":[{"t":"Stay close. The bridge will not hold for long.","c":95,"e":false},{"t":"told you this place was cursed.","c":95,"e":false},{"t":"Grab the map. We head north at dawn.","c":95,"e":false},{"t":"We need to get out of here before sunrise.","c":95,"e":false},{"t":"Stay close. The bridge will not hold for long.","c":95,"e":false}],"asked":["text","text","text","text","text"],"shown":["[VI] Stay close. The bridge will not hold for long.","[VI] told you this place was cursed.","[VI] Grab the map. We head north at dawn.","[VI] We need to get out of here before sunrise.","[VI] Stay close. The bridge will not hold for long."]},"saved":0,"running":true,"stream":true,"region":{"x":0.05,"y":0.78,"w":0.9,"h":0.16},"status":"Đang dịch · Gemini","voices":[{"name":"Giọng Việt Hóng Sub (có sẵn)","lang":"vi-VN","id":"hs:piper"},{"name":"Microsoft David","lang":"en-US","id":"win:Microsoft David"},{"name":"Microsoft Zira","lang":"en-US","id":"win:Microsoft Zira"},{"name":"Microsoft Mark","lang":"en-US","id":"win:Microsoft Mark"}],"ocrReady":true,"ocrFails":0,"visibility":"visible"}
 state-minimized {"test":{"ocr":[{"t":"Stay close. The bridge will not hold for long.","c":95,"e":false},{"t":"told you this place was cursed.","c":95,"e":false},{"t":"Grab the map. We head north at dawn.","c":95,"e":false},{"t":"We need to get out of here before sunrise.","c":95,"e":false},{"t":"Stay close. The bridge will not hold for long.","c":95,"e":false},{"t":"told you this place was cursed.","c":95,"e":false},{"t":"Grab the map. We head north at dawn.","c":95,"e":false},{"t":"We need to get out of here before sunrise.","c":95,"e":false}],"asked":["text","text","text","text","text","text","text","text"],"shown":["[VI] Stay close. The bridge will not hold for long.","[VI] told you this place was cursed.","[VI] Grab the map. We head north at dawn.","[VI] We need to get out of here before sunrise.","[VI] Stay close. The bridge will not hold for long.","[VI] told you this place was cursed.","[VI] Grab the map. We head north at dawn.","[VI] We need to get out of here before sunrise."]},"saved":0,"running":true,"stream":true,"region":{"x":0.05,"y":0.78,"w":0.9,"h":0.16},"status":"Đang dịch · Gemini","voices":[{"name":"Giọng Việt Hóng Sub (có sẵn)","lang":"vi-VN","id":"hs:piper"},{"name":"Microsoft David","lang":"en-US","id":"win:Microsoft David"},{"name":"Microsoft Zira","lang":"en-US","id":"win:Microsoft Zira"},{"name":"Microsoft Mark","lang":"en-US","id":"win:Microsoft Mark"}],"ocrReady":true,"ocrFails":0,"visibility":"visible"}
 voices {"id":3,"voices":[{"lang":"en-US","name":"Microsoft David","gender":"Male"},{"lang":"en-US","name":"Microsoft Zira","gender":"Female"},{"lang":"en-US","name":"Microsoft Mark","gender":"Male"}]}
-piper wav bytes 112998 in 141ms
-piper2 wav bytes 98151 in 118ms
-remoteplay exe D:\a\hong-sub-tv\hong-sub-tv\pc\dist\win-unpacked\resources\remoteplay\chiaki-ng-Win\chiaki.exe
-rp default: exit=3221227010 window=none out=
-rp opengl: exit=3221227010 window=none out=
-rp software: exit=3221227010 window=none out=
+piper wav bytes 115047 in 284ms
+piper2 wav bytes 98664 in 268ms
+rp version exit=0 {"ok":true,"app":"hongsub-rp","chiaki":"chiaki-ng"}
+rp stream test {"code":0,"events":["{\"ev\":\"log\",\"level\":4,\"msg\":\"Trying to request session from 127.0.0.1:9295\"}","{\"ev\":\"log\",\"level\":1,\"msg\":\"Session request connect failed: Timeout\"}","{\"ev\":\"log\",\"level\":1,\"msg\":\"Session request connect failed eventually.\"}","{\"ev\":\"log\",\"level\":4,\"msg\":\"Session has quit\"}","{\"ev\":\"quit\",\"reason\":2,\"text\":\"Unknown Session Request Error\",\"str\":\"\"}","{\"ev\":\"closed\"}"]}
+discover []
+picture test {"encoder":true,"chunks":20,"decodedFrames":7,"codec":"avc1.42C01E","err":"","canvas":"640x360"}
 FATAL ReferenceError: sp is not defined
-    at runSelftest (D:\a\hong-sub-tv\hong-sub-tv\pc\dist\win-unpacked\resources\app\main.js:380:135)
+    at runSelftest (D:\a\hong-sub-tv\hong-sub-tv\pc\dist\win-unpacked\resources\app\main.js:389:135)
