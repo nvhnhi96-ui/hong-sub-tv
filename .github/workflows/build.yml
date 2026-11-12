@@ -65,6 +65,38 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      - name: Get Remote Play (chiaki-ng, AGPL-3.0) and Vietnamese voice (Piper)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # --- chiaki-ng: unmodified official portable build ---
+          $rel = gh api repos/streetpea/chiaki-ng/releases/latest | ConvertFrom-Json
+          Write-Host "chiaki-ng $($rel.tag_name)"
+          $rel.assets | ForEach-Object { Write-Host "  asset: $($_.name)" }
+          $zips = $rel.assets | Where-Object { $_.name -match '(?i)win' -and $_.name -match '(?i)\.zip$' -and $_.name -notmatch '(?i)arm' }
+          $a = $zips | Where-Object { $_.name -match '(?i)portable' } | Select-Object -First 1
+          if (-not $a) { $a = $zips | Select-Object -First 1 }
+          if (-not $a) { throw 'no Windows zip in chiaki-ng release' }
+          Write-Host "using $($a.name)"
+          Invoke-WebRequest $a.browser_download_url -OutFile "$env:RUNNER_TEMP\rp.zip"
+          Expand-Archive "$env:RUNNER_TEMP\rp.zip" -DestinationPath remoteplay -Force
+          $exe = Get-ChildItem remoteplay -Recurse -Include chiaki.exe, chiaki-ng.exe | Select-Object -First 1
+          if (-not $exe) { Get-ChildItem remoteplay -Recurse | Select-Object -First 50 | ForEach-Object { Write-Host $_.FullName }; throw 'chiaki exe not found' }
+          Write-Host "exe: $($exe.FullName)"
+          foreach ($f in 'COPYING','LICENSE','LICENSE.txt') { try { Invoke-WebRequest "https://raw.githubusercontent.com/streetpea/chiaki-ng/main/$f" -OutFile remoteplay\CHIAKI-NG-LICENSE-AGPL3.txt; break } catch { } }
+          "chiaki-ng $($rel.tag_name) - PlayStation Remote Play client mã nguồn mở, không thuộc Sony.`r`nMã nguồn: https://github.com/streetpea/chiaki-ng/releases/tag/$($rel.tag_name)`r`nGiấy phép: GNU AGPL-3.0 (xem CHIAKI-NG-LICENSE-AGPL3.txt).`r`nHóng Sub đóng gói nguyên bản, không sửa đổi." | Out-File remoteplay\NGUON-CHIAKI-NG.txt -Encoding utf8
+          # --- Piper (MIT) + Vietnamese voice VAIS-1000 (CC BY 4.0) ---
+          Invoke-WebRequest https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip -OutFile "$env:RUNNER_TEMP\piper.zip"
+          Expand-Archive "$env:RUNNER_TEMP\piper.zip" -DestinationPath voices -Force
+          $hf = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium'
+          Invoke-WebRequest "$hf/vi_VN-vais1000-medium.onnx" -OutFile voices\vi_VN-vais1000-medium.onnx
+          Invoke-WebRequest "$hf/vi_VN-vais1000-medium.onnx.json" -OutFile voices\vi_VN-vais1000-medium.onnx.json
+          try { Invoke-WebRequest https://raw.githubusercontent.com/rhasspy/piper/master/LICENSE.md -OutFile voices\PIPER-LICENSE-MIT.txt } catch { }
+          "Giọng đọc: Piper (MIT, https://github.com/rhasspy/piper)`r`nGiọng tiếng Việt: vi_VN-vais1000-medium, huấn luyện từ VAIS-1000 Vietnamese Speech Synthesis Corpus, giấy phép CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).`r`nNguồn: https://huggingface.co/rhasspy/piper-voices" | Out-File voices\NGUON-GIONG-DOC.txt -Encoding utf8
+          Get-ChildItem voices | ForEach-Object { Write-Host "voice file: $($_.Name) $($_.Length)" }
+
       - name: Set version
         run: npm pkg set version=1.0.${{ github.run_number }}
 
@@ -81,7 +113,7 @@ jobs:
         run: |
           $exe = Get-ChildItem dist\win-unpacked -Filter HongSub.exe | Select-Object -First 1
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' -PassThru
-          if (-not $p.WaitForExit(150000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
+          if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
           Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
           Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
 

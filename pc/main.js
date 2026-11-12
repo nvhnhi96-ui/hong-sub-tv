@@ -213,16 +213,97 @@ function ttsCall(msg, timeout) {
 }
 const b64 = (s) => Buffer.from(String(s || ''), 'utf8').toString('base64');
 
+/* ---------- bundled tools: Remote Play (chiaki-ng) and Vietnamese voice (Piper) ---------- */
+function resDir(name) { return app.isPackaged ? path.join(process.resourcesPath, name) : path.join(ROOT, name); }
+function findFile(dir, test, depth) {
+  try {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isFile() && test(e.name)) return p;
+    }
+    if ((depth || 0) < 3) for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) { const f = findFile(path.join(dir, e.name), test, (depth || 0) + 1); if (f) return f; }
+    }
+  } catch (e) { /* missing */ }
+  return null;
+}
+const rpExe = () => findFile(resDir('remoteplay'), n => /^chiaki(-ng)?\.exe$/i.test(n));
+let rpProc = null;
+function rpLaunch(opengl) {
+  const exe = rpExe();
+  if (!exe) return { ok: false, err: 'missing' };
+  if (rpProc && rpProc.exitCode === null) return { ok: true, running: true };
+  try {
+    rpProc = spawn(exe, opengl ? ['--opengl'] : [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' });
+    rpProc.on('exit', () => { rpProc = null; if (win && !win.isDestroyed()) win.webContents.send('rp-exit'); });
+    rpProc.unref();
+    return { ok: true };
+  } catch (e) { return { ok: false, err: String(e.message || e) }; }
+}
+
+// Piper: offline Vietnamese voice. One process stays loaded; each stdin line becomes one wav file.
+const VOICE_NAME = 'Giọng Việt Hóng Sub (có sẵn)';
+let piper = null, piperRate = null, piperOut = '', piperQ = [];
+function piperPaths() {
+  const dir = resDir('voices');
+  return { exe: findFile(dir, n => /^piper\.exe$/i.test(n)), model: findFile(dir, n => /\.onnx$/i.test(n)) };
+}
+function piperStart(rate) {
+  const { exe, model } = piperPaths();
+  if (!exe || !model) return false;
+  if (piper && piperRate === rate) return true;
+  if (piper) { try { piper.kill(); } catch (e) { /* ignore */ } piper = null; }
+  const out = path.join(os.tmpdir(), 'hongsub-voice'); fs.mkdirSync(out, { recursive: true });
+  piper = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', (1 / Math.max(0.5, rate || 1)).toFixed(2), '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true });
+  piperRate = rate; piperOut = '';
+  piper.stdout.setEncoding('utf8');
+  piper.stdout.on('data', (d) => {
+    piperOut += d; let i;
+    while ((i = piperOut.indexOf('\n')) >= 0) {
+      const line = piperOut.slice(0, i).trim(); piperOut = piperOut.slice(i + 1);
+      if (!/\.wav$/i.test(line)) continue;
+      const done = piperQ.shift(); if (!done) continue;
+      try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64') }); } catch (e) { done({ err: String(e) }); }
+    }
+  });
+  piper.stderr.on('data', () => {});
+  piper.on('exit', () => { piper = null; while (piperQ.length) piperQ.shift()({ err: 'voice stopped' }); });
+  return true;
+}
+function piperSpeak(text, rate) {
+  const r = Math.round((rate || 1) * 10) / 10;
+  if (!piperStart(r)) return Promise.resolve({ err: 'novoice' });
+  return new Promise((done) => {
+    const t = setTimeout(() => { const i = piperQ.indexOf(fin); if (i >= 0) piperQ.splice(i, 1); done({ err: 'timeout' }); }, 20000);
+    const fin = (m) => { clearTimeout(t); done(m); };
+    piperQ.push(fin);
+    piper.stdin.write(String(text).replace(/[\r\n]+/g, ' ').trim() + '\n');
+  });
+}
+
 /* ---------- IPC ---------- */
 function setupIpc() {
   ipcMain.handle('sources', async () => (await listSources(true)).map(s => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL() })));
+  ipcMain.handle('windows', async () => (await listSources(false)).map(s => ({ id: s.id, name: s.name })));
+  ipcMain.handle('rp-info', () => ({ bundled: !!rpExe(), running: !!(rpProc && rpProc.exitCode === null) }));
+  ipcMain.handle('rp-launch', (e, opengl) => rpLaunch(!!opengl));
   ipcMain.handle('use', (e, id) => { chosenId = id; return true; });
   ipcMain.on('sub', (e, payload) => { if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload); });
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
-  ipcMain.handle('voices', async () => { const r = await ttsCall({ cmd: 'voices' }, 20000); return r.voices || []; });
+  ipcMain.handle('voices', async () => {
+    const list = [];
+    const pp = piperPaths(); if (pp.exe && pp.model) list.push({ name: VOICE_NAME, lang: 'vi-VN', id: 'hs:piper' });
+    const r = await ttsCall({ cmd: 'voices' }, 20000);
+    (r.voices || []).forEach(v => list.push({ name: v.name, lang: v.lang, id: 'win:' + v.name }));
+    return list;
+  });
   ipcMain.handle('speak', async (e, text, voice, rate) => {
     if (!text) return { stop: true };
-    return ttsCall({ cmd: 'speak', text: b64(text), voice: voice || '', rate: rate || 1 }, 20000);
+    voice = voice || '';
+    if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
+    const r = await piperSpeak(text, rate);
+    if (r.wav || voice === 'hs:piper') return r;
+    return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
   ipcMain.on('voice-settings', () => shell.openExternal('ms-settings:speech'));
   ipcMain.handle('update', async () => {
@@ -275,9 +356,24 @@ async function runSelftest() {
   const img = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main.png'), img.toPNG());
   const oimg = await overlay.webContents.capturePage(); fs.writeFileSync(path.join(out, 'overlay.png'), oimg.toPNG());
   const v = await ttsCall({ cmd: 'voices' }, 30000); log('voices', JSON.stringify(v));
+  const pv = Date.now(); const pw = await piperSpeak('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', 1.1);
+  log('piper', pw.err ? 'ERR ' + pw.err : 'wav bytes ' + Math.round((pw.wav || '').length * 0.75) + ' in ' + (Date.now() - pv) + 'ms');
+  const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
+  log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
+  if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
+  const rl = rpLaunch(false); log('remoteplay launch', JSON.stringify(rl), rpExe() || 'no exe');
+  if (rl.ok) {
+    await new Promise(r => setTimeout(r, 12000));
+    const ws = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 960, height: 540 } });
+    log('windows', JSON.stringify(ws.map(w => w.name)));
+    const cw = ws.find(w => /chiaki/i.test(w.name));
+    if (cw) fs.writeFileSync(path.join(out, 'remoteplay-window.png'), cw.thumbnail.toPNG());
+    await shot('screen-remoteplay.png');
+    try { process.kill(rpProc ? rpProc.pid : 0); } catch (e) { /* ignore */ }
+  }
   const sp = await ttsCall({ cmd: 'speak', text: b64('Hello from Hong Sub test'), voice: '', rate: 1, any: true }, 30000);
   log('speak', sp.err ? 'ERR ' + sp.err : 'wav bytes ' + Math.round((sp.wav || '').length * 0.75));
-  fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000) }, null, 2));
+  fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000), piperOk: !!(pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
   quitting = true; app.quit();
 }
 
@@ -292,9 +388,10 @@ app.whenReady().then(async () => {
   if (!SELFTEST) { createTray(); createMain(); }
   registerKeys();
   ttsStart();
+  setTimeout(() => piperStart(1.1), 3000);
   if (SELFTEST) runSelftest().catch(e => { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), 'FATAL ' + e.stack + '\n'); } catch (x) { /* ignore */ } app.exit(1); });
 });
 app.on('second-instance', showMain);
 app.on('before-quit', () => { quitting = true; });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); if (tts) { try { tts.kill(); } catch (e) { /* ignore */ } } });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

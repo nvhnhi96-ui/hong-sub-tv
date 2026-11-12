@@ -176,6 +176,15 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
 .hs-src button:hover,.hs-src button:focus-visible{border-color:var(--yellow);outline:none}
 .hs-src img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#000;border-radius:6px;margin-bottom:6px}
 .hs-src span{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-cast{margin:2px 0 10px;font-size:13.5px}
+.hs-rpsteps{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.55}
+.hs-rpsteps li{margin:0 0 6px}
+.hs-rpsteps b{color:var(--text)}
+body.desk .hs-dk.hs-off{display:none!important}
+.hs-cast summary{cursor:pointer;color:var(--muted);font-weight:600}
+.hs-cast .row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.hs-cast .row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-cast .row select{width:auto;flex:0 0 150px;padding:5px 8px!important}
 .hs-upd{display:none;background:var(--yellow);color:#111;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-weight:600}
 .hs-upd a{color:#111;text-decoration:underline}
 .hs-keys{font-size:13px;color:var(--muted);padding:2px 16px 10px;line-height:1.8}
@@ -214,6 +223,7 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
             <b>Dịch phụ đề game<br>sang tiếng Việt</b>
             <p>Mở PS Remote Play (hoặc game trên PC), rồi chọn cửa sổ đó. Hóng Sub đọc phụ đề tiếng Anh, dịch và đọc to bằng giọng Việt.</p>
             <div class="hs-row">
+              <button class="hs-btn pri hs-dk" id="hsRpOpen" type="button">Mở Remote Play</button>
               <button class="hs-btn pri" id="hsPick" type="button">Chọn màn hình game</button>
               <button class="hs-btn" id="hsDemo" type="button">Chạy thử, không cần PS5</button>
             </div>
@@ -226,6 +236,7 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
       </div>
 
       <div class="hs-ctrl">
+        <button class="hs-btn hs-dk" id="hsRpOpen2" type="button">Mở Remote Play</button>
         <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi màn hình</button>
         <button class="hs-btn" id="hsDraw" type="button" disabled>Kéo lại khung</button>
         <span class="hs-sp"></span>
@@ -249,6 +260,24 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
     </main>
 
     <aside class="hs-side">
+      <section class="hs-card hs-sec hs-dk" id="hsRpSec">
+        <div class="t"><b>Remote Play có sẵn</b></div>
+        <p class="hs-note" id="hsRpMsg">Hóng Sub có sẵn Remote Play, không cần cài app của Sony. Bấm "Mở Remote Play", chơi game trong cửa sổ đó, Hóng Sub tự đọc phụ đề.</p>
+        <details class="hs-cast" style="margin-top:8px">
+          <summary>Lần đầu: đăng nhập PSN và ghép máy</summary>
+          <ol class="hs-rpsteps">
+            <li>Bấm <b>Mở Remote Play</b>. Trong cửa sổ Remote Play bấm <b>bánh răng</b> (góc trên phải) › tab <b>Config</b> › <b>Login to PSN</b>.</li>
+            <li>Đăng nhập PSN trên trang web hiện ra (nên dùng tài khoản phụ). Đăng nhập xong, <b>sao chép địa chỉ trang</b> trên thanh địa chỉ trình duyệt, dán vào Remote Play rồi bấm tạo token. Báo thành công thì đóng lại.</li>
+            <li>Trên PS5 vào <b>Settings › System › Remote Play › Link Device</b> (PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>) để lấy mã 8 số.</li>
+            <li>Trong Remote Play bấm vào hình máy PS5/PS4. Nếu hỏi đăng ký tự động thì đồng ý; nếu không, nhập mã 8 số vào ô <b>Remote Play PIN</b> rồi bấm <b>Register</b>.</li>
+            <li>Bấm vào máy để vào game. Lần sau chỉ cần mở Hóng Sub là xong.</li>
+          </ol>
+        </details>
+        <label class="hs-sw" style="margin-top:8px">Tự mở Remote Play khi mở Hóng Sub <input type="checkbox" id="hsRpAuto" checked></label>
+        <label class="hs-sw">Hình trong Hóng Sub bị đen thì bật ô này <input type="checkbox" id="hsRpGl"></label>
+        <p class="hs-note" style="margin-top:6px">Remote Play đi kèm là <a href="https://github.com/streetpea/chiaki-ng" target="_blank" rel="noopener">chiaki-ng</a>, phần mềm mã nguồn mở (giấy phép AGPL-3.0), không phải của Sony. Vẫn dùng được app PS Remote Play của Sony nếu bạn thích.</p>
+      </section>
+
       <section class="hs-card hs-sec" id="hsKeySec">
         <div class="t"><b>Mã Gemini</b><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Lấy mã miễn phí ↗</a></div>
         <div class="hs-f">
@@ -307,6 +336,11 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
           <div class="hs-dk" id="hsVoiceTipD" hidden><p class="hs-note">Windows chưa có giọng tiếng Việt. Bấm nút dưới, chọn <b>Thêm giọng nói</b> (Add voices), tìm <b>Tiếng Việt</b> rồi cài, xong mở lại Hóng Sub.</p><button class="hs-btn" id="hsVoiceSet" type="button" style="margin-top:6px">Cài giọng tiếng Việt</button></div>
           <p class="hs-note hs-web" id="hsVoiceTip" hidden>Máy chưa có giọng tiếng Việt. Mở Hóng Sub bằng <b>Microsoft Edge</b> để có giọng Việt tự nhiên (HoaiMy, NamMinh), hoặc cài gói tiếng Việt cho Windows.</p>
         </div>
+        <details class="hs-cast" id="hsCastBox" hidden>
+          <summary>Giọng từng nhân vật (<span id="hsCastN">0</span>)</summary>
+          <p class="hs-note" style="margin:6px 0">Nhân vật mới tự được gán giọng nam hoặc nữ hợp vai. Muốn đổi thì chọn lại ở đây.</p>
+          <div id="hsCastList"></div>
+        </details>
         <div class="hs-f">
           <label for="hsRate">Tốc độ đọc: <span id="hsRateV">1.1</span>x</label>
           <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
@@ -577,7 +611,7 @@ function chooseSource(){
 async function pick(manual){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){status('err','Trình duyệt không hỗ trợ chia sẻ màn hình');return false;}
   if(D){
-    var srcs=await D.sources(), rp=srcs.filter(function(x){return /remote play/i.test(x.name);})[0];
+    var srcs=await D.sources(), rp=srcs.filter(function(x){return /remote play|chiaki/i.test(x.name);})[0];
     var ch=(!manual&&rp)?rp:await chooseSource();
     if(!ch){status('warn','Chưa chọn cửa sổ game');return false;}
     await D.use(ch.id);
@@ -691,7 +725,7 @@ function diff(a,b){if(!a||!b) return 255; var t=0; for(var i=0;i<a.length;i++){t
 function jpeg(q){return cap.toDataURL('image/jpeg',q||.82).split(',')[1];}
 
 /* ---------- Gemini ---------- */
-var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
+var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},gender:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
 var SCHEMA_ALL={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']}}},required:['items']};
 function context(){
   var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim();
@@ -824,7 +858,7 @@ async function groq(prompt,b64,shape){
   }
   throw lastErr||new Error('Groq không dịch được');
 }
-var SHAPE_SUB='{"speaker":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}';
+var SHAPE_SUB='{"speaker":"","gender":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}';
 S.via='';
 async function ask(prompt,b64,schema,shape){
   if(keys().length){
@@ -865,46 +899,154 @@ function show(res){
   pipRender(html,$('hsEn').textContent);
   if(D) D.sub({html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
   tvPush(vi,en,who,false);
-  speak(vi);
+  speak(vi,res);
 }
 var voices=[];
 var dVoices=null;
+/* Google AI voices (Gemini TTS). Picked for being easy to listen to. */
+var AIV={female:['Sulafat','Despina','Aoede','Leda','Achernar','Kore'],male:['Algieba','Charon','Iapetus','Achird','Umbriel','Orus']};
+var AIV_LABEL={Sulafat:'Nữ ấm',Despina:'Nữ mượt',Aoede:'Nữ trong',Leda:'Nữ trẻ',Achernar:'Nữ nhẹ',Kore:'Nữ chắc',Algieba:'Nam ấm',Charon:'Nam trầm',Iapetus:'Nam rõ',Achird:'Nam thân thiện',Umbriel:'Nam nhẹ',Orus:'Nam chắc'};
+var NARR='Despina';
+S.cast=load('cast',{}); S.ttsCool=0; S.ttsIdx=0;
+function voiceMode(){var v=$('hsVoice').value; return v||'auto';}
+function optAuto(){
+  return '<option value="ai">Tự phân vai · giọng AI Google (hay nhất)</option><option value="auto">Tự phân vai · giọng có sẵn trên máy</option>';
+}
 function loadVoices(){
+  var sel=$('hsVoice'), want=load('voice','ai');
   if(D){
-    var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);}), sel0=$('hsVoice'), want0=load('voice','');
-    sel0.innerHTML=dv.length?dv.map(function(v){return '<option value="win:'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join(''):'<option value="">Windows chưa có giọng tiếng Việt</option>';
-    if(want0&&dv.some(function(v){return 'win:'+v.name===want0;})) sel0.value=want0;
-    $('hsVoiceTipD').hidden=dv.length>0||dVoices===null; return;
+    var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
+    sel.innerHTML=optAuto()+dv.map(function(v){return '<option value="'+esc(v.id||('win:'+v.name))+'">'+esc(v.name)+'</option>';}).join('');
+    sel.value=[].some.call(sel.options,function(o){return o.value===want;})?want:'ai';
+    $('hsVoiceTipD').hidden=dv.length>0||dVoices===null; castUi(); return;
   }
-  if(!('speechSynthesis' in window)) return;
-  voices=speechSynthesis.getVoices();
+  voices=('speechSynthesis' in window)?speechSynthesis.getVoices():[];
   var vi=voices.filter(function(v){return /^vi/i.test(v.lang);});
-  var sel=$('hsVoice'), want=load('voice','');
-  sel.innerHTML=vi.length?vi.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join(''):'<option value="">Máy chưa có giọng tiếng Việt</option>';
-  if(want&&vi.some(function(v){return v.name===want;})) sel.value=want;
-  $('hsVoiceTip').hidden=vi.length>0;
+  sel.innerHTML=optAuto()+vi.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join('');
+  sel.value=[].some.call(sel.options,function(o){return o.value===want;})?want:'ai';
+  $('hsVoiceTip').hidden=vi.length>0; castUi();
 }
 if(D){ loadVoices(); D.voices().then(function(v){dVoices=v||[]; loadVoices();}).catch(function(){dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();}); }
-else if('speechSynthesis' in window){loadVoices(); speechSynthesis.onvoiceschanged=loadVoices;}
-function winVoice(){var v=$('hsVoice').value; return v.indexOf('win:')===0?v.slice(4):'';}
-$('hsVoice').addEventListener('change',function(){save('voice',this.value); sample();});
+else{ loadVoices(); if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=loadVoices; }
+$('hsVoice').addEventListener('change',function(){save('voice',this.value); castUi(); sample();});
+
+/* --- cast: one voice per character, kept per game --- */
+function castKey(){return gameKey($('hsGame').value)||'_';}
+function castVoice(who,g){
+  g=(g||'').toLowerCase(); g=g==='male'||g==='female'?g:'';
+  if(!who) return g==='male'?AIV.male[0]:g==='female'?AIV.female[0]:NARR;
+  var gk=castKey(), c=S.cast[gk]||(S.cast[gk]={}), k=who.trim().toLowerCase();
+  if(c[k]&&c[k].v){ if(!c[k].g&&g){c[k].g=g;} return c[k].v; }
+  var sex=g||(k.length%2?'male':'female');
+  var used=Object.keys(c).map(function(x){return c[x].v;}), pool=AIV[sex];
+  var v=pool.filter(function(x){return used.indexOf(x)<0;})[0]||pool[Object.keys(c).length%pool.length];
+  c[k]={n:who.trim(),g:g,v:v}; save('cast',S.cast); castUi(); return v;
+}
+function castUi(){
+  var box=$('hsCastBox'); if(!box) return;
+  var c=S.cast[castKey()]||{}, ks=Object.keys(c);
+  box.hidden=voiceMode()!=='ai'||!ks.length; $('hsCastN').textContent=ks.length;
+  var opts=AIV.female.concat(AIV.male);
+  $('hsCastList').innerHTML=ks.map(function(k){
+    return '<div class="row"><b>'+esc(c[k].n)+'</b><select class="hs-in" data-k="'+esc(k)+'">'+opts.map(function(v){return '<option value="'+v+'"'+(v===c[k].v?' selected':'')+'>'+AIV_LABEL[v]+' · '+v+'</option>';}).join('')+'</select></div>';
+  }).join('');
+  $('hsCastList').querySelectorAll('select').forEach(function(sel){
+    sel.addEventListener('change',function(){ var cc=S.cast[castKey()]; cc[this.dataset.k].v=this.value; save('cast',S.cast); speakAi('Xin chào, tôi là '+cc[this.dataset.k].n+'.',this.value); });
+  });
+}
+$('hsGame').addEventListener('change',castUi);
+
+/* --- Google AI voice --- */
+var TTS_FALLBACK=['gemini-3.8-flash-lite-tts','gemini-3.8-flash-tts','gemini-3.1-flash-tts-preview'];
+async function ttsModels(key){
+  if(S.ttsModels&&S.ttsModels.length) return S.ttsModels;
+  var c=load('ttsModels',null); if(c&&c.length){S.ttsModels=c; return c;}
+  var list=[];
+  try{
+    var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=300&key='+encodeURIComponent(key)); var j=await r.json();
+    list=(j.models||[]).filter(function(m){return /tts/.test(m.name)&&!/pro|2\.5/.test(m.name)&&(m.supportedGenerationMethods||[]).indexOf('generateContent')>=0;})
+      .map(function(m){return m.name.replace(/^models\//,'');})
+      .sort(function(a,b){var la=/lite/.test(a)?0:1, lb=/lite/.test(b)?0:1; if(la!==lb) return la-lb; var va=parseFloat((a.match(/(\d+(\.\d+)?)/)||[0,0])[1]), vb=parseFloat((b.match(/(\d+(\.\d+)?)/)||[0,0])[1]); return vb-va;});
+  }catch(e){}
+  S.ttsModels=list.length?list:TTS_FALLBACK; save('ttsModels',S.ttsModels); return S.ttsModels;
+}
+function pcmWav(b64,rate){
+  var bin=atob(b64), n=bin.length, buf=new ArrayBuffer(44+n), v=new DataView(buf), u=new Uint8Array(buf);
+  function str(o,t){for(var i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i));}
+  str(0,'RIFF'); v.setUint32(4,36+n,true); str(8,'WAVE'); str(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,rate,true); v.setUint32(28,rate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); str(36,'data'); v.setUint32(40,n,true);
+  for(var i=0;i<n;i++) u[44+i]=bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+}
+async function aiVoice(text,voice){
+  var key=pickKey(); if(!key){var c0=new Error('cool');c0.cool=true;throw c0;}
+  var models=await ttsModels(key), last=null;
+  for(var i=0;i<models.length;i++){
+    var m=models[(S.ttsIdx+i)%models.length], ctl=new AbortController(), to=setTimeout(function(){ctl.abort();},9000), r, j;
+    try{
+      r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:text}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:voice}}}}})});
+      j=await r.json().catch(function(){return {};});
+    }catch(e){ clearTimeout(to); last=e; continue; }
+    clearTimeout(to);
+    if(r.ok){
+      var part=j.candidates&&j.candidates[0]&&j.candidates[0].content&&(j.candidates[0].content.parts||[]).filter(function(p){return p.inlineData;})[0];
+      if(!part) { last=new Error('no audio'); continue; }
+      S.ttsIdx=(S.ttsIdx+i)%models.length;
+      var mt=part.inlineData.mimeType||'';
+      if(/wav/i.test(mt)) return 'data:audio/wav;base64,'+part.inlineData.data;
+      var rt=parseInt((mt.match(/rate=(\d+)/)||[0,24000])[1],10);
+      return pcmWav(part.inlineData.data,rt);
+    }
+    var msg=(j.error&&j.error.message)||('HTTP '+r.status); last=new Error(msg); last.status=r.status;
+    if(r.status===429&&!/limit:\s*0\b/.test(msg)){ last.cool=true; break; }
+  }
+  throw last||new Error('no voice');
+}
+var spSeq=0, spAudio=null;
+function stopSpeak(){
+  spSeq++; if(spAudio){try{spAudio.pause();}catch(e){} spAudio=null;}
+  if(D) D.speak('','',1); else if('speechSynthesis' in window) speechSynthesis.cancel();
+}
+function playUrl(url){ spAudio=new Audio(url); spAudio.playbackRate=parseFloat($('hsRate').value)||1; spAudio.play().catch(function(){}); }
+function speakAi(t,voice,fallbackG){
+  stopSpeak(); var my=spSeq;
+  aiVoice(t,voice).then(function(url){ if(my===spSeq) playUrl(url); })
+    .catch(function(e){ S.ttsCool=Date.now()+(e&&e.cool?60e3:10*60e3); if(my===spSeq){ status('warn','Giọng AI tạm hết lượt, dùng giọng có sẵn'); devSpeak(t,'auto',fallbackG||''); } });
+}
+/* voices on this device, picked by gender in "auto" mode */
+function devPick(mode,g){
+  if(mode!=='auto'&&mode!=='ai') return mode;
+  var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
+  var piper=dv.filter(function(v){return v.id==='hs:piper';})[0], win=dv.filter(function(v){return v.id!=='hs:piper';});
+  if(g==='male'&&win.length) return win[0].id||('win:'+win[0].name);
+  return piper?piper.id:(win[0]?(win[0].id||('win:'+win[0].name)):'');
+}
+function webVoice(mode,g){
+  var vi=voices.filter(function(v){return /^vi/i.test(v.lang);});
+  if(mode!=='auto'&&mode!=='ai') return vi.filter(function(v){return v.name===mode;})[0]||null;
+  var male=vi.filter(function(v){return /NamMinh|Nam Minh|\bAn\b|male/i.test(v.name);})[0], female=vi.filter(function(v){return /HoaiMy|Hoai My|female/i.test(v.name);})[0];
+  return (g==='male'?(male||female):(female||male))||vi[0]||null;
+}
+function devSpeak(t,mode,g){
+  var rate=parseFloat($('hsRate').value);
+  if(D){ D.speak(t,devPick(mode,g),rate); return; }
+  if(!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; var v=webVoice(mode,g); if(v) u.voice=v; speechSynthesis.speak(u);
+}
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
-  if(D){ D.speak(SAMPLE,winVoice(),parseFloat($('hsRate').value)); return; }
-  if(!('speechSynthesis' in window)){status('warn','Trình duyệt không hỗ trợ đọc to');return;}
-  speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(SAMPLE); u.lang='vi-VN'; u.rate=parseFloat($('hsRate').value);
-  var v=voices.find(function(x){return x.name===$('hsVoice').value;}); if(v) u.voice=v;
-  speechSynthesis.speak(u);
+  var mode=voiceMode();
+  if(mode==='ai'){ if(!keys().length){status('warn','Giọng AI cần mã Gemini'); devSpeak(SAMPLE,'auto',''); return;} speakAi(SAMPLE,NARR,''); return; }
+  stopSpeak(); devSpeak(SAMPLE,mode,'');
 }
 $('hsVoiceTest').addEventListener('click',sample);
-function speak(t){
-  if(D){ if($('hsSpeak').checked&&t) D.speak(t,winVoice(),parseFloat($('hsRate').value)); return; }
-  if(!$('hsSpeak').checked||!('speechSynthesis' in window)||!t) return;
-  speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=parseFloat($('hsRate').value);
-  var v=voices.find(function(v){return v.name===$('hsVoice').value;}); if(v) u.voice=v;
-  speechSynthesis.speak(u);
+function speak(t,res){
+  if(!$('hsSpeak').checked||!t) return;
+  var mode=voiceMode(), who=(res&&res.speaker)||'', g=((res&&res.gender)||'').toLowerCase();
+  if(mode==='ai'&&keys().length&&!(S.ttsCool>Date.now())){ speakAi(t,castVoice(who,g),g); return; }
+  stopSpeak(); devSpeak(t,mode,g);
 }
 
 /* ---------- on-device text reading (desktop app) ---------- */
@@ -946,6 +1088,7 @@ function textPrompt(t){
     '1. Fix obvious OCR mistakes and keep ONLY the English dialogue/subtitle text. Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
     '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '5. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes).\n'+
     '4. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
 }
 function runStatus(){
@@ -993,6 +1136,7 @@ async function tick(force){
     '1. Read ONLY the subtitle/dialogue text in English. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
     '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
     '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '5. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes).\n'+
     '4. If there is no readable English subtitle, return "en":"" and "vi":"".\n'+context();
   try{
     var res=await ask(prompt,jpeg(.82),SCHEMA_SUB,SHAPE_SUB);
@@ -1054,7 +1198,7 @@ function bindRange(id,vid,key,fn){var el=$(id),v=load(key,null); if(v!==null) el
   el.addEventListener('input',function(){$(vid).textContent=el.value; save(key,el.value); fn&&fn(el.value);});}
 bindRange('hsRate','hsRateV','rate');
 bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
-['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ if(D) D.speak('','',1); else if('speechSynthesis' in window) speechSynthesis.cancel(); }});});
+['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ stopSpeak(); }});});
 var GAMES=load('games',{});
 var PRESETS=[{"name": "God of War (2018)", "group": "Hành động, phiêu lưu", "notes": "Thần thoại Bắc Âu. Kratos là cha, Atreus là con trai. Kratos gọi Atreus là \"con\" (\"Boy\" dịch là \"nhóc\" hoặc \"con\"), xưng \"ta\"; Atreus gọi Kratos là \"cha\", xưng \"con\". Mimir (cái đầu biết nói) gọi Kratos là \"người anh em\", xưng \"tôi\". Freya (Phù thủy trong rừng), Baldur (Kẻ lạ mặt), anh em thợ rèn Brok và Sindri. Giữ nguyên tên riêng: Midgard, Jötunheim, Leviathan Axe, Valkyrie. Giọng trầm, nghiêm, ít lời."}, {"name": "God of War Ragnarök", "group": "Hành động, phiêu lưu", "notes": "Thần thoại Bắc Âu. Kratos là cha, Atreus (còn gọi là Loki) là con trai tuổi thiếu niên. Kratos xưng \"ta\", gọi Atreus là \"con\"; Atreus gọi \"cha\", xưng \"con\". Mimir gọi Kratos là \"người anh em\". Odin (Cha Toàn Năng) nói ngọt nhưng mưu mô, Thor là con trai Odin, Thrúd là con gái Thor. Freya, Tyr, Angrboda, Heimdall, Brok và Sindri. Giữ nguyên tên riêng và tên chín cõi. Ragnarök giữ nguyên. Giọng trầm, nghiêm."}, {"name": "Ghost of Tsushima", "group": "Hành động, phiêu lưu", "notes": "Samurai Nhật năm 1274, quân Mông Cổ xâm lược đảo Tsushima. Jin Sakai là samurai, được chú ruột là Lãnh chúa Shimura nuôi dạy: Jin gọi Shimura là \"chú\", xưng \"cháu\"; Shimura gọi Jin là \"cháu\", xưng \"ta\". Yuna (kẻ trộm) và em trai Taka, thầy cung Ishikawa, phu nhân Masako, Kenji (bán rượu sake). Khotun Khan là tướng Mông Cổ, xưng \"ta\", gọi kẻ khác \"ngươi\". \"The Ghost\" dịch là \"Bóng Ma\". Văn phong cổ trang: ta, ngươi, ngài, thưa chúa công."}, {"name": "Ghost of Yōtei", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản năm 1603, vùng Ezo quanh núi Yōtei. Nhân vật chính là Atsu, nữ kiếm khách đi trả thù băng Lục Quỷ Yōtei (Yōtei Six) do Lãnh chúa Saito cầm đầu. Giữ nguyên tên riêng và biệt danh của sáu kẻ thù (Snake, Oni, Kitsune, Spider, Dragon) hoặc dịch: Rắn, Quỷ, Hồ Ly, Nhện, Rồng. Văn phong cổ trang: ta, ngươi, ngài. Atsu nói ngắn gọn, lạnh lùng."}, {"name": "Marvel's Spider-Man (2018 / Remastered)", "group": "Hành động, phiêu lưu", "notes": "New York hiện đại. Peter Parker là Spider-Man; dì May nuôi Peter, Peter gọi \"dì\", xưng \"cháu\". Mary Jane (MJ) là bạn gái cũ, hai người xưng \"anh/em\". Otto Octavius là sếp và thầy của Peter, Peter gọi \"tiến sĩ\" hoặc \"ông\". Miles Morales là em nhỏ được Peter dạy, gọi Peter là \"anh\". Yuri Watanabe là cảnh sát. Giữ nguyên tên siêu anh hùng và phản diện: Doctor Octopus, Mister Negative, Kingpin, Sinister Six. Giọng trẻ trung, hay đùa."}, {"name": "Marvel's Spider-Man: Miles Morales", "group": "Hành động, phiêu lưu", "notes": "Harlem, New York. Miles Morales là Spider-Man thứ hai, mẹ là Rio Morales (Miles gọi \"mẹ\"), bạn thân là Ganke (\"tớ/cậu\"), chú Aaron Davis (Miles gọi \"chú\"). Phin Mason là bạn cũ, chính là The Tinkerer. Peter Parker là đàn anh, Miles gọi \"anh Pete\". Roxxon là tập đoàn xấu, Underground là băng nhóm. Giọng trẻ trung, hài hước."}, {"name": "Marvel's Spider-Man 2", "group": "Hành động, phiêu lưu", "notes": "New York hiện đại. Hai Spider-Man: Peter Parker (lớn tuổi hơn) và Miles Morales; Miles gọi Peter là \"anh\", Peter gọi Miles là \"em\" hoặc \"nhóc\". Peter và Mary Jane (MJ) là người yêu, xưng \"anh/em\". Harry Osborn là bạn thân của Peter (\"tớ/cậu\" hoặc \"mày/tao\" thân mật). Kraven the Hunter là thợ săn, xưng \"ta\". Venom, symbiote, Lizard giữ nguyên. Giọng trẻ trung, hay đùa."}, {"name": "The Last of Us Part I", "group": "Hành động, phiêu lưu", "notes": "Mỹ sau đại dịch nấm. Joel là người đàn ông trung niên, Ellie là cô bé 14 tuổi: Joel gọi Ellie là \"nhóc\", xưng \"tôi\" hoặc \"chú\"; Ellie gọi Joel là \"chú\" hoặc \"ông\", xưng \"cháu\" hoặc \"tôi\" khi cãi nhau. Tommy là em trai Joel. Tess là cộng sự của Joel. Marlene cầm đầu Fireflies. Giữ nguyên: Fireflies, FEDRA, Clicker, Runner, Bloater. \"Infected\" dịch là \"người nhiễm\". Lời thoại đời thường, có chửi thề."}, {"name": "The Last of Us Part II", "group": "Hành động, phiêu lưu", "notes": "Mỹ sau đại dịch nấm. Ellie và Dina là người yêu (\"chị/em\" hoặc \"tớ/cậu\"). Jesse là bạn. Joel và Tommy (em trai Joel). Abby, Owen, Mel, Manny thuộc phe WLF (\"Wolves\" dịch là \"Bầy Sói\"). Lev và Yara là hai chị em thuộc phe Seraphite (\"Scars\" dịch là \"bọn Sẹo\"). Giữ nguyên Clicker, Runner, Stalker. Lời thoại đời thường, có chửi thề."}, {"name": "Red Dead Redemption 2", "group": "Hành động, phiêu lưu", "notes": "Miền Tây nước Mỹ năm 1899. Arthur Morgan là tay súng trong băng Van der Linde. Dutch van der Linde là thủ lĩnh, như cha nuôi của Arthur. Hosea Matthews là người lớn tuổi, cố vấn. John Marston, vợ Abigail, con trai Jack. Sadie Adler, Charles Smith, Javier Escuella, Micah Bell, Bill Williamson, Lenny, Sean. Pinkerton là thám tử truy đuổi. Giữa đàn ông trong băng dùng \"tôi/anh\" hoặc \"tao/mày\" khi gay gắt. Văn nói cao bồi, có chửi thề."}, {"name": "Grand Theft Auto V", "group": "Hành động, phiêu lưu", "notes": "Thành phố Los Santos hiện đại. Ba nhân vật chính: Michael De Santa (cựu cướp nhà băng, có vợ Amanda, con Jimmy và Tracey), Franklin Clinton (thanh niên khu ổ chuột, bạn thân Lamar), Trevor Philips (điên loạn, bạn cũ của Michael). Lester Crest lên kế hoạch các phi vụ. Dùng \"tao/mày\" giữa bạn bè và kẻ thù, Franklin gọi Michael là \"ông\". Giữ nguyên tên địa danh. Nhiều tiếng lóng, chửi thề."}, {"name": "Uncharted 4 / Legacy of Thieves", "group": "Hành động, phiêu lưu", "notes": "Phiêu lưu săn kho báu hiện đại. Nathan Drake (Nate), anh trai Sam Drake, vợ Elena. Victor Sullivan (Sully) lớn tuổi, như cha nuôi: gọi Nate là \"nhóc\", Nate gọi Sully là \"ông\". Rafe Adler là đối thủ giàu có, Nadine Ross cầm đầu lính đánh thuê Shoreline. Lost Legacy: Chloe Frazer và Nadine. Henry Avery là cướp biển. Giọng hài hước, hay châm chọc."}, {"name": "Horizon Zero Dawn", "group": "Hành động, phiêu lưu", "notes": "Tương lai xa, máy móc hình thú. Aloy là cô gái bị bộ tộc Nora ruồng bỏ, được Rost (người bị ruồng bỏ) nuôi lớn, Aloy gọi Rost là \"Rost\" hoặc \"cha\". Sylens bí ẩn, xưng \"ta\". Erend, Varl, Elisabet Sobeck, GAIA, HADES. Giữ nguyên tên bộ tộc (Nora, Carja, Oseram, Banuk) và tên máy (Watcher, Sawtooth, Thunderjaw). Văn phong bộ tộc, hơi trang trọng."}, {"name": "Horizon Forbidden West", "group": "Hành động, phiêu lưu", "notes": "Tiếp nối Horizon. Aloy đi về miền Tây Cấm. Bạn đồng hành: Varl, Zo, Kotallo, Alva, Erend. Sylens bí ẩn. Kẻ thù: Regalla (phe nổi loạn Tenakth) và nhóm Far Zenith. GAIA, HEPHAESTUS. Giữ nguyên tên bộ tộc (Tenakth, Utaru, Quen, Oseram) và tên máy. Văn phong bộ tộc."}, {"name": "Death Stranding / Death Stranding 2", "group": "Hành động, phiêu lưu", "notes": "Nước Mỹ hậu tận thế. Sam Porter Bridges là người giao hàng, mang theo em bé BB tên Lou. Fragile, Amelie, Die-Hardman, Deadman, Heartman, Higgs, Cliff. Giữ nguyên các thuật ngữ: BT, BB, Bridges, chiral, Timefall (\"mưa thời gian\"), Beach, UCA, DOOMS. Sam ít nói, xưng \"tôi\". Văn phong trầm, triết lý."}, {"name": "Stellar Blade", "group": "Hành động, phiêu lưu", "notes": "Khoa học viễn tưởng. Eve là chiến binh của Đội Đổ Bộ số 7 từ thuộc địa trên không gian, xuống Trái Đất giành lại từ quái vật Naytiba. Đồng đội: Adam (xưng \"tôi\", gọi Eve là \"cô\") và Lily (kỹ sư trẻ, xưng \"em\" hoặc \"tôi\"). Thành phố Xion. Giữ nguyên: Naytiba, Elder Naytiba, Xion, Mother Sphere."}, {"name": "Assassin's Creed Shadows", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản thời Chiến Quốc (Sengoku). Hai nhân vật chính: Naoe (nữ shinobi vùng Iga) và Yasuke (samurai gốc châu Phi phục vụ Oda Nobunaga). Giữ nguyên: shinobi, samurai, Iga, Oda Nobunaga, Hidden Ones, Templar. Văn phong cổ trang: ta, ngươi, ngài, chúa công."}, {"name": "Black Myth: Wukong", "group": "Hành động, phiêu lưu", "notes": "Dựa trên Tây Du Ký. Dùng tên Hán Việt quen thuộc: Thiên Mệnh Nhân (Destined One), Tôn Ngộ Không, Đại Thánh, Trư Bát Giới, Sa Tăng, Đường Tăng, Quan Âm Bồ Tát, Nhị Lang Thần, Ngọc Hoàng, Thiên Đình. \"Guai\" và \"yaoguai\" dịch là \"yêu quái\". Hắc Phong Đại Vương (gấu đen), Hoàng Phong Đại Thánh. Văn phong cổ trang Trung Hoa: ta, ngươi, bần tăng, lão phu, đại vương."}, {"name": "Sekiro: Shadows Die Twice", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản thời Chiến Quốc. Sói (Wolf, Sekiro) là shinobi bảo vệ Kuro, Thần Tử (Divine Heir). Sói gọi Kuro là \"chủ nhân\" hoặc \"thiếu chủ\", xưng \"tôi\"; Kuro gọi Sói là \"Sói\", xưng \"ta\". Owl là cha nuôi của Sói. Emma (thầy thuốc), Thợ Điêu Khắc (Sculptor), Genichiro Ashina, Isshin Ashina. Văn phong cổ trang, trang trọng."}, {"name": "Rise of the Ronin", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản cuối thời Edo (thập niên 1850-1860). Nhân vật chính là một Kiếm Ẩn (Veiled Edge), lãng nhân (ronin). Nhiều nhân vật lịch sử: Sakamoto Ryoma, Yoshida Shoin, Katsu Kaishu. Giữ nguyên tên người Nhật, Shogun, Mạc phủ (shogunate). Văn phong cổ trang: ta, ngươi, ngài."}, {"name": "Days Gone", "group": "Hành động, phiêu lưu", "notes": "Oregon sau đại dịch. Deacon St. John là biker, bạn thân Boozer (\"mày/tao\" thân mật). Sarah là vợ Deacon (\"anh/em\"). O'Brian làm cho tổ chức NERO. \"Freakers\" dịch là \"bọn Quái\" hoặc giữ nguyên. Lời thoại bụi bặm, có chửi thề."}, {"name": "Star Wars Jedi: Survivor", "group": "Hành động, phiêu lưu", "notes": "Star Wars. Cal Kestis là Jedi trẻ, robot BD-1 đi cùng. Cere Junda (cựu Jedi), Greez Dritus (phi công), Merrin (Nightsister), Bode Akuna, Dagan Gera. Giữ nguyên: Jedi, Sith, Force (\"Thần Lực\"), lightsaber (\"kiếm ánh sáng\"), Empire (\"Đế chế\"), Inquisitor. Xưng \"tôi/anh\" hoặc \"tôi/cô\"."}, {"name": "Hogwarts Legacy", "group": "Hành động, phiêu lưu", "notes": "Thế giới phù thủy Harry Potter năm 1890. Nhân vật chính là học sinh năm năm mới vào Hogwarts. Giáo sư Fig hướng dẫn, gọi \"giáo sư\", xưng \"em\". Bạn học: Sebastian Sallow, Ominis Gaunt, Natsai Onai, Poppy Sweeting (\"tớ/cậu\"). Ranrok là yêu tinh (goblin) phản diện, Victor Rookwood. Giữ nguyên tên thần chú (Lumos, Accio, Expelliarmus), tên nhà (Gryffindor, Slytherin, Ravenclaw, Hufflepuff), Muggle."}, {"name": "It Takes Two", "group": "Hành động, phiêu lưu", "notes": "Cody và May là vợ chồng sắp ly hôn, bị biến thành búp bê, xưng \"anh/em\" (cãi nhau có thể \"tôi/cô\", \"tôi/anh\"). Rose là con gái, gọi \"bố\", \"mẹ\". Tiến sĩ Hakim là cuốn sách tình yêu biết nói, nói giọng màu mè. Giọng hài hước."}, {"name": "Split Fiction", "group": "Hành động, phiêu lưu", "notes": "Hai nữ nhà văn Mio (viết khoa học viễn tưởng, lạnh lùng) và Zoe (viết giả tưởng, vui vẻ) bị kẹt trong truyện của chính mình, xưng \"tôi/cô\" lúc đầu, sau thân hơn thì \"tớ/cậu\". Rader là kẻ đứng sau công ty Rader Publishing. Giọng hài hước."}, {"name": "Detroit: Become Human", "group": "Hành động, phiêu lưu", "notes": "Detroit năm 2038. Ba người máy (android): Connor (điều tra viên, gọi Hank là \"Trung úy\", xưng \"tôi\"), Kara (bảo vệ bé gái Alice, Alice gọi Kara là \"chị\" hoặc \"Kara\"), Markus (được ông họa sĩ Carl Manfred nuôi, Markus gọi \"ông\"). Hank Anderson là thám tử cộc cằn, gọi Connor là \"cậu\" hoặc \"mày\". Giữ nguyên: android, deviant (\"lỗi\", \"kẻ lệch chuẩn\"), CyberLife, Jericho."}, {"name": "Lies of P", "group": "Hành động, phiêu lưu", "notes": "Dựa trên Pinocchio, thành phố Krat thời Belle Époque. P là con rối, gọi Geppetto là \"cha\", xưng \"con\"; Geppetto gọi P là \"con\". Sophia dịu dàng, nói nhẹ nhàng. Giữ nguyên: Krat, Puppet (\"con rối\"), Ergo. Văn phong cổ điển châu Âu, lịch sự."}, {"name": "Cyberpunk 2077", "group": "Nhập vai (RPG)", "notes": "Night City năm 2077. V là lính đánh thuê, Johnny Silverhand là linh hồn rocker trong đầu V (\"mày/tao\" hoặc \"cậu/tôi\"). Jackie Welles là bạn thân, Judy Alvarez, Panam Palmer, Takemura (vệ sĩ Arasaka, nói trang trọng), River Ward, Kerry Eurodyne. Phantom Liberty: Songbird, Solomon Reed. Giữ nguyên: Arasaka, netrunner, fixer, ripperdoc, eddies (tiền), choom (\"bạn hiền\"), gonk (\"thằng ngu\"). Nhiều tiếng lóng."}, {"name": "Elden Ring", "group": "Nhập vai (RPG)", "notes": "Thế giới giả tưởng u tối. Người chơi là một Tarnished (\"Kẻ Ô Uế\" hoặc giữ nguyên). Melina (cô gái dẫn đường), Ranni the Witch (Phù thủy Ranni), Blaidd, Iji, Margit, Godrick the Grafted, Radahn, Malenia, Morgott, Nữ hoàng Marika, Radagon. Giữ nguyên: Lands Between, Erdtree, Elden Ring, Golden Order, rune, Site of Grace, Roundtable Hold. Văn phong cổ, trang trọng: ta, ngươi."}, {"name": "Final Fantasy VII Remake / Rebirth", "group": "Nhập vai (RPG)", "notes": "Cloud Strife là cựu SOLDIER, ít nói, xưng \"tôi\". Tifa Lockhart là bạn thơ ấu của Cloud. Barret Wallace thủ lĩnh AVALANCHE, nói to, cộc (\"tao/mày\" hoặc \"tôi/cậu\"), có con gái nuôi Marlene. Aerith Gainsborough dịu dàng, vui vẻ. Red XIII, Yuffie, Cait Sith. Sephiroth là phản diện, xưng \"ta\". Giữ nguyên: Shinra, SOLDIER, Midgar, Mako, Materia, Turks."}, {"name": "Final Fantasy XVI", "group": "Nhập vai (RPG)", "notes": "Thế giới Valisthea, giả tưởng trung cổ. Clive Rosfield là anh trai, Joshua là em trai (Dominant của Phoenix): Clive gọi \"em\", Joshua gọi \"anh\". Jill Warrick là bạn thơ ấu. Cid (Cidolfus Telamon) như người anh, chó sói Torgal. Giữ nguyên: Dominant, Eikon (Ifrit, Phoenix, Shiva...), Bearer (\"người mang ấn\"), Mothercrystal. Văn phong cổ trang phương Tây: ta, ngươi, ngài."}, {"name": "Clair Obscur: Expedition 33", "group": "Nhập vai (RPG)", "notes": "Thành phố Lumière, kiểu Pháp cổ điển. Mỗi năm Nữ Họa Sĩ (Paintress) vẽ một con số và người ở tuổi đó biến mất (\"Gommage\"). Đoàn Thám Hiểm 33 gồm Gustave, Maelle (em gái nuôi của Gustave, gọi anh), Lune, Sciel; sau có Verso và Monoco. Giữ nguyên: Lumière, Expedition 33, Gommage, Nevron, Chroma. Văn phong trau chuốt."}, {"name": "Persona 5 Royal", "group": "Anime, Nhật Bản", "notes": "Tokyo hiện đại, học sinh cấp 3. Joker (Ren Amamiya), Ryuji Sakamoto, Ann Takamaki, Yusuke Kitagawa, Makoto Niijima, Futaba Sakura, Haru Okumura, Goro Akechi, Kasumi Yoshizawa: bạn bè xưng \"tớ/cậu\" hoặc \"tao/mày\" (Ryuji). Morgana là con mèo biết nói. Sojiro Sakura chủ quán cà phê LeBlanc, gọi Joker là \"nhóc\". Giữ nguyên: Phantom Thieves, Palace, Metaverse, Shadow, Persona, Mementos, senpai."}, {"name": "Persona 3 Reload", "group": "Anime, Nhật Bản", "notes": "Học sinh trường Gekkoukan, nhóm SEES chiến đấu trong Giờ Tối (Dark Hour) ở tòa tháp Tartarus. Nhân vật chính, Yukari Takeba, Junpei Iori, Akihiko Sanada, Mitsuru Kirijo (nói trang trọng), Fuuka Yamagishi, Aigis (người máy, nói lịch sự), Ken Amada (cậu bé), Shinjiro Aragaki, chó Koromaru. Bạn bè xưng \"tớ/cậu\". Giữ nguyên: Shadow, Persona, senpai."}, {"name": "Like a Dragon / Yakuza", "group": "Anime, Nhật Bản", "notes": "Thế giới yakuza Nhật. Kazuma Kiryu (Rồng Dojima) điềm tĩnh, xưng \"tôi\". Ichiban Kasuga nhiệt tình, gọi Kiryu là \"anh Kiryu\" hoặc \"đại ca\". Goro Majima (\"Chó Điên Shimano\") nói ngông. Bạn của Ichiban: Nanba, Adachi, Saeko. Giữ nguyên: Tojo Clan, Omi Alliance, Kamurocho, Ijincho. \"Aniki\" dịch là \"đại ca\", \"Oyaji\" là \"bố già\". Giữa yakuza dùng \"tao/mày\"."}, {"name": "Genshin Impact", "group": "Anime, Nhật Bản", "notes": "Thế giới Teyvat. Nhà Lữ Hành (Traveler) đi tìm anh/em song sinh, Paimon là bạn đồng hành nhỏ, xưng \"Paimon\" ở ngôi thứ ba. Giữ nguyên tên nhân vật, vùng (Mondstadt, Liyue, Inazuma, Sumeru, Fontaine, Natlan) và thuật ngữ (Vision, Archon, Abyss). Giọng nhẹ nhàng, vui."}, {"name": "Dragon Ball Sparking! Zero", "group": "Anime, Nhật Bản", "notes": "Dragon Ball. Goku (Songoku) xưng \"tôi\" hoặc \"tớ\", Vegeta kiêu ngạo xưng \"ta\", gọi Goku là \"Kakarot\". Gohan là con Goku, gọi \"bố\". Piccolo, Krillin, Frieza (xưng \"ta\", gọi kẻ khác \"ngươi\", lịch sự giả tạo), Cell, Buu. Giữ nguyên: Super Saiyan, Kamehameha, Saiyan, ki. Giọng anime sôi nổi."}, {"name": "Resident Evil 4 (Remake)", "group": "Kinh dị", "notes": "Leon S. Kennedy là đặc vụ Mỹ đi cứu Ashley Graham, con gái Tổng thống. Leon xưng \"tôi\", gọi Ashley là \"cô\"; Ashley gọi Leon là \"anh\". Luis Serra hay tán tỉnh, Ada Wong bí ẩn. Phản diện: Osmund Saddler (giáo chủ Los Illuminados), Ramon Salazar, Jack Krauser. Hunnigan liên lạc qua bộ đàm. Giữ nguyên: Ganado, Las Plagas, Merchant (\"lái buôn\"). Leon hay nói đùa lạnh."}, {"name": "Resident Evil Village", "group": "Kinh dị", "notes": "Ethan Winters đi tìm con gái Rose (con gái mới sinh) ở một ngôi làng châu Âu. Mia là vợ Ethan. Chris Redfield. Bốn lãnh chúa: Lady Dimitrescu (xưng \"ta\"), Donna Beneviento, Salvatore Moreau, Karl Heisenberg; tất cả phục tùng Mẹ Miranda (Mother Miranda). Duke là lái buôn béo, nói lịch sự. Giữ nguyên: Lycan."}, {"name": "Silent Hill 2 (Remake)", "group": "Kinh dị", "notes": "James Sunderland nhận thư của người vợ đã mất là Mary, gọi cô từ thị trấn Silent Hill. Maria giống hệt Mary nhưng quyến rũ hơn. Angela Orosco (cô gái trẻ u uất, gọi James là \"anh\"), Eddie Dombrowski, bé Laura (gọi James là \"chú\", nói hỗn). Giữ nguyên: Silent Hill, Pyramid Head. Văn phong u ám, trầm."}, {"name": "Silent Hill f", "group": "Kinh dị", "notes": "Nhật Bản thập niên 1960, thị trấn Ebisugaoka. Nhân vật chính là nữ sinh Hinako Shimizu. Bạn bè học sinh xưng \"tớ/cậu\". Giữ nguyên tên người và địa danh Nhật. Văn phong u ám, kinh dị."}, {"name": "Kiểu chung: Cổ trang Trung Hoa, tu tiên", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong kiếm hiệp, cổ trang Trung Hoa. Dùng tên Hán Việt khi có thể. Xưng hô: ta, ngươi, huynh, đệ, tỷ, muội, sư phụ, đồ nhi, tiền bối, vãn bối, bổn tọa, lão phu, bệ hạ, thần."}, {"name": "Kiểu chung: Cổ trang Nhật, samurai", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong cổ trang Nhật Bản. Giữ nguyên tên người, samurai, shinobi, ronin, shogun. Xưng hô: ta, ngươi, ngài, chúa công, thuộc hạ, sư phụ. Câu ngắn, trang trọng."}, {"name": "Kiểu chung: Giả tưởng phương Tây, trung cổ", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong giả tưởng trung cổ phương Tây (hiệp sĩ, phép thuật, rồng). Giữ nguyên tên riêng và địa danh. Xưng hô: ta, ngươi, ngài, bệ hạ, thưa quý cô. Kẻ thù nói \"ta/ngươi\"."}, {"name": "Kiểu chung: Hiện đại, hành động", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh hiện đại. Xưng hô tự nhiên theo tuổi và quan hệ: tôi/anh, tôi/cô, anh/em; bạn bè thân hoặc kẻ thù dùng tao/mày. Giữ nguyên tên riêng, tên vũ khí, tên tổ chức."}, {"name": "Kiểu chung: Quân đội, bắn súng", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh quân đội. Câu lệnh ngắn gọn, dứt khoát. Xưng hô: tôi, cậu, các cậu; gọi cấp trên bằng cấp bậc (Trung sĩ, Đại úy, thưa sếp). Giữ nguyên mật danh và thuật ngữ quân sự phổ biến (Alpha, Bravo, RPG, sniper)."}, {"name": "Kiểu chung: Kinh dị", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong kinh dị, u ám, câu ngắn. Xưng hô tự nhiên theo tuổi và quan hệ. Giữ nguyên tên riêng và tên quái vật."}, {"name": "Kiểu chung: Anime, học đường Nhật", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh anime, học sinh Nhật. Bạn bè xưng tớ/cậu, đàn anh đàn chị giữ \"senpai\", thầy cô gọi \"thầy\", \"cô\", xưng \"em\". Giữ nguyên tên Nhật. Giọng sôi nổi."}];
 var PRESET_URL='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/games.json';
@@ -1160,10 +1304,35 @@ if(D){
     var realShow=show; show=function(r){S.test.shown.push(r.vi); realShow(r);};
     window.hsTestState=function(){return {test:S.test,saved:S.saved,running:S.running,stream:!!S.stream,region:S.region,status:$('hsStatusTxt').textContent,voices:dVoices,ocrReady:!!OCR.w,ocrFails:OCR.fails,visibility:document.visibilityState};};
   }
-  /* open straight into PS Remote Play when it is already running */
-  D.sources().then(function(srcs){
-    if(!srcs.some(function(x){return /remote play/i.test(x.name);})) return;
-    pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); });
+  /* Remote Play: built-in (chiaki-ng) or Sony's app */
+  var rpWait=null;
+  function rpMsg(t){$('hsRpMsg').textContent=t;}
+  function rpWindow(){ return D.windows().then(function(w){ return w.filter(function(x){return /remote play|chiaki/i.test(x.name);})[0]||null; }); }
+  function attachRp(){
+    if(S.stream) return Promise.resolve(true);
+    return pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); return ok; });
+  }
+  function waitRp(){
+    clearInterval(rpWait); var n=0;
+    rpWait=setInterval(function(){
+      if(++n>90){clearInterval(rpWait); return;}
+      rpWindow().then(function(w){ if(w){ clearInterval(rpWait); rpMsg('Đã nhận cửa sổ Remote Play. Chọn máy để vào game, Hóng Sub tự đọc phụ đề.'); attachRp(); } });
+    },2000);
+  }
+  function openRp(){
+    D.rpLaunch($('hsRpGl').checked).then(function(r){
+      if(!r||!r.ok){ rpMsg(r&&r.err==='missing'?'Bản cài này chưa có Remote Play đi kèm. Tải lại Hóng Sub mới nhất, hoặc mở app PS Remote Play của Sony rồi bấm "Chọn màn hình game".':'Không mở được Remote Play: '+((r&&r.err)||'')); return; }
+      rpMsg('Đang mở Remote Play...'); waitRp();
+    });
+  }
+  ['hsRpOpen','hsRpOpen2'].forEach(function(id){$(id).addEventListener('click',openRp);});
+  ['hsRpAuto','hsRpGl'].forEach(function(id){ var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked);}); });
+  D.onRpExit(function(){ rpMsg('Remote Play đã đóng. Bấm "Mở Remote Play" để mở lại.'); });
+  Promise.all([rpWindow(),D.rpInfo()]).then(function(a){
+    var w=a[0], info=a[1]||{};
+    if(!info.bundled){ ['hsRpOpen','hsRpOpen2'].forEach(function(id){$(id).classList.add('hs-off');}); rpMsg('Mở app PS Remote Play của Sony, Hóng Sub sẽ tự nhận cửa sổ đó.'); }
+    if(w){ attachRp(); return; }
+    if(info.bundled&&$('hsRpAuto').checked&&!D.selftest) openRp(); else waitRp();
   }).catch(function(){});
 }
 window.__hongsub=S; /* for testing */

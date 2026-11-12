@@ -51,6 +51,16 @@
       "createDesktopShortcut": true,
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false
-    }
+    },
+    "extraResources": [
+      {
+        "from": "remoteplay",
+        "to": "remoteplay"
+      },
+      {
+        "from": "voices",
+        "to": "voices"
+      }
+    ]
   }
 }

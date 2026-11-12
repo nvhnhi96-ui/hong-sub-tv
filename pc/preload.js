@@ -8,6 +8,10 @@ let audio = null, seq = 0;
 contextBridge.exposeInMainWorld('hsDesktop', {
   selftest,
   sources: () => ipcRenderer.invoke('sources'),
+  windows: () => ipcRenderer.invoke('windows'),
+  rpInfo: () => ipcRenderer.invoke('rp-info'),
+  rpLaunch: (opengl) => ipcRenderer.invoke('rp-launch', opengl),
+  onRpExit: (cb) => ipcRenderer.on('rp-exit', () => cb()),
   use: (id) => ipcRenderer.invoke('use', id),
   sub: (p) => ipcRenderer.send('sub', p),
   overlay: (cmd) => ipcRenderer.send('overlay', cmd),

@@ -8,3 +8,5 @@ local.properties
 *.keystore
 pc/node_modules/
 pc/dist/
+pc/remoteplay/
+pc/voices/
