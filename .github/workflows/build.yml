@@ -85,6 +85,29 @@ jobs:
           Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
           Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
 
+      - name: Save self test pictures to branch selftest-output
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUT: ${{ runner.temp }}\selftest
+        run: |
+          $repo = '${{ github.repository }}'
+          $exists = gh api "repos/$repo/branches/selftest-output" 2>$null
+          if (-not $exists) {
+            $sha = gh api "repos/$repo/git/ref/heads/main" --jq .object.sha
+            gh api -X POST "repos/$repo/git/refs" -f ref=refs/heads/selftest-output -f sha=$sha | Out-Null
+          }
+          Get-ChildItem $env:OUT -File | ForEach-Object {
+            $name = $_.Name
+            $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName))
+            $old = gh api "repos/$repo/contents/selftest/$($name)?ref=selftest-output" --jq .sha 2>$null
+            $body = @{ message = "selftest $name"; content = $b64; branch = 'selftest-output' }
+            if ($old) { $body.sha = $old }
+            $body | ConvertTo-Json | gh api -X PUT "repos/$repo/contents/selftest/$name" --input - | Out-Null
+            Write-Host "saved $name"
+          }
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

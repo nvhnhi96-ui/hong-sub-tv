@@ -269,8 +269,6 @@ async function runSelftest() {
     const srcs = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: screen.getPrimaryDisplay().size });
     if (srcs[0]) {
       fs.writeFileSync(path.join(out, name), srcs[0].thumbnail.toPNG());
-      const small = srcs[0].thumbnail.resize({ width: 900 });
-      log('SHOT ' + name + ' ' + small.toJPEG(72).toString('base64'));
     }
   };
   await shot('screen.png');
