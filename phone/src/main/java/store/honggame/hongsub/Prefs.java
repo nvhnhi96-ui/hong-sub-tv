@@ -68,6 +68,13 @@ final class Prefs {
     String game() { return sp.getString("game", ""); }
     void game(String v) { sp.edit().putString("game", v == null ? "" : v.trim()).apply(); }
 
+    String gameNotes(String game) { return sp.getString("gn_" + key(game), ""); }
+    void gameNotes(String game, String v) { if (key(game).isEmpty()) return; sp.edit().putString("gn_" + key(game), v == null ? "" : v.trim()).apply(); }
+    static String key(String g) { return g == null ? "" : g.trim().toLowerCase(java.util.Locale.ROOT); }
+
+    String presetsJson() { return sp.getString("presets_json", ""); }
+    void presetsJson(String v) { sp.edit().putString("presets_json", v).apply(); }
+
     String notes() { return sp.getString("notes", ""); }
     void notes(String v) { sp.edit().putString("notes", v == null ? "" : v.trim()).apply(); }
 

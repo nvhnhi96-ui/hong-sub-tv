@@ -2,6 +2,7 @@ package store.honggame.hongsub;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -26,7 +27,14 @@ import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +53,8 @@ public class MainActivity extends Activity {
     private TextView keyMsg, status, notesMsg;
     private Button startBtn;
     private final List<Button> speedBtns = new ArrayList<>();
+    private static final String PRESET_URL = "https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/games.json";
+    private JSONArray presets = new JSONArray();
     private TextToSpeech tts;
     private boolean ttsReady;
 
@@ -52,7 +62,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         prefs = new Prefs(this);
+        loadPresets();
         setContentView(buildUi());
+        updatePresets();
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 3);
         }
@@ -197,7 +209,9 @@ public class MainActivity extends Activity {
 
         // Game
         LinearLayout g = section(root, "3. Game đang chơi");
-        gameEt = input("Tên game, VD: God of War Ragnarök", prefs.game(), false);
+        g.addView(button("Chọn game có sẵn", false, v -> pickGame()));
+        gap(g, 8);
+        gameEt = input("Hoặc gõ tên game khác", prefs.game(), false);
         g.addView(gameEt);
         gap(g, 8);
         notesEt = input("Nhân vật, cách xưng hô (không bắt buộc)", prefs.notes(), true);
@@ -205,7 +219,7 @@ public class MainActivity extends Activity {
         g.addView(notesEt);
         gap(g, 8);
         g.addView(button("Soạn ghi chú bằng AI", false, v -> aiNotes()));
-        notesMsg = text("Gõ tên game rồi bấm nút trên, AI viết sẵn nhân vật, quan hệ và cách xưng hô.", 13, MUTED, false);
+        notesMsg = text("Game có trong danh sách thì chỉ cần chọn, ghi chú nhân vật và xưng hô được điền sẵn. Game chưa có thì gõ tên rồi bấm Soạn ghi chú bằng AI, hoặc chọn mục \"Kiểu chung\" gần nhất.", 13, MUTED, false);
         notesMsg.setPadding(0, dp(6), 0, 0);
         g.addView(notesMsg);
 
@@ -305,6 +319,65 @@ public class MainActivity extends Activity {
         prefs.tv(tvEt.getText().toString());
         prefs.game(gameEt.getText().toString());
         prefs.notes(notesEt.getText().toString());
+        prefs.gameNotes(gameEt.getText().toString(), notesEt.getText().toString());
+    }
+
+    private void loadPresets() {
+        String js = prefs.presetsJson();
+        if (js.isEmpty()) {
+            try (InputStream in = getAssets().open("games.json")) { js = readAll(in); } catch (Exception ignored) { }
+        }
+        try { presets = new JSONObject(js).getJSONArray("games"); } catch (Exception e) { presets = new JSONArray(); }
+    }
+
+    private static String readAll(InputStream in) throws java.io.IOException {
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+        return new String(bo.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+    /** Fetch the latest game list from GitHub so new games show up without updating the app. */
+    private void updatePresets() {
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(PRESET_URL).openConnection();
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                if (c.getResponseCode() != 200) return;
+                String js;
+                try (InputStream in = c.getInputStream()) { js = readAll(in); }
+                JSONArray arr = new JSONObject(js).getJSONArray("games");
+                if (arr.length() == 0) return;
+                prefs.presetsJson(js);
+                runOnUiThread(() -> presets = arr);
+            } catch (Exception ignored) { }
+        }).start();
+    }
+
+    private void pickGame() {
+        if (presets.length() == 0) { notesMsg.setText("Chưa tải được danh sách game, thử lại sau."); return; }
+        final String[] names = new String[presets.length()];
+        for (int i = 0; i < names.length; i++) {
+            JSONObject o = presets.optJSONObject(i);
+            names[i] = o == null ? "" : o.optString("name");
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Chọn game đang chơi")
+                .setItems(names, (d, which) -> {
+                    JSONObject o = presets.optJSONObject(which);
+                    if (o == null) return;
+                    String name = o.optString("name");
+                    String custom = prefs.gameNotes(name);
+                    gameEt.setText(name);
+                    notesEt.setText(custom.isEmpty() ? o.optString("notes") : custom);
+                    save();
+                    notesMsg.setTextColor(Color.rgb(61, 220, 132));
+                    notesMsg.setText("Đã điền sẵn ghi chú cho " + name + ". Bấm Bắt đầu là dịch đúng nhân vật, xưng hô của game.");
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
     }
 
     private void refresh() {
@@ -363,6 +436,7 @@ public class MainActivity extends Activity {
                 }
                 notesEt.setText(fr);
                 prefs.notes(fr);
+                prefs.gameNotes(prefs.game(), fr);
                 notesMsg.setTextColor(fk ? Color.rgb(61, 220, 132) : Color.rgb(255, 159, 67));
                 notesMsg.setText(fk ? "Đã soạn ghi chú. Đọc lại, sai chỗ nào thì sửa trực tiếp." : "AI không chắc về game này nên chỉ gợi ý chung. Nên tự ghi thêm tên nhân vật.");
             });
