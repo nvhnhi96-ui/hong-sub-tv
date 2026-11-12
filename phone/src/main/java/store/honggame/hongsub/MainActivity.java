@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.speech.tts.TextToSpeech;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -27,6 +28,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Setup screen: Gemini keys, TV code, game context, then start screen capture. */
 public class MainActivity extends Activity {
@@ -41,6 +43,8 @@ public class MainActivity extends Activity {
     private TextView keyMsg, status;
     private Button startBtn;
     private final List<Button> speedBtns = new ArrayList<>();
+    private TextToSpeech tts;
+    private boolean ttsReady;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -212,6 +216,13 @@ public class MainActivity extends Activity {
         en.setOnCheckedChangeListener((CompoundButton b, boolean on) -> prefs.showEn(on));
         o.addView(en);
         gap(o, 8);
+        LinearLayout vr = new LinearLayout(this);
+        vr.addView(button("Nghe thử giọng", false, v -> sample()));
+        View sp2 = new View(this);
+        vr.addView(sp2, new LinearLayout.LayoutParams(dp(8), 1));
+        vr.addView(button("Đổi giọng đọc", false, v -> openTtsSettings()));
+        o.addView(vr);
+        gap(o, 8);
         o.addView(text("Tốc độ quét", 13, MUTED, true));
         LinearLayout speeds = new LinearLayout(this);
         int[] vals = {1200, 700, 400};
@@ -241,6 +252,39 @@ public class MainActivity extends Activity {
         shop.setPadding(0, dp(12), 0, 0);
         root.addView(shop);
         return sv;
+    }
+
+    private void sample() {
+        if (tts == null) {
+            tts = new TextToSpeech(this, st -> {
+                if (st == TextToSpeech.SUCCESS) {
+                    int r = tts.setLanguage(new Locale("vi", "VN"));
+                    ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
+                    runOnUiThread(this::sample);
+                }
+            });
+            return;
+        }
+        if (!ttsReady) {
+            status.setTextColor(Color.rgb(255, 159, 67));
+            status.setText("Máy chưa có giọng tiếng Việt. Bấm \"Đổi giọng đọc\" và tải gói tiếng Việt cho Google Speech Services.");
+            return;
+        }
+        tts.speak("Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.", TextToSpeech.QUEUE_FLUSH, null, "sample");
+    }
+
+    private void openTtsSettings() {
+        try {
+            startActivity(new Intent("com.android.settings.TTS_SETTINGS"));
+        } catch (ActivityNotFoundException e) {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (tts != null) tts.shutdown();
+        super.onDestroy();
     }
 
     private void open(String url) {
