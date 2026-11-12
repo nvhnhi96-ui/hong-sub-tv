@@ -267,7 +267,11 @@ async function runSelftest() {
   win.restore();
   const shot = async (name) => {
     const srcs = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: screen.getPrimaryDisplay().size });
-    if (srcs[0]) fs.writeFileSync(path.join(out, name), srcs[0].thumbnail.toPNG());
+    if (srcs[0]) {
+      fs.writeFileSync(path.join(out, name), srcs[0].thumbnail.toPNG());
+      const small = srcs[0].thumbnail.resize({ width: 900 });
+      log('SHOT ' + name + ' ' + small.toJPEG(72).toString('base64'));
+    }
   };
   await shot('screen.png');
   const img = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main.png'), img.toPNG());
