@@ -1,0 +1,56 @@
+{
+  "name": "hong-sub-pc",
+  "productName": "Hóng Sub",
+  "version": "1.0.0",
+  "description": "Dịch phụ đề game sang tiếng Việt - Hóng Game Store",
+  "author": "Hóng Game Store",
+  "homepage": "https://honggame.store/hong-sub/",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
+  },
+  "devDependencies": {
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "store.honggame.hongsub.pc",
+    "productName": "Hóng Sub",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "overlay.html",
+      "tts.ps1",
+      "app/**",
+      "assets/**",
+      "package.json",
+      "!node_modules/@tesseract.js-data/eng/4.0.0/**",
+      "!node_modules/tesseract.js-core/*.wasm",
+      "!**/*.map"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png",
+      "artifactName": "hong-sub-pc.exe",
+      "executableName": "HongSub"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Hóng Sub",
+      "createDesktopShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

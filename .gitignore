@@ -6,3 +6,5 @@ local.properties
 .idea/
 *.jks
 *.keystore
+pc/node_modules/
+pc/dist/

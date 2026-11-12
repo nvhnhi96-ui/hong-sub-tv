@@ -1,15 +1,16 @@
-name: Build Hong Sub TV
+name: Build Hong Sub
 
 on:
   push:
     branches: [ main ]
+    paths-ignore: [ 'presets/**', 'README.md' ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,17 +45,80 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: hong-sub-apk
+          name: android
           path: |
             hong-sub-tv.apk
             hong-sub-android.apk
 
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: pc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Set version
+        run: npm pkg set version=1.0.${{ github.run_number }}
+
+      - name: Build installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Self test on Windows
+        shell: pwsh
+        env:
+          HS_SELFTEST: '1'
+          HS_SELFTEST_OUT: ${{ runner.temp }}\selftest
+        run: |
+          $exe = Get-ChildItem dist\win-unpacked -Filter HongSub.exe | Select-Object -First 1
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' -PassThru
+          if (-not $p.WaitForExit(150000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
+          Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
+          Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-selftest
+          path: ${{ runner.temp }}\selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: pc/dist/hong-sub-pc.exe
+
+  release:
+    needs: [ android, windows ]
+    if: always() && needs.android.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - run: ls -la out
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Hóng Sub 1.0.${{ github.run_number }} (TV + Android)
-          body: Bản tự động. hong-sub-tv.apk cho Android TV / Google TV (cài bằng Downloader). hong-sub-android.apk cho điện thoại Android, dùng kèm app PS Remote Play.
+          name: Hóng Sub 1.0.${{ github.run_number }}
+          body: |
+            Bản tự động.
+            - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
+            - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
+            - hong-sub-android.apk: điện thoại Android, dùng kèm app PS Remote Play.
           files: |
-            hong-sub-tv.apk
-            hong-sub-android.apk
+            out/hong-sub-pc.exe
+            out/hong-sub-tv.apk
+            out/hong-sub-android.apk
           make_latest: true

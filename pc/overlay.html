@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Hóng Sub phụ đề</title>
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Be Vietnam Pro",system-ui,sans-serif;user-select:none}
+#wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:8px 12px;box-sizing:border-box}
+#box{max-width:100%;background:rgba(8,8,10,.74);border-radius:14px;padding:10px 22px 12px;text-align:center;opacity:0;transition:opacity .25s}
+#box.on{opacity:1}
+#vi{color:#fff;font-weight:700;font-size:28px;line-height:1.3;text-shadow:0 2px 3px #000,0 0 2px #000}
+#vi .who{color:#FFC400}
+#en{color:#C9C9D2;font-size:15px;margin-top:3px;text-shadow:0 1px 2px #000}
+#en:empty{display:none}
+body.move{-webkit-app-region:drag;cursor:move}
+body.move #wrap{outline:3px dashed #FFC400;outline-offset:-3px;background:rgba(255,196,0,.10)}
+#mv{display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#FFC400;color:#111;font-weight:700;border-radius:10px;padding:6px 8px 6px 14px;font-size:14px;align-items:center;gap:10px;white-space:nowrap}
+body.move #mv{display:flex}
+#mv button{-webkit-app-region:no-drag;background:#111;color:#fff;border:0;border-radius:8px;padding:6px 14px;font:inherit;font-weight:700;cursor:pointer}
+</style></head>
+<body>
+<div id="mv">Kéo khung vàng tới chỗ muốn đặt phụ đề <button id="done" type="button">Xong (F10)</button></div>
+<div id="wrap"><div id="box"><div id="vi"></div><div id="en"></div></div></div>
+<script>
+(function(){
+  var D=window.hsDesktop, box=document.getElementById('box'), vi=document.getElementById('vi'), en=document.getElementById('en');
+  var timer=null, moving=false, has=false;
+  function hideLater(){ clearTimeout(timer); timer=setTimeout(function(){ if(!moving) box.classList.remove('on'); }, 14000); }
+  function size(px){ vi.style.fontSize=px+'px'; en.style.fontSize=Math.max(13,Math.round(px*.52))+'px'; }
+  D.onSub(function(p){
+    if(p.size) size(p.size);
+    if(p.html!==undefined){ vi.innerHTML=p.html; en.textContent=p.en||''; has=!!p.html; box.classList.toggle('on',has); hideLater(); }
+  });
+  D.onOverlay(function(st){
+    moving=!!st.move; document.body.classList.toggle('move',moving);
+    if(moving){ if(!has){ vi.textContent='Phụ đề tiếng Việt sẽ hiện ở đây'; en.textContent='English subtitle'; } box.classList.add('on'); }
+    else{ if(!has){ vi.textContent=''; en.textContent=''; box.classList.remove('on'); } else hideLater(); }
+  });
+  document.getElementById('done').addEventListener('click',function(){ D.overlay('done'); });
+})();
+</script>
+</body></html>

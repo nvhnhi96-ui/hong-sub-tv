@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hóng Sub - Dịch phụ đề game sang tiếng Việt trên máy tính</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+/* Hóng Sub: one dark "console" workspace. Left = game screen + subtitle, right = setup rail. Yellow = the subtitle and anything to press. */
+html,body{margin:0;background:#0B0B0D}
+.hs{--bg:#0B0B0D;--panel:#141419;--panel2:#1C1C23;--line:#2B2B34;--text:#F2F2F0;--muted:#9A9AA6;--yellow:#FFC400;--ok:#3DDC84;--warn:#FF9F43;--err:#FF5C5C;
+  --fd:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;--fb:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--text);font-family:var(--fb);font-size:15px;line-height:1.55;min-height:100vh;color-scheme:dark;text-align:left}
+.hs *{box-sizing:border-box}
+.hs [hidden]{display:none!important}
+.hs button,.hs input,.hs select,.hs textarea{font-family:inherit;font-size:inherit;color:inherit;margin:0;letter-spacing:normal;text-transform:none;box-shadow:none;min-height:0;line-height:1.3}
+.hs a{color:var(--yellow)}
+.hs p{margin:0}
+.hs :focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+
+.hs-top{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.hs-logo{display:flex;align-items:baseline;gap:10px;text-decoration:none!important;color:var(--text)!important}
+.hs-logo b{font-family:var(--fd);font-weight:800;font-size:30px;letter-spacing:.02em;line-height:1}
+.hs-logo b span{color:var(--yellow)}
+.hs-logo small{font-size:12.5px;color:var(--muted)}
+.hs-top .hs-sp{flex:1}
+.hs-pill{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+.hs-dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.hs-pill[data-s="run"] .hs-dot{background:var(--ok);box-shadow:0 0 0 4px rgba(61,220,132,.18)}
+.hs-pill[data-s="busy"] .hs-dot{background:var(--yellow)}
+.hs-pill[data-s="warn"] .hs-dot{background:var(--warn)}
+.hs-pill[data-s="err"] .hs-dot{background:var(--err)}
+.hs-toplink{font-size:13.5px;font-weight:600;color:var(--muted)!important;text-decoration:none!important}
+.hs-toplink:hover{color:var(--text)!important}
+
+.hs-mobile{display:none;margin:14px 20px 0;background:#2A1F05;border:1px solid #5C4710;border-radius:12px;padding:12px 14px;font-size:14px}
+
+.hs-steps{display:flex;gap:6px;padding:14px 20px 0;flex-wrap:wrap}
+.hs-step{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+.hs-step i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--fd);font-weight:800;font-size:15px;background:var(--panel2);color:var(--muted)}
+.hs-step.on{color:var(--text);border-color:var(--yellow)}
+.hs-step.on i{background:var(--yellow);color:#0B0B0D}
+.hs-step.done i{background:var(--ok);color:#0B0B0D}
+.hs-step.done{color:var(--text)}
+
+.hs-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;padding:16px 20px 24px}
+.hs-card{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+
+/* stage */
+.hs-stage{position:relative;aspect-ratio:16/9;background:#050507;border-radius:16px 16px 0 0;overflow:hidden;user-select:none;-webkit-user-select:none}
+.hs-stage video{width:100%;height:100%;object-fit:contain;display:block;background:#050507}
+.hs-ov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+.hs-ov.off{cursor:default;pointer-events:none}
+.hs-region{position:absolute;border:3px dashed var(--yellow);border-radius:8px;background:rgba(255,196,0,.06);pointer-events:none}
+.hs-region span{position:absolute;top:-13px;left:10px;background:var(--yellow);color:#0B0B0D;font-size:11.5px;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.hs-region.scan{animation:hsScan 1.4s ease-in-out infinite}
+@keyframes hsScan{50%{border-color:rgba(255,196,0,.35)}}
+.hs-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px}
+.hs-empty b{display:block;font-family:var(--fd);font-weight:800;font-size:clamp(26px,3.4vw,38px);text-transform:uppercase;line-height:1.05}
+.hs-empty p{color:var(--muted);margin-top:8px;max-width:46ch;font-size:14px}
+.hs-empty .hs-row{justify-content:center;margin-top:16px}
+.hs-hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(11,11,13,.85);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;white-space:nowrap;pointer-events:none}
+
+.hs-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px;border-top:1px solid var(--line)}
+.hs-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none!important;color:var(--text)!important}
+.hs-btn:hover{border-color:#4A4A55}
+.hs-btn:disabled{opacity:.4;cursor:not-allowed}
+.hs-btn.pri{background:var(--yellow);border-color:var(--yellow);color:#0B0B0D!important}
+.hs-btn.pri:hover{background:#FFD23F}
+.hs-btn kbd{font-family:inherit;font-size:11px;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.7}
+.hs-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hs-ctrl .hs-sp{flex:1}
+
+/* subtitle */
+.hs-sub{padding:22px 22px 24px;border-top:1px solid var(--line);min-height:150px}
+.hs-sub .lbl{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.hs-vi{font-weight:700;font-size:var(--subsize,28px);line-height:1.35;margin-top:8px;text-wrap:balance}
+.hs-vi .who{color:var(--yellow)}
+.hs-en{color:var(--muted);font-size:14.5px;margin-top:6px}
+.hs-vi.placeholder{color:#55555F}
+
+.hs-hist{margin-top:18px}
+.hs-hist summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);list-style:none}
+.hs-hist summary::-webkit-details-marker{display:none}
+.hs-hist ol{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px;max-height:260px;overflow:auto}
+.hs-hist li{border-left:3px solid var(--line);padding:2px 0 2px 10px;font-size:14px;margin:0}
+.hs-hist li small{display:block;color:var(--muted);font-size:12.5px}
+
+/* settings rail */
+.hs-side{display:grid;gap:14px;align-content:start}
+.hs-sec{padding:16px}
+.hs-sec > .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.hs-sec > .t b{font-family:var(--fd);font-weight:800;font-size:21px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.hs-sec > .t a{font-size:12.5px;font-weight:600}
+.hs-f{display:grid;gap:6px;margin-top:10px}
+.hs-f:first-of-type{margin-top:0}
+.hs-f label,.hs-lab{font-size:12.5px;font-weight:700;color:var(--muted)}
+.hs-in{width:100%;background:#0E0E12!important;border:1px solid var(--line)!important;border-radius:9px!important;padding:9px 11px!important;color:var(--text)!important;height:auto!important}
+.hs-in:focus{border-color:var(--yellow)!important}
+textarea.hs-in{resize:vertical;min-height:62px}
+select.hs-in{cursor:pointer;font-weight:600;margin:0!important}
+select.hs-in option,select.hs-in optgroup{background:#16161C;color:#F2F2F5}
+.hs-note{font-size:12.5px;color:var(--muted);line-height:1.5}
+.hs-msg{font-size:13px;line-height:1.45;border-radius:9px;padding:8px 10px;background:var(--panel2);margin-top:8px}
+.hs-msg.ok{color:var(--ok)}.hs-msg.err{color:var(--err)}.hs-msg.warn{color:var(--warn)}
+.hs-sw{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:14px;font-weight:600;cursor:pointer}
+.hs-sw input{appearance:none;-webkit-appearance:none;width:40px;height:22px;border-radius:11px;background:#33333D;position:relative;cursor:pointer;flex:none;border:0;margin:0}
+.hs-sw input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.hs-sw input:checked{background:var(--yellow)}
+.hs-sw input:checked::after{left:21px}
+.hs-range{width:100%;accent-color:var(--yellow)}
+.hs-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#0E0E12;border:1px solid var(--line);border-radius:9px;padding:3px}
+.hs-seg button{border:0;background:transparent;border-radius:7px;padding:6px 4px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.hs-seg button.on{background:var(--panel2);color:var(--text)}
+
+.hs-shop{padding:16px;background:var(--yellow);color:#0B0B0D;border-color:var(--yellow)}
+.hs-shop b{font-family:var(--fd);font-weight:800;font-size:22px;text-transform:uppercase;line-height:1;display:block}
+.hs-shop p{font-size:13.5px;margin-top:6px}
+.hs-shop a{color:#0B0B0D;font-weight:800}
+
+.hs-foot{padding:0 20px 24px;color:var(--muted);font-size:12px;line-height:1.6;max-width:1100px}
+
+/* modal (full-screen translate) */
+.hs-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:99999;padding:20px}
+.hs-modal.open{display:grid}
+.hs-modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:720px;width:100%;max-height:85vh;overflow:auto;padding:18px}
+.hs-modal .box .t{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hs-modal .box .t b{font-family:var(--fd);font-weight:800;font-size:24px;text-transform:uppercase}
+.hs-modal ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.hs-modal li{background:var(--panel2);border-radius:10px;padding:10px 12px;margin:0}
+.hs-modal li b{display:block;font-size:16px}
+.hs-modal li small{color:var(--muted)}
+
+
+/* guide below the tool */
+.hs-guide{scroll-margin-top:110px}
+.hs .hs-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;padding:0}
+
+.hs-guide{border-top:1px solid var(--line);padding:34px 20px 10px;max-width:1100px}
+.hs-guide .hg-k{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+.hs-guide .hg-h{font-family:var(--fd);font-weight:800;font-size:clamp(30px,4vw,44px);text-transform:uppercase;line-height:1;margin-top:6px}
+.hs-guide .hg-lead{color:var(--muted);margin-top:10px;max-width:70ch}
+.hs-guide .hg-need{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.hs-guide .hg-need div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--muted)}
+.hs-guide .hg-need b{display:block;color:var(--text);font-size:14.5px;margin-bottom:2px}
+.hs-guide .hg-shot{margin:26px 0 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.hs-guide .hg-shot img{display:block;width:100%;height:auto}
+.hs-guide .hg-shot figcaption{font-size:12.5px;color:var(--muted);padding:8px 14px}
+.hs-guide .hg-way{margin-top:30px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+.hs-guide .hg-way .hg-t{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.hs-guide .hg-way .hg-t b{font-family:var(--fd);font-weight:800;font-size:26px;text-transform:uppercase;line-height:1}
+.hs-guide .hg-tag{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 8px;background:var(--yellow);color:#0B0B0D}
+.hs-guide .hg-tag.beta{background:#3A2A08;color:var(--yellow);border:1px solid #6B4E0A}
+.hs-guide .hg-way > p{color:var(--muted);margin-top:6px;font-size:14px}
+.hs-guide ol.hg-steps{list-style:none;counter-reset:g;margin:14px 0 0;padding:0;display:grid;gap:12px}
+.hs-guide ol.hg-steps > li{counter-increment:g;position:relative;padding-left:40px;margin:0;font-size:14.5px}
+.hs-guide ol.hg-steps > li::before{content:counter(g);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--yellow);color:#0B0B0D;font-family:var(--fd);font-weight:800;font-size:16px;display:grid;place-items:center}
+.hs-guide .hg-n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:2px solid var(--yellow);color:var(--yellow);font-size:11px;font-weight:800;margin:0 2px;vertical-align:1px}
+.hs-guide .hg-ui{display:inline-block;font-weight:700;font-size:.92em;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:0 6px}
+.hs-guide .hg-tip{margin-top:14px;border-left:3px solid var(--yellow);background:var(--panel2);border-radius:0 10px 10px 0;padding:10px 12px;font-size:13.5px;color:var(--text)}
+.hs-guide .hg-faq{margin-top:30px;border-top:2px solid var(--line)}
+.hs-guide .hg-faq details{border-bottom:1px solid var(--line)}
+.hs-guide .hg-faq summary{cursor:pointer;list-style:none;padding:14px 30px 14px 0;font-weight:700;position:relative}
+.hs-guide .hg-faq summary::-webkit-details-marker{display:none}
+.hs-guide .hg-faq summary::after{content:"+";position:absolute;right:4px;top:10px;font-size:22px;color:var(--yellow)}
+.hs-guide .hg-faq details[open] summary::after{content:"\2013"}
+.hs-guide .hg-faq .a{padding:0 0 14px;color:var(--muted);font-size:14px;max-width:75ch}
+@media (max-width:860px){.hs-guide .hg-need{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.hs-guide .hg-need{grid-template-columns:1fr}}
+@media (max-width:980px){.hs-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.hs-region.scan{animation:none}.hs-sw input::after{transition:none}}
+body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobile{display:none!important}
+.hs-dk{display:none!important}body.desk .hs-dk{display:block!important}body.desk button.hs-dk{display:inline-flex!important}body.desk label.hs-dk{display:flex!important}body.desk .hs-web{display:none!important}
+.hs-src{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}
+.hs-src button{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.hs-src button:hover,.hs-src button:focus-visible{border-color:var(--yellow);outline:none}
+.hs-src img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#000;border-radius:6px;margin-bottom:6px}
+.hs-src span{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-upd{display:none;background:var(--yellow);color:#111;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-weight:600}
+.hs-upd a{color:#111;text-decoration:underline}
+.hs-keys{font-size:13px;color:var(--muted);padding:2px 16px 10px;line-height:1.8}
+.hs-keys kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--text);font-size:12px}
+</style>
+<script src="../node_modules/tesseract.js/dist/tesseract.min.js"></script>
+</head>
+<body>
+<div class="hs" id="hs">
+  <h1 class="hs-sr">Hóng Sub: dịch phụ đề game sang tiếng Việt trên máy tính</h1>
+
+  <header class="hs-top">
+    <a class="hs-logo" href="https://honggame.store/"><b>HÓNG <span>SUB</span></b><small>by Hóng Game Store</small></a>
+    <span class="hs-sp"></span>
+    <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
+    <a class="hs-toplink" href="#huong-dan">Hướng dẫn</a>
+  </header>
+
+  <div class="hs-upd" id="hsUpd"></div>
+  <div class="hs-mobile" id="hsMobile">Hóng Sub chạy trên <b>Chrome hoặc Edge ở máy tính</b>. Trên điện thoại, xem cách dùng app Dịch Phụ Đề Game trong <a href="https://honggame.store/huong-dan-dich-phu-de-game-ps5-tieng-viet/">bài hướng dẫn</a>.</div>
+
+  <div class="hs-steps" id="hsSteps">
+    <span class="hs-step" data-k="key"><i>1</i>Nhập mã Gemini</span>
+    <span class="hs-step" data-k="src"><i>2</i>Chọn màn hình game</span>
+    <span class="hs-step" data-k="reg"><i>3</i>Kéo khung phụ đề</span>
+    <span class="hs-step" data-k="run"><i>4</i>Bắt đầu dịch</span>
+  </div>
+
+  <div class="hs-grid">
+    <main class="hs-card">
+      <div class="hs-stage" id="hsStage">
+        <video id="hsVideo" muted playsinline></video>
+        <div class="hs-empty" id="hsEmpty">
+          <div>
+            <b>Dịch phụ đề game<br>sang tiếng Việt</b>
+            <p>Mở PS Remote Play (hoặc game trên PC), rồi chọn cửa sổ đó. Hóng Sub đọc phụ đề tiếng Anh, dịch và đọc to bằng giọng Việt.</p>
+            <div class="hs-row">
+              <button class="hs-btn pri" id="hsPick" type="button">Chọn màn hình game</button>
+              <button class="hs-btn" id="hsDemo" type="button">Chạy thử, không cần PS5</button>
+            </div>
+          </div>
+        </div>
+        <div class="hs-ov off" id="hsOv" aria-label="Vùng kéo khung phụ đề">
+          <div class="hs-region" id="hsRegion" hidden><span>Khung phụ đề</span></div>
+        </div>
+        <div class="hs-hint" id="hsHint" hidden>Kéo chuột quanh dòng phụ đề</div>
+      </div>
+
+      <div class="hs-ctrl">
+        <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi màn hình</button>
+        <button class="hs-btn" id="hsDraw" type="button" disabled>Kéo lại khung</button>
+        <span class="hs-sp"></span>
+        <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch mọi chữ đang có trên màn hình: menu, nhiệm vụ, vật phẩm">Dịch cả màn hình <kbd>T</kbd></button>
+        <button class="hs-btn hs-web" id="hsPip" type="button" disabled title="Mở cửa sổ nhỏ luôn nổi trên game">Cửa sổ nổi</button>
+        <button class="hs-btn hs-dk" id="hsOvShow" type="button" title="Hiện hoặc ẩn dòng phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
+        <button class="hs-btn hs-dk" id="hsOvMove" type="button" title="Kéo dòng phụ đề nổi tới chỗ khác (F10)">Di chuyển phụ đề</button>
+        <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch <kbd>Space</kbd></button>
+      </div>
+
+      <div class="hs-keys hs-dk">Phím tắt dùng được cả khi đang ở trong game: <kbd>F7</kbd> bật/tắt dịch · <kbd>F8</kbd> dịch ngay câu đang hiện · <kbd>F9</kbd> ẩn/hiện phụ đề nổi · <kbd>F10</kbd> di chuyển phụ đề · <kbd>F11</kbd> dịch cả màn hình</div>
+      <div class="hs-sub" id="hsSubBox">
+        <div class="lbl">Phụ đề tiếng Việt <span id="hsModelTag"></span></div>
+        <div class="hs-vi placeholder" id="hsVi">Câu dịch sẽ hiện ở đây.</div>
+        <div class="hs-en" id="hsEn"></div>
+        <details class="hs-hist" id="hsHistBox">
+          <summary>Các câu trước (<span id="hsHistN">0</span>)</summary>
+          <ol id="hsHist"></ol>
+        </details>
+      </div>
+    </main>
+
+    <aside class="hs-side">
+      <section class="hs-card hs-sec" id="hsKeySec">
+        <div class="t"><b>Mã Gemini</b><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Lấy mã miễn phí ↗</a></div>
+        <div class="hs-f">
+          <label for="hsKeys">Dán mã (mỗi dòng 1 mã, nhiều mã thì dịch lâu hơn mới hết lượt)</label>
+          <textarea class="hs-in" id="hsKeys" rows="2" spellcheck="false" autocomplete="off" placeholder="AIza..."></textarea>
+        </div>
+        <div class="hs-f" style="margin-top:10px">
+          <label for="hsGroq">Mã Groq dự phòng, dùng khi Gemini hết lượt (không bắt buộc) · <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Lấy mã ↗</a></label>
+          <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..."></textarea>
+        </div>
+        <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsCheck" type="button">Kiểm tra mã</button></div>
+        <div class="hs-msg" id="hsKeyMsg" hidden></div>
+        <p class="hs-note" style="margin-top:10px">Mã chỉ lưu trên máy bạn. Ảnh vùng phụ đề được gửi tới Google Gemini để đọc và dịch.</p>
+      </section>
+
+      <section class="hs-card hs-sec" id="hsTvSec">
+        <div class="t"><b>Gửi lên TV</b><a href="https://honggame.store/hongsubtv" target="_blank" rel="noopener">Tải app TV ↗</a></div>
+        <div class="hs-f">
+          <label for="hsTv">Mã hiện trên app Hóng Sub TV (bỏ trống nếu không dùng TV)</label>
+          <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" style="text-transform:uppercase;letter-spacing:.2em;font-weight:700">
+        </div>
+        <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsTvTest" type="button">Gửi thử lên TV</button></div>
+        <div class="hs-msg" id="hsTvMsg" hidden></div>
+        <p class="hs-note" style="margin-top:10px">PS5 vẫn cắm thẳng vào TV, hình giữ nguyên chất lượng. Khi dùng TV nên tắt "Đọc to" ở đây để TV tự đọc.</p>
+      </section>
+
+      <section class="hs-card hs-sec">
+        <div class="t"><b>Game đang chơi</b></div>
+        <div class="hs-f">
+          <label for="hsPreset">Chọn game có sẵn</label>
+          <select class="hs-in" id="hsPreset"><option value="">Chọn game, ghi chú nhân vật điền sẵn</option></select>
+        </div>
+        <div class="hs-f">
+          <label for="hsGame">Hoặc gõ tên game khác</label>
+          <input class="hs-in" id="hsGame" type="text" list="hsGameList" autocomplete="off" placeholder="Ví dụ: God of War Ragnarök">
+          <datalist id="hsGameList"></datalist>
+        </div>
+        <div class="hs-f">
+          <label for="hsNotes">Nhân vật, cách xưng hô (không bắt buộc)</label>
+          <textarea class="hs-in" id="hsNotes" rows="4" placeholder="Ví dụ: Kratos là cha, Atreus là con trai. Kratos gọi con là 'con', xưng 'ta'."></textarea>
+        </div>
+        <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsAiNotes" type="button">Soạn ghi chú bằng AI</button></div>
+        <div class="hs-msg" id="hsNotesMsg" hidden></div>
+        <p class="hs-note" style="margin-top:8px">Game có sẵn trong danh sách thì chỉ cần chọn. Game chưa có thì gõ tên rồi bấm nút trên, AI viết sẵn nhân vật và cách xưng hô, hoặc chọn một mục “Kiểu chung” gần nhất. Sửa ghi chú tùy ý, được lưu riêng cho từng game.</p>
+      </section>
+
+      <section class="hs-card hs-sec">
+        <div class="t"><b>Đọc &amp; hiển thị</b></div>
+        <label class="hs-sw">Đọc to bằng giọng Việt <input type="checkbox" id="hsSpeak" checked></label>
+        <div class="hs-f" style="margin-top:10px">
+          <label for="hsVoice">Giọng đọc</label>
+          <div class="hs-row" style="flex-wrap:nowrap">
+            <select class="hs-in" id="hsVoice" style="flex:1;min-width:0"></select>
+            <button class="hs-btn" id="hsVoiceTest" type="button" title="Đọc một câu mẫu bằng giọng đang chọn">Nghe thử</button>
+          </div>
+          <div class="hs-dk" id="hsVoiceTipD" hidden><p class="hs-note">Windows chưa có giọng tiếng Việt. Bấm nút dưới, chọn <b>Thêm giọng nói</b> (Add voices), tìm <b>Tiếng Việt</b> rồi cài, xong mở lại Hóng Sub.</p><button class="hs-btn" id="hsVoiceSet" type="button" style="margin-top:6px">Cài giọng tiếng Việt</button></div>
+          <p class="hs-note hs-web" id="hsVoiceTip" hidden>Máy chưa có giọng tiếng Việt. Mở Hóng Sub bằng <b>Microsoft Edge</b> để có giọng Việt tự nhiên (HoaiMy, NamMinh), hoặc cài gói tiếng Việt cho Windows.</p>
+        </div>
+        <div class="hs-f">
+          <label for="hsRate">Tốc độ đọc: <span id="hsRateV">1.1</span>x</label>
+          <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
+        </div>
+        <label class="hs-sw">Hiện câu tiếng Anh gốc <input type="checkbox" id="hsShowEn" checked></label>
+        <div class="hs-f">
+          <label for="hsSize">Cỡ chữ: <span id="hsSizeV">28</span>px</label>
+          <input class="hs-range" id="hsSize" type="range" min="18" max="48" step="2" value="28">
+        </div>
+        <label class="hs-sw hs-dk">Tiết kiệm lượt: đọc chữ trên máy trước <input type="checkbox" id="hsOcr" checked></label>
+        <p class="hs-note hs-dk" style="margin:4px 0 8px">Máy tự đọc chữ tiếng Anh, chỉ gửi đoạn chữ đi dịch và bỏ qua câu đã dịch rồi. Tắt nếu game dùng chữ kiểu cách khó đọc.</p>
+        <div class="hs-f">
+          <span class="hs-lab">Tốc độ quét</span>
+          <div class="hs-seg" id="hsSpeed" role="group" aria-label="Tốc độ quét">
+            <button type="button" data-v="1200">Tiết kiệm</button>
+            <button type="button" data-v="700" class="on">Vừa</button>
+            <button type="button" data-v="400">Nhanh</button>
+          </div>
+          <p class="hs-note">Quét nhanh hiện chữ sớm hơn nhưng tốn lượt mã hơn.</p>
+        </div>
+      </section>
+
+      <section class="hs-card hs-shop">
+        <b>Cần cài giúp?</b>
+        <p>Gọi hoặc Zalo Hóng Game Store: <a href="tel:0949099992">0949 099 992</a> · <a href="tel:0367879283">0367 879 283</a></p>
+        <p>754 Hùng Vương, P. Ngã Bảy, TP Cần Thơ · <a href="https://honggame.store/">honggame.store</a></p>
+      </section>
+    </aside>
+  </div>
+
+
+  <section class="hs-guide" id="huong-dan">
+    <div class="hg-k">Hướng dẫn sử dụng</div>
+    <div class="hg-h">Cách dùng Hóng Sub</div>
+    <p class="hg-lead">Hóng Sub đọc phụ đề tiếng Anh trên hình game, dịch sang tiếng Việt bằng Gemini của Google và đọc to bằng giọng Việt. Có 3 cách dùng tuỳ bạn chơi trên máy tính, TV hay màn hình máy tính.</p>
+
+    <div class="hg-need">
+      <div><b>Máy tính</b>Windows hoặc Mac, mở trang này bằng Chrome hoặc Edge. Điện thoại không dùng được.</div>
+      <div><b>PS5 / PS4 bật Remote Play</b>PS5 xem <a href="https://honggame.store/huong-dan-dich-phu-de-game-ps5-tieng-viet/#b1">bước 1 ở bài này</a>. PS4 xem <a href="#ps4">cách bật bên dưới</a>.</div>
+      <div><b>App PS Remote Play</b>Của Sony, cài trên máy tính. <a href="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/" target="_blank" rel="noopener">Tải tại đây ↗</a></div>
+      <div><b>Mã Gemini miễn phí</b>Tạo bằng tài khoản Gmail, hướng dẫn ở bước 1 bên dưới.</div>
+    </div>
+
+    <figure class="hg-shot">
+      <img src="https://honggame.store/wp-content/uploads/2026/11/hong-sub-huong-dan-cac-buoc.jpg" alt="Giao diện Hóng Sub, các vị trí cần bấm được đánh số 1 đến 6" width="1100" height="692" loading="lazy">
+      <figcaption>Số trên hình khớp với số trong các bước bên dưới.</figcaption>
+    </figure>
+
+    <div class="hg-way">
+      <div class="hg-t"><b>Cách 1 · Chơi và dịch ngay trên máy tính</b><span class="hg-tag">Dùng được ngay</span></div>
+      <p>Hình game chạy trong cửa sổ PS Remote Play trên máy tính, phụ đề Việt hiện ở Hóng Sub hoặc cửa sổ nổi đè lên game.</p>
+      <ol class="hg-steps">
+        <li><span class="hg-n">1</span> <b>Nhập mã Gemini:</b> bấm <span class="hg-ui">Lấy mã miễn phí</span>, đăng nhập Gmail, bấm <b>Create API key</b>, sao chép mã (bắt đầu bằng AIza), dán vào ô <span class="hg-ui">Mã Gemini</span> rồi bấm <span class="hg-ui">Kiểm tra mã</span>. Chỉ làm 1 lần, máy tự nhớ. Nên thêm <b>mã Groq dự phòng</b> (miễn phí, đăng nhập bằng Gmail ở trang <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> › Create API Key) để khi Gemini hết lượt vẫn dịch tiếp.</li>
+        <li>Mở app <b>PS Remote Play</b> trên máy tính, đăng nhập tài khoản PSN (nên dùng tài khoản phụ), kết nối PS5. Để cửa sổ Remote Play hiện trên màn hình, không thu nhỏ.</li>
+        <li><span class="hg-n">2</span> Bấm <span class="hg-ui">Chọn màn hình game</span> (lần sau là <span class="hg-ui">Đổi màn hình</span>), chọn thẻ <b>Cửa sổ</b>, chọn <b>PS Remote Play</b> rồi bấm <b>Chia sẻ</b>.</li>
+        <li><span class="hg-n">3</span> Kéo chuột thành khung bao quanh dòng phụ đề tiếng Anh. Muốn sửa thì bấm <span class="hg-ui">Kéo lại khung</span>.</li>
+        <li><span class="hg-n">4</span> Bấm <span class="hg-ui">Bắt đầu dịch</span> (hoặc phím Space). Phụ đề tiếng Việt hiện bên dưới và được đọc to.</li>
+        <li><span class="hg-n">5</span> Bấm <span class="hg-ui">Cửa sổ nổi</span> để có ô phụ đề nhỏ luôn nằm trên cửa sổ game, kéo nó xuống dưới hình game.</li>
+      </ol>
+      <div class="hg-tip">Ghi <b>Tên game</b> và <b>cách xưng hô</b> ở ô bên phải để AI dịch đúng vai (ta/ngươi, bố/con...). Bấm phím <b>T</b> để dịch cả màn hình: menu, nhiệm vụ, mô tả vật phẩm.</div>
+    </div>
+
+    <div class="hg-way">
+      <div class="hg-t"><b>Cách 2 · Hiện phụ đề lên TV</b><span class="hg-tag beta">Đang thử nghiệm</span></div>
+      <p>PS5 cắm thẳng vào TV nên hình giữ nguyên chất lượng gốc. Máy tính chỉ chạy nền để đọc phụ đề, chữ Việt hiện đè lên game trên TV. Dùng cho TV Android / Google TV (Sony, TCL, Xiaomi...). TV LG chưa hỗ trợ.</p>
+      <ol class="hg-steps">
+        <li>Trên TV, cài app <b>Downloader</b> từ Google Play. Mở Downloader, gõ <b>honggame.store/hongsubtv</b>, bấm Go rồi cài app tải về.</li>
+        <li>Mở <b>Hóng Sub TV</b>, bấm <b>Cấp quyền</b>, bật <b>Hiển thị trên ứng dụng khác</b>, quay lại bấm <b>Bật phụ đề</b>. Ghi lại <b>mã TV</b> 6 ký tự trên màn hình.</li>
+        <li>Trên máy tính làm bước 1 đến 4 của Cách 1.</li>
+        <li><span class="hg-n">6</span> Nhập mã TV vào ô <span class="hg-ui">Gửi lên TV</span>, bấm <span class="hg-ui">Gửi thử lên TV</span>. TV hiện "Hóng Sub đã kết nối với TV" là xong.</li>
+        <li>Tắt <span class="hg-ui">Đọc to bằng giọng Việt</span> trên máy tính để TV tự đọc, chuyển TV sang cổng HDMI của PS5 và chơi bằng tay cầm như bình thường.</li>
+      </ol>
+      <div class="hg-tip">Trên app TV chỉnh được cỡ chữ, cho phụ đề nằm trên hay dưới, và bật/tắt câu tiếng Anh. Máy tính phải mở suốt lúc chơi, cửa sổ PS Remote Play để hiện, không thu nhỏ.</div>
+    </div>
+
+    <div class="hg-way">
+      <div class="hg-t"><b>Cách 3 · Chơi bằng màn hình máy tính</b></div>
+      <p>PS5 cắm thẳng vào màn hình để chơi. Hóng Sub mở trên màn hình thứ hai hoặc laptop đặt cạnh, làm như Cách 1. Hình game giữ nguyên chất lượng, chữ dịch hiện và được đọc to ở máy bên cạnh.</p>
+    </div>
+
+
+    <div class="hg-way" id="android">
+      <div class="hg-t"><b>Cách 4 · Dùng điện thoại Android, không cần máy tính</b><span class="hg-tag beta">Đang thử nghiệm</span></div>
+      <p>App Hóng Sub cho Android đọc phụ đề ngay trong app PS Remote Play trên điện thoại, hiện chữ Việt nổi trên game, đọc to, và gửi được lên app Hóng Sub TV.</p>
+      <ol class="hg-steps">
+        <li>Cài app <b>PS Remote Play</b> từ Google Play, đăng nhập PSN (nếu chơi trên TV thì dùng tài khoản phụ) và kết nối máy.</li>
+        <li>Trên điện thoại mở <b>honggame.store/hongsubapp</b>, tải file về và cài (điện thoại hỏi thì bật <b>Cho phép từ nguồn này</b>).</li>
+        <li>Mở <b>Hóng Sub</b>, dán mã Gemini (và mã Groq dự phòng nếu có), bấm <b>Kiểm tra mã</b>. Muốn hiện lên TV thì nhập mã TV.</li>
+        <li>Bấm <b>Bắt đầu</b>, cho phép <b>Hiển thị trên ứng dụng khác</b> và <b>ghi màn hình</b>. App tự mở PS Remote Play.</li>
+        <li>Trên thanh nổi có chữ <b>H</b>: bấm <b>Khung</b>, kéo khung trùm lên phụ đề (kéo góc dưới bên phải để đổi cỡ), bấm <b>Xong</b>, rồi bấm <b>Dịch</b>. Nút <b>Cả màn</b> dịch menu, nhiệm vụ.</li>
+      </ol>
+      <div class="hg-tip">Nếu app báo "Không đọc được hình" thì có thể app PS Remote Play đang chặn ghi màn hình trên máy đó. Báo shop để được hỗ trợ.</div>
+    </div>
+
+    <div class="hg-way" id="ps4">
+      <div class="hg-t"><b>Dùng với PS4</b></div>
+      <p>Hóng Sub đọc hình trong app PS Remote Play nên dùng được cả PS4, các bước giống PS5. Chỉ khác chỗ bật Remote Play trên máy (menu PS4 không có tiếng Việt):</p>
+      <ol class="hg-steps">
+        <li><b>Settings › Remote Play Connection Settings ›</b> bật <b>Enable Remote Play</b>.</li>
+        <li><b>Settings › Account Management › Activate as Your Primary PS4 ›</b> chọn <b>Activate</b>.</li>
+        <li>Để app bật được máy khi đang nghỉ: <b>Settings › Power Save Settings › Set Features Available in Rest Mode ›</b> tích <b>Stay Connected to the Internet</b> và <b>Enable Turning On PS4 from Network</b>.</li>
+      </ol>
+    </div>
+    <div class="hg-faq">
+      <details><summary>Bấm "Chọn màn hình game" không thấy gì, hoặc báo trình duyệt không hỗ trợ</summary><div class="a">Hóng Sub chỉ chạy trên Chrome hoặc Edge ở máy tính. Trên điện thoại, xem app Dịch Phụ Đề Game trong <a href="https://honggame.store/huong-dan-dich-phu-de-game-ps5-tieng-viet/">bài hướng dẫn</a>.</div></details>
+      <details><summary>Hình game trong Hóng Sub bị đen</summary><div class="a">Cửa sổ PS Remote Play đang bị thu nhỏ hoặc đã chọn nhầm cửa sổ. Mở lại cửa sổ Remote Play rồi bấm "Đổi màn hình" chọn lại.</div></details>
+      <details><summary>Báo "Mã tạm hết lượt"</summary><div class="a">Mã Gemini miễn phí có giới hạn lượt dịch. Chờ ít giây là dịch tiếp. Muốn ít bị hết lượt thì dán thêm <b>mã Groq dự phòng</b>: Gemini hết lượt, Hóng Sub tự chuyển sang Groq. Chọn tốc độ quét "Tiết kiệm" cũng đỡ tốn lượt.</div></details>
+      <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Chrome trên nhiều máy không có giọng Việt. Mở Hóng Sub bằng Microsoft Edge để có giọng Việt tự nhiên (HoaiMy, NamMinh).</div></details>
+      <details><summary>Dịch sai câu, hoặc dịch cả chữ khác trên màn hình</summary><div class="a">Khung đang rộng quá hoặc lệch. Bấm "Kéo lại khung" và kéo sát quanh dòng phụ đề. Nếu game cho chỉnh, tăng cỡ phụ đề và bật nền đen sau chữ.</div></details>
+      <details><summary>Chữ dịch hiện chậm hơn lời thoại</summary><div class="a">Mỗi câu cần khoảng 1 đến 2 giây để đọc và dịch. Chọn tốc độ quét "Nhanh" để hiện sớm hơn (tốn lượt mã hơn), dùng Wi-Fi 5GHz hoặc cắm dây mạng cho PS5.</div></details>
+      <details><summary>TV không hiện chữ</summary><div class="a">Kiểm tra mã TV nhập đúng chưa, bấm "Gửi thử lên TV". Trên TV phải bấm "Bật phụ đề" và có quyền "Hiển thị trên ứng dụng khác". Một số TV khoá quyền này, khi đó app TV chưa dùng được trên TV đó.</div></details>
+    </div>
+  </section>
+  <p class="hs-foot">Hóng Sub là công cụ miễn phí của Hóng Game Store, chạy hoàn toàn trong trình duyệt của bạn. Bản dịch do AI thực hiện nên đôi khi chưa chuẩn. Không can thiệp vào máy game hay file game. PlayStation, PS5 là thương hiệu của Sony Interactive Entertainment.</p>
+
+  <div class="hs-modal" id="hsSrcModal" role="dialog" aria-modal="true" aria-labelledby="hsSrcT">
+    <div class="box" style="max-width:860px">
+      <div class="t"><b id="hsSrcT">Chọn cửa sổ game</b><button class="hs-btn" id="hsSrcX" type="button">Đóng</button></div>
+      <p class="hs-note" style="margin-top:6px">Chọn cửa sổ PS Remote Play (hoặc game trên máy tính). Nếu chưa thấy, mở PS Remote Play trước rồi bấm Tải lại.</p>
+      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" id="hsSrcRe" type="button">Tải lại</button></div>
+      <div class="hs-src" id="hsSrcList"></div>
+    </div>
+  </div>
+  <div class="hs-modal" id="hsModal" role="dialog" aria-modal="true" aria-labelledby="hsModalT">
+    <div class="box">
+      <div class="t"><b id="hsModalT">Dịch cả màn hình</b><button class="hs-btn" id="hsModalX" type="button">Đóng</button></div>
+      <p class="hs-note" id="hsModalNote" style="margin-top:6px"></p>
+      <ul id="hsModalList"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var D=window.hsDesktop||null;
+if(D) document.body.classList.add('desk');
+var LS='hongsub.v1.';
+function load(k,d){try{var v=localStorage.getItem(LS+k);return v===null?d:JSON.parse(v);}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}}
+
+var S={
+  stream:null, demo:null, running:false, busy:false, timer:null,
+  region:load('region',{x:.1,y:.74,w:.8,h:.22}),
+  interval:load('interval',700),
+  keys:[], keyIdx:0, cool:{}, model:load('model',null), models:load('models',[]), noThink:{},
+  lastSig:null, prevSig:null, lastEn:'', hist:[], pip:null, offlineDemo:false, lastOcr:'', saved:0
+};
+
+/* ---------- elements ---------- */
+var video=$('hsVideo'), ov=$('hsOv'), reg=$('hsRegion');
+var cap=document.createElement('canvas'), capx=cap.getContext('2d',{willReadFrequently:true});
+var sig=document.createElement('canvas'); sig.width=64; sig.height=16; var sigx=sig.getContext('2d',{willReadFrequently:true});
+
+/* ---------- status / steps ---------- */
+function status(s,t){$('hsStatus').dataset.s=s;$('hsStatusTxt').textContent=t;}
+function steps(){
+  var st={key:keys().length>0||groqKeys().length>0||S.offlineDemo, src:!!(S.stream), reg:!!S.stream&&!reg.hidden, run:S.running};
+  var first=null;
+  document.querySelectorAll('#hsSteps .hs-step').forEach(function(el){
+    var k=el.dataset.k; el.classList.toggle('done',!!st[k]); el.classList.remove('on');
+    if(!st[k]&&!first){first=el;}
+  });
+  if(first) first.classList.add('on');
+  var ready=!!S.stream;
+  ['hsPick2','hsDraw','hsFull','hsPip','hsRun'].forEach(function(id){$(id).disabled=!ready;});
+  $('hsRun').innerHTML=S.running?'Tạm dừng <kbd>Space</kbd>':'Bắt đầu dịch <kbd>Space</kbd>';
+  $('hsRun').classList.toggle('pri',true);
+  reg.classList.toggle('scan',S.running);
+}
+
+/* ---------- keys ---------- */
+function keys(){return $('hsKeys').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
+$('hsKeys').value=load('keys',[]).join('\n');
+function groqKeys(){return $('hsGroq').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
+$('hsGroq').value=load('groq',[]).join('\n');
+$('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gModels=[];save('gmodels',[]);steps();});
+$('hsKeys').addEventListener('change',function(){save('keys',keys());S.models=[];save('models',[]);steps();});
+function keyMsg(cls,t){var m=$('hsKeyMsg');m.hidden=false;m.className='hs-msg '+cls;m.textContent=t;}
+
+function pickKey(){
+  var ks=keys(); if(!ks.length) return null;
+  var now=Date.now();
+  for(var i=0;i<ks.length;i++){
+    var k=ks[(S.keyIdx+i)%ks.length];
+    if(!S.cool[k]||S.cool[k]<now){S.keyIdx=(S.keyIdx+i+1)%ks.length;return k;}
+  }
+  return null;
+}
+
+/* rank models: newest flash-lite first (fastest), then flash */
+function rankModels(names){
+  var out=[];
+  names.forEach(function(n){
+    n=n.replace(/^models\//,'');
+    var m=n.match(/^gemini-(\d+(?:\.\d+)?)-flash(-lite)?$/);
+    if(m){out.push({n:n,v:parseFloat(m[1]),lite:!!m[2]});}
+    else if(n==='gemini-flash-lite-latest'){out.push({n:n,v:99,lite:true});}
+    else if(n==='gemini-flash-latest'){out.push({n:n,v:99,lite:false});}
+  });
+  out.sort(function(a,b){ if(a.lite!==b.lite) return a.lite?-1:1; return b.v-a.v; });
+  return out.map(function(o){return o.n;});
+}
+var FALLBACK=['gemini-flash-lite-latest','gemini-flash-latest','gemini-2.5-flash-lite','gemini-2.5-flash'];
+
+async function listModels(key){
+  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(key));
+  var j=await r.json().catch(function(){return {};});
+  if(!r.ok){var e=new Error((j.error&&j.error.message)||('HTTP '+r.status));e.status=r.status;throw e;}
+  var names=(j.models||[]).filter(function(m){return (m.supportedGenerationMethods||[]).indexOf('generateContent')>=0;}).map(function(m){return m.name;});
+  return rankModels(names);
+}
+
+$('hsCheck').addEventListener('click',async function(){
+  var ks=keys(), gs=groqKeys(); save('keys',ks); save('groq',gs);
+  if(!ks.length&&!gs.length){keyMsg('err','Chưa có mã. Bấm "Lấy mã miễn phí", tạo mã Gemini rồi dán vào ô trên.');return;}
+  keyMsg('','Đang kiểm tra '+(ks.length+gs.length)+' mã...');
+  var good=0, models=null, errs=[], ggood=0, gmodels=null;
+  for(var i=0;i<ks.length;i++){
+    try{var ms=await listModels(ks[i]);good++;if(!models)models=ms;}
+    catch(e){errs.push('Gemini '+(i+1)+': '+(e.status===400||e.status===403?'không hợp lệ':e.message));}
+  }
+  for(var j=0;j<gs.length;j++){
+    try{var gm=await groqList(gs[j]);ggood++;if(!gmodels)gmodels=gm;}
+    catch(e){errs.push('Groq '+(j+1)+': '+(e.status===401?'không hợp lệ':e.message));}
+  }
+  if(!good&&!ggood){keyMsg('err','Không dùng được mã nào. '+errs.join(' · ')+' Kiểm tra lại đã sao chép đủ mã chưa.');steps();return;}
+  if(good){S.models=(models&&models.length?models:FALLBACK); save('models',S.models); S.model=S.models[0]; save('model',S.model);}
+  if(ggood){S.gModels=gmodels; save('gmodels',gmodels); S.gModel=gmodels[0];}
+  var parts=[];
+  if(ks.length) parts.push('Gemini '+good+'/'+ks.length+(good?' ('+S.model+')':''));
+  if(gs.length) parts.push('Groq '+ggood+'/'+gs.length+(ggood?' ('+S.gModel.split('/').pop()+')':''));
+  keyMsg(good?'ok':'warn','Dùng được: '+parts.join(' · ')+(good?'':'. Chỉ có Groq: dịch được nhưng nên thêm mã Gemini để chính xác hơn.')+(errs.length?' · '+errs.join(' · '):''));
+  $('hsModelTag').textContent='· '+(good?S.model:S.gModel.split('/').pop());
+  steps();
+});
+
+/* ---------- capture source ---------- */
+function chooseSource(){
+  return new Promise(function(done){
+    var m=$('hsSrcModal'), list=$('hsSrcList');
+    function fill(){
+      list.innerHTML='<p class="hs-note">Đang tìm cửa sổ...</p>';
+      D.sources().then(function(srcs){
+        list.innerHTML=srcs.map(function(s,i){return '<button type="button" data-i="'+i+'"><img alt="" src="'+s.thumb+'"><span>'+esc(s.name)+'</span></button>';}).join('')||'<p class="hs-note">Không thấy cửa sổ nào.</p>';
+        list.querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){close(srcs[+b.dataset.i]);});});
+      });
+    }
+    function close(v){m.classList.remove('open'); $('hsSrcX').onclick=null; $('hsSrcRe').onclick=null; done(v||null);}
+    $('hsSrcX').onclick=function(){close(null);}; $('hsSrcRe').onclick=fill;
+    m.classList.add('open'); fill();
+  });
+}
+async function pick(manual){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){status('err','Trình duyệt không hỗ trợ chia sẻ màn hình');return false;}
+  if(D){
+    var srcs=await D.sources(), rp=srcs.filter(function(x){return /remote play/i.test(x.name);})[0];
+    var ch=(!manual&&rp)?rp:await chooseSource();
+    if(!ch){status('warn','Chưa chọn cửa sổ game');return false;}
+    await D.use(ch.id);
+  }
+  try{
+    var st=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:10,max:15}},audio:false});
+    setStream(st,null); return true;
+  }catch(e){status('warn','Chưa chọn màn hình'); return false;}
+}
+function setStream(st,demo){
+  stopRun();
+  if(S.stream&&S.stream!==st){S.stream.getTracks().forEach(function(t){t.stop();});}
+  if(S.demo&&S.demo!==demo){S.demo.stop();}
+  S.stream=st; S.demo=demo; S.lastSig=null; S.prevSig=null; S.lastEn='';
+  video.srcObject=st; video.play().catch(function(){});
+  $('hsEmpty').hidden=true;
+  st.getVideoTracks()[0].addEventListener('ended',function(){
+    stopRun(); S.stream=null; video.srcObject=null; $('hsEmpty').hidden=false; reg.hidden=true; status('warn','Đã ngừng chia sẻ màn hình'); steps();
+  });
+  showRegion(); setDraw(!load('regionSet',false)); status('idle', S.offlineDemo?'Chạy thử: bấm Bắt đầu dịch':'Sẵn sàng'); steps();
+}
+$('hsPick').addEventListener('click',function(){S.offlineDemo=false;pick(false);});
+$('hsPick2').addEventListener('click',function(){S.offlineDemo=false;pick(true);});
+
+/* ---------- demo scene (no PS5 needed) ---------- */
+var DEMO_LINES=[
+  {en:'We need to get out of here before sunrise.',vi:'Chúng ta phải rời khỏi đây trước khi trời sáng.'},
+  {en:'Stay close. The bridge won’t hold for long.',vi:'Bám sát vào. Cây cầu này không trụ được lâu đâu.'},
+  {en:'I told you this place was cursed.',vi:'Tôi đã bảo nơi này bị nguyền rủa mà.'},
+  {en:'Grab the map. We head north at dawn.',vi:'Cầm lấy bản đồ. Rạng sáng ta lên phía bắc.'}
+];
+function makeDemo(){
+  var c=document.createElement('canvas'); c.width=1280; c.height=720; var x=c.getContext('2d');
+  var t0=performance.now(), raf;
+  function draw(now){
+    var t=(now-t0)/1000;
+    var g=x.createLinearGradient(0,0,0,720); g.addColorStop(0,'#2B2347'); g.addColorStop(.6,'#C2556B'); g.addColorStop(1,'#F6A55A');
+    x.fillStyle=g; x.fillRect(0,0,1280,720);
+    x.fillStyle='rgba(255,210,122,.9)'; x.beginPath(); x.arc(860,300+Math.sin(t/3)*8,90,0,Math.PI*2); x.fill();
+    x.fillStyle='#3A2440'; x.beginPath(); x.moveTo(0,470); x.lineTo(200,330); x.lineTo(360,430); x.lineTo(560,290); x.lineTo(780,450); x.lineTo(960,350); x.lineTo(1280,480); x.lineTo(1280,720); x.lineTo(0,720); x.fill();
+    x.fillStyle='#1A1426'; x.beginPath(); x.moveTo(0,560); x.lineTo(300,480); x.lineTo(560,540); x.lineTo(820,500); x.lineTo(1280,550); x.lineTo(1280,720); x.lineTo(0,720); x.fill();
+    x.fillStyle='#0E0B14'; x.beginPath(); x.arc(390,420,24,0,Math.PI*2); x.fill(); x.fillRect(362,446,56,120);
+    x.beginPath(); x.arc(470,432,21,0,Math.PI*2); x.fill(); x.fillRect(446,455,48,110);
+    var line=DEMO_LINES[Math.floor(t/4)%DEMO_LINES.length].en;
+    x.font='600 34px "Be Vietnam Pro", Arial, sans-serif'; x.textAlign='center';
+    var w=x.measureText(line).width+40;
+    x.fillStyle='rgba(0,0,0,.6)'; x.fillRect(640-w/2,600,w,56);
+    x.fillStyle='#fff'; x.fillText(line,640,640);
+    x.font='600 18px Arial'; x.textAlign='left'; x.fillStyle='rgba(255,255,255,.75)'; x.fillText('DEMO · Hóng Sub',28,44);
+    raf=requestAnimationFrame(draw);
+  }
+  raf=requestAnimationFrame(draw);
+  var st=c.captureStream(15);
+  return {stream:st,stop:function(){cancelAnimationFrame(raf);st.getTracks().forEach(function(t){t.stop();});},line:function(){var t=(performance.now()-t0)/1000;return DEMO_LINES[Math.floor(t/4)%DEMO_LINES.length];}};
+}
+$('hsDemo').addEventListener('click',function(){
+  var d=makeDemo();
+  S.offlineDemo=keys().length===0&&groqKeys().length===0;
+  S.region={x:.12,y:.8,w:.76,h:.14}; save('region',S.region); save('regionSet',true);
+  setStream(d.stream,d);
+  if(S.offlineDemo){keyMsg('warn','Đang chạy thử bằng câu mẫu, chưa cần mã. Muốn dịch game thật thì nhập mã Gemini.');}
+});
+
+/* ---------- region drawing ---------- */
+function videoBox(){
+  var r=ov.getBoundingClientRect(), vw=video.videoWidth||16, vh=video.videoHeight||9;
+  var s=Math.min(r.width/vw,r.height/vh), w=vw*s, h=vh*s;
+  return {l:(r.width-w)/2,t:(r.height-h)/2,w:w,h:h,r:r};
+}
+function showRegion(){
+  var b=videoBox(), R=S.region;
+  reg.hidden=false;
+  reg.style.left=(b.l+R.x*b.w)+'px'; reg.style.top=(b.t+R.y*b.h)+'px';
+  reg.style.width=(R.w*b.w)+'px'; reg.style.height=(R.h*b.h)+'px';
+}
+video.addEventListener('loadedmetadata',showRegion);
+window.addEventListener('resize',function(){if(S.stream)showRegion();});
+var drawing=false, start=null;
+function setDraw(on){drawing=on; ov.classList.toggle('off',!on); $('hsHint').hidden=!on;}
+$('hsDraw').addEventListener('click',function(){setDraw(true);});
+ov.addEventListener('pointerdown',function(e){
+  if(!drawing) return;
+  var b=videoBox(); start={x:e.clientX-b.r.left,y:e.clientY-b.r.top,b:b};
+  ov.setPointerCapture(e.pointerId);
+});
+ov.addEventListener('pointermove',function(e){
+  if(!start) return;
+  var b=start.b, x2=e.clientX-b.r.left, y2=e.clientY-b.r.top;
+  var l=Math.max(b.l,Math.min(start.x,x2)), t=Math.max(b.t,Math.min(start.y,y2));
+  var r=Math.min(b.l+b.w,Math.max(start.x,x2)), bt=Math.min(b.t+b.h,Math.max(start.y,y2));
+  S.region={x:(l-b.l)/b.w,y:(t-b.t)/b.h,w:Math.max(.02,(r-l)/b.w),h:Math.max(.02,(bt-t)/b.h)};
+  showRegion();
+});
+ov.addEventListener('pointerup',function(){
+  if(!start) return; start=null;
+  save('region',S.region); save('regionSet',true); setDraw(false); S.lastSig=null; steps();
+});
+
+/* ---------- frame grab + change detection ---------- */
+function grab(R,maxW){
+  var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
+  var sx=R.x*vw, sy=R.y*vh, sw=R.w*vw, sh=R.h*vh;
+  var sc=Math.min(1,maxW/sw); cap.width=Math.round(sw*sc); cap.height=Math.round(sh*sc);
+  capx.drawImage(video,sx,sy,sw,sh,0,0,cap.width,cap.height);
+  sigx.drawImage(cap,0,0,64,16);
+  var d=sigx.getImageData(0,0,64,16).data, s=new Uint8Array(1024);
+  for(var i=0;i<1024;i++){s[i]=(d[i*4]*3+d[i*4+1]*6+d[i*4+2])/10;}
+  return s;
+}
+function diff(a,b){if(!a||!b) return 255; var t=0; for(var i=0;i<a.length;i++){t+=Math.abs(a[i]-b[i]);} return t/a.length;}
+function jpeg(q){return cap.toDataURL('image/jpeg',q||.82).split(',')[1];}
+
+/* ---------- Gemini ---------- */
+var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
+var SCHEMA_ALL={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']}}},required:['items']};
+function context(){
+  var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim();
+  var recent=S.hist.slice(0,3).map(function(h){return h.en+' => '+h.vi;}).join('\n');
+  return (g?'Game: '+g+'\n':'')+(n?'Character / pronoun notes: '+n+'\n':'')+(recent?'Recent lines (for consistency):\n'+recent+'\n':'');
+}
+function thinkCfg(model){
+  if(S.noThink[model]) return null;
+  var m=model.match(/gemini-(\d+)/); var v=m?parseInt(m[1],10):(model.indexOf('latest')>=0?3:2);
+  return v>=3?{thinkingLevel:'low'}:{thinkingBudget:0};
+}
+async function gemini(prompt,b64,schema){
+  var models=S.models&&S.models.length?S.models:FALLBACK;
+  if(!S.model||models.indexOf(S.model)<0) S.model=models[0];
+  var tried=0, lastErr=null;
+  while(tried<models.length+keys().length){
+    tried++;
+    var key=pickKey();
+    if(!key){var e=new Error('cool');e.cool=true;throw e;}
+    var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
+    var tc=thinkCfg(S.model); if(tc) gc.thinkingConfig=tc;
+    var parts=[{text:prompt}]; if(b64) parts.push({inlineData:{mimeType:'image/jpeg',data:b64}});
+    var body={contents:[{role:'user',parts:parts}],generationConfig:gc};
+    var r, j;
+    try{
+      r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+S.model+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      j=await r.json().catch(function(){return {};});
+    }catch(e){lastErr=new Error('Mất kết nối mạng');continue;}
+    if(r.ok){
+      var txt=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(function(p){return p.text||'';}).join('');
+      try{return JSON.parse(txt);}catch(e){return null;}
+    }
+    var msg=(j.error&&j.error.message)||('HTTP '+r.status);
+    lastErr=new Error(msg); lastErr.status=r.status;
+    if(r.status===400&&/thinking/i.test(msg)&&!S.noThink[S.model]){S.noThink[S.model]=true;continue;}
+    if(r.status===429){
+      if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ // model not in free tier: try next model
+        var i=models.indexOf(S.model); S.model=models[(i+1)%models.length]; save('model',S.model); $('hsModelTag').textContent='· '+S.model; continue;
+      }
+      var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:30000); continue;
+    }
+    if(r.status===404||(r.status===400&&/model/i.test(msg))){var k2=models.indexOf(S.model); S.model=models[(k2+1)%models.length]; save('model',S.model); continue;}
+    if(r.status===400||r.status===403){S.cool[key]=Date.now()+3600e3; continue;}
+    if(r.status>=500){continue;}
+    break;
+  }
+  throw lastErr||new Error('Không dịch được');
+}
+
+/* ---------- Groq (backup translator, OpenAI-compatible) ---------- */
+var GROQ='https://api.groq.com/openai/v1';
+var GROQ_PREF=['meta-llama/llama-4-scout-17b-16e-instruct','meta-llama/llama-4-maverick-17b-128e-instruct','qwen/qwen3.6-27b'];
+S.gModels=load('gmodels',[]); S.gModel=S.gModels[0]||GROQ_PREF[0]; S.gcool={}; S.gIdx=0; S.gNoFmt={};
+async function groqList(key){
+  var r=await fetch(GROQ+'/models',{headers:{'Authorization':'Bearer '+key}});
+  var j=await r.json().catch(function(){return {};});
+  if(!r.ok){var e=new Error((j.error&&j.error.message)||('HTTP '+r.status));e.status=r.status;throw e;}
+  var ids=(j.data||[]).map(function(m){return m.id;});
+  var out=GROQ_PREF.filter(function(m){return ids.indexOf(m)>=0;});
+  ids.forEach(function(id){ if(out.indexOf(id)<0&&/llama-4|vision|-vl\b|qwen3\.[6-9]/i.test(id)&&!/guard|whisper|tts|prompt/i.test(id)) out.push(id); });
+  return out.length?out:GROQ_PREF.slice();
+}
+function groqPick(){
+  var ks=groqKeys(); if(!ks.length) return null; var now=Date.now();
+  for(var i=0;i<ks.length;i++){var k=ks[(S.gIdx+i)%ks.length]; if(!S.gcool[k]||S.gcool[k]<now){S.gIdx=(S.gIdx+i+1)%ks.length; return k;}}
+  return null;
+}
+function jsonFrom(t){ t=String(t||'').replace(/<think>[\s\S]*?<\/think>/g,''); var a=t.indexOf('{'), b=t.lastIndexOf('}'); if(a<0||b<a) return null; try{return JSON.parse(t.slice(a,b+1));}catch(e){return null;} }
+async function groq(prompt,b64,shape){
+  var models=S.gModels&&S.gModels.length?S.gModels:GROQ_PREF;
+  if(models.indexOf(S.gModel)<0) S.gModel=models[0];
+  var tries=models.length+groqKeys().length+1, lastErr=null;
+  for(var t=0;t<tries;t++){
+    var key=groqPick(); if(!key){var c=new Error('cool');c.cool=true;throw c;}
+    var body={model:S.gModel,temperature:0.2,max_completion_tokens:1024,
+      messages:[{role:'user',content:[{type:'text',text:prompt+'\nReply with JSON only, exactly this shape: '+shape}].concat(b64?[{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]:[])}]};
+    if(!S.gNoFmt[S.gModel]) body.response_format={type:'json_object'};
+    var r,j;
+    try{ r=await fetch(GROQ+'/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body)}); j=await r.json().catch(function(){return {};}); }
+    catch(e){ lastErr=new Error('Mất kết nối mạng'); continue; }
+    if(r.ok){ var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:''; return jsonFrom(txt); }
+    var msg=(j.error&&j.error.message)||('HTTP '+r.status); lastErr=new Error(msg); lastErr.status=r.status;
+    if(r.status===400&&/response_format|json/i.test(msg)&&!S.gNoFmt[S.gModel]){S.gNoFmt[S.gModel]=true;continue;}
+    if(r.status===429){var m=msg.match(/try again in ([\d.]+)(ms|s|m)/i); var w=m?parseFloat(m[1])*(m[2]==='ms'?1:m[2]==='m'?60000:1000):20000; S.gcool[key]=Date.now()+w; continue;}
+    if(r.status===404||(r.status===400&&/model|decommission/i.test(msg))){var k=models.indexOf(S.gModel); S.gModel=models[(k+1)%models.length]; continue;}
+    if(r.status===401||r.status===403){S.gcool[key]=Date.now()+3600e3; continue;}
+    if(r.status>=500) continue;
+    break;
+  }
+  throw lastErr||new Error('Groq không dịch được');
+}
+var SHAPE_SUB='{"speaker":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}';
+S.via='';
+async function ask(prompt,b64,schema,shape){
+  if(keys().length){
+    try{ var r=await gemini(prompt,b64,schema); S.via='gemini'; return r; }
+    catch(e){ if(!groqKeys().length) throw e; }
+  }
+  if(groqKeys().length){ var g=await groq(prompt,b64,shape); S.via='groq'; return g; }
+  var e2=new Error('Cần nhập mã Gemini hoặc Groq'); throw e2;
+}
+
+/* ---------- send to TV (relay on honggame.store) ---------- */
+var RELAY=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/push';
+function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
+$('hsTv').value=load('tv','');
+$('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value);});
+function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
+var tvFails=0;
+function tvPush(vi,en,who,manual){
+  var c=tvCode(); if(c.length<4){ if(manual) tvMsg('err','Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
+  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:vi,en:en||'',who:who||''})})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: kiểm tra mã, và trên TV đã bấm "Bật phụ đề" chưa.'); })
+    .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err','Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
+}
+$('hsTvTest').addEventListener('click',function(){ $('hsTv').value=tvCode(); save('tv',$('hsTv').value); tvPush('Hóng Sub đã kết nối với TV','Connected','',true); });
+
+/* ---------- display + speech ---------- */
+function norm(s){return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+function similar(a,b){a=norm(a);b=norm(b); if(!a||!b) return false; if(a===b) return true; var A=a.split(' '),B=b.split(' '),hit=0; A.forEach(function(w){if(B.indexOf(w)>=0)hit++;}); return hit/Math.max(A.length,B.length)>.85;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function show(res){
+  var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
+  var html=(who?'<span class="who">'+esc(who)+':</span> ':'')+esc(vi);
+  $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=html;
+  $('hsEn').textContent=$('hsShowEn').checked?en:'';
+  S.hist.unshift({en:en,vi:vi,who:who}); S.hist=S.hist.slice(0,40);
+  $('hsHistN').textContent=S.hist.length;
+  $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+esc(h.en)+'</small></li>';}).join('');
+  pipRender(html,$('hsEn').textContent);
+  if(D) D.sub({html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
+  tvPush(vi,en,who,false);
+  speak(vi);
+}
+var voices=[];
+var dVoices=null;
+function loadVoices(){
+  if(D){
+    var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);}), sel0=$('hsVoice'), want0=load('voice','');
+    sel0.innerHTML=dv.length?dv.map(function(v){return '<option value="win:'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join(''):'<option value="">Windows chưa có giọng tiếng Việt</option>';
+    if(want0&&dv.some(function(v){return 'win:'+v.name===want0;})) sel0.value=want0;
+    $('hsVoiceTipD').hidden=dv.length>0||dVoices===null; return;
+  }
+  if(!('speechSynthesis' in window)) return;
+  voices=speechSynthesis.getVoices();
+  var vi=voices.filter(function(v){return /^vi/i.test(v.lang);});
+  var sel=$('hsVoice'), want=load('voice','');
+  sel.innerHTML=vi.length?vi.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join(''):'<option value="">Máy chưa có giọng tiếng Việt</option>';
+  if(want&&vi.some(function(v){return v.name===want;})) sel.value=want;
+  $('hsVoiceTip').hidden=vi.length>0;
+}
+if(D){ loadVoices(); D.voices().then(function(v){dVoices=v||[]; loadVoices();}).catch(function(){dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();}); }
+else if('speechSynthesis' in window){loadVoices(); speechSynthesis.onvoiceschanged=loadVoices;}
+function winVoice(){var v=$('hsVoice').value; return v.indexOf('win:')===0?v.slice(4):'';}
+$('hsVoice').addEventListener('change',function(){save('voice',this.value); sample();});
+var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
+function sample(){
+  if(D){ D.speak(SAMPLE,winVoice(),parseFloat($('hsRate').value)); return; }
+  if(!('speechSynthesis' in window)){status('warn','Trình duyệt không hỗ trợ đọc to');return;}
+  speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(SAMPLE); u.lang='vi-VN'; u.rate=parseFloat($('hsRate').value);
+  var v=voices.find(function(x){return x.name===$('hsVoice').value;}); if(v) u.voice=v;
+  speechSynthesis.speak(u);
+}
+$('hsVoiceTest').addEventListener('click',sample);
+function speak(t){
+  if(D){ if($('hsSpeak').checked&&t) D.speak(t,winVoice(),parseFloat($('hsRate').value)); return; }
+  if(!$('hsSpeak').checked||!('speechSynthesis' in window)||!t) return;
+  speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=parseFloat($('hsRate').value);
+  var v=voices.find(function(v){return v.name===$('hsVoice').value;}); if(v) u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+/* ---------- on-device text reading (desktop app) ---------- */
+var OCR={w:null,loading:null,fails:0};
+var oc=document.createElement('canvas'), ocx=oc.getContext('2d',{willReadFrequently:true});
+function ocrOn(){return !!(D&&window.Tesseract&&$('hsOcr').checked&&OCR.fails<5);}
+function ocrWorker(){
+  if(OCR.w) return Promise.resolve(OCR.w);
+  if(!OCR.loading){
+    var base=new URL('../',location.href).href;
+    OCR.loading=Tesseract.createWorker('eng',1,{workerPath:base+'node_modules/tesseract.js/dist/worker.min.js',corePath:base+'node_modules/tesseract.js-core',langPath:base+'node_modules/@tesseract.js-data/eng/4.0.0_best_int',cacheMethod:'none',gzip:true})
+      .then(function(w){return w.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'}).then(function(){OCR.w=w; return w;});})
+      .catch(function(e){OCR.fails=9; OCR.loading=null; throw e;});
+  }
+  return OCR.loading;
+}
+function ocrPrep(){
+  var sc=cap.height<90?2:1; oc.width=cap.width*sc; oc.height=cap.height*sc;
+  ocx.imageSmoothingEnabled=true; ocx.drawImage(cap,0,0,oc.width,oc.height);
+  var im=ocx.getImageData(0,0,oc.width,oc.height), d=im.data, n=0;
+  for(var i=0;i<d.length;i+=4){var l=d[i]*.3+d[i+1]*.59+d[i+2]*.11, on=l>165; if(on)n++; var v=on?0:255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;}
+  ocx.putImageData(im,0,0);
+  return n/(d.length/4);
+}
+function ocrClean(t){
+  return String(t||'').split(/\n+/).map(function(l){return l.replace(/[|_~^`*<>{}\[\]\\]+/g,' ').replace(/\s+/g,' ').trim();})
+    .filter(function(l){return (l.match(/[A-Za-z]/g)||[]).length>=3;}).join('\n');
+}
+async function ocrRead(){
+  var ratio=ocrPrep();
+  if(ratio<.002) return {empty:true};
+  if(ratio>.45) return {text:'',conf:0};
+  var w=await ocrWorker(); var r=await w.recognize(oc);
+  return {text:ocrClean(r.data.text),conf:r.data.confidence||0};
+}
+function textPrompt(t){
+  return 'You translate video game subtitles for a Vietnamese player.\n'+
+    'OCR read the text between <<< and >>> from the subtitle area of the game screen. It may contain OCR mistakes or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
+    '1. Fix obvious OCR mistakes and keep ONLY the English dialogue/subtitle text. Ignore HUD, button prompts and labels like "DEMO".\n'+
+    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
+    '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '4. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
+}
+function runStatus(){
+  var via=S.via==='groq'?'Groq dự phòng':(S.model||'Gemini');
+  status('run','Đang dịch · '+via+(S.saved?' · đã tiết kiệm '+S.saved+' lượt':''));
+}
+
+/* ---------- main loop ---------- */
+async function tick(force){
+  if((!S.running&&force!==true)||S.busy||!S.stream) return;
+  force=force===true;
+  var s=grab(S.region,900); if(!s) return;
+  var changed=diff(s,S.lastSig)>6, stable=diff(s,S.prevSig)<3;
+  S.prevSig=s;
+  if(!force&&(!changed||!stable)) return;
+  S.lastSig=s;
+  if(force){S.lastEn=''; S.lastOcr='';}
+  if(S.offlineDemo&&S.demo){
+    var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
+  }
+  S.busy=true;
+  var useText=null;
+  if(!force&&ocrOn()){
+    try{
+      var o=await ocrRead();
+      if(o.empty){S.busy=false; return;}
+      if(o.text&&o.conf>=55){
+        if(similar(o.text,S.lastOcr)){S.saved++; S.busy=false; runStatus(); return;}
+        S.lastOcr=o.text; useText=o.text;
+      }else{S.lastOcr='';}
+    }catch(e){OCR.fails++;}
+  }
+  status('busy','Đang đọc phụ đề...');
+  if(useText){
+    try{
+      var rt=await ask(textPrompt(useText),null,SCHEMA_SUB,SHAPE_SUB);
+      if(rt&&rt.en&&rt.vi&&!similar(rt.en,S.lastEn)){S.lastEn=rt.en; show(rt);}
+      runStatus();
+    }catch(e){ if(e.cool){status('warn','Mã tạm hết lượt, đang chờ...');} else{status('err',e.message.slice(0,90));} S.lastOcr=''; }
+    finally{S.busy=false;}
+    return;
+  }
+  var prompt='You translate video game subtitles for a Vietnamese player.\n'+
+    'The image is a crop of the game screen where dialogue subtitles appear.\n'+
+    '1. Read ONLY the subtitle/dialogue text in English. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
+    '2. If a speaker name is shown (e.g. "ATREUS:"), put it in "speaker" without the colon and do not repeat it in "en".\n'+
+    '3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '4. If there is no readable English subtitle, return "en":"" and "vi":"".\n'+context();
+  try{
+    var res=await ask(prompt,jpeg(.82),SCHEMA_SUB,SHAPE_SUB);
+    if(res&&res.en&&res.vi&&!similar(res.en,S.lastEn)){S.lastEn=res.en; show(res);}
+    runStatus();
+  }catch(e){
+    if(e.cool){status('warn','Mã tạm hết lượt, đang chờ...');}
+    else{status('err',e.message.slice(0,90));}
+  }finally{S.busy=false;}
+}
+function startRun(){
+  if(!S.stream) return;
+  if(!keys().length&&!groqKeys().length&&!S.offlineDemo){status('err','Cần nhập mã Gemini trước'); $('hsKeys').focus(); return;}
+  S.running=true; S.lastSig=null; S.prevSig=null;
+  clearInterval(S.timer); S.timer=setInterval(tick,S.interval);
+  status('run','Đang dịch'); steps();
+}
+function stopRun(){S.running=false; clearInterval(S.timer); if(S.stream) status('idle','Tạm dừng'); steps();}
+$('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
+
+/* ---------- full-screen translate ---------- */
+async function fullScreen(){
+  if(!S.stream) return;
+  var modal=$('hsModal'), list=$('hsModalList'); modal.classList.add('open');
+  list.innerHTML=''; $('hsModalNote').textContent='Đang đọc toàn bộ chữ trên màn hình...';
+  grab({x:0,y:0,w:1,h:1},1400);
+  if(S.offlineDemo){var L=S.demo.line(); list.innerHTML='<li><b>'+esc(L.vi)+'</b><small>'+esc(L.en)+'</small></li>'; $('hsModalNote').textContent='Chạy thử bằng câu mẫu.'; return;}
+  try{
+    var res=await ask('Read all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group words that belong to the same line or paragraph. Ignore button glyphs and numbers-only labels. Translate each into natural Vietnamese; keep names as they are.\n'+context(),jpeg(.85),SCHEMA_ALL,SHAPE_ALL);
+    var items=(res&&res.items)||[];
+    $('hsModalNote').textContent=items.length?items.length+' mục':'Không thấy chữ tiếng Anh trên màn hình.';
+    list.innerHTML=items.map(function(it){return '<li><b>'+esc(it.vi)+'</b><small>'+esc(it.en)+'</small></li>';}).join('');
+  }catch(e){$('hsModalNote').textContent=e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Lỗi: '+e.message;}
+}
+$('hsFull').addEventListener('click',fullScreen);
+$('hsModalX').addEventListener('click',function(){$('hsModal').classList.remove('open');});
+$('hsModal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+
+/* ---------- floating window (Document Picture-in-Picture) ---------- */
+function pipRender(html,en){
+  if(!S.pip) return;
+  var d=S.pip.document; d.getElementById('vi').innerHTML=html; d.getElementById('en').textContent=en||'';
+}
+$('hsPip').addEventListener('click',async function(){
+  if(!('documentPictureInPicture' in window)){status('warn','Cửa sổ nổi cần Chrome hoặc Edge bản mới');return;}
+  try{
+    var w=await documentPictureInPicture.requestWindow({width:900,height:170});
+    var d=w.document;
+    d.head.innerHTML='<meta charset="utf-8"><title>Hóng Sub</title><style>body{margin:0;background:#0B0B0D;color:#fff;font-family:"Be Vietnam Pro",system-ui,sans-serif;display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:12px 18px;box-sizing:border-box}#vi{font-weight:700;font-size:'+$('hsSize').value+'px;line-height:1.35}#vi .who{color:#FFC400}#en{color:#9A9AA6;font-size:14px;margin-top:4px}</style>';
+    d.body.innerHTML='<div id="vi">'+$('hsVi').innerHTML+'</div><div id="en">'+esc($('hsEn').textContent)+'</div>';
+    S.pip=w;
+    d.addEventListener('keydown',hotkey);
+    w.addEventListener('pagehide',function(){S.pip=null;});
+  }catch(e){status('warn','Không mở được cửa sổ nổi');}
+});
+
+/* ---------- settings ---------- */
+function bindRange(id,vid,key,fn){var el=$(id),v=load(key,null); if(v!==null) el.value=v; $(vid).textContent=el.value; fn&&fn(el.value);
+  el.addEventListener('input',function(){$(vid).textContent=el.value; save(key,el.value); fn&&fn(el.value);});}
+bindRange('hsRate','hsRateV','rate');
+bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
+['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ if(D) D.speak('','',1); else if('speechSynthesis' in window) speechSynthesis.cancel(); }});});
+var GAMES=load('games',{});
+var PRESETS=[{"name": "God of War (2018)", "group": "Hành động, phiêu lưu", "notes": "Thần thoại Bắc Âu. Kratos là cha, Atreus là con trai. Kratos gọi Atreus là \"con\" (\"Boy\" dịch là \"nhóc\" hoặc \"con\"), xưng \"ta\"; Atreus gọi Kratos là \"cha\", xưng \"con\". Mimir (cái đầu biết nói) gọi Kratos là \"người anh em\", xưng \"tôi\". Freya (Phù thủy trong rừng), Baldur (Kẻ lạ mặt), anh em thợ rèn Brok và Sindri. Giữ nguyên tên riêng: Midgard, Jötunheim, Leviathan Axe, Valkyrie. Giọng trầm, nghiêm, ít lời."}, {"name": "God of War Ragnarök", "group": "Hành động, phiêu lưu", "notes": "Thần thoại Bắc Âu. Kratos là cha, Atreus (còn gọi là Loki) là con trai tuổi thiếu niên. Kratos xưng \"ta\", gọi Atreus là \"con\"; Atreus gọi \"cha\", xưng \"con\". Mimir gọi Kratos là \"người anh em\". Odin (Cha Toàn Năng) nói ngọt nhưng mưu mô, Thor là con trai Odin, Thrúd là con gái Thor. Freya, Tyr, Angrboda, Heimdall, Brok và Sindri. Giữ nguyên tên riêng và tên chín cõi. Ragnarök giữ nguyên. Giọng trầm, nghiêm."}, {"name": "Ghost of Tsushima", "group": "Hành động, phiêu lưu", "notes": "Samurai Nhật năm 1274, quân Mông Cổ xâm lược đảo Tsushima. Jin Sakai là samurai, được chú ruột là Lãnh chúa Shimura nuôi dạy: Jin gọi Shimura là \"chú\", xưng \"cháu\"; Shimura gọi Jin là \"cháu\", xưng \"ta\". Yuna (kẻ trộm) và em trai Taka, thầy cung Ishikawa, phu nhân Masako, Kenji (bán rượu sake). Khotun Khan là tướng Mông Cổ, xưng \"ta\", gọi kẻ khác \"ngươi\". \"The Ghost\" dịch là \"Bóng Ma\". Văn phong cổ trang: ta, ngươi, ngài, thưa chúa công."}, {"name": "Ghost of Yōtei", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản năm 1603, vùng Ezo quanh núi Yōtei. Nhân vật chính là Atsu, nữ kiếm khách đi trả thù băng Lục Quỷ Yōtei (Yōtei Six) do Lãnh chúa Saito cầm đầu. Giữ nguyên tên riêng và biệt danh của sáu kẻ thù (Snake, Oni, Kitsune, Spider, Dragon) hoặc dịch: Rắn, Quỷ, Hồ Ly, Nhện, Rồng. Văn phong cổ trang: ta, ngươi, ngài. Atsu nói ngắn gọn, lạnh lùng."}, {"name": "Marvel's Spider-Man (2018 / Remastered)", "group": "Hành động, phiêu lưu", "notes": "New York hiện đại. Peter Parker là Spider-Man; dì May nuôi Peter, Peter gọi \"dì\", xưng \"cháu\". Mary Jane (MJ) là bạn gái cũ, hai người xưng \"anh/em\". Otto Octavius là sếp và thầy của Peter, Peter gọi \"tiến sĩ\" hoặc \"ông\". Miles Morales là em nhỏ được Peter dạy, gọi Peter là \"anh\". Yuri Watanabe là cảnh sát. Giữ nguyên tên siêu anh hùng và phản diện: Doctor Octopus, Mister Negative, Kingpin, Sinister Six. Giọng trẻ trung, hay đùa."}, {"name": "Marvel's Spider-Man: Miles Morales", "group": "Hành động, phiêu lưu", "notes": "Harlem, New York. Miles Morales là Spider-Man thứ hai, mẹ là Rio Morales (Miles gọi \"mẹ\"), bạn thân là Ganke (\"tớ/cậu\"), chú Aaron Davis (Miles gọi \"chú\"). Phin Mason là bạn cũ, chính là The Tinkerer. Peter Parker là đàn anh, Miles gọi \"anh Pete\". Roxxon là tập đoàn xấu, Underground là băng nhóm. Giọng trẻ trung, hài hước."}, {"name": "Marvel's Spider-Man 2", "group": "Hành động, phiêu lưu", "notes": "New York hiện đại. Hai Spider-Man: Peter Parker (lớn tuổi hơn) và Miles Morales; Miles gọi Peter là \"anh\", Peter gọi Miles là \"em\" hoặc \"nhóc\". Peter và Mary Jane (MJ) là người yêu, xưng \"anh/em\". Harry Osborn là bạn thân của Peter (\"tớ/cậu\" hoặc \"mày/tao\" thân mật). Kraven the Hunter là thợ săn, xưng \"ta\". Venom, symbiote, Lizard giữ nguyên. Giọng trẻ trung, hay đùa."}, {"name": "The Last of Us Part I", "group": "Hành động, phiêu lưu", "notes": "Mỹ sau đại dịch nấm. Joel là người đàn ông trung niên, Ellie là cô bé 14 tuổi: Joel gọi Ellie là \"nhóc\", xưng \"tôi\" hoặc \"chú\"; Ellie gọi Joel là \"chú\" hoặc \"ông\", xưng \"cháu\" hoặc \"tôi\" khi cãi nhau. Tommy là em trai Joel. Tess là cộng sự của Joel. Marlene cầm đầu Fireflies. Giữ nguyên: Fireflies, FEDRA, Clicker, Runner, Bloater. \"Infected\" dịch là \"người nhiễm\". Lời thoại đời thường, có chửi thề."}, {"name": "The Last of Us Part II", "group": "Hành động, phiêu lưu", "notes": "Mỹ sau đại dịch nấm. Ellie và Dina là người yêu (\"chị/em\" hoặc \"tớ/cậu\"). Jesse là bạn. Joel và Tommy (em trai Joel). Abby, Owen, Mel, Manny thuộc phe WLF (\"Wolves\" dịch là \"Bầy Sói\"). Lev và Yara là hai chị em thuộc phe Seraphite (\"Scars\" dịch là \"bọn Sẹo\"). Giữ nguyên Clicker, Runner, Stalker. Lời thoại đời thường, có chửi thề."}, {"name": "Red Dead Redemption 2", "group": "Hành động, phiêu lưu", "notes": "Miền Tây nước Mỹ năm 1899. Arthur Morgan là tay súng trong băng Van der Linde. Dutch van der Linde là thủ lĩnh, như cha nuôi của Arthur. Hosea Matthews là người lớn tuổi, cố vấn. John Marston, vợ Abigail, con trai Jack. Sadie Adler, Charles Smith, Javier Escuella, Micah Bell, Bill Williamson, Lenny, Sean. Pinkerton là thám tử truy đuổi. Giữa đàn ông trong băng dùng \"tôi/anh\" hoặc \"tao/mày\" khi gay gắt. Văn nói cao bồi, có chửi thề."}, {"name": "Grand Theft Auto V", "group": "Hành động, phiêu lưu", "notes": "Thành phố Los Santos hiện đại. Ba nhân vật chính: Michael De Santa (cựu cướp nhà băng, có vợ Amanda, con Jimmy và Tracey), Franklin Clinton (thanh niên khu ổ chuột, bạn thân Lamar), Trevor Philips (điên loạn, bạn cũ của Michael). Lester Crest lên kế hoạch các phi vụ. Dùng \"tao/mày\" giữa bạn bè và kẻ thù, Franklin gọi Michael là \"ông\". Giữ nguyên tên địa danh. Nhiều tiếng lóng, chửi thề."}, {"name": "Uncharted 4 / Legacy of Thieves", "group": "Hành động, phiêu lưu", "notes": "Phiêu lưu săn kho báu hiện đại. Nathan Drake (Nate), anh trai Sam Drake, vợ Elena. Victor Sullivan (Sully) lớn tuổi, như cha nuôi: gọi Nate là \"nhóc\", Nate gọi Sully là \"ông\". Rafe Adler là đối thủ giàu có, Nadine Ross cầm đầu lính đánh thuê Shoreline. Lost Legacy: Chloe Frazer và Nadine. Henry Avery là cướp biển. Giọng hài hước, hay châm chọc."}, {"name": "Horizon Zero Dawn", "group": "Hành động, phiêu lưu", "notes": "Tương lai xa, máy móc hình thú. Aloy là cô gái bị bộ tộc Nora ruồng bỏ, được Rost (người bị ruồng bỏ) nuôi lớn, Aloy gọi Rost là \"Rost\" hoặc \"cha\". Sylens bí ẩn, xưng \"ta\". Erend, Varl, Elisabet Sobeck, GAIA, HADES. Giữ nguyên tên bộ tộc (Nora, Carja, Oseram, Banuk) và tên máy (Watcher, Sawtooth, Thunderjaw). Văn phong bộ tộc, hơi trang trọng."}, {"name": "Horizon Forbidden West", "group": "Hành động, phiêu lưu", "notes": "Tiếp nối Horizon. Aloy đi về miền Tây Cấm. Bạn đồng hành: Varl, Zo, Kotallo, Alva, Erend. Sylens bí ẩn. Kẻ thù: Regalla (phe nổi loạn Tenakth) và nhóm Far Zenith. GAIA, HEPHAESTUS. Giữ nguyên tên bộ tộc (Tenakth, Utaru, Quen, Oseram) và tên máy. Văn phong bộ tộc."}, {"name": "Death Stranding / Death Stranding 2", "group": "Hành động, phiêu lưu", "notes": "Nước Mỹ hậu tận thế. Sam Porter Bridges là người giao hàng, mang theo em bé BB tên Lou. Fragile, Amelie, Die-Hardman, Deadman, Heartman, Higgs, Cliff. Giữ nguyên các thuật ngữ: BT, BB, Bridges, chiral, Timefall (\"mưa thời gian\"), Beach, UCA, DOOMS. Sam ít nói, xưng \"tôi\". Văn phong trầm, triết lý."}, {"name": "Stellar Blade", "group": "Hành động, phiêu lưu", "notes": "Khoa học viễn tưởng. Eve là chiến binh của Đội Đổ Bộ số 7 từ thuộc địa trên không gian, xuống Trái Đất giành lại từ quái vật Naytiba. Đồng đội: Adam (xưng \"tôi\", gọi Eve là \"cô\") và Lily (kỹ sư trẻ, xưng \"em\" hoặc \"tôi\"). Thành phố Xion. Giữ nguyên: Naytiba, Elder Naytiba, Xion, Mother Sphere."}, {"name": "Assassin's Creed Shadows", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản thời Chiến Quốc (Sengoku). Hai nhân vật chính: Naoe (nữ shinobi vùng Iga) và Yasuke (samurai gốc châu Phi phục vụ Oda Nobunaga). Giữ nguyên: shinobi, samurai, Iga, Oda Nobunaga, Hidden Ones, Templar. Văn phong cổ trang: ta, ngươi, ngài, chúa công."}, {"name": "Black Myth: Wukong", "group": "Hành động, phiêu lưu", "notes": "Dựa trên Tây Du Ký. Dùng tên Hán Việt quen thuộc: Thiên Mệnh Nhân (Destined One), Tôn Ngộ Không, Đại Thánh, Trư Bát Giới, Sa Tăng, Đường Tăng, Quan Âm Bồ Tát, Nhị Lang Thần, Ngọc Hoàng, Thiên Đình. \"Guai\" và \"yaoguai\" dịch là \"yêu quái\". Hắc Phong Đại Vương (gấu đen), Hoàng Phong Đại Thánh. Văn phong cổ trang Trung Hoa: ta, ngươi, bần tăng, lão phu, đại vương."}, {"name": "Sekiro: Shadows Die Twice", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản thời Chiến Quốc. Sói (Wolf, Sekiro) là shinobi bảo vệ Kuro, Thần Tử (Divine Heir). Sói gọi Kuro là \"chủ nhân\" hoặc \"thiếu chủ\", xưng \"tôi\"; Kuro gọi Sói là \"Sói\", xưng \"ta\". Owl là cha nuôi của Sói. Emma (thầy thuốc), Thợ Điêu Khắc (Sculptor), Genichiro Ashina, Isshin Ashina. Văn phong cổ trang, trang trọng."}, {"name": "Rise of the Ronin", "group": "Hành động, phiêu lưu", "notes": "Nhật Bản cuối thời Edo (thập niên 1850-1860). Nhân vật chính là một Kiếm Ẩn (Veiled Edge), lãng nhân (ronin). Nhiều nhân vật lịch sử: Sakamoto Ryoma, Yoshida Shoin, Katsu Kaishu. Giữ nguyên tên người Nhật, Shogun, Mạc phủ (shogunate). Văn phong cổ trang: ta, ngươi, ngài."}, {"name": "Days Gone", "group": "Hành động, phiêu lưu", "notes": "Oregon sau đại dịch. Deacon St. John là biker, bạn thân Boozer (\"mày/tao\" thân mật). Sarah là vợ Deacon (\"anh/em\"). O'Brian làm cho tổ chức NERO. \"Freakers\" dịch là \"bọn Quái\" hoặc giữ nguyên. Lời thoại bụi bặm, có chửi thề."}, {"name": "Star Wars Jedi: Survivor", "group": "Hành động, phiêu lưu", "notes": "Star Wars. Cal Kestis là Jedi trẻ, robot BD-1 đi cùng. Cere Junda (cựu Jedi), Greez Dritus (phi công), Merrin (Nightsister), Bode Akuna, Dagan Gera. Giữ nguyên: Jedi, Sith, Force (\"Thần Lực\"), lightsaber (\"kiếm ánh sáng\"), Empire (\"Đế chế\"), Inquisitor. Xưng \"tôi/anh\" hoặc \"tôi/cô\"."}, {"name": "Hogwarts Legacy", "group": "Hành động, phiêu lưu", "notes": "Thế giới phù thủy Harry Potter năm 1890. Nhân vật chính là học sinh năm năm mới vào Hogwarts. Giáo sư Fig hướng dẫn, gọi \"giáo sư\", xưng \"em\". Bạn học: Sebastian Sallow, Ominis Gaunt, Natsai Onai, Poppy Sweeting (\"tớ/cậu\"). Ranrok là yêu tinh (goblin) phản diện, Victor Rookwood. Giữ nguyên tên thần chú (Lumos, Accio, Expelliarmus), tên nhà (Gryffindor, Slytherin, Ravenclaw, Hufflepuff), Muggle."}, {"name": "It Takes Two", "group": "Hành động, phiêu lưu", "notes": "Cody và May là vợ chồng sắp ly hôn, bị biến thành búp bê, xưng \"anh/em\" (cãi nhau có thể \"tôi/cô\", \"tôi/anh\"). Rose là con gái, gọi \"bố\", \"mẹ\". Tiến sĩ Hakim là cuốn sách tình yêu biết nói, nói giọng màu mè. Giọng hài hước."}, {"name": "Split Fiction", "group": "Hành động, phiêu lưu", "notes": "Hai nữ nhà văn Mio (viết khoa học viễn tưởng, lạnh lùng) và Zoe (viết giả tưởng, vui vẻ) bị kẹt trong truyện của chính mình, xưng \"tôi/cô\" lúc đầu, sau thân hơn thì \"tớ/cậu\". Rader là kẻ đứng sau công ty Rader Publishing. Giọng hài hước."}, {"name": "Detroit: Become Human", "group": "Hành động, phiêu lưu", "notes": "Detroit năm 2038. Ba người máy (android): Connor (điều tra viên, gọi Hank là \"Trung úy\", xưng \"tôi\"), Kara (bảo vệ bé gái Alice, Alice gọi Kara là \"chị\" hoặc \"Kara\"), Markus (được ông họa sĩ Carl Manfred nuôi, Markus gọi \"ông\"). Hank Anderson là thám tử cộc cằn, gọi Connor là \"cậu\" hoặc \"mày\". Giữ nguyên: android, deviant (\"lỗi\", \"kẻ lệch chuẩn\"), CyberLife, Jericho."}, {"name": "Lies of P", "group": "Hành động, phiêu lưu", "notes": "Dựa trên Pinocchio, thành phố Krat thời Belle Époque. P là con rối, gọi Geppetto là \"cha\", xưng \"con\"; Geppetto gọi P là \"con\". Sophia dịu dàng, nói nhẹ nhàng. Giữ nguyên: Krat, Puppet (\"con rối\"), Ergo. Văn phong cổ điển châu Âu, lịch sự."}, {"name": "Cyberpunk 2077", "group": "Nhập vai (RPG)", "notes": "Night City năm 2077. V là lính đánh thuê, Johnny Silverhand là linh hồn rocker trong đầu V (\"mày/tao\" hoặc \"cậu/tôi\"). Jackie Welles là bạn thân, Judy Alvarez, Panam Palmer, Takemura (vệ sĩ Arasaka, nói trang trọng), River Ward, Kerry Eurodyne. Phantom Liberty: Songbird, Solomon Reed. Giữ nguyên: Arasaka, netrunner, fixer, ripperdoc, eddies (tiền), choom (\"bạn hiền\"), gonk (\"thằng ngu\"). Nhiều tiếng lóng."}, {"name": "Elden Ring", "group": "Nhập vai (RPG)", "notes": "Thế giới giả tưởng u tối. Người chơi là một Tarnished (\"Kẻ Ô Uế\" hoặc giữ nguyên). Melina (cô gái dẫn đường), Ranni the Witch (Phù thủy Ranni), Blaidd, Iji, Margit, Godrick the Grafted, Radahn, Malenia, Morgott, Nữ hoàng Marika, Radagon. Giữ nguyên: Lands Between, Erdtree, Elden Ring, Golden Order, rune, Site of Grace, Roundtable Hold. Văn phong cổ, trang trọng: ta, ngươi."}, {"name": "Final Fantasy VII Remake / Rebirth", "group": "Nhập vai (RPG)", "notes": "Cloud Strife là cựu SOLDIER, ít nói, xưng \"tôi\". Tifa Lockhart là bạn thơ ấu của Cloud. Barret Wallace thủ lĩnh AVALANCHE, nói to, cộc (\"tao/mày\" hoặc \"tôi/cậu\"), có con gái nuôi Marlene. Aerith Gainsborough dịu dàng, vui vẻ. Red XIII, Yuffie, Cait Sith. Sephiroth là phản diện, xưng \"ta\". Giữ nguyên: Shinra, SOLDIER, Midgar, Mako, Materia, Turks."}, {"name": "Final Fantasy XVI", "group": "Nhập vai (RPG)", "notes": "Thế giới Valisthea, giả tưởng trung cổ. Clive Rosfield là anh trai, Joshua là em trai (Dominant của Phoenix): Clive gọi \"em\", Joshua gọi \"anh\". Jill Warrick là bạn thơ ấu. Cid (Cidolfus Telamon) như người anh, chó sói Torgal. Giữ nguyên: Dominant, Eikon (Ifrit, Phoenix, Shiva...), Bearer (\"người mang ấn\"), Mothercrystal. Văn phong cổ trang phương Tây: ta, ngươi, ngài."}, {"name": "Clair Obscur: Expedition 33", "group": "Nhập vai (RPG)", "notes": "Thành phố Lumière, kiểu Pháp cổ điển. Mỗi năm Nữ Họa Sĩ (Paintress) vẽ một con số và người ở tuổi đó biến mất (\"Gommage\"). Đoàn Thám Hiểm 33 gồm Gustave, Maelle (em gái nuôi của Gustave, gọi anh), Lune, Sciel; sau có Verso và Monoco. Giữ nguyên: Lumière, Expedition 33, Gommage, Nevron, Chroma. Văn phong trau chuốt."}, {"name": "Persona 5 Royal", "group": "Anime, Nhật Bản", "notes": "Tokyo hiện đại, học sinh cấp 3. Joker (Ren Amamiya), Ryuji Sakamoto, Ann Takamaki, Yusuke Kitagawa, Makoto Niijima, Futaba Sakura, Haru Okumura, Goro Akechi, Kasumi Yoshizawa: bạn bè xưng \"tớ/cậu\" hoặc \"tao/mày\" (Ryuji). Morgana là con mèo biết nói. Sojiro Sakura chủ quán cà phê LeBlanc, gọi Joker là \"nhóc\". Giữ nguyên: Phantom Thieves, Palace, Metaverse, Shadow, Persona, Mementos, senpai."}, {"name": "Persona 3 Reload", "group": "Anime, Nhật Bản", "notes": "Học sinh trường Gekkoukan, nhóm SEES chiến đấu trong Giờ Tối (Dark Hour) ở tòa tháp Tartarus. Nhân vật chính, Yukari Takeba, Junpei Iori, Akihiko Sanada, Mitsuru Kirijo (nói trang trọng), Fuuka Yamagishi, Aigis (người máy, nói lịch sự), Ken Amada (cậu bé), Shinjiro Aragaki, chó Koromaru. Bạn bè xưng \"tớ/cậu\". Giữ nguyên: Shadow, Persona, senpai."}, {"name": "Like a Dragon / Yakuza", "group": "Anime, Nhật Bản", "notes": "Thế giới yakuza Nhật. Kazuma Kiryu (Rồng Dojima) điềm tĩnh, xưng \"tôi\". Ichiban Kasuga nhiệt tình, gọi Kiryu là \"anh Kiryu\" hoặc \"đại ca\". Goro Majima (\"Chó Điên Shimano\") nói ngông. Bạn của Ichiban: Nanba, Adachi, Saeko. Giữ nguyên: Tojo Clan, Omi Alliance, Kamurocho, Ijincho. \"Aniki\" dịch là \"đại ca\", \"Oyaji\" là \"bố già\". Giữa yakuza dùng \"tao/mày\"."}, {"name": "Genshin Impact", "group": "Anime, Nhật Bản", "notes": "Thế giới Teyvat. Nhà Lữ Hành (Traveler) đi tìm anh/em song sinh, Paimon là bạn đồng hành nhỏ, xưng \"Paimon\" ở ngôi thứ ba. Giữ nguyên tên nhân vật, vùng (Mondstadt, Liyue, Inazuma, Sumeru, Fontaine, Natlan) và thuật ngữ (Vision, Archon, Abyss). Giọng nhẹ nhàng, vui."}, {"name": "Dragon Ball Sparking! Zero", "group": "Anime, Nhật Bản", "notes": "Dragon Ball. Goku (Songoku) xưng \"tôi\" hoặc \"tớ\", Vegeta kiêu ngạo xưng \"ta\", gọi Goku là \"Kakarot\". Gohan là con Goku, gọi \"bố\". Piccolo, Krillin, Frieza (xưng \"ta\", gọi kẻ khác \"ngươi\", lịch sự giả tạo), Cell, Buu. Giữ nguyên: Super Saiyan, Kamehameha, Saiyan, ki. Giọng anime sôi nổi."}, {"name": "Resident Evil 4 (Remake)", "group": "Kinh dị", "notes": "Leon S. Kennedy là đặc vụ Mỹ đi cứu Ashley Graham, con gái Tổng thống. Leon xưng \"tôi\", gọi Ashley là \"cô\"; Ashley gọi Leon là \"anh\". Luis Serra hay tán tỉnh, Ada Wong bí ẩn. Phản diện: Osmund Saddler (giáo chủ Los Illuminados), Ramon Salazar, Jack Krauser. Hunnigan liên lạc qua bộ đàm. Giữ nguyên: Ganado, Las Plagas, Merchant (\"lái buôn\"). Leon hay nói đùa lạnh."}, {"name": "Resident Evil Village", "group": "Kinh dị", "notes": "Ethan Winters đi tìm con gái Rose (con gái mới sinh) ở một ngôi làng châu Âu. Mia là vợ Ethan. Chris Redfield. Bốn lãnh chúa: Lady Dimitrescu (xưng \"ta\"), Donna Beneviento, Salvatore Moreau, Karl Heisenberg; tất cả phục tùng Mẹ Miranda (Mother Miranda). Duke là lái buôn béo, nói lịch sự. Giữ nguyên: Lycan."}, {"name": "Silent Hill 2 (Remake)", "group": "Kinh dị", "notes": "James Sunderland nhận thư của người vợ đã mất là Mary, gọi cô từ thị trấn Silent Hill. Maria giống hệt Mary nhưng quyến rũ hơn. Angela Orosco (cô gái trẻ u uất, gọi James là \"anh\"), Eddie Dombrowski, bé Laura (gọi James là \"chú\", nói hỗn). Giữ nguyên: Silent Hill, Pyramid Head. Văn phong u ám, trầm."}, {"name": "Silent Hill f", "group": "Kinh dị", "notes": "Nhật Bản thập niên 1960, thị trấn Ebisugaoka. Nhân vật chính là nữ sinh Hinako Shimizu. Bạn bè học sinh xưng \"tớ/cậu\". Giữ nguyên tên người và địa danh Nhật. Văn phong u ám, kinh dị."}, {"name": "Kiểu chung: Cổ trang Trung Hoa, tu tiên", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong kiếm hiệp, cổ trang Trung Hoa. Dùng tên Hán Việt khi có thể. Xưng hô: ta, ngươi, huynh, đệ, tỷ, muội, sư phụ, đồ nhi, tiền bối, vãn bối, bổn tọa, lão phu, bệ hạ, thần."}, {"name": "Kiểu chung: Cổ trang Nhật, samurai", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong cổ trang Nhật Bản. Giữ nguyên tên người, samurai, shinobi, ronin, shogun. Xưng hô: ta, ngươi, ngài, chúa công, thuộc hạ, sư phụ. Câu ngắn, trang trọng."}, {"name": "Kiểu chung: Giả tưởng phương Tây, trung cổ", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong giả tưởng trung cổ phương Tây (hiệp sĩ, phép thuật, rồng). Giữ nguyên tên riêng và địa danh. Xưng hô: ta, ngươi, ngài, bệ hạ, thưa quý cô. Kẻ thù nói \"ta/ngươi\"."}, {"name": "Kiểu chung: Hiện đại, hành động", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh hiện đại. Xưng hô tự nhiên theo tuổi và quan hệ: tôi/anh, tôi/cô, anh/em; bạn bè thân hoặc kẻ thù dùng tao/mày. Giữ nguyên tên riêng, tên vũ khí, tên tổ chức."}, {"name": "Kiểu chung: Quân đội, bắn súng", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh quân đội. Câu lệnh ngắn gọn, dứt khoát. Xưng hô: tôi, cậu, các cậu; gọi cấp trên bằng cấp bậc (Trung sĩ, Đại úy, thưa sếp). Giữ nguyên mật danh và thuật ngữ quân sự phổ biến (Alpha, Bravo, RPG, sniper)."}, {"name": "Kiểu chung: Kinh dị", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Văn phong kinh dị, u ám, câu ngắn. Xưng hô tự nhiên theo tuổi và quan hệ. Giữ nguyên tên riêng và tên quái vật."}, {"name": "Kiểu chung: Anime, học đường Nhật", "group": "Kiểu chung (game không có trong danh sách)", "notes": "Bối cảnh anime, học sinh Nhật. Bạn bè xưng tớ/cậu, đàn anh đàn chị giữ \"senpai\", thầy cô gọi \"thầy\", \"cô\", xưng \"em\". Giữ nguyên tên Nhật. Giọng sôi nổi."}];
+var PRESET_URL='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/games.json';
+function gameKey(n){return (n||'').trim().toLowerCase();}
+function presetOf(n){var k=gameKey(n); for(var i=0;i<PRESETS.length;i++){if(gameKey(PRESETS[i].name)===k) return PRESETS[i];} return null;}
+function presetList(){
+  var sel=$('hsPreset'), cur=$('hsGame').value, groups={}, order=[];
+  PRESETS.forEach(function(p,i){ if(!groups[p.group]){groups[p.group]=[]; order.push(p.group);} groups[p.group].push(i); });
+  sel.innerHTML='<option value="">Chọn game, ghi chú nhân vật điền sẵn</option>'+order.map(function(g){
+    return '<optgroup label="'+esc(g)+'">'+groups[g].map(function(i){return '<option value="'+i+'">'+esc(PRESETS[i].name)+'</option>';}).join('')+'</optgroup>';
+  }).join('');
+  var p=presetOf(cur); sel.value=p?String(PRESETS.indexOf(p)):'';
+}
+function notesFor(n){var g=GAMES[gameKey(n)]; if(g&&g.notes) return g.notes; var p=presetOf(n); return p?p.notes:'';}
+function gameList(){ $('hsGameList').innerHTML=Object.keys(GAMES).map(function(k){return '<option value="'+esc(GAMES[k].name)+'"></option>';}).join(''); }
+$('hsGame').value=load('hsGame',''); $('hsNotes').value=load('hsNotes',''); gameList(); presetList();
+(async function(){ try{ var r=await fetch(PRESET_URL+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}); if(!r.ok) return; var d=await r.json();
+  if(d&&d.games&&d.games.length){ PRESETS=d.games; presetList(); } }catch(e){} })();
+$('hsPreset').addEventListener('change',function(){
+  if(this.value==='') return; var p=PRESETS[+this.value]; if(!p) return;
+  $('hsGame').value=p.name; save('hsGame',p.name);
+  $('hsNotes').value=notesFor(p.name); save('hsNotes',$('hsNotes').value); S.hist=[];
+  notesMsg('ok','Đã điền sẵn ghi chú cho '+p.name+'. Bấm Bắt đầu là dịch theo đúng nhân vật, xưng hô của game.');
+});
+$('hsGame').addEventListener('change',function(){
+  save('hsGame',this.value);
+  $('hsNotes').value=notesFor(this.value); save('hsNotes',$('hsNotes').value); S.hist=[];
+  var p=presetOf(this.value); $('hsPreset').value=p?String(PRESETS.indexOf(p)):'';
+});
+$('hsNotes').addEventListener('change',function(){
+  save('hsNotes',this.value); var n=$('hsGame').value.trim();
+  if(n){GAMES[gameKey(n)]={name:n,notes:this.value}; save('games',GAMES); gameList();}
+});
+function notesMsg(cls,t){var m=$('hsNotesMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
+$('hsAiNotes').addEventListener('click',async function(){
+  var name=$('hsGame').value.trim();
+  if(!name){notesMsg('err','Gõ tên game trước, ví dụ: Ghost of Tsushima.'); $('hsGame').focus(); return;}
+  if(!keys().length&&!groqKeys().length){notesMsg('err','Cần nhập mã Gemini trước.'); return;}
+  var btn=this; btn.disabled=true; notesMsg('','AI đang soạn ghi chú cho '+name+'...');
+  var prompt='You help translate video game dialogue into Vietnamese.\n'+
+    'Game: "'+name+'".\n'+
+    'Write short notes in Vietnamese (at most about 120 words) that a subtitle translator needs:\n'+
+    '1. Main characters and how they are related (family, friends, enemies, master/servant...).\n'+
+    '2. How they should address each other in Vietnamese, e.g. "Kratos gọi Atreus là con, xưng ta; Atreus gọi Kratos là cha". Pick pronouns that fit the setting (cổ trang, kiếm hiệp, hiện đại, quân đội...).\n'+
+    '3. Names, places and terms that must stay in English.\n'+
+    '4. The tone of the dialogue.\n'+
+    'Only state what you are confident about for this exact game. If you do not know this game well, set "known" to false and give neutral pronoun advice instead of guessing names.\n'+
+    'Return JSON: {"known":true,"notes":"..."}';
+  try{
+    var r=await ask(prompt,null,{type:'OBJECT',properties:{known:{type:'BOOLEAN'},notes:{type:'STRING'}},required:['known','notes']},'{"known":true,"notes":""}');
+    if(!r||!r.notes){notesMsg('err','AI không trả lời được, thử lại sau.'); return;}
+    $('hsNotes').value=r.notes; save('hsNotes',r.notes);
+    GAMES[gameKey(name)]={name:name,notes:r.notes}; save('games',GAMES); gameList(); S.hist=[];
+    notesMsg(r.known?'ok':'warn', r.known?'Đã soạn và lưu ghi chú cho '+name+'. Đọc lại, sai chỗ nào thì sửa trực tiếp.':'AI không chắc về game này nên chỉ gợi ý chung. Nên tự ghi thêm tên nhân vật và quan hệ.');
+  }catch(e){ notesMsg('err', e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Lỗi: '+e.message); }
+  finally{ btn.disabled=false; }
+});
+document.querySelectorAll('#hsSpeed button').forEach(function(b){
+  b.classList.toggle('on',+b.dataset.v===S.interval);
+  b.addEventListener('click',function(){
+    S.interval=+b.dataset.v; save('interval',S.interval);
+    document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',x===b);});
+    if(S.running){clearInterval(S.timer); S.timer=setInterval(tick,S.interval);}
+  });
+});
+if(S.model) $('hsModelTag').textContent='· '+S.model;
+
+/* ---------- hotkeys ---------- */
+function hotkey(e){
+  var t=e.target, tag=t&&t.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  if(e.code==='Space'&&S.stream){e.preventDefault(); S.running?stopRun():startRun();}
+  else if((e.key==='t'||e.key==='T')&&S.stream){e.preventDefault(); fullScreen();}
+  else if(e.key==='Escape'){$('hsModal').classList.remove('open');}
+}
+document.addEventListener('keydown',hotkey);
+
+if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||/Android|iPhone|iPad/i.test(navigator.userAgent)){$('hsMobile').style.display='block';}
+/* ---------- desktop app glue ---------- */
+if(D){
+  var ovHidden=false;
+  var ovLabel=function(){$('hsOvShow').textContent=ovHidden?'Hiện phụ đề nổi':'Ẩn phụ đề nổi';};
+  $('hsOvShow').addEventListener('click',function(){D.overlay('toggle');});
+  $('hsOvMove').addEventListener('click',function(){D.overlay('move');});
+  D.onOverlay(function(st){ovHidden=!!st.hidden; ovLabel();});
+  $('hsSize').addEventListener('input',function(){D.sub({size:+this.value});});
+  D.sub({size:+$('hsSize').value});
+  var ocrSaved=load('ocr',null); if(ocrSaved!==null) $('hsOcr').checked=ocrSaved;
+  $('hsOcr').addEventListener('change',function(){save('ocr',this.checked); S.lastOcr='';});
+  D.onHotkey(function(k){
+    if(k==='toggle'){ if(!S.stream){pick(false);return;} if(S.running) stopRun(); else startRun(); }
+    else if(k==='now'){ if(S.stream) tick(true); }
+    else if(k==='full'){ if(S.stream) fullScreen(); }
+  });
+  D.update().then(function(u){ if(u&&u.newer){var b=$('hsUpd'); b.innerHTML='Có bản Hóng Sub mới ('+esc(u.version)+'). <a href="https://honggame.store/hongsubpc" target="_blank" rel="noopener">Bấm để tải về</a>, cài đè lên là xong, mã và cài đặt vẫn giữ nguyên.'; b.style.display='block';}}).catch(function(){});
+  if(window.Tesseract&&$('hsOcr').checked) ocrWorker().catch(function(){});
+  if(D.selftest){
+    S.test={ocr:[],asked:[],shown:[]}; S.offlineDemo=true;
+    var realOcr=ocrRead; ocrRead=async function(){var o=await realOcr(); S.test.ocr.push({t:o.text||'',c:Math.round(o.conf||0),e:!!o.empty}); return o;};
+    ask=async function(prompt,b64){
+      var m=prompt.match(/<<<\n([\s\S]*?)\n>>>/), en=m?m[1].replace(/\n/g,' '):'(ảnh)';
+      S.test.asked.push(b64?'image':'text'); return {en:en,vi:'[VI] '+en};
+    };
+    var realShow=show; show=function(r){S.test.shown.push(r.vi); realShow(r);};
+    window.hsTestState=function(){return {test:S.test,saved:S.saved,running:S.running,stream:!!S.stream,region:S.region,status:$('hsStatusTxt').textContent,voices:dVoices,ocrReady:!!OCR.w,ocrFails:OCR.fails,visibility:document.visibilityState};};
+  }
+  /* open straight into PS Remote Play when it is already running */
+  D.sources().then(function(srcs){
+    if(!srcs.some(function(x){return /remote play/i.test(x.name);})) return;
+    pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); });
+  }).catch(function(){});
+}
+window.__hongsub=S; /* for testing */
+steps();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>PS Remote Play</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block;width:100%;height:100%}</style></head>
+<body><canvas id="c" width="960" height="540"></canvas>
+<script>
+var c=document.getElementById('c'),x=c.getContext('2d'),t0=performance.now();
+var L=['We need to get out of here before sunrise.','Stay close. The bridge will not hold for long.','Stay close. The bridge will not hold for long.','I told you this place was cursed.','Grab the map. We head north at dawn.'];
+function f(n){var t=(n-t0)/1000;var g=x.createLinearGradient(0,0,0,540);g.addColorStop(0,'#1d2a44');g.addColorStop(1,'#5a3a2a');x.fillStyle=g;x.fillRect(0,0,960,540);
+x.fillStyle='#7a6';x.beginPath();x.arc(480+Math.sin(t)*300,200,60,0,7);x.fill();
+var i=Math.floor(t/4)%L.length;x.font='600 30px Arial';x.textAlign='center';x.fillStyle='#fff';x.fillText(L[i],480,470);
+x.fillStyle='rgba(255,255,255,.08)';x.fillRect((t*90)%960,430,40,60);
+requestAnimationFrame(f);}requestAnimationFrame(f);
+</script></body></html>
