@@ -1,0 +1,54 @@
+name: Build Hong Sub TV
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Restore signing key (if configured)
+        env:
+          HSTV_KEYSTORE_B64: ${{ secrets.HSTV_KEYSTORE_B64 }}
+        if: env.HSTV_KEYSTORE_B64 != ''
+        run: echo "$HSTV_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/hstv.jks"
+
+      - name: Build APK
+        env:
+          HSTV_KEYSTORE_B64: ${{ secrets.HSTV_KEYSTORE_B64 }}
+          HSTV_STORE_PASSWORD: ${{ secrets.HSTV_STORE_PASSWORD }}
+          HSTV_KEY_ALIAS: ${{ secrets.HSTV_KEY_ALIAS }}
+          HSTV_KEY_PASSWORD: ${{ secrets.HSTV_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk hong-sub-tv.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hong-sub-tv
+          path: hong-sub-tv.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Hóng Sub TV 1.0.${{ github.run_number }}
+          body: Bản tự động. Cài bằng app Downloader trên Android TV / Google TV.
+          files: hong-sub-tv.apk
+          make_latest: true
