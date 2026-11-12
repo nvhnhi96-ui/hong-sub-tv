@@ -191,6 +191,7 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
     <a class="hs-logo" href="https://honggame.store/"><b>HÓNG <span>SUB</span></b><small>by Hóng Game Store</small></a>
     <span class="hs-sp"></span>
     <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
+    <a class="hs-toplink hs-web" href="#pc">Tải phần mềm PC</a>
     <a class="hs-toplink" href="#huong-dan">Hướng dẫn</a>
   </header>
 
@@ -366,6 +367,19 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
         <li><span class="hg-n">5</span> Bấm <span class="hg-ui">Cửa sổ nổi</span> để có ô phụ đề nhỏ luôn nằm trên cửa sổ game, kéo nó xuống dưới hình game.</li>
       </ol>
       <div class="hg-tip">Ghi <b>Tên game</b> và <b>cách xưng hô</b> ở ô bên phải để AI dịch đúng vai (ta/ngươi, bố/con...). Bấm phím <b>T</b> để dịch cả màn hình: menu, nhiệm vụ, mô tả vật phẩm.</div>
+    </div>
+
+    <div class="hg-way" id="pc">
+      <div class="hg-t"><b>Phần mềm Hóng Sub cho Windows</b><span class="hg-tag beta">Mới</span></div>
+      <p>Giống Cách 1 nhưng là phần mềm cài trên máy tính Windows 10/11, tiện hơn khi chơi lâu: tự nhận cửa sổ PS Remote Play, phụ đề Việt hiện trong suốt ngay trên hình game, có phím tắt, và tự đọc chữ trên máy nên tốn ít lượt mã Gemini hơn.</p>
+      <ol class="hg-steps">
+        <li>Bấm <a class="hg-ui" href="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</a> rồi mở file <b>hong-sub-pc.exe</b>. Nếu Windows hiện bảng xanh "Windows đã bảo vệ PC của bạn", bấm <b>Thông tin bổ sung</b> (More info) rồi <b>Vẫn chạy</b> (Run anyway). Phần mềm mới nên Windows chưa nhận ra, không phải virus.</li>
+        <li>Dán mã Gemini (và mã Groq dự phòng) như bước 1 của Cách 1. Mã dùng trên web không tự chuyển sang phần mềm, cần dán lại 1 lần.</li>
+        <li>Mở <b>PS Remote Play</b> trước, rồi mở <b>Hóng Sub</b>. Phần mềm tự chọn cửa sổ Remote Play. Lần đầu kéo khung quanh dòng phụ đề, lần sau mở lên là tự dịch.</li>
+        <li>Phụ đề Việt hiện ở dải chữ trong suốt phía dưới màn hình. Bấm <span class="hg-ui">Di chuyển phụ đề</span> (hoặc F10) để kéo dải chữ tới chỗ muốn.</li>
+        <li>Phím tắt dùng được ngay trong lúc chơi: <b>F7</b> bật/tắt dịch, <b>F8</b> dịch ngay câu đang hiện, <b>F9</b> ẩn/hiện phụ đề, <b>F10</b> di chuyển phụ đề, <b>F11</b> dịch cả màn hình.</li>
+      </ol>
+      <div class="hg-tip">Giọng đọc dùng giọng tiếng Việt của Windows. Nếu phần mềm báo chưa có giọng Việt: bấm <b>Cài giọng tiếng Việt</b>, chọn <b>Thêm giọng nói</b>, tìm <b>Tiếng Việt</b> rồi cài. Bấm dấu X chỉ thu Hóng Sub xuống góc phải thanh tác vụ (biểu tượng chữ H), muốn tắt hẳn thì bấm chuột phải vào đó chọn <b>Thoát</b>.</div>
     </div>
 
     <div class="hg-way">
@@ -687,41 +701,82 @@ function context(){
 function thinkCfg(model){
   if(S.noThink[model]) return null;
   var m=model.match(/gemini-(\d+)/); var v=m?parseInt(m[1],10):(model.indexOf('latest')>=0?3:2);
-  return v>=3?{thinkingLevel:'low'}:{thinkingBudget:0};
+  if(v<3) return {thinkingBudget:0};
+  return {thinkingLevel:S.noMin[model]?'low':'minimal'}; /* "low" thinking made each line take ~10s */
+}
+/* speed: remember how fast each model answers on this machine and use the quickest */
+S.lat=load('lat',{}); S.noMin=load('nomin',{}); S.slow={};
+function mScore(m,i){
+  var now=Date.now(), s=(S.lat[m]||2500)+i*40;
+  if(S.slow[m]&&S.slow[m]>now) s+=1e6;
+  if(!/lite/.test(m)) s+=1500;
+  if(/pro/.test(m)) s+=8000;
+  if(/-latest$/.test(m)) s+=300;
+  return s;
+}
+function fastOrder(models){ return models.map(function(m,i){return {m:m,s:mScore(m,i)};}).sort(function(a,b){return a.s-b.s;}).map(function(x){return x.m;}); }
+function noteLat(m,ms){ S.lat[m]=S.lat[m]?Math.round(S.lat[m]*.6+ms*.4):Math.round(ms); save('lat',S.lat); }
+function gCall(model,key,prompt,b64,schema,ctl){
+  var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
+  var tc=thinkCfg(model); if(tc) gc.thinkingConfig=tc;
+  var parts=[{text:prompt}]; if(b64) parts.push({inlineData:{mimeType:'image/jpeg',data:b64}});
+  var t0=performance.now();
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:gc})})
+    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {r:r,j:j,model:model,key:key,ms:performance.now()-t0};});});
+}
+/* send to the fastest model; every 2.5s without an answer, also try the next model (max 3) and take whichever answers first */
+function hedged(order,key,prompt,b64,schema){
+  return new Promise(function(resolve,reject){
+    var done=false, pending=0, ctls=[], bad=null, t0=performance.now(), ht=null, next=0, list=order.slice(0,3);
+    function finish(res){ if(done) return; done=true; clearTimeout(ht); ctls.forEach(function(c){try{c.abort();}catch(e){}}); resolve(res); }
+    function start(){
+      var m=list[next++], k=next===1?key:(pickKey()||key);
+      var ctl=new AbortController(); ctls.push(ctl); pending++;
+      var to=setTimeout(function(){ctl.abort();},9000);
+      gCall(m,k,prompt,b64,schema,ctl).then(function(res){
+        clearTimeout(to); pending--; if(done) return;
+        if(res.r.ok) finish(res); else { bad=res; if(pending===0&&next>=list.length) finish(bad); else if(pending===0){ clearTimeout(ht); start(); arm(); } }
+      },function(e){
+        clearTimeout(to); pending--;
+        if(e&&e.name==='AbortError'&&!done){ S.slow[m]=Date.now()+5*60e3; noteLat(m,performance.now()-t0); }
+        if(done) return;
+        if(pending===0){ if(next<list.length){ clearTimeout(ht); start(); arm(); } else if(bad) finish(bad); else { done=true; clearTimeout(ht); reject(e); } }
+      });
+    }
+    function arm(){ if(next<list.length) ht=setTimeout(function(){ if(!done){ noteLat(list[next-1],performance.now()-t0+1500); start(); arm(); } },2500); }
+    start(); arm();
+  });
 }
 async function gemini(prompt,b64,schema){
   var models=S.models&&S.models.length?S.models:FALLBACK;
-  if(!S.model||models.indexOf(S.model)<0) S.model=models[0];
-  var tried=0, lastErr=null;
-  while(tried<models.length+keys().length){
-    tried++;
+  var lastErr=null;
+  for(var tried=0;tried<models.length+keys().length;tried++){
+    var order=fastOrder(models);
     var key=pickKey();
     if(!key){var e=new Error('cool');e.cool=true;throw e;}
-    var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
-    var tc=thinkCfg(S.model); if(tc) gc.thinkingConfig=tc;
-    var parts=[{text:prompt}]; if(b64) parts.push({inlineData:{mimeType:'image/jpeg',data:b64}});
-    var body={contents:[{role:'user',parts:parts}],generationConfig:gc};
-    var r, j;
-    try{
-      r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+S.model+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      j=await r.json().catch(function(){return {};});
-    }catch(e){lastErr=new Error('Mất kết nối mạng');continue;}
+    var res;
+    try{ res=await hedged(order,key,prompt,b64,schema); }
+    catch(e){ lastErr=new Error(e&&e.name==='AbortError'?'Gemini phản hồi quá chậm, thử lại...':'Mất kết nối mạng'); continue; }
+    var r=res.r, j=res.j, model=res.model; key=res.key;
     if(r.ok){
+      noteLat(model,res.ms);
+      if(S.model!==model){S.model=model; save('model',model); $('hsModelTag').textContent='· '+model;}
       var txt=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(function(p){return p.text||'';}).join('');
       try{return JSON.parse(txt);}catch(e){return null;}
     }
     var msg=(j.error&&j.error.message)||('HTTP '+r.status);
     lastErr=new Error(msg); lastErr.status=r.status;
-    if(r.status===400&&/thinking/i.test(msg)&&!S.noThink[S.model]){S.noThink[S.model]=true;continue;}
+    if(r.status===400&&/thinking/i.test(msg)){
+      if(/minimal/i.test(msg)&&!S.noMin[model]){S.noMin[model]=true; save('nomin',S.noMin);} else S.noThink[model]=true;
+      continue;
+    }
     if(r.status===429){
-      if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ // model not in free tier: try next model
-        var i=models.indexOf(S.model); S.model=models[(i+1)%models.length]; save('model',S.model); $('hsModelTag').textContent='· '+S.model; continue;
-      }
+      if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ S.slow[model]=Date.now()+12*3600e3; continue; } /* model not in free tier */
       var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:30000); continue;
     }
-    if(r.status===404||(r.status===400&&/model/i.test(msg))){var k2=models.indexOf(S.model); S.model=models[(k2+1)%models.length]; save('model',S.model); continue;}
+    if(r.status===404||(r.status===400&&/model/i.test(msg))){ S.slow[model]=Date.now()+12*3600e3; continue; }
     if(r.status===400||r.status===403){S.cool[key]=Date.now()+3600e3; continue;}
-    if(r.status>=500){continue;}
+    if(r.status>=500){ S.slow[model]=Date.now()+60e3; continue; }
     break;
   }
   throw lastErr||new Error('Không dịch được');

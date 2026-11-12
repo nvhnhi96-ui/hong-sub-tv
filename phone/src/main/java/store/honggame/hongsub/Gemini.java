@@ -32,6 +32,10 @@ final class Gemini {
     private int keyIdx = 0;
     private final Map<String, Long> cool = new HashMap<>();
     private final Set<String> noThink = new HashSet<>();
+    // speed: measured answer time per model, slow models are skipped for a while
+    private static final Map<String, Long> LAT = new HashMap<>();
+    private static final Map<String, Long> SLOW = new HashMap<>();
+    private static final Set<String> NO_MIN = new HashSet<>();
     private String model;
 
     Gemini(Prefs p) {
@@ -42,10 +46,14 @@ final class Gemini {
     String model() { return model; }
 
     static String[] http(String method, String url, String body) throws Exception {
+        return http(method, url, body, 30000);
+    }
+
+    static String[] http(String method, String url, String body, int readTimeout) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setRequestMethod(method);
-        c.setConnectTimeout(10000);
-        c.setReadTimeout(30000);
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(readTimeout);
         c.setUseCaches(false);
         if (body != null) {
             c.setDoOutput(true);
@@ -135,22 +143,46 @@ final class Gemini {
         try {
             Matcher mm = Pattern.compile("gemini-(\\d+)").matcher(m);
             int v = mm.find() ? Integer.parseInt(mm.group(1)) : (m.contains("latest") ? 3 : 2);
-            return v >= 3 ? new JSONObject().put("thinkingLevel", "low") : new JSONObject().put("thinkingBudget", 0);
+            // "low" thinking made every line take ~10s; "minimal" answers in 1-2s
+            if (v < 3) return new JSONObject().put("thinkingBudget", 0);
+            return new JSONObject().put("thinkingLevel", NO_MIN.contains(m) ? "low" : "minimal");
         } catch (Exception e) {
             return null;
         }
     }
 
     private void nextModel() {
+        SLOW.put(model, System.currentTimeMillis() + 12 * 3600_000L);
+        model = fastest();
+    }
+
+    private String fastest() {
         List<String> ms = prefs.models();
-        int i = ms.indexOf(model);
-        model = ms.get((i + 1) % ms.size());
+        long now = System.currentTimeMillis();
+        String best = ms.get(0);
+        long bestScore = Long.MAX_VALUE;
+        for (int i = 0; i < ms.size(); i++) {
+            String m = ms.get(i);
+            Long l = LAT.get(m), until = SLOW.get(m);
+            long sc = (l == null ? 2500 : l) + i * 40L;
+            if (until != null && until > now) sc += 1_000_000;
+            if (!m.contains("lite")) sc += 1500;
+            if (m.contains("pro")) sc += 8000;
+            if (m.endsWith("-latest")) sc += 300;
+            if (sc < bestScore) { bestScore = sc; best = m; }
+        }
+        return best;
+    }
+
+    private static void noteLat(String m, long ms) {
+        Long old = LAT.get(m);
+        LAT.put(m, old == null ? ms : Math.round(old * 0.6 + ms * 0.4));
     }
 
     /** Sends one image + prompt, returns the parsed JSON object the model produced (or null). */
     JSONObject ask(String prompt, String jpegB64, JSONObject schema) throws Exception {
         List<String> ms = prefs.models();
-        if (!ms.contains(model)) model = ms.get(0);
+        model = fastest();
         Exception last = null;
         int tries = ms.size() + prefs.keys().size() + 1;
         for (int t = 0; t < tries; t++) {
@@ -170,14 +202,23 @@ final class Gemini {
                     .put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts)))
                     .put("generationConfig", gc);
             String[] r;
+            long t0 = System.currentTimeMillis();
             try {
-                r = http("POST", BASE + "/" + model + ":generateContent?key=" + URLEncoder.encode(key, "UTF-8"), body.toString());
+                r = http("POST", BASE + "/" + model + ":generateContent?key=" + URLEncoder.encode(key, "UTF-8"), body.toString(), 6000);
+            } catch (java.net.SocketTimeoutException e) {
+                // this model is answering slowly right now: use another one for a few minutes
+                noteLat(model, System.currentTimeMillis() - t0 + 2000);
+                SLOW.put(model, System.currentTimeMillis() + 5 * 60_000L);
+                model = fastest();
+                last = new Exception("Gemini phản hồi chậm, thử lại...");
+                continue;
             } catch (Exception e) {
                 last = new Exception("Mất kết nối mạng");
                 continue;
             }
             int code = Integer.parseInt(r[0]);
             if (code == 200) {
+                noteLat(model, System.currentTimeMillis() - t0);
                 JSONObject j = new JSONObject(r[1]);
                 JSONArray cands = j.optJSONArray("candidates");
                 if (cands == null || cands.length() == 0) return null;
@@ -193,8 +234,10 @@ final class Gemini {
             }
             String msg = errMsg(r[1], code);
             last = new Exception(msg);
-            if (code == 400 && msg.toLowerCase().contains("thinking") && !noThink.contains(model)) {
-                noThink.add(model);
+            if (code == 400 && msg.toLowerCase().contains("thinking")) {
+                if (msg.toLowerCase().contains("minimal") && !NO_MIN.contains(model)) NO_MIN.add(model);
+                else if (!noThink.contains(model)) noThink.add(model);
+                else break;
                 continue;
             }
             if (code == 429) {
@@ -206,7 +249,7 @@ final class Gemini {
             }
             if (code == 404 || (code == 400 && msg.toLowerCase().contains("model"))) { nextModel(); continue; }
             if (code == 400 || code == 403) { cool.put(key, System.currentTimeMillis() + 3600_000L); continue; }
-            if (code >= 500) continue;
+            if (code >= 500) { SLOW.put(model, System.currentTimeMillis() + 60_000L); model = fastest(); continue; }
             break;
         }
         throw last != null ? last : new Exception("Không dịch được");
