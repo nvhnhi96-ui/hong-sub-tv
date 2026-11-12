@@ -129,6 +129,14 @@ jobs:
           $p = Start-Process $exe.FullName -ArgumentList '--help' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\h.txt" -RedirectStandardError "$env:RUNNER_TEMP\he.txt"
           $p.WaitForExit(20000) | Out-Null
           Write-Host "help exit: $($p.ExitCode)"; Get-Content "$env:RUNNER_TEMP\h.txt","$env:RUNNER_TEMP\he.txt" -ErrorAction SilentlyContinue | Select-Object -First 30
+          foreach ($mode in @('', '--opengl')) {
+            $env:QT_FORCE_STDERR_LOGGING = '1'; $env:QT_LOGGING_RULES = 'qt.rhi.*=true;qt.qpa.*=true'
+            $args2 = @(); if ($mode) { $args2 = @($mode) }
+            $p2 = Start-Process $exe.FullName -ArgumentList $args2 -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\g.txt" -RedirectStandardError "$env:RUNNER_TEMP\ge.txt"
+            $p2.WaitForExit(15000) | Out-Null
+            if (-not $p2.HasExited) { Write-Host "GUI $mode still running after 15s (OK)"; Stop-Process -Id $p2.Id -Force } else { Write-Host "GUI $mode exit: $($p2.ExitCode)" }
+            Get-Content "$env:RUNNER_TEMP\g.txt","$env:RUNNER_TEMP\ge.txt" -ErrorAction SilentlyContinue | Select-Object -Last 25
+          }
           Get-WinEvent -FilterHashtable @{LogName='Application'} -MaxEvents 60 | Where-Object { $_.Message -match 'chiaki' } | Select-Object -First 4 | ForEach-Object { Write-Host '----'; Write-Host $_.Message.Substring(0, [Math]::Min(900, $_.Message.Length)) }
 
       - name: Save self test pictures to branch selftest-output
