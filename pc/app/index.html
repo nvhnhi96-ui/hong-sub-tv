@@ -613,7 +613,7 @@ function makeDemo(){
   var c=document.createElement('canvas'); c.width=1280; c.height=720; var x=c.getContext('2d');
   var t0=performance.now(), raf;
   function draw(now){
-    var t=(now-t0)/1000;
+    var t=Math.max(0,(now-t0)/1000);
     var g=x.createLinearGradient(0,0,0,720); g.addColorStop(0,'#2B2347'); g.addColorStop(.6,'#C2556B'); g.addColorStop(1,'#F6A55A');
     x.fillStyle=g; x.fillRect(0,0,1280,720);
     x.fillStyle='rgba(255,210,122,.9)'; x.beginPath(); x.arc(860,300+Math.sin(t/3)*8,90,0,Math.PI*2); x.fill();
@@ -960,7 +960,7 @@ async function tick(force){
   var s=grab(S.region,900); if(!s) return;
   var changed=diff(s,S.lastSig)>6, stable=diff(s,S.prevSig)<3;
   S.prevSig=s;
-  if(!force&&(!changed||!stable)) return;
+  if(!force&&(!changed||!stable)){ if(changed&&S.running&&!S.quick){ S.quick=setTimeout(function(){S.quick=null; tick();},250); } return; } /* new line spotted: re-check sooner instead of waiting a full interval */
   S.lastSig=s;
   if(force){S.lastEn=''; S.lastOcr='';}
   if(S.offlineDemo&&S.demo){
