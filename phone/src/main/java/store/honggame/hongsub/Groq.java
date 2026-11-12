@@ -23,8 +23,8 @@ final class Groq {
 
     private final Prefs prefs;
     private int keyIdx = 0;
-    private final Map<String, Long> cool = new HashMap<>();
-    private final Set<String> noFormat = new HashSet<>();
+    private final Map<String, Long> cool = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<String> noFormat = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private String model;
 
     Groq(Prefs p) {

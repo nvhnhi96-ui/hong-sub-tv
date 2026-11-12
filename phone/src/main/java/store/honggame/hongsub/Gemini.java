@@ -30,12 +30,12 @@ final class Gemini {
 
     private final Prefs prefs;
     private int keyIdx = 0;
-    private final Map<String, Long> cool = new HashMap<>();
-    private final Set<String> noThink = new HashSet<>();
+    private final Map<String, Long> cool = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<String> noThink = java.util.concurrent.ConcurrentHashMap.newKeySet();
     // speed: measured answer time per model, slow models are skipped for a while
-    private static final Map<String, Long> LAT = new HashMap<>();
-    private static final Map<String, Long> SLOW = new HashMap<>();
-    private static final Set<String> NO_MIN = new HashSet<>();
+    private static final Map<String, Long> LAT = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, Long> SLOW = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Set<String> NO_MIN = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private String model;
 
     Gemini(Prefs p) {

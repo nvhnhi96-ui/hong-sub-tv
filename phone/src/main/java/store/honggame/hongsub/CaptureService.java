@@ -92,9 +92,17 @@ public class CaptureService extends Service {
     private boolean translating = false;
     private boolean editing = false;
     private int[] lastSig, prevSig;
+    // new-line detection on bright, text-like pixels only (a moving background no longer blocks lines)
+    private static final int MW = 160, MH = 28;
+    private Mask sentMask, prevMask;
+    private long pendSince = 0;
+    private final java.util.concurrent.atomic.AtomicInteger inflight = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+    private int seq = 0, shownSeq = 0;
+    private static final class Mask { byte[] m; int ink; }
     private String lastEn = "";
     private int darkTicks = 0;
-    private final ArrayDeque<String[]> history = new ArrayDeque<>();
+    private final java.util.concurrent.ConcurrentLinkedDeque<String[]> history = new java.util.concurrent.ConcurrentLinkedDeque<>();
 
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -151,6 +159,7 @@ public class CaptureService extends Service {
         running = false;
         translating = false;
         bg.removeCallbacksAndMessages(null);
+        pool.shutdownNow();
         main.removeCallbacksAndMessages(null);
         try { if (display != null) display.release(); } catch (Exception ignored) { }
         try { if (reader != null) reader.close(); } catch (Exception ignored) { }
@@ -229,7 +238,7 @@ public class CaptureService extends Service {
             display.resize(cw, ch, dpi);
             display.setSurface(reader.getSurface());
             lastFrame = null;
-            lastSig = null;
+            lastSig = null; sentMask = null; prevMask = null;
             prevSig = null;
             try { old.close(); } catch (Exception ignored) { }
         });
@@ -291,6 +300,26 @@ public class CaptureService extends Service {
         return (double) t / a.length;
     }
 
+    private static Mask textMask(Bitmap b) {
+        Bitmap s = Bitmap.createScaledBitmap(b, MW, MH, true);
+        int[] px = new int[MW * MH];
+        s.getPixels(px, 0, MW, 0, 0, MW, MH);
+        Mask k = new Mask(); k.m = new byte[px.length];
+        for (int i = 0; i < px.length; i++) {
+            int c = px[i], r = (c >> 16) & 255, g = (c >> 8) & 255, bl = c & 255;
+            double l = r * .3 + g * .59 + bl * .11;
+            if (l > 175 || (r > 200 && g > 170 && bl < 120)) { k.m[i] = 1; k.ink++; }
+        }
+        return k;
+    }
+
+    private static double maskDiff(Mask a, Mask b) {
+        if (a == null || b == null) return 1;
+        int x = 0;
+        for (int i = 0; i < a.m.length; i++) if (a.m[i] != b.m[i]) x++;
+        return (double) x / Math.max(1, Math.max(a.ink, b.ink));
+    }
+
     private static double mean(int[] a) {
         long t = 0;
         for (int v : a) t += v;
@@ -322,12 +351,30 @@ public class CaptureService extends Service {
                 } else {
                     darkTicks = 0;
                 }
-                boolean changed = diff(s, lastSig) > 6;
-                boolean stable = diff(s, prevSig) < 3;
-                prevSig = s;
-                if (changed && stable) {
-                    lastSig = s;
-                    translate(region);
+                Mask m = textMask(region);
+                long now = System.currentTimeMillis();
+                Mask prev = prevMask; prevMask = m;
+                if (m.ink < MW * MH * 0.004) {
+                    pendSince = 0;                                  // no subtitle on screen
+                } else if (sentMask != null && maskDiff(m, sentMask) < 0.22) {
+                    pendSince = 0;                                  // same line as the one already sent
+                } else if (inflight.get() < 2) {
+                    boolean steady = prev != null && maskDiff(m, prev) < 0.08;
+                    if (pendSince == 0) pendSince = now;
+                    if (steady || now - pendSince > 900) {
+                        sentMask = m; pendSince = 0;
+                        final Bitmap copy = region.copy(Bitmap.Config.ARGB_8888, false);
+                        final int my = ++seq;
+                        inflight.incrementAndGet();
+                        pool.submit(() -> {
+                            try { translate(copy, my); }
+                            catch (Gemini.CoolException ce) { setStatus("Mã tạm hết lượt, đang chờ..."); }
+                            catch (Exception e) { setStatus("Lỗi: " + e.getMessage()); }
+                            finally { inflight.decrementAndGet(); }
+                        });
+                    } else {
+                        next = Math.min(next, 180);                  // line still appearing: look again soon
+                    }
                 }
             }
         } catch (Gemini.CoolException ce) {
@@ -367,21 +414,30 @@ public class CaptureService extends Service {
         throw new Exception("Cần nhập mã Gemini hoặc Groq");
     }
 
-    private void translate(Bitmap region) throws Exception {
+    private void translate(Bitmap region, int mySeq) throws Exception {
         JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"speaker\":{\"type\":\"STRING\"},\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}");
         String prompt = "You translate video game subtitles for a Vietnamese player.\n"
                 + "The image is a crop of the game screen where dialogue subtitles appear.\n"
-                + "1. Read ONLY the subtitle/dialogue text in English. Ignore HUD, button prompts, icons and app overlays.\n"
-                + "2. If a speaker name is shown (e.g. \"ATREUS:\"), put it in \"speaker\" without the colon and do not repeat it in \"en\".\n"
-                + "3. Translate into natural spoken Vietnamese that fits game dialogue. Keep names of characters, places and items as they are. Pick Vietnamese pronouns that fit the relationship.\n"
+                + "1. Copy ONLY the subtitle/dialogue text in English into \"en\", exactly as written. Ignore HUD, button prompts, icons and app overlays.\n"
+                + "2. If the line starts with a speaker name and a colon (e.g. \"ATREUS: ...\"), keep that prefix at the start of \"en\". Never add a name that is not written on screen.\n"
+                + "3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in \"vi\". Keep names of characters, places and items as they are. Pick Vietnamese pronouns that fit the relationship.\n"
                 + "4. If there is no readable English subtitle, return \"en\":\"\" and \"vi\":\"\".\n" + context();
         JSONObject r = ask(prompt, jpeg(region, 900, 85), schema, SHAPE_SUB);
         if (r == null) return;
         String en = r.optString("en", "").trim();
         String vi = r.optString("vi", "").trim();
-        String who = r.optString("speaker", "").trim();
-        if (en.isEmpty() || vi.isEmpty() || similar(en, lastEn)) return;
-        lastEn = en;
+        String who = "";
+        java.util.regex.Matcher sm = java.util.regex.Pattern.compile("^\\s*([A-Za-z][A-Za-z0-9 .'\\-]{0,24}?)\\s*[:：]\\s+([\\s\\S]+)$").matcher(en);
+        if (sm.find() && !sm.group(1).matches("(?i)press|hold|tap|objective|quest|mission|tip|hint|note")) {
+            who = sm.group(1).trim(); en = sm.group(2).trim();
+            vi = vi.replaceFirst("(?i)^\\s*" + java.util.regex.Pattern.quote(who) + "\\s*[:：]\\s*", "");
+        }
+        synchronized (this) {
+            if (en.isEmpty() || vi.isEmpty() || similar(en, lastEn)) return;
+            if (mySeq < shownSeq) return;                         // an older line finished after a newer one
+            shownSeq = mySeq;
+            lastEn = en;
+        }
         history.addFirst(new String[]{en, vi});
         while (history.size() > 3) history.removeLast();
         bubbleText(who, vi, en, Math.max(4500, Math.min(12000, vi.length() * 110L)));
@@ -586,7 +642,7 @@ public class CaptureService extends Service {
 
     private void saveFrame() {
         prefs.region((float) frameLp.x / sw, (float) frameLp.y / sh, (float) frameLp.width / sw, (float) frameLp.height / sh);
-        lastSig = null;
+        lastSig = null; sentMask = null; prevMask = null;
         prevSig = null;
     }
 
@@ -616,7 +672,7 @@ public class CaptureService extends Service {
                 bubbleText("", "Chưa có mã Gemini. Mở app Hóng Sub để nhập mã.", null, 6000);
                 return;
             }
-            lastSig = null;
+            lastSig = null; sentMask = null; prevMask = null;
             prevSig = null;
             darkTicks = 0;
             bg.removeCallbacks(tick);
