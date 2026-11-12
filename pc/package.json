@@ -33,7 +33,8 @@
       "package.json",
       "!node_modules/@tesseract.js-data/eng/4.0.0/**",
       "!node_modules/tesseract.js-core/*.wasm",
-      "!**/*.map"
+      "!**/*.map",
+      "ps.js"
     ],
     "directories": {
       "output": "dist"
@@ -54,8 +55,8 @@
     },
     "extraResources": [
       {
-        "from": "remoteplay",
-        "to": "remoteplay"
+        "from": "rp",
+        "to": "rp"
       },
       {
         "from": "voices",

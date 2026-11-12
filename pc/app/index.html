@@ -181,6 +181,18 @@ body.desk #huong-dan,body.desk .hs-foot,body.desk .hs-toplink,body.desk #hsMobil
 .hs-rpsteps li{margin:0 0 6px}
 .hs-rpsteps b{color:var(--text)}
 body.desk .hs-dk.hs-off{display:none!important}
+.hs-psacc{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13.5px}
+.hs-pslist{display:grid;gap:8px;margin-top:10px}
+.hs-ps{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.hs-ps .r{display:flex;align-items:center;gap:8px}
+.hs-ps .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-ps small{color:var(--muted);font-size:12px}
+.hs-ps .st{font-size:11.5px;font-weight:700;border-radius:6px;padding:1px 7px;background:#20202A;color:var(--muted)}
+.hs-ps .st.ready{background:#0F3322;color:#3DDC84}.hs-ps .st.standby{background:#3A2A08;color:#FFC400}
+.hs-ps .pin{display:flex;gap:6px;margin-top:8px}.hs-ps .pin input{flex:1}
+.hs-psip{display:flex;gap:6px;margin-top:8px}
+#hsGame2{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;outline:none}
+.hs-stage:fullscreen{background:#000}.hs-stage:fullscreen .hs-ov,.hs-stage:fullscreen .hs-hint{display:none!important}
 .hs-cast summary{cursor:pointer;color:var(--muted);font-weight:600}
 .hs-cast .row{display:flex;align-items:center;gap:8px;margin-top:6px}
 .hs-cast .row b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -223,7 +235,7 @@ body.desk .hs-dk.hs-off{display:none!important}
             <b>Dịch phụ đề game<br>sang tiếng Việt</b>
             <p>Mở PS Remote Play (hoặc game trên PC), rồi chọn cửa sổ đó. Hóng Sub đọc phụ đề tiếng Anh, dịch và đọc to bằng giọng Việt.</p>
             <div class="hs-row">
-              <button class="hs-btn pri hs-dk" id="hsRpOpen" type="button">Mở Remote Play</button>
+              <button class="hs-btn pri hs-dk" id="hsPsGo" type="button">Chơi PS5 / PS4 trong Hóng Sub</button>
               <button class="hs-btn pri" id="hsPick" type="button">Chọn màn hình game</button>
               <button class="hs-btn" id="hsDemo" type="button">Chạy thử, không cần PS5</button>
             </div>
@@ -236,7 +248,8 @@ body.desk .hs-dk.hs-off{display:none!important}
       </div>
 
       <div class="hs-ctrl">
-        <button class="hs-btn hs-dk" id="hsRpOpen2" type="button">Mở Remote Play</button>
+        <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình (Esc để thoát)">Toàn màn hình</button>
+        <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối</button>
         <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi màn hình</button>
         <button class="hs-btn" id="hsDraw" type="button" disabled>Kéo lại khung</button>
         <span class="hs-sp"></span>
@@ -260,22 +273,31 @@ body.desk .hs-dk.hs-off{display:none!important}
     </main>
 
     <aside class="hs-side">
-      <section class="hs-card hs-sec hs-dk" id="hsRpSec">
-        <div class="t"><b>Remote Play có sẵn</b></div>
-        <p class="hs-note" id="hsRpMsg">Hóng Sub có sẵn Remote Play, không cần cài app của Sony. Bấm "Mở Remote Play", chơi game trong cửa sổ đó, Hóng Sub tự đọc phụ đề.</p>
+      <section class="hs-card hs-sec hs-dk" id="hsPsSec">
+        <div class="t"><b>Chơi PS5 / PS4</b></div>
+        <p class="hs-note">Kết nối thẳng tới máy qua Chơi từ xa (Remote Play), hình game hiện ngay trong Hóng Sub. Không cần app của Sony.</p>
+        <div class="hs-psacc" id="hsPsAcc"></div>
+        <div id="hsPsList" class="hs-pslist"></div>
+        <div class="hs-row" style="margin-top:8px">
+          <button class="hs-btn" id="hsPsFind" type="button">Tìm máy</button>
+          <button class="hs-btn" id="hsPsIpBtn" type="button">Nhập IP máy</button>
+        </div>
+        <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
+        <div class="hs-msg" id="hsPsMsg" hidden></div>
+        <div class="hs-f" style="margin-top:10px">
+          <label for="hsPsQ">Chất lượng hình</label>
+          <select class="hs-in" id="hsPsQ"><option value="1080/60">1080p 60 hình/giây (PS5)</option><option value="720/60">720p 60 hình/giây</option><option value="540/30">540p 30 hình/giây (mạng yếu)</option></select>
+        </div>
         <details class="hs-cast" style="margin-top:8px">
-          <summary>Lần đầu: đăng nhập PSN và ghép máy</summary>
+          <summary>Hướng dẫn lần đầu</summary>
           <ol class="hs-rpsteps">
-            <li>Bấm <b>Mở Remote Play</b>. Trong cửa sổ Remote Play bấm <b>bánh răng</b> (góc trên phải) › tab <b>Config</b> › <b>Login to PSN</b>.</li>
-            <li>Đăng nhập PSN trên trang web hiện ra (nên dùng tài khoản phụ). Đăng nhập xong, <b>sao chép địa chỉ trang</b> trên thanh địa chỉ trình duyệt, dán vào Remote Play rồi bấm tạo token. Báo thành công thì đóng lại.</li>
-            <li>Trên PS5 vào <b>Settings › System › Remote Play › Link Device</b> (PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>) để lấy mã 8 số.</li>
-            <li>Trong Remote Play bấm vào hình máy PS5/PS4. Nếu hỏi đăng ký tự động thì đồng ý; nếu không, nhập mã 8 số vào ô <b>Remote Play PIN</b> rồi bấm <b>Register</b>.</li>
-            <li>Bấm vào máy để vào game. Lần sau chỉ cần mở Hóng Sub là xong.</li>
+            <li>PS5: <b>Settings › System › Remote Play</b> bật <b>Enable Remote Play</b>. Máy tính và PS5 cùng mạng Wi-Fi/modem.</li>
+            <li>Bấm <b>Đăng nhập PSN</b>, đăng nhập trên trang của Sony (nên dùng tài khoản phụ). Hóng Sub không thấy và không lưu mật khẩu.</li>
+            <li>Bấm <b>Tìm máy</b>, máy hiện ra thì bấm <b>Ghép máy</b>. Trên PS5 vào <b>Settings › System › Remote Play › Link Device</b> lấy mã 8 số, nhập vào rồi bấm <b>Ghép</b>. PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>.</li>
+            <li>Bấm <b>Chơi</b>. Cắm tay cầm PS5/PS4 (hoặc tay Xbox) vào máy tính bằng dây hoặc Bluetooth. Chưa có tay cầm thì dùng phím: mũi tên, Enter = X, Backspace = O, P = nút PS, O = Options.</li>
           </ol>
         </details>
-        <label class="hs-sw" style="margin-top:8px">Tự mở Remote Play khi mở Hóng Sub <input type="checkbox" id="hsRpAuto" checked></label>
-        <label class="hs-sw">Hình trong Hóng Sub bị đen thì bật ô này <input type="checkbox" id="hsRpGl"></label>
-        <p class="hs-note" style="margin-top:6px">Remote Play đi kèm là <a href="https://github.com/streetpea/chiaki-ng" target="_blank" rel="noopener">chiaki-ng</a>, phần mềm mã nguồn mở (giấy phép AGPL-3.0), không phải của Sony. Vẫn dùng được app PS Remote Play của Sony nếu bạn thích.</p>
+        <p class="hs-note" style="margin-top:6px">Phần kết nối dựa trên <a href="https://github.com/streetpea/chiaki-ng" target="_blank" rel="noopener">chiaki-ng</a> (mã nguồn mở, AGPL-3.0), không phải của Sony. Vẫn dùng được app PS Remote Play của Sony: mở app đó rồi bấm "Chọn màn hình game".</p>
       </section>
 
       <section class="hs-card hs-sec" id="hsKeySec">
@@ -1276,6 +1298,227 @@ function hotkey(e){
 document.addEventListener('keydown',hotkey);
 
 if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||/Android|iPhone|iPad/i.test(navigator.userAgent)){$('hsMobile').style.display='block';}
+/* ---------- PlayStation player (desktop app) ---------- */
+var PS={hosts:[],acc:null,stream:null,cvs:null,ctx:null,dec:null,codec:'',waitKey:true,ts:0,lastIdr:0,adec:null,actx:null,anext:0,ats:0,pad:'',padTimer:null,keys:{},frames:0,host:null};
+function psMsg(cls,t){var m=$('hsPsMsg'); if(!t){m.hidden=true;return;} m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
+function psAccUi(){
+  var a=$('hsPsAcc');
+  if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
+  a.innerHTML=PS.acc.loggedIn?('<span>PSN: <b>'+esc(PS.acc.onlineId||'đã đăng nhập')+'</b></span><button class="hs-btn" type="button" id="hsPsOut" style="padding:4px 10px">Đổi tài khoản</button>')
+    :'<button class="hs-btn pri" type="button" id="hsPsIn">Đăng nhập PSN</button><span class="hs-note">cần để ghép máy lần đầu</span>';
+  if($('hsPsIn')) $('hsPsIn').onclick=psLogin;
+  if($('hsPsOut')) $('hsPsOut').onclick=function(){ D.ps.logout().then(function(){ return psLogin(); }); };
+}
+function psLogin(){
+  psMsg('','Đang mở trang đăng nhập của Sony...');
+  return D.ps.login().then(function(r){
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    else if(r&&r.err==='closed'){ psMsg('',''); }
+    else psMsg('err','Đăng nhập chưa xong: '+((r&&r.err)||'')+'. Thử lại.');
+    return psRefresh();
+  });
+}
+function psRefresh(){ return D.ps.state().then(function(st){ PS.acc=st; psAccUi(); }); }
+var STATE_TXT={ready:'Đang bật',standby:'Đang nghỉ',offline:'Không thấy',unknown:'?'};
+function psList(){
+  var L=$('hsPsList');
+  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy nào. Bật PS5/PS4 (hoặc để chế độ nghỉ), cùng mạng với máy tính, rồi bấm Tìm máy.</p>'; return; }
+  L.innerHTML=PS.hosts.map(function(h,i){
+    return '<div class="hs-ps" data-i="'+i+'"><div class="r"><b>'+esc(h.name)+'</b><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span></div>'+
+      '<small>'+(h.ps5?'PS5':'PS4')+' · '+esc(h.addr||'')+(h.app?' · '+esc(h.app):'')+'</small>'+
+      '<div class="hs-row" style="margin-top:8px">'+(h.registered?'<button class="hs-btn pri" data-a="play" type="button">Chơi</button><button class="hs-btn" data-a="forget" type="button">Bỏ ghép</button>':'<button class="hs-btn pri" data-a="pair" type="button">Ghép máy</button>')+'</div>'+
+      '<div class="pin" hidden><input class="hs-in" inputmode="numeric" maxlength="8" placeholder="Mã 8 số trên máy"><button class="hs-btn pri" data-a="dopair" type="button">Ghép</button></div></div>';
+  }).join('');
+  L.querySelectorAll('.hs-ps button').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var box=btn.closest('.hs-ps'), h=PS.hosts[+box.dataset.i], a=btn.dataset.a;
+      if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
+      else if(a==='dopair'){ var pin=box.querySelector('.pin input').value.replace(/\D/g,''); if(pin.length!==8){psMsg('err','Mã ghép gồm 8 số.');return;} btn.disabled=true; psMsg('','Đang ghép với '+h.name+'...');
+        D.ps.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ psMsg('ok','Đã ghép xong '+(r.name||h.name)+'. Bấm Chơi để vào game.'); psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và máy tính cùng mạng với máy.'); }); }
+      else if(a==='forget'){ D.ps.forget(h.id).then(psFind); }
+      else if(a==='play'){ psPlay(h); }
+    });
+  });
+}
+function psFind(ip){
+  psMsg('', ip?'Đang tìm máy ở '+ip+'...':'Đang tìm máy trong mạng...');
+  return D.ps.discover(ip||null).then(function(list){
+    PS.hosts=list||[]; psList();
+    psMsg(PS.hosts.length?'':'warn', PS.hosts.length?'':'Chưa thấy máy. Kiểm tra PS5 đã bật Chơi từ xa và cùng mạng, hoặc bấm Nhập IP máy.');
+    return PS.hosts;
+  });
+}
+function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms);});}
+async function psPlay(h){
+  if(PS.host){ D.ps.stop(false); await sleepMs(800); }
+  if(h.state!=='ready'){
+    psMsg('','Đang bật '+h.name+'...'); await D.ps.wake(h.id);
+    for(var i=0;i<20;i++){ await sleepMs(2500); var l=await D.ps.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) D.ps.wake(h.id); }
+    if(h.state!=='ready'){ psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Chơi lại.'); return; }
+  }
+  var q=($('hsPsQ').value||'1080/60').split('/');
+  psMsg('','Đang kết nối '+h.name+'...');
+  var r=await D.ps.connect(h.id,{res:+q[0],fps:+q[1]});
+  if(!r||!r.ok){ psMsg('err','Không kết nối được: '+((r&&r.err)||'')); return; }
+  PS.host=h; psStartView();
+}
+/* --- picture --- */
+function nalInfo(u8){
+  var types=[], sps=-1;
+  for(var i=0;i+3<u8.length;i++){
+    if(u8[i]===0&&u8[i+1]===0&&(u8[i+2]===1||(u8[i+2]===0&&u8[i+3]===1))){
+      var j=u8[i+2]===1?i+3:i+4; if(j>=u8.length) break; var t=u8[j]&31; types.push(t); if(t===7&&sps<0) sps=j; i=j;
+    }
+  }
+  return {types:types,sps:sps};
+}
+function hex2(n){return ('0'+n.toString(16)).slice(-2).toUpperCase();}
+function psStartView(){
+  if(!PS.cvs){
+    PS.cvs=document.createElement('canvas'); PS.cvs.id='hsGame2'; PS.cvs.width=1280; PS.cvs.height=720; PS.cvs.tabIndex=0;
+    PS.ctx=PS.cvs.getContext('2d');
+  }
+  PS.ctx.fillStyle='#000'; PS.ctx.fillRect(0,0,PS.cvs.width,PS.cvs.height);
+  var stage=$('hsStage'); if(PS.cvs.parentNode!==stage) stage.insertBefore(PS.cvs,$('hsOv'));
+  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec='';
+  if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
+  PS.stream=PS.cvs.captureStream(30);
+  S.offlineDemo=false; setStream(PS.stream,null);
+  ['hsPsFull','hsPsEnd'].forEach(function(id){$(id).classList.remove('hs-off');});
+  psPadStart();
+}
+function psStopView(){
+  psPadStop();
+  if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
+  if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; }
+  if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
+  if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
+  ['hsPsFull','hsPsEnd'].forEach(function(id){$(id).classList.add('hs-off');});
+  if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
+  PS.host=null;
+}
+function psDecoder(codec){
+  PS.dec=new VideoDecoder({
+    output:function(f){
+      if(PS.cvs.width!==f.displayWidth||PS.cvs.height!==f.displayHeight){ PS.cvs.width=f.displayWidth; PS.cvs.height=f.displayHeight; }
+      PS.ctx.drawImage(f,0,0); f.close();
+      if(++PS.frames===1){ psMsg('ok','Đã vào máy. Chúc chơi vui!'); if(load('regionSet',false)&&(keys().length||groqKeys().length)&&!S.running) startRun(); }
+    },
+    error:function(){ PS.dec=null; PS.waitKey=true; psIdr(); }
+  });
+  PS.dec.configure({codec:codec,optimizeForLatency:true,hardwareAcceleration:'no-preference'});
+  PS.codec=codec;
+}
+function psIdr(){ var n=Date.now(); if(n-PS.lastIdr>1000){ PS.lastIdr=n; D.ps.input('i'); } }
+function psVideo(payload){
+  if(!PS.cvs) return;
+  var data=payload.subarray(5), info=nalInfo(data), key=info.types.indexOf(5)>=0;
+  if(info.sps>=0){
+    var codec='avc1.'+hex2(data[info.sps+1])+hex2(data[info.sps+2])+hex2(data[info.sps+3]);
+    if(!PS.dec||PS.dec.state==='closed'||codec!==PS.codec){ if(PS.dec){try{PS.dec.close();}catch(e){}} psDecoder(codec); }
+  }
+  if(!PS.dec||PS.dec.state!=='configured'){ psIdr(); return; }
+  if(PS.waitKey){ if(!key){ psIdr(); return; } PS.waitKey=false; }
+  if(PS.dec.decodeQueueSize>6&&!key) return;
+  try{ PS.dec.decode(new EncodedVideoChunk({type:key?'key':'delta',timestamp:(PS.ts+=16667),data:data})); }
+  catch(e){ PS.waitKey=true; psIdr(); }
+}
+/* --- sound --- */
+function psAudioHeader(h){
+  try{
+    if(!PS.actx) PS.actx=new AudioContext({sampleRate:h.rate||48000,latencyHint:'interactive'});
+    if(PS.adec){ try{PS.adec.close();}catch(e){} }
+    PS.aframe=h.frame_size||480; PS.arate=h.rate||48000; PS.ats=0; PS.anext=0;
+    PS.adec=new AudioDecoder({
+      output:function(ad){
+        var n=ad.numberOfFrames, ch=ad.numberOfChannels, buf=PS.actx.createBuffer(ch,n,ad.sampleRate);
+        for(var c=0;c<ch;c++){ var tmp=new Float32Array(n); ad.copyTo(tmp,{planeIndex:c,format:'f32-planar'}); buf.copyToChannel(tmp,c); }
+        ad.close();
+        var src=PS.actx.createBufferSource(); src.buffer=buf; src.connect(PS.actx.destination);
+        var now=PS.actx.currentTime; if(PS.anext<now+0.02||PS.anext>now+0.3) PS.anext=now+0.05;
+        src.start(PS.anext); PS.anext+=buf.duration;
+      },
+      error:function(){ PS.adec=null; }
+    });
+    PS.adec.configure({codec:'opus',sampleRate:PS.arate,numberOfChannels:h.channels||2});
+  }catch(e){ PS.adec=null; }
+}
+function psAudio(pkt){
+  if(!PS.adec||PS.adec.state!=='configured') return;
+  try{ PS.adec.decode(new EncodedAudioChunk({type:'key',timestamp:(PS.ats+=Math.round(PS.aframe/PS.arate*1e6)),data:pkt})); }catch(e){}
+}
+/* --- controller --- */
+var PAD_BTN=[1,2,4,8,256,512,0,0,8192,4096,1024,2048,64,128,16,32,32768,16384];
+var KEY_BTN={ArrowUp:64,ArrowDown:128,ArrowLeft:16,ArrowRight:32,Enter:1,Backspace:2,KeyP:32768,KeyO:4096};
+function psPadPoll(){
+  var b=0,l2=0,r2=0,lx=0,ly=0,rx=0,ry=0, pads=navigator.getGamepads?navigator.getGamepads():[], g=null;
+  for(var i=0;i<pads.length;i++){ if(pads[i]&&pads[i].connected){ g=pads[i]; break; } }
+  if(g){
+    for(var k=0;k<g.buttons.length&&k<PAD_BTN.length;k++){ if(g.buttons[k]&&g.buttons[k].pressed&&PAD_BTN[k]) b|=PAD_BTN[k]; }
+    if(g.buttons[6]) l2=Math.round(g.buttons[6].value*255); if(g.buttons[7]) r2=Math.round(g.buttons[7].value*255);
+    var ax=function(v){ v=v||0; return Math.abs(v)<0.08?0:Math.max(-32768,Math.min(32767,Math.round(v*32767))); };
+    lx=ax(g.axes[0]); ly=ax(g.axes[1]); rx=ax(g.axes[2]); ry=ax(g.axes[3]);
+  }
+  for(var key in PS.keys){ if(PS.keys[key]&&KEY_BTN[key]) b|=KEY_BTN[key]; }
+  var line='c '+b+' '+l2+' '+r2+' '+lx+' '+ly+' '+rx+' '+ry;
+  if(line!==PS.pad){ PS.pad=line; D.ps.input(line); }
+}
+function psKey(e,down){
+  if(!PS.host) return; var t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+  if(KEY_BTN[e.code]){ e.preventDefault(); e.stopPropagation(); PS.keys[e.code]=down; }
+}
+function psPadStart(){ psPadStop(); PS.padTimer=setInterval(psPadPoll,8); }
+function psPadStop(){ if(PS.padTimer){clearInterval(PS.padTimer); PS.padTimer=null;} PS.keys={}; if(PS.pad){ D.ps.input('c 0 0 0 0 0 0 0'); PS.pad=''; } }
+/* --- console events --- */
+var QUIT_TXT={'Remote Play already in use':'Máy đang được kết nối Chơi từ xa ở nơi khác','Connection refused':'Máy từ chối kết nối'};
+function psEvent(ev){
+  if(ev.ev==='connected') psMsg('','Đã kết nối, đang chờ hình...');
+  else if(ev.ev==='pin'){
+    psMsg('warn',ev.incorrect?'Mã khóa máy sai, nhập lại bên dưới.':'Máy có đặt mã khóa (passcode). Nhập mã bên dưới.');
+    var box=$('hsPsMsg'); box.insertAdjacentHTML('beforeend','<div class="pin" style="display:flex;gap:6px;margin-top:6px"><input class="hs-in" id="hsPsPass" inputmode="numeric" maxlength="4"><button class="hs-btn pri" type="button" id="hsPsPassGo">Gửi</button></div>');
+    $('hsPsPassGo').onclick=function(){ D.ps.input('p '+$('hsPsPass').value.replace(/\D/g,'')); psMsg('','Đang mở khóa...'); };
+  }
+  else if(ev.ev==='quit'){
+    var t=ev.text||''; psMsg(ev.reason===1||ev.reason===12?'':'err','Đã ngắt kết nối'+(t?': '+(QUIT_TXT[t]||t):'')+(ev.str?' ('+ev.str+')':''));
+  }
+  else if(ev.ev==='closed'){ psStopView(); }
+}
+function psInit(){
+  if(!D.ps) return;
+  D.ps.onVideo(psVideo); D.ps.onAudioHeader(psAudioHeader); D.ps.onAudio(psAudio); D.ps.onEvent(psEvent);
+  document.addEventListener('keydown',function(e){psKey(e,true);},true);
+  document.addEventListener('keyup',function(e){psKey(e,false);},true);
+  var q=load('psq',null); if(q) $('hsPsQ').value=q; $('hsPsQ').addEventListener('change',function(){save('psq',this.value);});
+  $('hsPsFind').onclick=function(){psFind();};
+  $('hsPsIpBtn').onclick=function(){ $('hsPsIpBox').hidden=false; $('hsPsIp').focus(); };
+  $('hsPsIpGo').onclick=function(){ var ip=$('hsPsIp').value.trim(); if(ip) psFind(ip); };
+  $('hsPsGo').onclick=function(){ $('hsPsSec').scrollIntoView({behavior:'smooth',block:'start'}); var reg=PS.hosts.filter(function(h){return h.registered&&h.state!=='offline';})[0]; if(reg) psPlay(reg); else if(!PS.acc||!PS.acc.loggedIn) psLogin(); else psFind(); };
+  $('hsPsFull').onclick=function(){ $('hsStage').requestFullscreen().then(function(){ if(PS.cvs) PS.cvs.focus(); }).catch(function(){}); };
+  $('hsPsEnd').onclick=function(){ D.ps.stop(false); };
+  psRefresh().then(function(){ return psFind(); }).then(function(list){
+    var ready=(list||[]).filter(function(h){return h.registered&&h.state==='ready';});
+    if(ready.length===1&&load('psAuto',true)&&!S.stream&&!D.selftest) psPlay(ready[0]);
+  }).catch(function(){});
+  if(D.selftest) window.hsPsTest=psSelfTest;
+}
+/* self test: encode a few frames with WebCodecs and push them through the same picture path */
+async function psSelfTest(){
+  var out={encoder:typeof VideoEncoder!=='undefined',chunks:0,decodedFrames:0,codec:'',err:''};
+  try{
+    var c=document.createElement('canvas'); c.width=640; c.height=360; var x=c.getContext('2d');
+    var chunks=[];
+    var enc=new VideoEncoder({output:function(ch){ var b=new Uint8Array(ch.byteLength); ch.copyTo(b); chunks.push(b); },error:function(e){out.err='enc '+e.message;}});
+    enc.configure({codec:'avc1.42E01F',width:640,height:360,bitrate:1e6,framerate:30,avc:{format:'annexb'},latencyMode:'realtime'});
+    for(var i=0;i<20;i++){ x.fillStyle='hsl('+(i*18)+',60%,40%)'; x.fillRect(0,0,640,360); x.fillStyle='#fff'; x.font='40px Arial'; x.fillText('Frame '+i,40,200);
+      var vf=new VideoFrame(c,{timestamp:i*33333}); enc.encode(vf,{keyFrame:i===0}); vf.close(); }
+    await enc.flush(); enc.close(); out.chunks=chunks.length;
+    PS.host={id:'test',name:'test'}; psStartView();
+    for(var k=0;k<chunks.length;k++){ var pl=new Uint8Array(chunks[k].length+5); pl.set(chunks[k],5); psVideo(pl); }
+    await sleepMs(1500); out.decodedFrames=PS.frames; out.codec=PS.codec; out.canvas=PS.cvs.width+'x'+PS.cvs.height;
+  }catch(e){ out.err=String(e&&e.message||e); }
+  return out;
+}
+
 /* ---------- desktop app glue ---------- */
 if(D){
   var ovHidden=false;
@@ -1304,36 +1547,9 @@ if(D){
     var realShow=show; show=function(r){S.test.shown.push(r.vi); realShow(r);};
     window.hsTestState=function(){return {test:S.test,saved:S.saved,running:S.running,stream:!!S.stream,region:S.region,status:$('hsStatusTxt').textContent,voices:dVoices,ocrReady:!!OCR.w,ocrFails:OCR.fails,visibility:document.visibilityState};};
   }
-  /* Remote Play: built-in (chiaki-ng) or Sony's app */
-  var rpWait=null;
-  function rpMsg(t){$('hsRpMsg').textContent=t;}
-  function rpWindow(){ return D.windows().then(function(w){ return w.filter(function(x){return /remote play|chiaki/i.test(x.name);})[0]||null; }); }
-  function attachRp(){
-    if(S.stream) return Promise.resolve(true);
-    return pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); return ok; });
-  }
-  function waitRp(){
-    clearInterval(rpWait); var n=0;
-    rpWait=setInterval(function(){
-      if(++n>90){clearInterval(rpWait); return;}
-      rpWindow().then(function(w){ if(w){ clearInterval(rpWait); rpMsg('Đã nhận cửa sổ Remote Play. Chọn máy để vào game, Hóng Sub tự đọc phụ đề.'); attachRp(); } });
-    },2000);
-  }
-  function openRp(){
-    D.rpLaunch($('hsRpGl').checked).then(function(r){
-      if(!r||!r.ok){ rpMsg(r&&r.err==='missing'?'Bản cài này chưa có Remote Play đi kèm. Tải lại Hóng Sub mới nhất, hoặc mở app PS Remote Play của Sony rồi bấm "Chọn màn hình game".':'Không mở được Remote Play: '+((r&&r.err)||'')); return; }
-      rpMsg('Đang mở Remote Play...'); waitRp();
-    });
-  }
-  ['hsRpOpen','hsRpOpen2'].forEach(function(id){$(id).addEventListener('click',openRp);});
-  ['hsRpAuto','hsRpGl'].forEach(function(id){ var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked);}); });
-  D.onRpExit(function(){ rpMsg('Remote Play đã đóng. Bấm "Mở Remote Play" để mở lại.'); });
-  Promise.all([rpWindow(),D.rpInfo()]).then(function(a){
-    var w=a[0], info=a[1]||{};
-    if(!info.bundled){ ['hsRpOpen','hsRpOpen2'].forEach(function(id){$(id).classList.add('hs-off');}); rpMsg('Mở app PS Remote Play của Sony, Hóng Sub sẽ tự nhận cửa sổ đó.'); }
-    if(w){ attachRp(); return; }
-    if(info.bundled&&$('hsRpAuto').checked&&!D.selftest) openRp(); else waitRp();
-  }).catch(function(){});
+  /* Sony's PS Remote Play app: pick its window by itself when it is open */
+  D.windows().then(function(w){ if(w.some(function(x){return /remote play/i.test(x.name);})&&!S.stream){ pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); }); } }).catch(function(){});
+  psInit();
 }
 window.__hongsub=S; /* for testing */
 steps();

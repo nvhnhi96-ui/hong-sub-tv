@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
+const psModule = require('./ps');
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
 const ROOT = __dirname;
@@ -24,7 +25,7 @@ protocol.registerSchemesAsPrivileged([{
 if (!SELFTEST && !app.requestSingleInstanceLock()) { app.quit(); }
 app.setAppUserModelId('store.honggame.hongsub.pc');
 
-let win = null, overlay = null, tray = null, fakeGame = null;
+let win = null, overlay = null, tray = null, fakeGame = null, ps = null;
 let chosenId = null, quitting = false, moveMode = false;
 
 /* ---------- settings file ---------- */
@@ -227,6 +228,7 @@ function findFile(dir, test, depth) {
   } catch (e) { /* missing */ }
   return null;
 }
+const rpHelper = () => findFile(resDir('rp'), n => /^hongsub-rp\.exe$/i.test(n)) || path.join(resDir('rp'), 'hongsub-rp.exe');
 const rpExe = () => findFile(resDir('remoteplay'), n => /^chiaki(-ng)?\.exe$/i.test(n));
 let rpProc = null;
 function rpLaunch(opengl) {
@@ -361,22 +363,29 @@ async function runSelftest() {
   const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
-  const rl = { ok: !!rpExe() }; log('remoteplay exe', rpExe() || 'none');
-  const tries = [['default', [], {}], ['opengl', ['--opengl'], {}], ['software', [], { QT_QUICK_BACKEND: 'software' }]];
-  for (const [label, args, env] of tries) {
-    const exe = rpExe(); if (!exe) break;
-    let errTxt = '', code = null;
-    const pr = spawn(exe, args, { cwd: path.dirname(exe), env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
-    pr.stdout.on('data', d => { errTxt += d; }); pr.stderr.on('data', d => { errTxt += d; });
-    pr.on('exit', c => { code = c; });
-    await new Promise(r => setTimeout(r, 10000));
-    const ws = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 960, height: 540 } });
-    const cw = ws.find(w => /chiaki/i.test(w.name));
-    log('rp ' + label + ': exit=' + code + ' window=' + (cw ? cw.name : 'none') + ' out=' + errTxt.slice(-600).replace(/\s+/g, ' '));
-    if (cw) { fs.writeFileSync(path.join(out, 'remoteplay-' + label + '.png'), cw.thumbnail.toPNG()); rl[label] = true; }
-    try { pr.kill(); } catch (e) { /* ignore */ }
-    await new Promise(r => setTimeout(r, 1500));
-  }
+  const rl = { helper: rpHelper() };
+  try {
+    const ver = await new Promise((res) => { const p = spawn(rpHelper(), ['version'], { windowsHide: true }); let o = ''; p.stdout.on('data', d => { o += d; }); p.on('exit', c => res('exit=' + c + ' ' + o.trim())); p.on('error', e => res('error ' + e)); });
+    log('rp version', ver); rl.version = ver;
+  } catch (e) { log('rp version failed', String(e)); }
+  try {
+    const st = await new Promise((res) => {
+      const p = spawn(rpHelper(), ['stream', '127.0.0.1', '1', Buffer.alloc(16).toString('base64'), Buffer.alloc(16).toString('base64'), '720', '30'], { windowsHide: true });
+      let bufx = Buffer.alloc(0); const evs = [];
+      p.stdout.on('data', d => { bufx = Buffer.concat([bufx, d]); while (bufx.length >= 5) { const len = bufx.readUInt32LE(1); if (bufx.length < 5 + len) break; if (bufx[0] === 9) evs.push(bufx.subarray(5, 5 + len).toString('utf8').slice(0, 200)); bufx = bufx.subarray(5 + len); } });
+      const t = setTimeout(() => { try { p.stdin.write('q\n'); } catch (e) { /* ignore */ } }, 12000);
+      p.on('exit', c => { clearTimeout(t); res({ code: c, events: evs.slice(-6) }); });
+      p.on('error', e => res({ error: String(e) }));
+    });
+    log('rp stream test', JSON.stringify(st)); rl.stream = st;
+  } catch (e) { log('rp stream failed', String(e)); }
+  try { const d = await ps.discover(); log('discover', JSON.stringify(d)); } catch (e) { log('discover failed', String(e)); }
+  try {
+    const pt = await win.webContents.executeJavaScript('window.hsPsTest ? window.hsPsTest().then(JSON.stringify) : "null"');
+    log('picture test', pt); rl.picture = JSON.parse(pt);
+    await new Promise(r => setTimeout(r, 500));
+    const img2 = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main-ps.png'), img2.toPNG());
+  } catch (e) { log('picture test failed', String(e)); }
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000), piperOk: !!(pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
   quitting = true; app.quit();
 }
@@ -388,6 +397,7 @@ app.whenReady().then(async () => {
   serveFiles();
   setupCapture();
   setupIpc();
+  ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
   if (!SELFTEST) { createTray(); createMain(); }
   registerKeys();
@@ -397,5 +407,5 @@ app.whenReady().then(async () => {
 });
 app.on('second-instance', showMain);
 app.on('before-quit', () => { quitting = true; });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

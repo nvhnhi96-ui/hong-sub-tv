@@ -50,7 +50,50 @@ jobs:
             hong-sub-tv.apk
             hong-sub-android.apk
 
+  rp-helper:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          update: true
+          install: git
+          pacboy: >-
+            cc:p cmake:p ninja:p pkgconf:p openssl:p json-c:p miniupnpc:p libevent:p python:p python-protobuf:p ntldd:p
+
+      - name: Get chiaki-ng source (AGPL-3.0)
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/streetpea/chiaki-ng/releases/latest | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+          [ -n "$TAG" ] || TAG=v1.10.1
+          echo "chiaki-ng $TAG"
+          git clone --depth 1 --branch "$TAG" https://github.com/streetpea/chiaki-ng.git rp/chiaki-ng
+          cd rp/chiaki-ng && git submodule update --init --depth 1 third-party/nanopb third-party/jerasure third-party/gf-complete third-party/curl
+          echo "$TAG" > ../CHIAKI_TAG
+
+      - name: Build hongsub-rp
+        run: |
+          cmake -S rp -B rp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build rp/build --target hongsub-rp
+          mkdir -p out
+          cp rp/build/hongsub-rp.exe out/
+          ntldd -R out/hongsub-rp.exe | grep -i mingw64 | sed -E 's/.*=> *([^ ]+) .*/\1/' | while read f; do cp "$(cygpath -u "$f")" out/ ; done
+          ls -la out
+          ./out/hongsub-rp.exe version
+          cp rp/chiaki-ng/COPYING out/CHIAKI-NG-LICENSE-AGPL3.txt
+          printf 'hongsub-rp: cau noi Remote Play cua Hong Sub, dung chiaki-lib cua chiaki-ng %s (GNU AGPL-3.0).\r\nMa nguon chiaki-ng: https://github.com/streetpea/chiaki-ng\r\nMa nguon hongsub-rp: https://github.com/nvhnhi96-ui/hong-sub-tv/tree/main/rp\r\n' "$(cat rp/CHIAKI_TAG)" > out/NGUON-MA-REMOTE-PLAY.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rp-helper
+          path: out
+
   windows:
+    needs: [ rp-helper ]
     runs-on: windows-latest
     defaults:
       run:
@@ -65,28 +108,17 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
-      - name: Get Remote Play (chiaki-ng, AGPL-3.0) and Vietnamese voice (Piper)
+      - uses: actions/download-artifact@v4
+        with:
+          name: rp-helper
+          path: pc/rp
+
+      - name: Get Vietnamese voice (Piper)
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          # --- chiaki-ng: unmodified official portable build ---
-          $rel = gh api repos/streetpea/chiaki-ng/releases/latest | ConvertFrom-Json
-          Write-Host "chiaki-ng $($rel.tag_name)"
-          $rel.assets | ForEach-Object { Write-Host "  asset: $($_.name)" }
-          $zips = $rel.assets | Where-Object { $_.name -match '(?i)win' -and $_.name -match '(?i)\.zip$' -and $_.name -notmatch '(?i)arm' }
-          $a = $zips | Where-Object { $_.name -match '(?i)portable' } | Select-Object -First 1
-          if (-not $a) { $a = $zips | Select-Object -First 1 }
-          if (-not $a) { throw 'no Windows zip in chiaki-ng release' }
-          Write-Host "using $($a.name)"
-          Invoke-WebRequest $a.browser_download_url -OutFile "$env:RUNNER_TEMP\rp.zip"
-          Expand-Archive "$env:RUNNER_TEMP\rp.zip" -DestinationPath remoteplay -Force
-          $exe = Get-ChildItem remoteplay -Recurse -Include chiaki.exe, chiaki-ng.exe | Select-Object -First 1
-          if (-not $exe) { Get-ChildItem remoteplay -Recurse | Select-Object -First 50 | ForEach-Object { Write-Host $_.FullName }; throw 'chiaki exe not found' }
-          Write-Host "exe: $($exe.FullName)"
-          foreach ($f in 'COPYING','LICENSE','LICENSE.txt') { try { Invoke-WebRequest "https://raw.githubusercontent.com/streetpea/chiaki-ng/main/$f" -OutFile remoteplay\CHIAKI-NG-LICENSE-AGPL3.txt; break } catch { } }
-          "chiaki-ng $($rel.tag_name) - PlayStation Remote Play client mã nguồn mở, không thuộc Sony.`r`nMã nguồn: https://github.com/streetpea/chiaki-ng/releases/tag/$($rel.tag_name)`r`nGiấy phép: GNU AGPL-3.0 (xem CHIAKI-NG-LICENSE-AGPL3.txt).`r`nHóng Sub đóng gói nguyên bản, không sửa đổi." | Out-File remoteplay\NGUON-CHIAKI-NG.txt -Encoding utf8
           # --- Piper (MIT) + Vietnamese voice VAIS-1000 (CC BY 4.0) ---
           Invoke-WebRequest https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip -OutFile "$env:RUNNER_TEMP\piper.zip"
           Expand-Archive "$env:RUNNER_TEMP\piper.zip" -DestinationPath voices -Force

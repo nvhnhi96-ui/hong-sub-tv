@@ -29,5 +29,22 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     audio.play().catch(() => {});
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
-  update: () => ipcRenderer.invoke('update')
+  update: () => ipcRenderer.invoke('update'),
+  ps: {
+    state: () => ipcRenderer.invoke('ps-state'),
+    login: () => ipcRenderer.invoke('ps-login'),
+    loginUrl: (u) => ipcRenderer.invoke('ps-login-url', u),
+    logout: () => ipcRenderer.invoke('ps-logout'),
+    discover: (ip) => ipcRenderer.invoke('ps-discover', ip),
+    regist: (host, pin) => ipcRenderer.invoke('ps-regist', host, pin),
+    forget: (id) => ipcRenderer.invoke('ps-forget', id),
+    wake: (id) => ipcRenderer.invoke('ps-wake', id),
+    connect: (id, o) => ipcRenderer.invoke('ps-connect', id, o),
+    input: (line) => ipcRenderer.send('ps-input', line),
+    stop: (sleep) => ipcRenderer.send('ps-stop', sleep),
+    onVideo: (cb) => ipcRenderer.on('ps-v', (e, d) => cb(d)),
+    onAudioHeader: (cb) => ipcRenderer.on('ps-ah', (e, d) => cb(d)),
+    onAudio: (cb) => ipcRenderer.on('ps-a', (e, d) => cb(d)),
+    onEvent: (cb) => ipcRenderer.on('ps-ev', (e, d) => cb(d))
+  }
 });

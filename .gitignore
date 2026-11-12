@@ -10,3 +10,6 @@ pc/node_modules/
 pc/dist/
 pc/remoteplay/
 pc/voices/
+rp/chiaki-ng/
+rp/build/
+pc/rp/
