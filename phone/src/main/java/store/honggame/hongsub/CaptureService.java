@@ -1161,11 +1161,12 @@ public class CaptureService extends Service {
         private float downX, downY;
         private int startX, startY, startW, startH;
         private boolean resizing, moved;
-        private final Runnable longPress = () -> { if (!moved && this.onLong != null) this.onLong.run(); };
+        private final Runnable longPress;
 
         RegionView(WindowManager.LayoutParams lp, int color, String name, Runnable onSave, java.util.function.BooleanSupplier isEditing, Runnable onLong) {
             super(CaptureService.this);
             this.lp = lp; this.color = color; this.name = name; this.onSave = onSave; this.isEditing = isEditing; this.onLong = onLong;
+            this.longPress = () -> { if (!moved && onLong != null) onLong.run(); };
             line.setStyle(Paint.Style.STROKE);
             label.setTypeface(Typeface.DEFAULT_BOLD);
             label.setTextSize(dp(11));
