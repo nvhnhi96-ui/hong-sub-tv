@@ -74,6 +74,24 @@ public class CaptureService extends Service {
     private Prefs prefs;
     private Gemini gem;
     private Groq groq;
+    private OpenRouter orr;
+    private final java.util.concurrent.ExecutorService race = java.util.concurrent.Executors.newCachedThreadPool();
+    private final java.util.concurrent.ExecutorService zpool = java.util.concurrent.Executors.newSingleThreadExecutor();
+    // extra areas: quests, item descriptions, map text
+    private static final int[] ZCOL = {Color.rgb(63, 182, 255), Color.rgb(61, 220, 132)};
+    private final java.util.List<Zone> zones = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private boolean zoneEditing = false;
+    private Button zoneBtn, zoneAddBtn;
+    private LinearLayout zoneBox;
+    private WindowManager.LayoutParams zoneBoxLp;
+    private volatile boolean zBusy = false;
+    private long zLast = 0;
+    private final java.util.Map<String, String> zcache = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, String>(64, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, String> e) { return size() > 200; }
+    });
+    private final class Zone {
+        WindowManager.LayoutParams lp; RegionView view; Mask prev, done; volatile String text = "", vi = ""; int idx;
+    }
     private final Handler main = new Handler(Looper.getMainLooper());
     private HandlerThread bgThread;
     private Handler bg;
@@ -129,6 +147,7 @@ public class CaptureService extends Service {
         prefs = new Prefs(this);
         gem = new Gemini(prefs);
         groq = new Groq(prefs);
+        orr = new OpenRouter(prefs);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         bgThread = new HandlerThread("hongsub-bg");
         bgThread.start();
@@ -172,6 +191,10 @@ public class CaptureService extends Service {
         translating = false;
         bg.removeCallbacksAndMessages(null);
         pool.shutdownNow();
+        race.shutdownNow();
+        zpool.shutdownNow();
+        for (Zone z : zones) if (z.view != null) try { wm.removeView(z.view); } catch (Exception ignored) { }
+        if (zoneBox != null) try { wm.removeView(zoneBox); } catch (Exception ignored) { }
         main.removeCallbacksAndMessages(null);
         try { if (display != null) display.release(); } catch (Exception ignored) { }
         try { if (reader != null) reader.close(); } catch (Exception ignored) { }
@@ -255,6 +278,7 @@ public class CaptureService extends Service {
             try { old.close(); } catch (Exception ignored) { }
         });
         placeFrame();
+        placeZones();
     }
 
     /** Latest full screen frame at capture resolution (cw x ch), or the previous one if nothing changed. */
@@ -393,6 +417,7 @@ public class CaptureService extends Service {
                         next = Math.min(next, 180);                  // line still appearing: look again soon
                     }
                 }
+                if (!zones.isEmpty() && !zBusy && now - zLast > 1000) { zLast = now; zoneCheck(full); }
             }
         } catch (Exception e) {
             setStatus("Lỗi: " + e.getMessage());
@@ -429,7 +454,51 @@ public class CaptureService extends Service {
         throw new Exception("Cần nhập mã Gemini hoặc Groq");
     }
 
-    private boolean noKeys() { return prefs.keys().isEmpty() && prefs.groqKeys().isEmpty(); }
+    private boolean noKeys() { return prefs.keys().isEmpty() && prefs.groqKeys().isEmpty() && prefs.orKeys().isEmpty(); }
+
+    /** Text lines: Gemini and the smart AI start together, Groq joins a moment later. The first answer wins,
+     *  except that a quicker one can wait a little for the smart AI ("balanced" 0.6s, "best" up to 4s). */
+    private JSONObject askText(String prompt, JSONObject schema, String shape, String prefer) throws Exception {
+        final boolean hasG = !prefs.keys().isEmpty(), hasQ = !prefs.groqKeys().isEmpty(), hasO = !prefs.orKeys().isEmpty() && orr.ready();
+        if (!hasG && !hasQ && !hasO) throw new Exception("Cần nhập mã Gemini hoặc Groq");
+        final java.util.concurrent.LinkedBlockingQueue<Object[]> q = new java.util.concurrent.LinkedBlockingQueue<>();
+        final java.util.concurrent.atomic.AtomicBoolean stop = new java.util.concurrent.atomic.AtomicBoolean();
+        int live = 0;
+        if (hasG) { live++; race.submit(() -> { try { q.add(new Object[]{"g", gem.ask(prompt, null, schema), null}); } catch (Exception e) { q.add(new Object[]{"g", null, e}); } }); }
+        if (hasO) { live++; race.submit(() -> { try { q.add(new Object[]{"o", orr.ask(prompt, shape), null}); } catch (Exception e) { q.add(new Object[]{"o", null, e}); } }); }
+        if (hasQ) {
+            live++;
+            final long qd = ("fast".equals(prefer) || !hasG) ? 0 : 1000;
+            race.submit(() -> {
+                try {
+                    if (qd > 0) Thread.sleep(qd);
+                    if (stop.get()) { q.add(new Object[]{"q", null, new Exception("bỏ qua")}); return; }
+                    q.add(new Object[]{"q", groq.ask(prompt, null, shape), null});
+                } catch (Exception e) { q.add(new Object[]{"q", null, e}); }
+            });
+        }
+        long t0 = System.currentTimeMillis(), holdUntil = 0;
+        JSONObject held = null; String heldVia = null; boolean oDead = !hasO; Exception last = null;
+        try {
+            while (live > 0) {
+                long wait = held != null ? Math.max(0, holdUntil - System.currentTimeMillis()) : 30000;
+                Object[] r = q.poll(wait, java.util.concurrent.TimeUnit.MILLISECONDS);
+                if (r == null) break;
+                live--;
+                String k = (String) r[0];
+                if (r[1] != null) {
+                    stop.set(true);
+                    if (k.equals("o") || "fast".equals(prefer) || oDead) { via = k.equals("o") ? "smart" : "ai"; return (JSONObject) r[1]; }
+                    if (held == null) { held = (JSONObject) r[1]; heldVia = k; holdUntil = System.currentTimeMillis() + ("best".equals(prefer) ? Math.max(0, 4000 - (System.currentTimeMillis() - t0)) : 600); }
+                } else {
+                    if (!(r[2] instanceof Exception) || !"bỏ qua".equals(((Exception) r[2]).getMessage())) last = (Exception) r[2];
+                    if (k.equals("o")) { oDead = true; if (held != null) break; }
+                }
+            }
+        } finally { stop.set(true); }
+        if (held != null) { via = "ai"; return held; }
+        throw last != null ? last : new Exception("Không dịch được");
+    }
 
     private static final java.util.regex.Pattern SHORTW = java.util.regex.Pattern.compile("^(a|i|o|an|am|as|at|be|by|do|go|he|hi|if|in|is|it|me|my|no|of|oh|ok|on|or|so|to|up|us|we|ya|ye|yo|mr|ms|dr|st)$");
     /** share of letters that sit in real-looking English words: drops OCR junk like "fdrtglgbou" */
@@ -513,11 +582,11 @@ public class CaptureService extends Service {
                 text = part;
             } else {
                 lastOcr = "";
-                if (++ocrMiss < 3 || noKeys()) return;               // nothing readable: after a few tries let the AI look at the picture
+                if (++ocrMiss < 3 || prefs.keys().isEmpty()) return;               // nothing readable: after a few tries let the AI look at the picture
                 ocrMiss = 0;
             }
         } catch (Exception e) { /* fall back to the picture */ }
-        if (text == null && noKeys()) return;
+        if (text == null && prefs.keys().isEmpty()) return;
         if (text != null) translateText(text, mySeq);
         else translateImage(region, mySeq);
     }
@@ -533,7 +602,7 @@ public class CaptureService extends Service {
         JSONObject r;
         if (noKeys()) { r = freeTr(text); via = "free"; }
         else {
-            try { r = ask(prompt, null, schema, SHAPE_SUB); via = "ai"; }
+            try { r = askText(prompt, schema, SHAPE_SUB, prefs.prefer()); }
             catch (Exception e) { r = freeTr(text); via = "free"; }
         }
         remember(text);
@@ -582,7 +651,7 @@ public class CaptureService extends Service {
                 Bitmap full = grab();
                 if (full == null) return;
                 setStatus("Đang dịch cả màn hình...");
-                if (noKeys()) {
+                if (prefs.keys().isEmpty()) {
                     if (ocr == null) ocr = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
                     Text t = Tasks.await(ocr.process(InputImage.fromBitmap(full, 0)), 6, java.util.concurrent.TimeUnit.SECONDS);
                     java.util.List<String> ls = new java.util.ArrayList<>();
@@ -632,6 +701,167 @@ public class CaptureService extends Service {
         } catch (Exception ignored) { }
     }
 
+    // ---------------------------------------------------------------- extra areas (quests, items)
+
+    /** OCR lines kept as separate lines (quest lists, item stats) */
+    private String readLines(Bitmap b) throws Exception {
+        if (ocr == null) ocr = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        Text t = Tasks.await(ocr.process(InputImage.fromBitmap(b, 0)), 5, java.util.concurrent.TimeUnit.SECONDS);
+        StringBuilder sb = new StringBuilder();
+        for (Text.TextBlock blk : t.getTextBlocks()) for (Text.Line ln : blk.getLines()) {
+            String s2 = ln.getText().trim();
+            if (s2.replaceAll("[^A-Za-z]", "").length() < 2 || wordy(s2) < 0.5) continue;
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(s2);
+        }
+        return sb.toString().trim();
+    }
+
+    /** called from tick about once a second: an area is read again when its text changed and stopped moving */
+    private void zoneCheck(Bitmap full) {
+        for (Zone z : zones) {
+            float[] r = zoneRect(z);
+            Bitmap c = crop(full, r);
+            Mask m = textMask(c);
+            Mask prev = z.prev; z.prev = m;
+            if (m.ink < MW * MH * 0.003) continue;
+            boolean steady = prev != null && maskDiff(m, prev) < 0.06;
+            boolean changed = z.done == null || maskDiff(m, z.done) > 0.12;
+            if (!steady || !changed || zBusy) continue;
+            z.done = m;
+            final Bitmap copy = c.copy(Bitmap.Config.ARGB_8888, false);
+            zBusy = true;
+            zpool.submit(() -> {
+                try { zoneTranslate(z, copy); }
+                catch (Exception e) { setStatus("Vùng " + (z.idx + 1) + ": " + e.getMessage()); }
+                finally { zBusy = false; }
+            });
+        }
+    }
+
+    private void zoneTranslate(Zone z, Bitmap b) throws Exception {
+        String text = readLines(b);
+        if (text.isEmpty() || similar(text, z.text)) return;
+        z.text = text;
+        String key = Prefs.key(prefs.game()) + "|" + norm(text);
+        String vi = zcache.get(key);
+        if (vi == null) {
+            String prompt = "You translate on-screen video game text (quest objectives, item descriptions, map or menu text) for a Vietnamese player.\n"
+                    + "On-device OCR read the text between <<< and >>>. It may contain OCR mistakes or words stuck together.\n<<<\n" + text + "\n>>>\n"
+                    + "Translate it into short, clear Vietnamese in \"vi\". Keep one output line for each input line, joined with \\n. Keep names of characters, places, items and skills as they are; numbers, stats and button names stay unchanged. Ignore lines that are only button prompts or numbers. If it is not real text, return \"vi\":\"\".\n" + context();
+            JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"vi\":{\"type\":\"STRING\"}},\"required\":[\"vi\"]}");
+            JSONObject r;
+            if (noKeys()) { JSONObject o = new JSONObject(); o.put("vi", gtx(text)); r = o; }
+            else {
+                try { r = askText(prompt, schema, "{\"vi\":\"\"}", "best"); }
+                catch (Exception e) { JSONObject o = new JSONObject(); o.put("vi", gtx(text)); r = o; }
+            }
+            vi = r != null ? r.optString("vi", "").trim() : "";
+            if (!vi.isEmpty()) zcache.put(key, vi);
+        }
+        z.vi = vi;
+        main.post(this::zoneShow);
+    }
+
+    private float[] zoneRect(Zone z) {
+        return new float[]{(float) z.lp.x / sw, (float) z.lp.y / sh, (float) z.lp.width / sw, (float) z.lp.height / sh};
+    }
+
+    private void loadZones() {
+        try {
+            JSONArray a = new JSONArray(prefs.zones());
+            for (int i = 0; i < a.length() && i < 2; i++) {
+                JSONObject o = a.getJSONObject(i);
+                addZone((float) o.optDouble("x", .6), (float) o.optDouble("y", .15), (float) o.optDouble("w", .35), (float) o.optDouble("h", .3));
+            }
+        } catch (Exception ignored) { }
+    }
+
+    private void saveZones() {
+        JSONArray a = new JSONArray();
+        try { for (Zone z : zones) { float[] r = zoneRect(z); a.put(new JSONObject().put("x", r[0]).put("y", r[1]).put("w", r[2]).put("h", r[3])); } }
+        catch (Exception ignored) { }
+        prefs.zones(a.toString());
+        for (Zone z : zones) { z.prev = null; z.done = null; z.text = ""; }
+    }
+
+    private void addZone(float x, float y, float w, float h) {
+        if (zones.size() >= 2) return;
+        Zone z = new Zone();
+        z.idx = zones.size();
+        z.lp = overlayParams(100, 100, zoneEditing);
+        z.lp.x = Math.round(x * sw); z.lp.y = Math.round(y * sh);
+        z.lp.width = Math.max(dp(80), Math.round(w * sw)); z.lp.height = Math.max(dp(40), Math.round(h * sh));
+        z.view = new RegionView(z.lp, ZCOL[z.idx % ZCOL.length], "Vùng " + (z.idx + 1), this::saveZones, () -> zoneEditing, () -> removeZone(z));
+        zones.add(z);
+        wm.addView(z.view, z.lp);
+    }
+
+    private void removeZone(Zone z) {
+        try { wm.removeView(z.view); } catch (Exception ignored) { }
+        zones.remove(z);
+        for (int i = 0; i < zones.size(); i++) { Zone o = zones.get(i); o.idx = i; o.view.color = ZCOL[i % ZCOL.length]; o.view.name = "Vùng " + (i + 1); o.view.invalidate(); }
+        saveZones();
+        zoneShow();
+        if (zoneAddBtn != null) zoneAddBtn.setVisibility(zoneEditing && zones.size() < 2 ? View.VISIBLE : View.GONE);
+    }
+
+    private void placeZones() {
+        try {
+            JSONArray a = new JSONArray(prefs.zones());
+            for (int i = 0; i < zones.size() && i < a.length(); i++) {
+                Zone z = zones.get(i); JSONObject o = a.getJSONObject(i);
+                z.lp.x = Math.round((float) o.optDouble("x") * sw); z.lp.y = Math.round((float) o.optDouble("y") * sh);
+                z.lp.width = Math.max(dp(80), Math.round((float) o.optDouble("w") * sw)); z.lp.height = Math.max(dp(40), Math.round((float) o.optDouble("h") * sh));
+                try { wm.updateViewLayout(z.view, z.lp); } catch (Exception ignored) { }
+            }
+        } catch (Exception ignored) { }
+    }
+
+    private void toggleZones() {
+        zoneEditing = !zoneEditing;
+        if (zoneEditing) {
+            if (editing) toggleEdit();
+            if (zones.isEmpty()) addZone(.6f, .15f, .36f, .3f);
+            bubbleText("", "Kéo khung màu trùm lên bảng nhiệm vụ hoặc mô tả vật phẩm. Kéo góc dưới bên phải để đổi cỡ, giữ lâu trên khung để xóa. Xong bấm \"Xong\".", null, 9000);
+        } else {
+            saveZones();
+        }
+        for (Zone z : zones) {
+            if (zoneEditing) z.lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            else z.lp.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            try { wm.updateViewLayout(z.view, z.lp); } catch (Exception ignored) { }
+            z.view.invalidate();
+        }
+        zoneBtn.setText(zoneEditing ? "Xong" : "Vùng");
+        zoneAddBtn.setVisibility(zoneEditing && zones.size() < 2 ? View.VISIBLE : View.GONE);
+    }
+
+    /** small floating card with the translation of each area; drag it anywhere */
+    private void zoneShow() {
+        if (zoneBox == null) return;
+        zoneBox.removeAllViews();
+        int n = 0;
+        for (Zone z : zones) {
+            if (z.vi == null || z.vi.isEmpty()) continue;
+            TextView h = new TextView(this);
+            h.setText("Vùng " + (z.idx + 1));
+            h.setTextColor(ZCOL[z.idx % ZCOL.length]);
+            h.setTypeface(Typeface.DEFAULT_BOLD);
+            h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            h.setPadding(0, n == 0 ? 0 : dp(8), 0, 0);
+            TextView v = new TextView(this);
+            v.setText(z.vi);
+            v.setTextColor(Color.WHITE);
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            v.setMaxWidth((int) (Math.max(sw, sh) * 0.42));
+            zoneBox.addView(h);
+            zoneBox.addView(v);
+            n++;
+        }
+        zoneBox.setVisibility(n > 0 ? View.VISIBLE : View.GONE);
+    }
+
     // ---------------------------------------------------------------- overlays
 
     private int dp(float v) {
@@ -677,8 +907,8 @@ public class CaptureService extends Service {
     @SuppressLint("ClickableViewAccessibility")
     private void buildOverlays() {
         // Region frame
-        frame = new RegionView();
         frameLp = overlayParams(100, 100, false);
+        frame = new RegionView(frameLp, YELLOW, "Khung phụ đề", this::saveFrame, () -> editing, null);
         wm.addView(frame, frameLp);
         placeFrame();
 
@@ -731,16 +961,37 @@ public class CaptureService extends Service {
         playBtn = smallButton("▶ Dịch", v -> toggleTranslate());
         editBtn = smallButton("Khung", v -> toggleEdit());
         Button fullBtn = smallButton("Cả màn", v -> fullScreen());
+        zoneBtn = smallButton("Vùng", v -> toggleZones());
+        zoneAddBtn = smallButton("+ Vùng", v -> { addZone(.06f, .15f, .36f, .3f); zoneAddBtn.setVisibility(zones.size() < 2 ? View.VISIBLE : View.GONE); });
+        zoneAddBtn.setVisibility(View.GONE);
         Button closeBtn = smallButton("✕", v -> stopSelf());
         bar.addView(playBtn);
         bar.addView(editBtn);
         bar.addView(fullBtn);
+        bar.addView(zoneBtn);
+        bar.addView(zoneAddBtn);
         bar.addView(closeBtn);
         barLp = overlayParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, true);
         barLp.x = dp(8);
         barLp.y = sh / 2;
         wm.addView(bar, barLp);
         makeDraggable(handle, bar, barLp);
+
+        // Extra areas and their translation card
+        loadZones();
+        zoneBox = new LinearLayout(this);
+        zoneBox.setOrientation(LinearLayout.VERTICAL);
+        zoneBox.setPadding(dp(12), dp(8), dp(12), dp(10));
+        GradientDrawable bg3 = new GradientDrawable();
+        bg3.setCornerRadius(dp(12));
+        bg3.setColor(Color.argb(225, 10, 12, 16));
+        zoneBox.setBackground(bg3);
+        zoneBoxLp = overlayParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, true);
+        zoneBoxLp.x = (int) (sw * 0.55);
+        zoneBoxLp.y = dp(12);
+        zoneBox.setVisibility(View.GONE);
+        wm.addView(zoneBox, zoneBoxLp);
+        makeDraggable(zoneBox, zoneBoxLp);
     }
 
     private void updateBubbleWidth() {
@@ -789,6 +1040,7 @@ public class CaptureService extends Service {
     }
 
     private void toggleEdit() {
+        if (!editing && zoneEditing) toggleZones();
         editing = !editing;
         if (editing) {
             frameLp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
@@ -897,35 +1149,39 @@ public class CaptureService extends Service {
         wm.addView(panel, lp);
     }
 
-    /** Dashed yellow rectangle marking the subtitle region; movable and resizable while editing. */
+    /** Dashed rectangle marking the subtitle region or an extra area; movable and resizable while editing. */
     private class RegionView extends View {
         private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final WindowManager.LayoutParams lp;
+        private final Runnable onSave, onLong;
+        private final java.util.function.BooleanSupplier isEditing;
+        int color; String name;
         private float downX, downY;
         private int startX, startY, startW, startH;
-        private boolean resizing;
+        private boolean resizing, moved;
+        private final Runnable longPress = () -> { if (!moved && this.onLong != null) this.onLong.run(); };
 
-        RegionView() {
+        RegionView(WindowManager.LayoutParams lp, int color, String name, Runnable onSave, java.util.function.BooleanSupplier isEditing, Runnable onLong) {
             super(CaptureService.this);
+            this.lp = lp; this.color = color; this.name = name; this.onSave = onSave; this.isEditing = isEditing; this.onLong = onLong;
             line.setStyle(Paint.Style.STROKE);
-            line.setColor(YELLOW);
-            label.setColor(YELLOW);
             label.setTypeface(Typeface.DEFAULT_BOLD);
             label.setTextSize(dp(11));
-            fill.setColor(YELLOW);
         }
 
         @Override
         protected void onDraw(Canvas c) {
             int w = getWidth(), h = getHeight();
-            if (editing) {
+            line.setColor(color); label.setColor(color); fill.setColor(color);
+            if (isEditing.getAsBoolean()) {
                 line.setStrokeWidth(dp(3));
                 line.setPathEffect(new DashPathEffect(new float[]{dp(10), dp(6)}, 0));
                 line.setAlpha(255);
                 c.drawRect(dp(2), dp(2), w - dp(2), h - dp(2), line);
                 c.drawCircle(w - dp(12), h - dp(12), dp(10), fill);
-                c.drawText("Khung phụ đề", dp(8), dp(16), label);
+                c.drawText(name, dp(8), dp(16), label);
             } else {
                 line.setStrokeWidth(dp(1.5f));
                 line.setPathEffect(new DashPathEffect(new float[]{dp(6), dp(6)}, 0));
@@ -937,27 +1193,31 @@ public class CaptureService extends Service {
         @SuppressLint("ClickableViewAccessibility")
         @Override
         public boolean onTouchEvent(MotionEvent e) {
-            if (!editing) return false;
+            if (!isEditing.getAsBoolean()) return false;
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    downX = e.getRawX(); downY = e.getRawY();
-                    startX = frameLp.x; startY = frameLp.y; startW = frameLp.width; startH = frameLp.height;
+                    downX = e.getRawX(); downY = e.getRawY(); moved = false;
+                    startX = lp.x; startY = lp.y; startW = lp.width; startH = lp.height;
                     resizing = e.getX() > getWidth() - dp(48) && e.getY() > getHeight() - dp(48);
+                    if (onLong != null) postDelayed(longPress, 900);
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     float dx = e.getRawX() - downX, dy = e.getRawY() - downY;
+                    if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) { moved = true; removeCallbacks(longPress); }
                     if (resizing) {
-                        frameLp.width = Math.max(dp(80), (int) (startW + dx));
-                        frameLp.height = Math.max(dp(30), (int) (startH + dy));
+                        lp.width = Math.max(dp(80), (int) (startW + dx));
+                        lp.height = Math.max(dp(30), (int) (startH + dy));
                     } else {
-                        frameLp.x = (int) (startX + dx);
-                        frameLp.y = (int) (startY + dy);
+                        lp.x = (int) (startX + dx);
+                        lp.y = (int) (startY + dy);
                     }
-                    try { wm.updateViewLayout(this, frameLp); } catch (Exception ignored) { }
+                    try { wm.updateViewLayout(this, lp); } catch (Exception ignored) { }
                     invalidate();
                     return true;
                 case MotionEvent.ACTION_UP:
-                    saveFrame();
+                case MotionEvent.ACTION_CANCEL:
+                    removeCallbacks(longPress);
+                    if (moved) onSave.run();
                     return true;
                 default:
                     return true;

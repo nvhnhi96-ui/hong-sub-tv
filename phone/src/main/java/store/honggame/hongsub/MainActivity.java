@@ -49,7 +49,8 @@ public class MainActivity extends Activity {
     private static final String REMOTE_PLAY_PKG = "com.playstation.remoteplay";
 
     private Prefs prefs;
-    private EditText keysEt, groqEt, tvEt, gameEt, notesEt;
+    private EditText keysEt, groqEt, orEt, tvEt, gameEt, notesEt;
+    private final List<Button> preferBtns = new ArrayList<>();
     private TextView keyMsg, status, notesMsg;
     private Button startBtn;
     private final List<Button> speedBtns = new ArrayList<>();
@@ -195,6 +196,29 @@ public class MainActivity extends Activity {
         k.addView(groqEt);
         gap(k, 8);
         k.addView(button("Lấy mã Groq miễn phí", false, v -> open("https://console.groq.com/keys")));
+        gap(k, 14);
+        k.addView(text("AI dịch thông minh (không bắt buộc)", 14, Color.WHITE, true));
+        k.addView(text("Model lớn qua OpenRouter (DeepSeek, Gemma, Nemotron), dịch hay hơn, nhất là nhiệm vụ và vật phẩm. Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần: 1000 câu mỗi ngày và dùng được DeepSeek rất rẻ.", 13, MUTED, false));
+        gap(k, 8);
+        orEt = input("sk-or-...", prefs.orRaw(), false);
+        k.addView(orEt);
+        gap(k, 8);
+        k.addView(button("Lấy mã OpenRouter", false, v -> open("https://openrouter.ai/keys")));
+        gap(k, 8);
+        k.addView(text("Khi có nhiều AI cùng dịch", 13, MUTED, true));
+        LinearLayout pr = new LinearLayout(this);
+        String[] pv = {"fast", "balanced", "best"}, pn = {"Nhanh nhất", "Cân bằng", "Hay nhất"};
+        for (int i = 0; i < 3; i++) {
+            final String val = pv[i];
+            Button pb = button(pn[i], false, v -> { prefs.prefer(val); refresh(); });
+            pb.setTag(val);
+            preferBtns.add(pb);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(i == 0 ? 0 : dp(6), dp(6), 0, 0);
+            pr.addView(pb, lp);
+        }
+        k.addView(pr);
+        k.addView(text("Cân bằng: chờ AI thông minh thêm 0,6 giây. Hay nhất: luôn chờ AI thông minh.", 12, MUTED, false));
         keyMsg = text("", 13, MUTED, false);
         keyMsg.setPadding(0, dp(8), 0, 0);
         k.addView(keyMsg);
@@ -247,7 +271,7 @@ public class MainActivity extends Activity {
         gap(o, 8);
         o.addView(text("Tốc độ quét", 13, MUTED, true));
         LinearLayout speeds = new LinearLayout(this);
-        int[] vals = {1200, 700, 400};
+        int[] vals = {1000, 400, 250};
         String[] names = {"Tiết kiệm", "Vừa", "Nhanh"};
         for (int i = 0; i < 3; i++) {
             final int val = vals[i];
@@ -316,6 +340,7 @@ public class MainActivity extends Activity {
     private void save() {
         prefs.keysRaw(keysEt.getText().toString());
         prefs.groqRaw(groqEt.getText().toString());
+        prefs.orRaw(orEt.getText().toString());
         prefs.tv(tvEt.getText().toString());
         prefs.game(gameEt.getText().toString());
         prefs.notes(notesEt.getText().toString());
@@ -389,6 +414,14 @@ public class MainActivity extends Activity {
             if (on) g.setStroke(dp(2), YELLOW);
             b.setBackground(g);
         }
+        for (Button b : preferBtns) {
+            boolean on = b.getTag().equals(prefs.prefer());
+            GradientDrawable g = new GradientDrawable();
+            g.setCornerRadius(dp(10));
+            g.setColor(on ? Color.rgb(60, 60, 72) : Color.rgb(32, 32, 40));
+            if (on) g.setStroke(dp(2), YELLOW);
+            b.setBackground(g);
+        }
         boolean run = CaptureService.running;
         startBtn.setText(run ? "Tắt Hóng Sub" : "Bắt đầu");
         status.setTextColor(run ? Color.rgb(61, 220, 132) : Color.WHITE);
@@ -399,7 +432,7 @@ public class MainActivity extends Activity {
         save();
         final String name = prefs.game();
         if (name.isEmpty()) { notesMsg.setText("Gõ tên game trước, ví dụ: Ghost of Tsushima."); gameEt.requestFocus(); return; }
-        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) { notesMsg.setText("Cần nhập mã Gemini trước."); return; }
+        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty() && prefs.orKeys().isEmpty()) { notesMsg.setText("Cần nhập mã Gemini trước."); return; }
         notesMsg.setTextColor(MUTED);
         notesMsg.setText("AI đang soạn ghi chú cho " + name + "...");
         new Thread(() -> {
@@ -417,9 +450,10 @@ public class MainActivity extends Activity {
                 JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"known\":{\"type\":\"BOOLEAN\"},\"notes\":{\"type\":\"STRING\"}},\"required\":[\"known\",\"notes\"]}");
                 JSONObject r = null;
                 if (!prefs.keys().isEmpty()) {
-                    try { r = new Gemini(prefs).ask(prompt, null, schema); } catch (Exception e) { if (prefs.groqKeys().isEmpty()) throw e; }
+                    try { r = new Gemini(prefs).ask(prompt, null, schema); } catch (Exception e) { if (prefs.groqKeys().isEmpty() && prefs.orKeys().isEmpty()) throw e; }
                 }
-                if (r == null && !prefs.groqKeys().isEmpty()) r = new Groq(prefs).ask(prompt, null, "{\"known\":true,\"notes\":\"\"}");
+                if (r == null && !prefs.groqKeys().isEmpty()) { try { r = new Groq(prefs).ask(prompt, null, "{\"known\":true,\"notes\":\"\"}"); } catch (Exception e) { if (prefs.orKeys().isEmpty()) throw e; } }
+                if (r == null && !prefs.orKeys().isEmpty()) r = new OpenRouter(prefs).ask(prompt, "{\"known\":true,\"notes\":\"\"}");
                 if (r != null) { res = r.optString("notes", ""); known = r.optBoolean("known", false); }
             } catch (Gemini.CoolException ce) {
                 err = "Mã tạm hết lượt, thử lại sau ít giây.";
@@ -447,7 +481,8 @@ public class MainActivity extends Activity {
         save();
         final List<String> ks = prefs.keys();
         final List<String> gs = prefs.groqKeys();
-        if (ks.isEmpty() && gs.isEmpty()) {
+        final List<String> os = prefs.orKeys();
+        if (ks.isEmpty() && gs.isEmpty() && os.isEmpty()) {
             keyMsg.setTextColor(Color.rgb(255, 92, 92));
             keyMsg.setText("Chưa có mã. Bấm \"Lấy mã miễn phí\", tạo mã Gemini rồi dán vào ô trên.");
             return;
@@ -476,11 +511,17 @@ public class MainActivity extends Activity {
                     errs.append(" · Groq ").append(i + 1).append(": ").append(e.getMessage());
                 }
             }
+            int ogood = 0; String omodel = "";
+            if (!os.isEmpty()) {
+                try { List<String> om = new OpenRouter(prefs).refresh(); ogood = 1; omodel = om.isEmpty() ? "" : om.get(0); }
+                catch (Exception e) { errs.append(" · AI thông minh: ").append(e.getMessage()); }
+            }
+            final int ook = ogood; final String omod = omodel;
             final int ok = good, gok = ggood;
             final List<String> ms = models, gms = gmodels;
             final String er = errs.toString();
             runOnUiThread(() -> {
-                if (ok == 0 && gok == 0) {
+                if (ok == 0 && gok == 0 && ook == 0) {
                     keyMsg.setTextColor(Color.rgb(255, 92, 92));
                     keyMsg.setText("Không dùng được mã nào" + er + ". Kiểm tra đã sao chép đủ mã chưa.");
                     return;
@@ -490,6 +531,7 @@ public class MainActivity extends Activity {
                 StringBuilder sb = new StringBuilder("Dùng được:");
                 if (!ks.isEmpty()) sb.append(" Gemini ").append(ok).append("/").append(ks.size()).append(ok > 0 ? " (" + prefs.models().get(0) + ")" : "");
                 if (!gs.isEmpty()) sb.append(" · Groq ").append(gok).append("/").append(gs.size());
+                if (!os.isEmpty()) sb.append(" · AI thông minh ").append(ook > 0 ? "(" + omod.replaceAll("^.*/", "").replace(":free", ", miễn phí") + ")" : "lỗi");
                 keyMsg.setTextColor(ok > 0 ? Color.rgb(61, 220, 132) : Color.rgb(255, 159, 67));
                 keyMsg.setText(sb.toString() + er);
             });
@@ -504,7 +546,7 @@ public class MainActivity extends Activity {
             refresh();
             return;
         }
-        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) {
+        if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty() && prefs.orKeys().isEmpty()) {
             keyMsg.setTextColor(Color.rgb(255, 159, 67));
             keyMsg.setText("Chưa có mã: Hóng Sub dịch bằng máy dịch miễn phí. Nhập mã Gemini để dịch tự nhiên và đúng xưng hô hơn.");
         }

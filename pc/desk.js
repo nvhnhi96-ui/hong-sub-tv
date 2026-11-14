@@ -98,7 +98,7 @@ $('dkWait').addEventListener('input',function(){ A.setWait(+this.value); timing(
 $('dkHold').addEventListener('input',function(){ A.setHold(+this.value); timing(); });
 timing();
 $('dkDefaults').addEventListener('click',function(){
-  A.setScan(400); A.setWait(900); A.setHold(10); timing();
+  A.setScan(300); A.setWait(900); A.setHold(10); timing();
   $('hsSize').value=28; $('hsSize').dispatchEvent(new Event('input'));
   ST={color:'#FFFFFF',bg:74,width:80}; applyStyle(); D.overlaySize(80);
 });

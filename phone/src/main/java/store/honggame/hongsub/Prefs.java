@@ -62,6 +62,32 @@ final class Prefs {
     }
     void models(List<String> m) { sp.edit().putString("models", android.text.TextUtils.join("\n", m)).apply(); }
 
+    String orRaw() { return sp.getString("or", ""); }
+    void orRaw(String v) { sp.edit().putString("or", v == null ? "" : v.trim()).apply(); }
+    List<String> orKeys() {
+        List<String> out = new ArrayList<>();
+        for (String s : orRaw().split("[\\s,]+")) if (s.trim().length() > 20) out.add(s.trim());
+        return out;
+    }
+    List<String> orModels() {
+        List<String> out = new ArrayList<>();
+        for (String s : sp.getString("ormodels", "").split("\n")) if (!s.trim().isEmpty()) out.add(s.trim());
+        return out;
+    }
+    void orModels(List<String> m) { sp.edit().putString("ormodels", android.text.TextUtils.join("\n", m)).apply(); }
+    boolean orPaid() { return sp.getBoolean("orpaid", false); }
+    void orPaid(boolean v) { sp.edit().putBoolean("orpaid", v).apply(); }
+    long orListed() { return sp.getLong("orlisted", 0); }
+    void orListed(long v) { sp.edit().putLong("orlisted", v).apply(); }
+
+    /** when several AIs answer: "fast", "balanced" (wait 0.6s for the smart AI) or "best" */
+    String prefer() { return sp.getString("prefer", "balanced"); }
+    void prefer(String v) { sp.edit().putString("prefer", v).apply(); }
+
+    /** extra areas (quests, items), JSON array of {x,y,w,h} fractions */
+    String zones() { return sp.getString("zones", "[]"); }
+    void zones(String v) { sp.edit().putString("zones", v).apply(); }
+
     String tv() { return sp.getString("tv", ""); }
     void tv(String v) { sp.edit().putString("tv", v == null ? "" : v.toUpperCase().replaceAll("[^A-Z0-9]", "")).apply(); }
 
@@ -84,7 +110,7 @@ final class Prefs {
     boolean showEn() { return sp.getBoolean("en", true); }
     void showEn(boolean v) { sp.edit().putBoolean("en", v).apply(); }
 
-    int interval() { return sp.getInt("interval", 700); }
+    int interval() { int v = sp.getInt("interval", 400); return v == 700 ? 400 : v; }
     void interval(int v) { sp.edit().putInt("interval", v).apply(); }
 
     /** Subtitle region as fractions of the screen: x, y, w, h. */

@@ -611,8 +611,8 @@ html,body{height:100%;overflow:hidden}
             <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
             <div class="dk-set">
               <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
-              <input class="hs-range" id="dkScan" type="range" min="200" max="1500" step="50" value="400">
-              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1000">Tiết kiệm</button><button type="button" data-v="400" class="on">Vừa</button><button type="button" data-v="250">Nhanh</button></div>
+              <input class="hs-range" id="dkScan" type="range" min="200" max="1500" step="50" value="300">
+              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1000">Tiết kiệm</button><button type="button" data-v="300" class="on">Vừa</button><button type="button" data-v="200">Nhanh</button></div>
             </div>
             <div class="dk-set">
               <div class="lab"><label for="dkWait">Chờ chữ hiện đủ trước khi dịch</label><output id="dkWaitV">0,9 giây</output></div>
@@ -843,7 +843,7 @@ var S0={wait:load('wait',900),hold:load('hold',10),allowFree:load('allowFree',tr
 var S={
   stream:null, demo:null, running:false, busy:false, timer:null,
   region:load('region',{x:.1,y:.74,w:.8,h:.22}),
-  interval:(function(){ var v=load('interval',400); if(!load('intv3',false)){ if(v===500||v===700) v=400; save('interval',v); save('intv3',true); } return v; })(),
+  interval:(function(){ var v=load('interval',300); if(!load('intv4',false)){ if(v===400||v===500||v===700) v=300; save('interval',v); save('intv4',true); } return v; })(),
   keys:[], keyIdx:0, cool:{}, model:load('model',null), models:load('models',[]), noThink:{},
   lastSig:null, prevSig:null, lastEn:'', hist:[], pip:null, offlineDemo:false, lastOcr:'', saved:0
 };
@@ -1962,7 +1962,7 @@ function askText(prompt,text,schema,shape,plain,prefer){
     if(hasO) run('o');
     if(!hasG&&!hasO) startNext();
     /* Groq answers text in ~0.3s; start it at once when Gemini is missing or usually slow here */
-    if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
+    if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(prefer==='fast'||!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
     if(S.allowFree&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held) run('f'); },3500));
   });
 }
