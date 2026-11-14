@@ -23,7 +23,7 @@
       "main.js",
       "preload.js",
       "overlay.html",
-      "zones.html",
+      "zone.html",
       "tts.ps1",
       "app/**",
       "assets/**",

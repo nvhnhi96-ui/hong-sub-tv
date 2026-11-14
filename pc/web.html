@@ -55,10 +55,12 @@ html,body{margin:0;background:#ECEEF1}
 .hs-zone{position:absolute;border:2px dashed #3FB6FF;border-radius:6px}
 .hs-zone span{position:absolute;bottom:100%;left:-2px;margin-bottom:3px;color:#000;font-size:11.5px;font-weight:700;padding:0 6px;border-radius:4px;white-space:nowrap}
 .hs-zone .tx{position:absolute;inset:0;background:rgba(10,12,16,.88);color:#fff;padding:6px 8px;line-height:1.35;white-space:pre-line;overflow:auto;border-radius:4px;font-weight:500}
-.hs-zrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.hs-zrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.hs-zhead{display:flex;gap:8px;align-items:center}.hs-zhead input.hs-in{flex:1;font-weight:700;padding:6px 8px!important}
+.hs-zopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-items:end}.hs-zopts label span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
 .hs-zrow:first-child{border-top:0}
 .hs-zrow i{width:10px;height:10px;border-radius:50%;flex:none}
-.hs-zrow select{width:auto!important;flex:1 1 120px;padding:6px 8px!important;font-size:13.5px}
+.hs-zrow select{width:100%!important;padding:6px 8px!important;font-size:13.5px}
 .hs-zrow .hs-btn{padding:6px 10px;font-size:13px}
 .hs-zon{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600}
 .hs-zout{flex-basis:100%;font-size:13.5px;background:var(--sunk);border-radius:6px;padding:6px 8px;line-height:1.45}
@@ -934,19 +936,22 @@ ov.addEventListener('pointermove',function(e){
 });
 ov.addEventListener('pointerup',function(){
   if(!start) return; start=null;
-  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề tiếng Anh'; zList(); if(z.on) zoneTick(true); return; }
+  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề tiếng Anh'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
   save('region',S.region); save('regionSet',true); setDraw(false); S.lastSig=null; steps();
 });
 
 /* ---------- extra translation areas: quests, items, menus in other parts of the screen ---------- */
 var ZKINDS={quest:{n:'Nhiệm vụ',d:'quest / objective text'},item:{n:'Vật phẩm',d:'item name and description'},map:{n:'Bản đồ, chỉ dẫn',d:'map labels, tutorial and hint text'},menu:{n:'Menu',d:'menu and settings text'},other:{n:'Vùng khác',d:'on-screen game text'}};
-var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067'];
+var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0','#E8E36A'], ZMAX=8, ZSIZE={s:14,m:17,l:21};
 S.zones=load('zones',[]); S.zcache=load('zcache',{}); S.zBusy=false; S.zLast=0; var zcv=document.createElement('canvas');
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide};})); }
+function zName(z){ return z.name||('Vùng '+(S.zones.indexOf(z)+1)); }
+function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
+S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='float'; });
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
-  var c=ZCOL[S.zones.indexOf(z)%ZCOL.length];
+  var c=zCol(z);
   z.el=document.createElement('div'); z.el.className='hs-zone'; z.el.style.borderColor=c;
   z.el.innerHTML='<span style="background:'+c+'"></span><div class="tx" hidden></div>';
   zLayer.appendChild(z.el); return z.el;
@@ -955,7 +960,8 @@ function zShow(){
   var b=videoBox(), live={};
   S.zones.forEach(function(z,i){
     var el=zEl(z); live[z.id]=1;
-    el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=(i+1)+'. '+ZKINDS[z.kind].n+(z.mode==='key'?' (bấm phím)':'');
+    var c=zCol(z); el.style.borderColor=c; el.querySelector('span').style.background=c;
+    el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+' · '+ZKINDS[z.kind].n+(z.mode==='key'?' (bấm phím)':'');
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
     var tx=el.querySelector('.tx'); tx.hidden=!z.vi||!!z.hide; tx.textContent=z.vi||'';
     tx.style.fontSize=Math.max(11,Math.min(18,Math.round(z.h*b.h/Math.max(2,(z.vi||'').split('\n').length+1))))+'px';
@@ -966,32 +972,44 @@ window.addEventListener('resize',function(){ if(S.stream) zShow(); });
 video.addEventListener('loadedmetadata',zShow);
 function zList(){
   var box=$('hsZoneList'); if(!box) return;
+  function opt(v,cur,t){ return '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+t+'</option>'; }
   box.innerHTML=S.zones.map(function(z,i){
-    return '<div class="hs-zrow" data-id="'+z.id+'"><i style="background:'+ZCOL[i%ZCOL.length]+'"></i>'+
-      '<select class="hs-in" data-f="kind" aria-label="Loại vùng">'+Object.keys(ZKINDS).map(function(k){return '<option value="'+k+'"'+(k===z.kind?' selected':'')+'>'+ZKINDS[k].n+'</option>';}).join('')+'</select>'+
-      '<select class="hs-in" data-f="mode" aria-label="Khi nào dịch"><option value="auto"'+(z.mode!=='key'?' selected':'')+'>Tự dịch khi chữ đổi</option><option value="key"'+(z.mode==='key'?' selected':'')+'>Chỉ khi bấm phím</option></select>'+
-      '<label class="hs-zon" title="Bật vùng này"><input type="checkbox" data-f="on"'+(z.on?' checked':'')+'> Bật</label>'+
-      '<button class="hs-btn" type="button" data-a="draw">Vẽ lại</button><button class="hs-btn" type="button" data-a="del" aria-label="Xóa vùng">Xóa</button>'+
-      (z.vi?'<div class="hs-zout"><b>'+esc(ZKINDS[z.kind].n)+':</b> '+esc(z.vi).replace(/\n/g,'<br>')+'</div>':'')+'</div>';
-  }).join('')||'<p class="hs-note">Chưa có vùng nào. Bấm <b>Thêm vùng</b> rồi kéo khung quanh chỗ hiện nhiệm vụ hoặc mô tả vật phẩm.</p>';
-  $('hsZoneAdd').disabled=S.zones.length>=4||!S.stream; $('hsZoneNow').disabled=!S.zones.length||!S.stream;
+    return '<div class="hs-zrow" data-id="'+z.id+'"><div class="hs-zhead"><i style="background:'+zCol(z)+'"></i>'+
+      '<input class="hs-in" data-f="name" value="'+esc(zName(z))+'" aria-label="Tên vùng" maxlength="24">'+
+      '<label class="hs-zon" title="Bật vùng này"><input type="checkbox" data-f="on"'+(z.on?' checked':'')+'> Bật</label></div>'+
+      '<div class="hs-zopts">'+
+      '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
+      '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
+      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Khung nổi riêng')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
+      '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
+      '<label class="hs-zon"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
+      '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
+      (z.vi?'<div class="hs-zout">'+esc(z.vi).replace(/\n/g,'<br>')+'</div>':'')+'</div>';
+  }).join('')||'<p class="hs-note">Chưa có vùng nào. Bấm <b>Thêm vùng</b> rồi kéo khung quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ.</p>';
+  $('hsZoneAdd').disabled=S.zones.length>=ZMAX||!S.stream; $('hsZoneNow').disabled=!S.zones.length||!S.stream;
+  $('hsZoneAdd').textContent=S.zones.length>=ZMAX?'Đã đủ '+ZMAX+' vùng':'Thêm vùng '+(S.zones.length+1);
   box.querySelectorAll('.hs-zrow').forEach(function(row){
     var z=S.zones.filter(function(x){return x.id===row.dataset.id;})[0];
-    row.querySelectorAll('select,input').forEach(function(el){ el.addEventListener('change',function(){ z[el.dataset.f]=el.type==='checkbox'?el.checked:el.value; z.lastText=''; zSave(); zShow(); zList(); }); });
+    row.querySelectorAll('select,input').forEach(function(el){ el.addEventListener('change',function(){
+      var v=el.type==='checkbox'?el.checked:el.value; if(el.dataset.f==='name') v=String(v).trim();
+      z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on') z.lastText='';
+      zSave(); zShow(); zList(); zPush(); }); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
+    row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
     row.querySelector('[data-a=del]').addEventListener('click',function(){ if(z.el) z.el.remove(); S.zones=S.zones.filter(function(x){return x!==z;}); zSave(); zShow(); zList(); zPush(); });
   });
 }
 $('hsZoneAdd').addEventListener('click',function(){
-  if(S.zones.length>=4||!S.stream) return;
+  if(S.zones.length>=ZMAX||!S.stream) return;
   var used=S.zones.map(function(z){return z.kind;}), kind=['quest','item','map','menu'].filter(function(k){return used.indexOf(k)<0;})[0]||'other';
-  var z={id:'z'+Date.now().toString(36),kind:kind,x:.62,y:.12,w:.34,h:.3,on:true,mode:'auto',speak:false};
-  S.zones.push(z); zSave(); zShow(); zList(); drawFor(z);
+  var n=S.zones.length;
+  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'float'};
+  S.zones.push(z); zSave(); zShow(); zList(); zPush(); drawFor(z);
 });
 $('hsZoneNow').addEventListener('click',function(){ zoneTick(true); });
 /* drawing a box: the subtitle area or one of the extra areas */
 var drawTarget=null;
-function drawFor(z){ drawTarget=z; setDraw(true); $('hsHint').textContent='Kéo chuột bao quanh vùng '+ZKINDS[z.kind].n.toLowerCase(); }
+function drawFor(z){ if(window.hsGo) hsGo('choi'); drawTarget=z; setDraw(true); $('hsHint').textContent='Kéo chuột bao quanh '+zName(z)+' ('+ZKINDS[z.kind].n.toLowerCase()+')'; }
 /* text for menus and descriptions: keep every readable line */
 function zText(o){
   return o.lines.filter(function(l){ return l.conf>=0.55&&(l.text.match(/[A-Za-z]/g)||[]).length>=2&&wordy(l.text)>=0.5; })
@@ -1012,13 +1030,13 @@ async function zTranslate(z,text){
   return {vi:vi,via:S.via};
 }
 /* the extra areas are checked about once a second, after the subtitle (which always goes first) */
-async function zoneTick(force){
+async function zoneTick(force,only){
   if(!S.stream||S.zBusy||!S.zones.length) return;
   if(!force&&(S.ocrBusy||Date.now()-S.zLast<900)) return;
   S.zLast=Date.now(); S.zBusy=true;
   try{
     for(var i=0;i<S.zones.length;i++){
-      var z=S.zones[i]; if(!z.on||(z.mode==='key'&&!force)) continue;
+      var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force)) continue;
       if(!grab(z,1280)) continue;
       var m=textMask();
       zcv.width=cap.width; zcv.height=cap.height; zcv.getContext('2d').drawImage(cap,0,0);   /* keep this crop: the subtitle check reuses cap meanwhile */
@@ -1038,10 +1056,10 @@ async function zoneTick(force){
         z.vi=(r&&r.vi||'').trim(); z.hide=false; zShow(); zList(); zPush(); continue;
       }
       if(!text||(!force&&similar(text,z.lastText||''))) continue;
-      z.lastText=text; log('vùng '+ZKINDS[z.kind].n+': '+text.replace(/\n/g,' / ').slice(0,120));
+      z.lastText=text; log(zName(z)+': '+text.replace(/\n/g,' / ').slice(0,120));
       var t=await zTranslate(z,text);
       if(!t.vi) continue;
-      z.vi=t.vi; z.hide=false; log('vùng '+ZKINDS[z.kind].n+' dịch ('+t.via+'): '+t.vi.replace(/\n/g,' / ').slice(0,120));
+      z.vi=t.vi; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+t.vi.replace(/\n/g,' / ').slice(0,120));
       zShow(); zList(); zPush();
       if(z.speak&&$('hsSpeak').checked) devSpeak(t.vi.replace(/\n/g,'. '),voiceMode(),'');
     }
@@ -1049,7 +1067,8 @@ async function zoneTick(force){
   finally{ S.zBusy=false; }
 }
 /* the Windows app shows these translations in a small floating panel too */
-function zPush(){ if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.vi;}).map(function(z,i){return {name:ZKINDS[z.kind].n,vi:z.vi,c:ZCOL[S.zones.indexOf(z)%ZCOL.length]};})); }
+/* the Windows app shows each area in its own floating window, placed over the original text by default */
+function zPush(){ if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show!=='app';}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -2086,18 +2105,39 @@ function psAccUi(){
   var a=$('hsPsAcc');
   if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
   a.innerHTML=PS.acc.loggedIn?('<span>PSN: <b>'+esc(PS.acc.onlineId||'đã đăng nhập')+'</b></span><button class="hs-btn" type="button" id="hsPsOut" style="padding:4px 10px">Đổi tài khoản</button>')
-    :'<button class="hs-btn pri" type="button" id="hsPsIn">Đăng nhập PSN</button><span class="hs-note">cần để ghép máy lần đầu</span>';
+    :'<button class="hs-btn pri" type="button" id="hsPsIn">Đăng nhập PSN</button><button class="hs-btn" type="button" data-ps="browser">Đăng nhập bằng trình duyệt</button><span class="hs-note">cần để ghép máy lần đầu</span>';
   if($('hsPsIn')) $('hsPsIn').onclick=psLogin;
+  var bb=a.querySelector('[data-ps=browser]'); if(bb) bb.onclick=psLoginBrowser;
   if($('hsPsOut')) $('hsPsOut').onclick=function(){ D.ps.logout().then(function(){ return psLogin(); }); };
 }
 function psLogin(){
   psMsg('','Đang mở trang đăng nhập của Sony...');
   return D.ps.login().then(function(r){
     if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
-    else if(r&&r.err==='closed'){ psMsg('',''); }
-    else psMsg('err','Đăng nhập chưa xong: '+((r&&r.err)||'')+'. Thử lại.');
+    else if(r&&r.err==='closed'){ psMsg('','Không đăng nhập được trong cửa sổ đó? Sony hay chặn đăng nhập trong ứng dụng. Bấm "Đăng nhập bằng trình duyệt".'); }
+    else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Bấm "Đăng nhập bằng trình duyệt" để đăng nhập bằng Chrome hoặc Edge.');
     return psRefresh();
   });
+}
+/* sign in with Chrome / Edge: Sony then shows an empty page; copying its address finishes the sign-in */
+function psLoginBrowser(){
+  if(!D.ps.loginBrowser){ psMsg('err','Bản Hóng Sub này chưa có cách đăng nhập này. Tải bản mới nhất.'); return; }
+  var m=$('hsPsMsg'); m.hidden=false; m.className='hs-msg';
+  m.innerHTML='<b>Đã mở trang đăng nhập Sony trong trình duyệt.</b><ol style="margin:6px 0 0 18px;padding:0"><li>Đăng nhập tài khoản PSN trên trang đó (nhập mã xác minh nếu Sony hỏi).</li><li>Đăng nhập xong trang sẽ trắng hoặc báo lỗi, như vậy là bình thường.</li><li>Bấm vào thanh địa chỉ của trình duyệt, nhấn <kbd>Ctrl</kbd>+<kbd>A</kbd> rồi <kbd>Ctrl</kbd>+<kbd>C</kbd>. Hóng Sub tự nhận và đăng nhập xong.</li></ol>'+
+    '<div style="display:flex;gap:6px;margin-top:8px"><input class="hs-in" data-ps="paste" placeholder="Hoặc dán địa chỉ trang đó vào đây" spellcheck="false"><button class="hs-btn pri" type="button" data-ps="go">Xong</button><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
+  var inp=m.querySelector('[data-ps=paste]');
+  function done(r){
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    else if(r&&(r.err==='closed'||r.err==='again')){ if(r.err==='closed') psMsg('',''); }
+    else if(r&&r.err==='timeout') psMsg('warn','Chưa nhận được địa chỉ trang sau khi đăng nhập. Bấm lại "Đăng nhập bằng trình duyệt".');
+    else if(r&&r.err==='url') psMsg('err','Địa chỉ dán vào chưa đúng. Cần địa chỉ có chữ "remoteplay/redirect?code=".');
+    else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Thử lại.');
+    psRefresh();
+  }
+  m.querySelector('[data-ps=go]').onclick=function(){ var u=inp.value.trim(); if(!u) return; D.ps.loginCancel(); D.ps.loginUrl(u).then(done); };
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter') m.querySelector('[data-ps=go]').click(); });
+  m.querySelector('[data-ps=cancel]').onclick=function(){ D.ps.loginCancel(); };
+  D.ps.loginBrowser().then(done);
 }
 function psRefresh(){ return D.ps.state().then(function(st){ PS.acc=st; psAccUi(); }); }
 var STATE_TXT={ready:'Đang bật',standby:'Đang nghỉ',offline:'Không thấy',unknown:'?'};

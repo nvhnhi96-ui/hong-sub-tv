@@ -102,13 +102,14 @@ html,body{height:100%;overflow:hidden}
     <div class="dk-logo">Hóng<span>Sub</span></div>
     <nav class="dk-nav" aria-label="Các trang">
       <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
-      <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS5 / PS4</button>
+      <button type="button" data-p="vung"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/></svg>Vùng dịch</button>
+      <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS và TV</button>
       <button type="button" data-p="dich"><svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2M5 9c1.5 3 4 5 7 6M11 5c-1 4-3.5 7-7 9"/><path d="M13 21l4-10 4 10M14.5 18h5"/></svg>Dịch<span class="badge" id="dkKeyBadge" hidden>!</span></button>
       <button type="button" data-p="giong"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Giọng đọc</button>
       <button type="button" data-p="phude"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 13h4M13 13h4M7 16h7"/></svg>Phụ đề và độ trễ</button>
       <button type="button" data-p="nhanvat"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5A5 5 0 0 1 21 19"/></svg>Nhân vật</button>
       <button type="button" data-p="phim"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Phím tắt</button>
-      <button type="button" data-p="khac"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg>TV và hỗ trợ</button>
+      <button type="button" data-p="khac"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg>Hỗ trợ</button>
     </nav>
     <div class="dk-railinfo">
       <div>Nguồn hình: <b id="dkSrc">chưa chọn</b></div>
@@ -183,12 +184,10 @@ html,body{height:100%;overflow:hidden}
                 <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
               </div>
             </div>
-            <div class="dk-card" id="hsZoneSec">
-              <h2>Vùng dịch khác</h2>
-              <p class="hs-note" id="hsZoneNote">Nhiệm vụ, mô tả vật phẩm, bản đồ nằm ở chỗ khác trên màn hình? Thêm vùng cho từng chỗ. Mỗi vùng có khung màu riêng, bản dịch hiện trong khung nổi ở góc màn hình. Tối đa 4 vùng.</p>
-              <div id="hsZoneList" style="margin-top:8px"></div>
-              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" id="hsZoneAdd" type="button" disabled>Thêm vùng</button><button class="hs-btn" id="hsZoneNow" type="button" disabled>Dịch các vùng ngay <kbd>F6</kbd></button></div>
-              <label class="hs-sw" style="margin-top:10px">Hiện khung nổi bản dịch các vùng <input type="checkbox" id="dkZonePanel" checked></label>
+            <div class="dk-card">
+              <h2>Vùng dịch</h2>
+              <p class="hs-note" id="dkZoneSum">Dịch thêm nhiệm vụ, vật phẩm, bản đồ ở chỗ khác trên màn hình.</p>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkZoneAdd2">Thêm vùng</button><button class="hs-btn" type="button" data-go="vung">Quản lý vùng</button></div>
             </div>
             <div class="dk-card">
               <h2>Đang dùng</h2>
@@ -199,6 +198,37 @@ html,body{height:100%;overflow:hidden}
                 <span>Phím tắt</span><b id="dkKeys2">F7 bật/tắt dịch</b>
               </div>
               <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Vùng dịch ============ -->
+      <section class="dk-page" id="p-vung">
+        <div class="dk-cols">
+          <div>
+            <div class="dk-card" id="hsZoneSec">
+              <h2>Các vùng dịch</h2>
+              <p class="hs-note" id="hsZoneNote">Mỗi vùng là một khung trên hình game (Vùng 1, Vùng 2, Vùng 3...), dịch riêng và hiện bản dịch ở khung nổi riêng. Tối đa 8 vùng.</p>
+              <div id="hsZoneList" style="margin-top:8px"></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" id="hsZoneAdd" type="button" disabled>Thêm vùng 1</button><button class="hs-btn" id="hsZoneNow" type="button" disabled>Dịch các vùng ngay <kbd>F6</kbd></button></div>
+            </div>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Cách dùng</h2>
+              <ol class="dk-steps">
+                <li>Chọn nguồn hình ở <b>Màn hình chơi</b> trước.</li>
+                <li>Bấm <b>Thêm vùng</b>, kéo chuột bao quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ. Muốn thêm chỗ khác thì bấm tiếp <b>Thêm vùng</b>.</li>
+                <li>Mỗi vùng chọn được loại chữ, tự dịch hay chỉ dịch khi bấm F6, cỡ chữ và có đọc to không. Đổi tên vùng ngay ở ô tên.</li>
+                <li>Bản dịch mỗi vùng hiện ở khung nổi riêng, nằm đè lên đúng chỗ chữ gốc khi game chạy toàn màn hình. Bấm <b>Di chuyển các khung</b> để kéo khung tới chỗ khác.</li>
+              </ol>
+            </div>
+            <div class="dk-card">
+              <h2>Khung nổi của các vùng</h2>
+              <label class="hs-sw dk-sw">Hiện khung nổi bản dịch các vùng <input type="checkbox" id="dkZonePanel" checked></label>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" id="dkZoneMove">Di chuyển các khung</button><button class="hs-btn" type="button" id="dkZoneReset">Đặt lại chỗ cũ</button></div>
+              <p class="hs-note" style="margin-top:6px">Khi đang di chuyển: kéo khung để dời chỗ, kéo góc dưới bên phải để đổi cỡ. Xong bấm lại nút hoặc F10.</p>
             </div>
           </div>
         </div>
@@ -228,11 +258,20 @@ html,body{height:100%;overflow:hidden}
             </div>
           </div>
           <div>
+            <div class="dk-card" id="hsTvSec">
+              <h2>Hiện phụ đề lên TV</h2>
+              <p class="hs-note">Cho TV Android / Google TV. Nhập mã đang hiện trên app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+              <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
+                <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
+                <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
+              </div>
+              <div class="hs-msg" id="hsTvMsg" hidden></div>
+            </div>
             <div class="dk-card">
               <h2>Kết nối lần đầu</h2>
               <ol class="dk-steps">
                 <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>. Máy tính và PS5 dùng chung mạng.</li>
-                <li>Bấm <b>Đăng nhập PSN</b> ở bên trái, đăng nhập trên trang của Sony.</li>
+                <li>Bấm <b>Đăng nhập PSN</b> ở bên trái, đăng nhập trên trang của Sony. Không vào được thì bấm <b>Đăng nhập bằng trình duyệt</b>: đăng nhập trên Chrome hoặc Edge, xong chép địa chỉ trang (Ctrl+A, Ctrl+C), Hóng Sub tự nhận.</li>
                 <li>Bấm <b>Tìm máy</b>, rồi <b>Ghép máy</b>. Lấy mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> (PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>).</li>
                 <li>Bấm <b>Chơi</b>. Cắm tay cầm vào máy tính. Không có tay cầm: mũi tên, Enter là ✕, Backspace là ○, P là nút PS.</li>
               </ol>
@@ -447,15 +486,6 @@ html,body{height:100%;overflow:hidden}
       <section class="dk-page" id="p-khac">
         <div class="dk-cols">
           <div>
-            <div class="dk-card" id="hsTvSec">
-              <h2>Hiện phụ đề lên TV</h2>
-              <p class="hs-note">Cho TV Android / Google TV. Nhập mã đang hiện trên app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
-              <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
-                <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
-                <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
-              </div>
-              <div class="hs-msg" id="hsTvMsg" hidden></div>
-            </div>
             <div class="dk-card">
               <h2>Gặp lỗi?</h2>
               <p class="hs-note">Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở Zalo của shop. Gửi file đó kèm vài dòng mô tả.</p>

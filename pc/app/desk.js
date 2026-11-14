@@ -8,7 +8,7 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',ketnoi:'Kết nối PS5 / PS4',dich:'Dịch',giong:'Giọng đọc',phude:'Phụ đề và độ trễ',nhanvat:'Nhân vật',phim:'Phím tắt',khac:'TV và hỗ trợ'};
+var TITLES={choi:'Màn hình chơi',vung:'Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Dịch',giong:'Giọng đọc',phude:'Phụ đề và độ trễ',nhanvat:'Nhân vật',phim:'Phím tắt',khac:'Hỗ trợ'};
 function go(p){
   if(!TITLES[p]) p='choi';
   document.querySelectorAll('.dk-nav button').forEach(function(b){ b.classList.toggle('on',b.dataset.p===p); if(b.dataset.p===p) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
@@ -20,6 +20,7 @@ function go(p){
 document.querySelectorAll('.dk-nav button').forEach(function(b){ b.addEventListener('click',function(){ go(b.dataset.p); }); });
 document.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click',function(){ go(b.dataset.go); }); });
 document.querySelectorAll('[data-url]').forEach(function(b){ b.addEventListener('click',function(){ D.openUrl(b.dataset.url); }); });
+window.hsGo=go;
 go(A.load('dkPage','choi'));
 
 /* when a picture arrives, show the play page */
@@ -210,4 +211,19 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   var cb=document.getElementById('dkZonePanel'); if(!cb||!window.hsDesktop||!hsDesktop.zonesPanel) return;
   if(hsDesktop.onOverlay) hsDesktop.onOverlay(function(st){ cb.checked=!st.zonesHidden; });
   cb.addEventListener('change',function(){ hsDesktop.zonesPanel(cb.checked); });
+})();
+
+/* zones page: buttons that only the Windows app has, and the short card on the play page */
+(function(){
+  var add2=document.getElementById('dkZoneAdd2'), sum=document.getElementById('dkZoneSum');
+  if(add2) add2.addEventListener('click',function(){ var b=document.getElementById('hsZoneAdd'); if(!b.disabled) b.click(); else window.hsApi.status('warn','Chọn nguồn hình trước rồi mới thêm vùng.'); });
+  var mv=document.getElementById('dkZoneMove'); if(mv) mv.addEventListener('click',function(){ hsDesktop.overlay('move'); });
+  var rs=document.getElementById('dkZoneReset'); if(rs) rs.addEventListener('click',function(){ if(hsDesktop.zonesReset) hsDesktop.zonesReset(); });
+  if(hsDesktop.onOverlay&&mv) hsDesktop.onOverlay(function(st){ mv.textContent=st.move?'Xong di chuyển':'Di chuyển các khung'; });
+  function upd(){
+    var zs=window.hsApi.S.zones||[], on=zs.filter(function(z){return z.on;}).length;
+    if(sum) sum.textContent=zs.length?('Đang có '+zs.length+' vùng ('+on+' bật): '+zs.map(function(z,i){return z.name||('Vùng '+(i+1));}).join(', ')+'.'):'Dịch thêm nhiệm vụ, vật phẩm, bản đồ ở chỗ khác trên màn hình.';
+    if(add2){ var b=document.getElementById('hsZoneAdd'); add2.textContent=b.textContent; add2.disabled=zs.length>=8; }
+  }
+  setInterval(upd,1000); upd();
 })();

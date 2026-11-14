@@ -25,7 +25,6 @@ protocol.registerSchemesAsPrivileged([{
 if (!SELFTEST && !app.requestSingleInstanceLock()) { app.quit(); }
 app.setAppUserModelId('store.honggame.hongsub.pc');
 
-let zonesWin = null, zonesHave = false;
 let win = null, overlay = null, tray = null, fakeGame = null, ps = null;
 let chosenId = null, quitting = false, moveMode = false;
 
@@ -113,34 +112,72 @@ function createOverlay() {
   overlay.once('ready-to-show', () => { if (!cfg.overlayHidden) overlay.showInactive(); sendOverlayState(); });
   overlay.on('moved', () => { cfg.overlay = overlay.getBounds(); saveCfg(); });
 }
-/* small floating panel with the translations of the extra areas (quests, items) */
-function createZones() {
+/* ---------- one floating window per extra area ("Vùng 1", "Vùng 2"...) ----------
+   By default each window sits where that area is on the main screen, so the Vietnamese covers the English
+   (right when the game runs full screen). Moved or resized windows keep their place. */
+const zoneWins = new Map();          // id -> { win, data, key }
+function zoneDefault(d) {
   const wa = screen.getPrimaryDisplay().workArea;
-  const z = cfg.zonesWin;
-  const ok = z && screen.getAllDisplays().some(d => z.x >= d.bounds.x - 50 && z.x < d.bounds.x + d.bounds.width && z.y >= d.bounds.y - 50 && z.y < d.bounds.y + d.bounds.height);
-  zonesWin = new BrowserWindow({
-    x: ok ? z.x : wa.x + wa.width - 460, y: ok ? z.y : wa.y + 80, width: 440, height: 420,
+  return { x: Math.round(wa.x + d.x * wa.width), y: Math.round(wa.y + d.y * wa.height),
+    width: Math.max(240, Math.round(d.w * wa.width)), height: Math.max(80, Math.round(d.h * wa.height)) };
+}
+function zoneBounds(d) {
+  const s = (cfg.zoneWins || {})[d.id];
+  const ok = s && screen.getAllDisplays().some(dp => s.x >= dp.bounds.x - 50 && s.x < dp.bounds.x + dp.bounds.width && s.y >= dp.bounds.y - 50 && s.y < dp.bounds.y + dp.bounds.height);
+  return ok ? s : zoneDefault(d);
+}
+function zoneVisible(z) {
+  if (!z || z.win.isDestroyed()) return;
+  const show = (!!z.data.vi || moveMode) && !cfg.overlayHidden && !cfg.zonesHidden;
+  if (show && !z.win.isVisible()) z.win.showInactive(); else if (!show && z.win.isVisible()) z.win.hide();
+}
+function zoneMake(d) {
+  const b = zoneBounds(d);
+  const w = new BrowserWindow({
+    x: b.x, y: b.y, width: b.width, height: b.height,
     transparent: true, frame: false, resizable: false, movable: true, alwaysOnTop: true, skipTaskbar: true, focusable: false, hasShadow: false, show: false,
-    title: 'Hóng Sub vùng dịch',
+    title: 'Hóng Sub ' + d.name,
     webPreferences: { preload: path.join(ROOT, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
   });
-  zonesWin.setAlwaysOnTop(true, 'screen-saver');
-  zonesWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  zonesWin.setIgnoreMouseEvents(true);
-  zonesWin.setContentProtection(true);
-  zonesWin.loadURL('app://hongsub/zones.html');
-  zonesWin.on('moved', () => { cfg.zonesWin = zonesWin.getBounds(); saveCfg(); });
+  w.setAlwaysOnTop(true, 'screen-saver');
+  w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  w.setIgnoreMouseEvents(!moveMode);
+  w.setFocusable(moveMode);
+  w.setContentProtection(true);           // never read back by our own screen capture
+  const z = { win: w, data: d, key: [d.x, d.y, d.w, d.h].join(','), quiet: false };
+  w.on('moved', () => { if (z.quiet) return; cfg.zoneWins = cfg.zoneWins || {}; cfg.zoneWins[d.id] = w.getBounds(); saveCfg(); });
+  w.loadURL('app://hongsub/zone.html');
+  w.webContents.once('did-finish-load', () => { w.webContents.send('zone', z.data); w.webContents.send('overlay-state', { move: moveMode }); zoneVisible(z); });
+  zoneWins.set(d.id, z);
+  return z;
 }
-function zonesVisible() {
-  if (!zonesWin || zonesWin.isDestroyed()) return;
-  const show = (zonesHave || moveMode) && !cfg.overlayHidden && !cfg.zonesHidden;
-  if (show && !zonesWin.isVisible()) zonesWin.showInactive(); else if (!show && zonesWin.isVisible()) zonesWin.hide();
+function zonesUpdate(list) {
+  const ids = new Set();
+  for (const d of (Array.isArray(list) ? list : [])) {
+    if (!d || !d.id) continue;
+    ids.add(d.id);
+    let z = zoneWins.get(d.id);
+    if (!z || z.win.isDestroyed()) z = zoneMake(d);
+    const key = [d.x, d.y, d.w, d.h].join(',');
+    if (key !== z.key) {                  // the area was drawn again: follow it unless the user placed the window
+      z.key = key;
+      if (!(cfg.zoneWins || {})[d.id]) { z.quiet = true; z.win.setBounds(zoneDefault(d)); setTimeout(() => { z.quiet = false; }, 300); }
+    }
+    z.data = d;
+    if (!z.win.webContents.isLoading()) z.win.webContents.send('zone', d);
+    zoneVisible(z);
+  }
+  for (const [id, z] of zoneWins) {
+    if (!ids.has(id)) { try { z.win.destroy(); } catch (e) { /* ignore */ } zoneWins.delete(id); if (cfg.zoneWins) { delete cfg.zoneWins[id]; saveCfg(); } }
+  }
 }
+function zonesVisible() { for (const z of zoneWins.values()) zoneVisible(z); }
 function sendOverlayState() {
   const st = { hidden: !!cfg.overlayHidden, move: moveMode, zonesHidden: !!cfg.zonesHidden };
   if (win && !win.isDestroyed()) win.webContents.send('overlay-state', st);
   if (overlay && !overlay.isDestroyed()) overlay.webContents.send('overlay-state', st);
-  if (zonesWin && !zonesWin.isDestroyed()) { zonesWin.webContents.send('overlay-state', st); zonesVisible(); }
+  for (const z of zoneWins.values()) if (!z.win.isDestroyed()) z.win.webContents.send('overlay-state', st);
+  zonesVisible();
   buildTrayMenu();
 }
 function overlayCmd(cmd) {
@@ -162,10 +199,10 @@ function setMove(on) {
   if (on) {
     if (cfg.overlayHidden) { cfg.overlayHidden = false; saveCfg(); }
     overlay.setIgnoreMouseEvents(false); overlay.setFocusable(true); overlay.show();
-    if (zonesWin) { zonesWin.setIgnoreMouseEvents(false); zonesWin.setFocusable(true); }
+    for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(false); z.win.setFocusable(true); }
   } else {
     overlay.setIgnoreMouseEvents(true); overlay.setFocusable(false);
-    if (zonesWin) { zonesWin.setIgnoreMouseEvents(true); zonesWin.setFocusable(false); cfg.zonesWin = zonesWin.getBounds(); }
+    for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(true); z.win.setFocusable(false); }
     cfg.overlay = overlay.getBounds(); saveCfg();
     if (!cfg.overlayHidden) overlay.showInactive();
   }
@@ -425,7 +462,13 @@ function setupIpc() {
   ipcMain.handle('rp-info', () => ({ bundled: !!rpExe(), running: !!(rpProc && rpProc.exitCode === null) }));
   ipcMain.handle('rp-launch', (e, opengl) => rpLaunch(!!opengl));
   ipcMain.handle('use', (e, id) => { chosenId = id; return true; });
-  ipcMain.on('zones', (e, list) => { zonesHave = Array.isArray(list) && list.length > 0; if (zonesWin && !zonesWin.isDestroyed()) zonesWin.webContents.send('zones', list || []); zonesVisible(); });
+  ipcMain.on('zones', (e, list) => zonesUpdate(list));
+  ipcMain.handle('zones-reset', () => { cfg.zoneWins = {}; saveCfg(); for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300); } return true; });
+  ipcMain.on('zone-size', (e, id, w, h) => {
+    const z = zoneWins.get(id); if (!z || z.win.isDestroyed() || !moveMode) return;
+    z.win.setSize(Math.max(200, Math.round(w)), Math.max(60, Math.round(h)));
+    cfg.zoneWins = cfg.zoneWins || {}; cfg.zoneWins[id] = z.win.getBounds(); saveCfg();
+  });
   ipcMain.handle('zones-panel', (e, on) => { cfg.zonesHidden = !on; saveCfg(); zonesVisible(); return true; });
   ipcMain.on('sub', (e, payload) => { if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload); });
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
@@ -577,7 +620,7 @@ app.whenReady().then(async () => {
   setupCapture();
   setupIpc();
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
-  createOverlay(); createZones();
+  createOverlay();
   if (!SELFTEST) { createTray(); createMain(); if (cfg.aivOn !== false && aivPy()) setTimeout(aivStart, 2500); }
   registerKeys();
   ttsStart();

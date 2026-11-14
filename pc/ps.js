@@ -2,7 +2,7 @@
 // PlayStation side of Hóng Sub for Windows: PSN login, finding and waking the console on the
 // local network, pairing (via hongsub-rp regist) and the Remote Play stream (via hongsub-rp stream).
 // The console protocol itself lives in hongsub-rp, built on chiaki-ng (AGPL-3.0).
-const { BrowserWindow, ipcMain, net } = require('electron');
+const { BrowserWindow, ipcMain, net, shell, clipboard } = require('electron');
 const dgram = require('dgram');
 const os = require('os');
 const fs = require('fs');
@@ -46,9 +46,36 @@ function setup(opts) {
     saveCfg();
     return { ok: true, onlineId: cfg.onlineId };
   }
+  /* the address Sony sends the browser to after signing in: .../remoteplay/redirect?code=... */
   function codeFrom(url) {
-    if (!String(url).startsWith(REDIRECT)) return null;
-    try { return new URL(url).searchParams.get('code'); } catch (e) { return null; }
+    url = String(url || '').trim();
+    if (!/remoteplay\/redirect/i.test(url)) return null;
+    const m = url.match(/[?&#]code=([^&#\s]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  /* Sign in with the computer's own browser (Chrome, Edge...). Sony often refuses sign-in inside an app window
+     (robot check, passkeys). After signing in the browser shows an empty page; the person copies its address
+     and Hóng Sub notices it on the clipboard. */
+  let watch = null;
+  function loginBrowser() {
+    if (watch) { clearInterval(watch.t); watch.done({ ok: false, err: 'again' }); watch = null; }
+    return new Promise((resolve) => {
+      let before = ''; try { before = clipboard.readText(); } catch (e) { /* ignore */ }
+      shell.openExternal(loginUrl());
+      let n = 0;
+      const w = { done: resolve, t: null };
+      w.t = setInterval(() => {
+        n++;
+        let txt = ''; try { txt = clipboard.readText(); } catch (e) { /* ignore */ }
+        const code = txt && txt !== before ? codeFrom(txt) : null;
+        if (code) {
+          clearInterval(w.t); watch = null;
+          try { clipboard.writeText(''); } catch (e) { /* ignore */ }
+          exchange(code).then(resolve, (err) => resolve({ ok: false, err: String(err.message || err) }));
+        } else if (n > 1200) { clearInterval(w.t); watch = null; resolve({ ok: false, err: 'timeout' }); }
+      }, 500);
+      watch = w;
+    });
   }
   function login() {
     return new Promise((resolve) => {
@@ -68,6 +95,7 @@ function setup(opts) {
       w.webContents.on('will-navigate', check);
       w.webContents.on('did-navigate', (e, url) => check(null, url));
       w.on('closed', () => finish({ ok: false, err: 'closed' }));
+      w.webContents.on('did-fail-load', (e, code, desc, url) => { if (!codeFrom(url)) log && log('psn login page failed: ' + code + ' ' + desc); });
       const ua = w.webContents.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ HongSub\/\S+/, '').replace(/ hong-sub-pc\/\S+/, '');
       w.loadURL(loginUrl(), { userAgent: ua });
     });
@@ -198,6 +226,8 @@ function setup(opts) {
 
   ipcMain.handle('ps-state', () => ({ helper: fs.existsSync(helperPath()), loggedIn: !!cfg.account, onlineId: cfg.onlineId || '', hosts: Object.values(cfg.hosts).map(h => ({ id: h.id, name: h.name, ps5: h.ps5, addr: h.addr })) }));
   ipcMain.handle('ps-login', () => login());
+  ipcMain.handle('ps-login-browser', () => loginBrowser());
+  ipcMain.handle('ps-login-cancel', () => { if (watch) { clearInterval(watch.t); watch.done({ ok: false, err: 'closed' }); watch = null; } return true; });
   ipcMain.handle('ps-login-url', (e, url) => { const c = codeFrom(url); return c ? exchange(c).catch(err => ({ ok: false, err: String(err.message || err) })) : { ok: false, err: 'url' }; });
   ipcMain.handle('ps-logout', () => { delete cfg.account; delete cfg.onlineId; saveCfg(); return true; });
   ipcMain.handle('ps-discover', (e, ip) => discover(ip));

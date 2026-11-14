@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Hóng Sub vùng dịch</title>
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Be Vietnam Pro",system-ui,sans-serif;user-select:none}
+#card{position:absolute;inset:0;box-sizing:border-box;background:rgba(10,12,16,.9);border-radius:8px;border:2px solid transparent;padding:6px 10px;color:#fff;display:flex;flex-direction:column}
+#name{font-size:11.5px;font-weight:700;letter-spacing:.01em;flex:none}
+#tx{flex:1;overflow:hidden;white-space:pre-line;line-height:1.38;font-weight:500;margin-top:2px}
+#grip{display:none;position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;-webkit-app-region:no-drag}
+#grip::after{content:"";position:absolute;right:5px;bottom:5px;width:10px;height:10px;border-right:3px solid #fff;border-bottom:3px solid #fff;opacity:.85}
+body.move #card{border-style:dashed;-webkit-app-region:drag;cursor:move}
+body.move #grip{display:block}
+body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. Kéo khung tới chỗ chữ gốc, kéo góc dưới bên phải để đổi cỡ.";color:#cfd6df}
+</style></head>
+<body>
+<div id="card"><div id="name"></div><div id="tx"></div><div id="grip" title="Kéo để đổi cỡ"></div></div>
+<script>
+(function(){
+  var D=window.hsDesktop, card=document.getElementById('card'), nm=document.getElementById('name'), tx=document.getElementById('tx'), grip=document.getElementById('grip');
+  var cur=null;
+  /* largest font (up to the chosen size) that fits the window */
+  function fit(){
+    if(!cur) return;
+    var f=cur.size||17; tx.style.fontSize=f+'px';
+    while(f>11&&tx.scrollHeight>tx.clientHeight+1){ f--; tx.style.fontSize=f+'px'; }
+  }
+  D.onZone(function(d){
+    cur=d; card.style.borderColor=d.c; nm.style.color=d.c;
+    nm.textContent=d.name+(d.kind?' · '+d.kind:'');
+    tx.textContent=d.vi||''; fit();
+  });
+  D.onOverlay(function(st){ document.body.classList.toggle('move',!!st.move); fit(); });
+  window.addEventListener('resize',fit);
+  /* transparent windows cannot be resized by their edges on Windows: resize from the corner grip */
+  grip.addEventListener('pointerdown',function(e){
+    if(!cur) return; e.preventDefault(); grip.setPointerCapture(e.pointerId);
+    var sx=e.screenX, sy=e.screenY, w0=window.innerWidth, h0=window.innerHeight;
+    function mv(ev){ D.zoneSize(cur.id,w0+ev.screenX-sx,h0+ev.screenY-sy); }
+    function up(){ grip.removeEventListener('pointermove',mv); grip.removeEventListener('pointerup',up); }
+    grip.addEventListener('pointermove',mv); grip.addEventListener('pointerup',up);
+  });
+})();
+</script>
+</body></html>
