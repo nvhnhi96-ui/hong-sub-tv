@@ -47,6 +47,9 @@ jobs:
           pack\python\python.exe -c "from huggingface_hub import hf_hub_download as d; import re; t=open(d('pnnbao-ump/VieNeu-TTS-v3-Turbo','README.md'),encoding='utf-8').read(); print(t[:1800])"
           pack\python\python.exe -c "from huggingface_hub import hf_hub_download as d; t=open(d('OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano','README.md'),encoding='utf-8').read(); print(t[:800])"
 
+      - name: Flatten model cache
+        run: pack\python\python.exe voices\flatten_cache.py pack\hf
+
       - name: Offline check and sizes
         env:
           PYTHONIOENCODING: utf-8
@@ -59,7 +62,24 @@ jobs:
           "hf: {0:N0}" -f ((Get-ChildItem pack\hf -Recurse -File | Measure-Object Length -Sum).Sum)
           Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-List
 
-      - uses: actions/upload-artifact@v4
+      - name: Pack
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item -Recurse -Force pack\hf\xet -ErrorAction SilentlyContinue
+          Get-ChildItem pack -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
+          "Bộ giọng AI tiếng Việt cho Hóng Sub`r`nMô hình: VieNeu-TTS v3 Turbo (pnnbao-ump/VieNeu-TTS-v3-Turbo), giấy phép Apache-2.0`r`nBộ mã âm thanh: OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano, giấy phép Apache-2.0`r`nThư viện: vieneu, sea-g2p (Apache-2.0), onnxruntime (MIT), Python (PSF)" | Out-File pack\NGUON-GIONG-DOC.txt -Encoding utf8
+          Push-Location pack
+          7z a -tzip -mx=1 ..\hong-sub-voices.zip * | Select-Object -Last 3
+          Pop-Location
+          "zip: {0:N0}" -f (Get-Item hong-sub-voices.zip).Length
+
+      - uses: softprops/action-gh-release@v2
         with:
-          name: voice-samples
-          path: ${{ runner.temp }}\samples
+          tag_name: voices-1
+          name: Bộ giọng AI tiếng Việt cho Hóng Sub
+          body: |
+            Bộ giọng đọc AI tiếng Việt (25 giọng nam/nữ, ba miền) cho phần mềm Hóng Sub trên Windows.
+            Phần mềm tự tải gói này khi bấm "Tải bộ giọng AI" trong trang Giọng đọc, không cần tải tay.
+            Mô hình VieNeu-TTS v3 Turbo và MOSS-Audio-Tokenizer-Nano, giấy phép Apache-2.0.
+          files: hong-sub-voices.zip
+          make_latest: false
