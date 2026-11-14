@@ -21,11 +21,14 @@ body.move #mv{display:flex}
 <script>
 (function(){
   var D=window.hsDesktop, box=document.getElementById('box'), vi=document.getElementById('vi'), en=document.getElementById('en');
-  var timer=null, moving=false, has=false;
-  function hideLater(){ clearTimeout(timer); timer=setTimeout(function(){ if(!moving) box.classList.remove('on'); }, 14000); }
+  var timer=null, moving=false, has=false, hold=0;
+  function hideLater(){ clearTimeout(timer); if(hold>0) timer=setTimeout(function(){ if(!moving) box.classList.remove('on'); }, hold*1000); }
+  function style(o){ if(o.color) vi.style.color=o.color; if(o.bg!==undefined) box.style.background='rgba(8,8,10,'+o.bg+')'; if(o.en!==undefined) en.style.display=o.en?'':'none'; if(o.font) vi.style.fontWeight=o.font; }
   function size(px){ vi.style.fontSize=px+'px'; en.style.fontSize=Math.max(13,Math.round(px*.52))+'px'; }
   D.onSub(function(p){
     if(p.size) size(p.size);
+    if(p.hold!==undefined) hold=+p.hold||0;
+    if(p.style) style(p.style);
     if(p.html!==undefined){ vi.innerHTML=p.html; en.textContent=p.en||''; has=!!p.html; box.classList.toggle('on',has); hideLater(); }
   });
   D.onOverlay(function(st){

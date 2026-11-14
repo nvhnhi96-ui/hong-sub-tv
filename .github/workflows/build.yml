@@ -130,7 +130,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Add the on-device text reader
-        run: python sync_web.py app/index.html
+        run: python sync_web.py
 
       - uses: actions/download-artifact@v4
         with:
@@ -208,76 +208,9 @@ jobs:
           name: windows
           path: pc/dist/hong-sub-pc.exe
 
-  testapp:
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: testapp
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install
-        run: npm ci --no-audit --no-fund
-
-      - name: Add the on-device text reader
-        run: python prepare.py
-
-      - name: Set version
-        run: npm pkg set version=1.0.${{ github.run_number }}
-
-      - name: Build portable app
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npx electron-builder --win portable --publish never
-
-      - name: Self test on Windows
-        shell: pwsh
-        env:
-          HS_SELFTEST: '1'
-          HS_SELFTEST_OUT: ${{ runner.temp }}\selftest
-        run: |
-          $exe = Get-ChildItem dist\win-unpacked -Filter HongSubTest.exe | Select-Object -First 1
-          $p = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' -PassThru
-          if (-not $p.WaitForExit(180000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
-          Get-Content "$env:HS_SELFTEST_OUT\testapp-log.txt" -ErrorAction SilentlyContinue | Select-Object -First 40
-          Get-Content "$env:HS_SELFTEST_OUT\testapp-report.txt" -ErrorAction SilentlyContinue
-
-      - name: Save self test pictures to branch selftest-output
-        if: always()
-        continue-on-error: true
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          OUT: ${{ runner.temp }}\selftest
-        run: |
-          $repo = '${{ github.repository }}'
-          $exists = gh api "repos/$repo/branches/selftest-output" 2>$null
-          if (-not $exists) {
-            $sha = gh api "repos/$repo/git/ref/heads/main" --jq .object.sha
-            gh api -X POST "repos/$repo/git/refs" -f ref=refs/heads/selftest-output -f sha=$sha | Out-Null
-          }
-          Get-ChildItem $env:OUT -File | ForEach-Object {
-            $name = $_.Name
-            $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName))
-            $old = gh api "repos/$repo/contents/selftest/$($name)?ref=selftest-output" --jq .sha 2>$null
-            $body = @{ message = "selftest $name"; content = $b64; branch = 'selftest-output' }
-            if ($old) { $body.sha = $old }
-            $body | ConvertTo-Json | gh api -X PUT "repos/$repo/contents/selftest/$name" --input - | Out-Null
-            Write-Host "saved $name"
-          }
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: testapp
-          path: testapp/dist/hong-sub-test.exe
-
   release:
-    needs: [ android, windows, testapp ]
-    if: needs.android.result == 'success' && needs.windows.result == 'success' && needs.testapp.result == 'success'
+    needs: [ android, windows ]
+    if: needs.android.result == 'success' && needs.windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -296,10 +229,8 @@ jobs:
             - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
             - hong-sub-android.apk: điện thoại Android, dùng kèm app PS Remote Play.
-            - hong-sub-test.exe: app thử Hóng Sub và kiểm tra máy tính Windows (chạy luôn, không cần cài).
           files: |
             out/hong-sub-pc.exe
             out/hong-sub-tv.apk
             out/hong-sub-android.apk
-            out/hong-sub-test.exe
           make_latest: true

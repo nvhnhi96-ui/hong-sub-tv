@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hóng Sub</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<style>
+/*WEBCSS*/
+</style>
+<style>
+/* ---------- Windows app layout: dark rail of pages on the left, one page at a time on the right ---------- */
+html,body{height:100%;overflow:hidden}
+.hs{--rail:#15171C;--rail2:#23262E;--railtx:#A9AEB8;min-height:0;height:100vh;display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:100%}
+.dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:16px 10px 12px;min-height:0}
+.dk-logo{display:flex;align-items:center;gap:6px;padding:2px 10px 18px;font-weight:800;font-size:21px;letter-spacing:-.01em}
+.dk-logo span{background:#fff;color:#000;border-radius:5px;padding:1px 7px 2px;font-weight:700}
+.dk-nav{display:flex;flex-direction:column;gap:2px}
+.dk-nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:var(--railtx);font-weight:600;font-size:14.5px;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;position:relative}
+.dk-nav button svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dk-nav button:hover{background:var(--rail2);color:#fff}
+.dk-nav button.on{background:var(--rail2);color:#fff}
+.dk-nav button.on::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.dk-nav .badge{margin-left:auto;font-size:11.5px;font-weight:700;color:#000;background:var(--brand);border-radius:9px;padding:0 6px;line-height:18px}
+.dk-railinfo{margin-top:auto;border-top:1px solid #2E323B;padding:12px 10px 0;font-size:12.5px;color:var(--railtx);line-height:1.6}
+.dk-railinfo b{color:#fff;font-weight:600}
+.dk-railinfo .v{color:#6F7581;margin-top:6px}
+
+.dk-main{display:flex;flex-direction:column;min-height:0;min-width:0}
+.dk-top{display:flex;align-items:center;gap:14px;padding:12px 22px;background:var(--panel);border-bottom:1px solid var(--line);min-height:62px}
+.dk-top h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.005em}
+.dk-top .sp{flex:1}
+.dk-top .hs-pill{font-size:13.5px}
+#hsRun{padding:9px 16px}
+.hs-upd{margin:12px 22px 0}
+.dk-body{flex:1;overflow:auto;padding:20px 22px 28px;min-height:0}
+.dk-page{display:none;max-width:1180px}
+.dk-page.on{display:block}
+
+/* play page */
+.dk-play{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
+.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.dk-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700}
+.dk-card > .hs-note{margin-bottom:10px}
+.dk-src{display:grid;gap:8px}
+.dk-src button{display:grid;grid-template-columns:34px 1fr;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:10px 12px;cursor:pointer}
+.dk-src button:hover{border-color:var(--ink)}
+.dk-src svg{grid-row:span 2;width:30px;height:30px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dk-src b{font-weight:700;font-size:14.5px}.dk-src small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.dk-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.dk-kv span{color:var(--muted)}.dk-kv b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-link{background:none;border:0;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px;cursor:pointer;font-size:13.5px}
+
+/* settings pages: two columns of cards */
+.dk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.dk-cols > div{min-width:0}
+.dk-set{display:grid;gap:4px;margin-top:14px}
+.dk-set:first-of-type{margin-top:6px}
+.dk-set .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:600}
+.dk-set .lab output{font-weight:700;color:var(--ink)}
+.dk-set .hs-note{margin-top:2px}
+.dk-sw{margin-top:12px}
+.dk-colors{display:flex;gap:8px;flex-wrap:wrap}
+.dk-colors button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);cursor:pointer;padding:0}
+.dk-colors button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.dk-prev{background:#3A3F4A url() center/cover;border-radius:9px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;
+  background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
+.dk-prev div{background:rgba(8,8,10,.74);border-radius:10px;padding:6px 16px;text-align:center;max-width:100%}
+.dk-prev b{display:block;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 2px 3px #000}
+.dk-prev small{display:block;color:#C9C9D2;font-size:12px}
+
+/* shortcut table */
+.dk-keys{width:100%;border-collapse:collapse;font-size:14px}
+.dk-keys td{border-top:1px solid var(--line);padding:10px 6px;vertical-align:middle}
+.dk-keys tr:first-child td{border-top:0}
+.dk-keys td:last-child{text-align:right;white-space:nowrap}
+.dk-keys kbd{display:inline-block;min-width:40px;text-align:center;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 8px;background:var(--sunk)}
+.dk-keys .rec kbd{border-color:var(--brand2);background:#FFF6D6}
+.dk-keys .st{font-size:12px;color:var(--warn);margin-left:6px}
+
+.hs-cast{margin:0}.hs-cast > summary{display:none}
+.hs-hist{margin-top:14px}
+.hs-hist ol{max-height:none}
+.dk-empty{color:var(--muted);font-size:14px;padding:6px 0}
+.dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px}.dk-steps li{margin:4px 0}
+
+@media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.hs *{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body class="desk">
+<div class="hs" id="hs">
+  <aside class="dk-rail">
+    <div class="dk-logo">Hóng<span>Sub</span></div>
+    <nav class="dk-nav" aria-label="Các trang">
+      <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
+      <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS5 / PS4</button>
+      <button type="button" data-p="dich"><svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2M5 9c1.5 3 4 5 7 6M11 5c-1 4-3.5 7-7 9"/><path d="M13 21l4-10 4 10M14.5 18h5"/></svg>Dịch<span class="badge" id="dkKeyBadge" hidden>!</span></button>
+      <button type="button" data-p="giong"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Giọng đọc</button>
+      <button type="button" data-p="phude"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 13h4M13 13h4M7 16h7"/></svg>Phụ đề và độ trễ</button>
+      <button type="button" data-p="nhanvat"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5A5 5 0 0 1 21 19"/></svg>Nhân vật</button>
+      <button type="button" data-p="phim"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Phím tắt</button>
+      <button type="button" data-p="khac"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg>TV và hỗ trợ</button>
+    </nav>
+    <div class="dk-railinfo">
+      <div>Nguồn hình: <b id="dkSrc">chưa chọn</b></div>
+      <div>Game: <b id="dkGame">chưa chọn</b></div>
+      <div>Dịch bằng: <b id="dkVia">chưa có mã</b></div>
+      <div class="v" id="dkVer"></div>
+    </div>
+  </aside>
+
+  <div class="dk-main">
+    <div class="dk-top">
+      <h1 id="dkTitle">Màn hình chơi</h1>
+      <span class="sp"></span>
+      <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
+      <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch</button>
+    </div>
+    <div class="hs-upd" id="hsUpd"></div>
+    <div class="hs-mobile" id="hsMobile" hidden></div>
+
+    <div class="dk-body">
+      <!-- ============ Màn hình chơi ============ -->
+      <section class="dk-page on" id="p-choi">
+        <div class="dk-play">
+          <div>
+            <div class="hs-stage" id="hsStage">
+              <video id="hsVideo" muted playsinline></video>
+              <div class="hs-empty" id="hsEmpty">
+                <div>
+                  <b>Chọn nguồn hình game</b>
+                  <p>Chơi PS5 / PS4 ngay trong Hóng Sub, dùng app PS Remote Play của Sony, hoặc capture card nếu chơi trên TV. Chọn ở cột bên phải.</p>
+                  <div class="hs-row">
+                    <button class="hs-btn pri" id="hsPsGo" type="button">Chơi PS5 / PS4</button>
+                    <button class="hs-btn" id="hsPick" type="button">Chọn cửa sổ game</button>
+                    <button class="hs-btn" id="hsCam" type="button">Capture card</button>
+                    <button class="hs-btn" id="hsDemo" type="button">Xem thử</button>
+                  </div>
+                </div>
+              </div>
+              <div class="hs-ov off" id="hsOv" aria-label="Vùng kéo khung phụ đề">
+                <div class="hs-region" id="hsRegion" hidden><span>Vùng phụ đề</span></div>
+              </div>
+              <div class="hs-hint" id="hsHint" hidden>Kéo chuột bao quanh dòng phụ đề tiếng Anh</div>
+            </div>
+            <div class="hs-sub" id="hsSubBox">
+              <span class="lbl" id="hsModelTag"></span>
+              <div class="hs-vi placeholder" id="hsVi">Phụ đề tiếng Việt hiện ở đây</div>
+              <div class="hs-en" id="hsEn"></div>
+            </div>
+            <div class="dk-tools">
+              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm đang có trên màn hình">Dịch cả màn hình</button>
+              <button class="hs-btn" id="hsDraw" type="button" disabled>Chọn vùng phụ đề</button>
+              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+              <button class="hs-btn" id="hsOvShow" type="button">Ẩn phụ đề nổi</button>
+              <button class="hs-btn" id="hsOvMove" type="button">Di chuyển phụ đề nổi</button>
+              <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
+            </div>
+            <details class="hs-hist" id="hsHistBox" open>
+              <summary>Các câu trước (<span id="hsHistN">0</span>)</summary>
+              <ol id="hsHist"></ol>
+            </details>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Nguồn hình</h2>
+              <p class="hs-note">Hóng Sub đọc phụ đề từ đâu.</p>
+              <div class="dk-src">
+                <button type="button" id="dkSrcPs"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
+                <button type="button" id="dkSrcSony"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>App PS Remote Play của Sony</b><small id="dkSonyNote">Mở app của Sony, Hóng Sub tự đọc cửa sổ đó</small></button>
+                <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Capture card</b><small>Chơi trên TV, máy tính chỉ nhận hình</small></button>
+                <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
+              </div>
+            </div>
+            <div class="dk-card">
+              <h2>Đang dùng</h2>
+              <div class="dk-kv" style="margin-top:8px">
+                <span>Game</span><b id="dkGame2">chưa chọn</b>
+                <span>Dịch bằng</span><b id="dkVia2">chưa có mã</b>
+                <span>Giọng đọc</span><b id="dkVoice2">bật</b>
+                <span>Phím tắt</span><b id="dkKeys2">F7 bật/tắt dịch</b>
+              </div>
+              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Kết nối ============ -->
+      <section class="dk-page" id="p-ketnoi">
+        <div class="dk-cols">
+          <div>
+            <div class="dk-card hs-dk" id="hsPsSec">
+              <h2>PS5 / PS4 trong Hóng Sub</h2>
+              <p class="hs-note">Chơi ngay trong Hóng Sub, phụ đề dịch hiện trên hình game.</p>
+              <div class="hs-psacc" id="hsPsAcc"></div>
+              <div id="hsPsList" class="hs-pslist"></div>
+              <div class="hs-row" style="margin-top:10px">
+                <button class="hs-btn" id="hsPsFind" type="button">Tìm máy</button>
+                <button class="hs-btn" id="hsPsIpBtn" type="button">Nhập IP</button>
+              </div>
+              <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
+              <div class="hs-msg" id="hsPsMsg" hidden></div>
+              <label class="hs-sw dk-sw">Chỉ xem để dịch, vẫn chơi bằng tay cầm trên TV <input type="checkbox" id="hsPsWatch"></label>
+              <p class="hs-note">Máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
+              <div class="dk-set">
+                <label class="lab" for="hsPsQ">Chất lượng hình</label>
+                <select class="hs-in" id="hsPsQ"><option value="1080/60">1080p, 60 hình/giây (PS5)</option><option value="720/60">720p, 60 hình/giây</option><option value="540/30">540p, 30 hình/giây (mạng yếu)</option></select>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Kết nối lần đầu</h2>
+              <ol class="dk-steps">
+                <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>. Máy tính và PS5 dùng chung mạng.</li>
+                <li>Bấm <b>Đăng nhập PSN</b> ở bên trái, đăng nhập trên trang của Sony.</li>
+                <li>Bấm <b>Tìm máy</b>, rồi <b>Ghép máy</b>. Lấy mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> (PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>).</li>
+                <li>Bấm <b>Chơi</b>. Cắm tay cầm vào máy tính. Không có tay cầm: mũi tên, Enter là ✕, Backspace là ○, P là nút PS.</li>
+              </ol>
+            </div>
+            <div class="dk-card">
+              <h2>App PS Remote Play của Sony</h2>
+              <p class="hs-note" id="dkSonyState">Đang kiểm tra...</p>
+              <div class="hs-row">
+                <button class="hs-btn" type="button" id="dkSonyOpen">Mở PS Remote Play</button>
+                <button class="hs-btn" type="button" id="dkSonyGet">Tải PS Remote Play</button>
+              </div>
+            </div>
+            <div class="dk-card">
+              <h2>Tài khoản PlayStation</h2>
+              <p class="hs-note">Mở trang của Sony để xem Online ID, tạo tài khoản phụ hoặc đổi mật khẩu.</p>
+              <div class="hs-row">
+                <button class="hs-btn" type="button" data-url="https://my.account.sony.com/">Trang tài khoản Sony</button>
+                <button class="hs-btn" type="button" data-url="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">Hướng dẫn của Sony</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Dịch ============ -->
+      <section class="dk-page" id="p-dich">
+        <div class="dk-cols">
+          <div>
+            <div class="dk-card" id="hsKeySec">
+              <h2>Mã Gemini</h2>
+              <p class="hs-note">Dịch tự nhiên, đúng xưng hô. Miễn phí, mỗi dòng một mã. <button class="dk-link" type="button" data-url="https://aistudio.google.com/apikey">Lấy mã miễn phí</button></p>
+              <textarea class="hs-in" id="hsKeys" rows="3" spellcheck="false" autocomplete="off" placeholder="AIza..." aria-label="Mã Gemini"></textarea>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsCheck" type="button">Kiểm tra mã</button></div>
+              <div class="hs-msg" id="hsKeyMsg" hidden></div>
+              <div class="hs-keystat" id="hsKeyStat"></div>
+              <p class="hs-note" style="margin-top:6px">Muốn thêm lượt: tạo mã ở <b>dự án khác</b> hoặc tài khoản Google khác. Các mã chung một dự án dùng chung lượt.</p>
+            </div>
+            <div class="dk-card">
+              <h2>Mã Groq dự phòng</h2>
+              <p class="hs-note">Dùng khi mã Gemini hết lượt. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
+              <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
+              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
+              <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
+            </div>
+            <div class="dk-card">
+              <h2>Cách đọc phụ đề</h2>
+              <select class="hs-in" id="hsRead" aria-label="Cách đọc phụ đề" style="margin-top:6px">
+                <option value="local">Đọc ngay trên máy (nhanh, đỡ tốn lượt)</option>
+                <option value="ai">Gửi ảnh cho AI đọc (đọc được chữ kiểu cách, chậm hơn)</option>
+              </select>
+              <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
+            </div>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Game đang chơi</h2>
+              <p class="hs-note">Chọn đúng game để dịch đúng tên nhân vật và cách xưng hô.</p>
+              <div class="dk-set"><label class="lab" for="hsPreset">Chọn game</label><select class="hs-in" id="hsPreset"><option value="">Chọn game</option></select></div>
+              <div class="dk-set"><label class="lab" for="hsGame">Game khác thì gõ tên</label><input class="hs-in" id="hsGame" type="text" list="hsGameList" autocomplete="off" placeholder="VD: Ghost of Tsushima"><datalist id="hsGameList"></datalist></div>
+              <div class="dk-set"><label class="lab" for="hsNotes">Nhân vật và cách xưng hô</label><textarea class="hs-in" id="hsNotes" rows="5" placeholder="VD: Kratos là cha, Atreus là con. Kratos xưng ta, gọi con."></textarea></div>
+              <div class="dk-set"><label class="lab" for="hsStyle">Phong cách dịch</label>
+                <select class="hs-in" id="hsStyle">
+                  <option value="">Tự chọn theo game</option><option value="modern">Đời thường, hiện đại</option><option value="street">Giang hồ, đường phố</option><option value="military">Quân đội, bắn súng</option><option value="wuxia">Cổ trang Trung Hoa, kiếm hiệp</option><option value="japan">Cổ trang Nhật, samurai</option><option value="fantasy">Giả tưởng phương Tây</option><option value="myth">Thần thoại</option><option value="scifi">Khoa học viễn tưởng</option><option value="horror">Kinh dị</option><option value="anime">Anime, học đường</option><option value="western">Cao bồi miền Tây</option>
+                </select></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Để AI viết ghi chú</button></div>
+              <div class="hs-msg" id="hsNotesMsg" hidden></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Giọng đọc ============ -->
+      <section class="dk-page" id="p-giong">
+        <div class="dk-cols">
+          <div class="dk-card">
+            <h2>Đọc to phụ đề</h2>
+            <label class="hs-sw dk-sw">Đọc to phụ đề tiếng Việt <input type="checkbox" id="hsSpeak" checked></label>
+            <div class="dk-set">
+              <label class="lab" for="hsVoice">Giọng đọc</label>
+              <div class="hs-row" style="flex-wrap:nowrap"><select class="hs-in" id="hsVoice" style="flex:1;min-width:0"></select><button class="hs-btn" id="hsVoiceTest" type="button">Nghe thử</button></div>
+              <p class="hs-note">"Tự chọn" dùng giọng nam hoặc nữ theo nhân vật đang nói. Chọn riêng giọng từng nhân vật ở trang Nhân vật.</p>
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="hsRate">Tốc độ đọc</label><output><span id="hsRateV">1.1</span>x</output></div>
+              <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
+            </div>
+            <p class="hs-note" id="hsVoiceTip" hidden></p>
+          </div>
+          <div class="dk-card">
+            <h2>Thêm giọng tiếng Việt</h2>
+            <p class="hs-note">Hóng Sub có sẵn một giọng nữ tiếng Việt. Muốn thêm giọng nam "An" của Windows: bấm nút dưới, chọn <b>Thêm giọng nói</b>, tìm <b>Tiếng Việt</b> rồi cài, xong mở lại Hóng Sub.</p>
+            <div id="hsVoiceTipD"><button class="hs-btn" id="hsVoiceSet" type="button">Mở cài đặt giọng nói của Windows</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Phụ đề và độ trễ ============ -->
+      <section class="dk-page" id="p-phude">
+        <div class="dk-cols">
+          <div class="dk-card">
+            <h2>Hiển thị phụ đề</h2>
+            <p class="hs-note">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
+            <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
+            <label class="hs-sw dk-sw">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
+            <label class="hs-sw dk-sw">Hiện câu tiếng Anh gốc <input type="checkbox" id="hsShowEn" checked></label>
+            <div class="dk-set">
+              <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
+              <input class="hs-range" id="hsSize" type="range" min="18" max="56" step="2" value="28">
+            </div>
+            <div class="dk-set">
+              <span class="lab">Màu chữ</span>
+              <div class="dk-colors" id="dkColor" role="group" aria-label="Màu chữ">
+                <button type="button" data-c="#FFFFFF" style="background:#FFFFFF" aria-label="Trắng"></button>
+                <button type="button" data-c="#FFE066" style="background:#FFE066" aria-label="Vàng"></button>
+                <button type="button" data-c="#9BE7FF" style="background:#9BE7FF" aria-label="Xanh nhạt"></button>
+                <button type="button" data-c="#B8F2A6" style="background:#B8F2A6" aria-label="Xanh lá nhạt"></button>
+              </div>
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkBg">Độ đậm nền sau chữ</label><output id="dkBgV">74%</output></div>
+              <input class="hs-range" id="dkBg" type="range" min="0" max="100" step="2" value="74">
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkWidth">Độ rộng khung phụ đề</label><output id="dkWidthV">80%</output></div>
+              <input class="hs-range" id="dkWidth" type="range" min="40" max="100" step="5" value="80">
+            </div>
+            <div class="hs-row" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
+          </div>
+          <div class="dk-card">
+            <h2>Độ trễ dịch</h2>
+            <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
+            <div class="dk-set">
+              <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
+              <input class="hs-range" id="dkScan" type="range" min="300" max="1500" step="100" value="700">
+              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1200">Tiết kiệm</button><button type="button" data-v="700" class="on">Vừa</button><button type="button" data-v="400">Nhanh</button></div>
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkWait">Chờ chữ hiện đủ trước khi dịch</label><output id="dkWaitV">0,9 giây</output></div>
+              <input class="hs-range" id="dkWait" type="range" min="300" max="2000" step="100" value="900">
+              <p class="hs-note">Game hiện chữ từ từ từng chữ thì tăng lên để không dịch câu dở dang.</p>
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkHold">Giữ phụ đề trên màn hình</label><output id="dkHoldV">10 giây</output></div>
+              <input class="hs-range" id="dkHold" type="range" min="0" max="30" step="1" value="10">
+              <p class="hs-note">Kéo về 0 để giữ tới khi có câu mới.</p>
+            </div>
+            <label class="hs-sw dk-sw">Hiện thời gian đọc và dịch dưới phụ đề <input type="checkbox" id="hsPerf"></label>
+            <div class="hs-row" style="margin-top:14px"><button class="hs-btn" type="button" id="dkDefaults">Về mặc định</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Nhân vật ============ -->
+      <section class="dk-page" id="p-nhanvat">
+        <div class="dk-card" style="max-width:760px">
+          <h2>Nhân vật đã gặp</h2>
+          <p class="hs-note">Khi phụ đề có tên người nói (ví dụ "ATREUS: ..."), nhân vật tự vào đây. Chọn nam/nữ, giọng đọc và màu tên cho từng người. Mỗi game lưu riêng.</p>
+          <p class="dk-empty" id="dkCastEmpty">Chưa gặp nhân vật nào trong game này.</p>
+          <details class="hs-cast" id="hsCastBox" hidden open>
+            <summary>Nhân vật đã gặp (<span id="hsCastN">0</span>)</summary>
+            <div id="hsCastList"></div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ============ Phím tắt ============ -->
+      <section class="dk-page" id="p-phim">
+        <div class="dk-card" style="max-width:760px">
+          <h2>Phím tắt</h2>
+          <p class="hs-note">Dùng được cả khi đang ở trong game. Bấm <b>Đổi</b> rồi nhấn phím mới (có thể kèm Ctrl, Alt, Shift). Esc để hủy.</p>
+          <table class="dk-keys"><tbody id="dkKeys"></tbody></table>
+          <div class="hs-row" style="margin-top:12px"><button class="hs-btn" type="button" id="dkKeysReset">Về phím mặc định</button></div>
+          <div class="hs-msg" id="dkKeysMsg" hidden></div>
+        </div>
+      </section>
+
+      <!-- ============ TV và hỗ trợ ============ -->
+      <section class="dk-page" id="p-khac">
+        <div class="dk-cols">
+          <div>
+            <div class="dk-card" id="hsTvSec">
+              <h2>Hiện phụ đề lên TV</h2>
+              <p class="hs-note">Cho TV Android / Google TV. Nhập mã đang hiện trên app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+              <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
+                <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
+                <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
+              </div>
+              <div class="hs-msg" id="hsTvMsg" hidden></div>
+            </div>
+            <div class="dk-card">
+              <h2>Gặp lỗi?</h2>
+              <p class="hs-note">Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở Zalo của shop. Gửi file đó kèm vài dòng mô tả.</p>
+              <div class="hs-row" style="margin-top:6px"><button class="hs-btn" id="hsReport" type="button">Gửi lỗi cho shop</button></div>
+              <div class="hs-msg" id="hsReportMsg" hidden></div>
+            </div>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Hóng Game Store</h2>
+              <p>754 Hùng Vương, Ngã Bảy, Cần Thơ.<br>Gọi hoặc Zalo <b>0949 099 992</b>, <b>0367 879 283</b>.</p>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
+            </div>
+            <div class="dk-card">
+              <h2>Phiên bản</h2>
+              <p class="hs-note" id="dkVerNote"></p>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubpc">Tải bản mới nhất</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="hs-modal" id="hsSrcModal" role="dialog" aria-modal="true" aria-labelledby="hsSrcT">
+    <div class="box" style="max-width:860px">
+      <div class="t"><b id="hsSrcT">Chọn cửa sổ game</b><button class="hs-btn" id="hsSrcX" type="button">Đóng</button></div>
+      <p class="hs-note" style="margin-top:6px">Chọn cửa sổ PS Remote Play (hoặc game trên máy tính). Nếu chưa thấy, mở PS Remote Play trước rồi bấm Tải lại.</p>
+      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" id="hsSrcRe" type="button">Tải lại</button></div>
+      <div class="hs-src" id="hsSrcList"></div>
+    </div>
+  </div>
+  <div class="hs-modal" id="hsModal" role="dialog" aria-modal="true" aria-labelledby="hsModalT">
+    <div class="box">
+      <div class="t"><b id="hsModalT">Dịch cả màn hình</b><button class="hs-btn" id="hsModalX" type="button">Đóng</button></div>
+      <p class="hs-note" id="hsModalNote" style="margin-top:6px"></p>
+      <ul id="hsModalList"></ul>
+    </div>
+  </div>
+</div>
+<!--ENGINE-->
+<script src="desk.js"></script>
+</body>
+</html>

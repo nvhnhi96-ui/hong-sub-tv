@@ -149,9 +149,9 @@ function buildTrayMenu() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Mở Hóng Sub', click: showMain },
-    { label: 'Bật/tắt dịch (F7)', click: () => hotkey('toggle') },
-    { label: cfg.overlayHidden ? 'Hiện phụ đề nổi (F9)' : 'Ẩn phụ đề nổi (F9)', click: () => overlayCmd('toggle') },
-    { label: moveMode ? 'Xong di chuyển phụ đề (F10)' : 'Di chuyển phụ đề (F10)', click: () => overlayCmd('move') },
+    { label: 'Bật/tắt dịch (' + keys().toggle + ')', click: () => hotkey('toggle') },
+    { label: cfg.overlayHidden ? 'Hiện phụ đề nổi (' + keys().ovl + ')' : 'Ẩn phụ đề nổi (' + keys().ovl + ')', click: () => overlayCmd('toggle') },
+    { label: moveMode ? 'Xong di chuyển phụ đề (' + keys().move + ')' : 'Di chuyển phụ đề (' + keys().move + ')', click: () => overlayCmd('move') },
     { label: 'Đưa phụ đề về chỗ cũ', click: () => overlayCmd('reset') },
     { type: 'separator' },
     { label: 'Thoát Hóng Sub', click: () => { quitting = true; app.quit(); } }
@@ -167,9 +167,24 @@ function showMain() { if (!win) return; if (win.isMinimized()) win.restore(); wi
 
 /* ---------- hotkeys ---------- */
 function hotkey(k) { if (win && !win.isDestroyed()) win.webContents.send('hotkey', k); }
+const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11' };
+const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full') };
+function keys() { return Object.assign({}, KEY_DEFAULT, cfg.hotkeys || {}); }
 function registerKeys() {
-  const map = { F7: () => hotkey('toggle'), F8: () => hotkey('now'), F9: () => overlayCmd('toggle'), F10: () => overlayCmd('move'), F11: () => hotkey('full') };
-  for (const k of Object.keys(map)) { try { globalShortcut.register(k, map[k]); } catch (e) { /* key taken by another app */ } }
+  globalShortcut.unregisterAll();
+  const res = {};
+  const k = keys();
+  for (const id of Object.keys(KEY_ACT)) {
+    if (!k[id]) { res[id] = 'off'; continue; }
+    try { res[id] = globalShortcut.register(k[id], KEY_ACT[id]) ? 'ok' : 'busy'; } catch (e) { res[id] = 'bad'; }
+  }
+  return res;
+}
+/* Sony's own PS Remote Play app, if it is installed */
+function sonyRp() {
+  const bases = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')].filter(Boolean);
+  for (const b of bases) { const f = path.join(b, 'Sony', 'PS Remote Play', 'RemotePlay.exe'); if (fs.existsSync(f)) return f; }
+  return '';
 }
 
 /* ---------- screen capture: pick PS Remote Play without asking ---------- */
@@ -331,6 +346,21 @@ function setupIpc() {
     } catch (e) { return null; }
   });
   ipcMain.handle('app-version', () => app.getVersion());
+  ipcMain.handle('hotkeys-get', () => ({ keys: keys(), state: registerKeys() }));
+  ipcMain.handle('hotkeys-set', (e, k) => { cfg.hotkeys = Object.assign({}, cfg.hotkeys || {}, k || {}); saveCfg(); const st = registerKeys(); buildTrayMenu(); return { keys: keys(), state: st }; });
+  ipcMain.handle('hotkeys-pause', (e, on) => { if (on) globalShortcut.unregisterAll(); else registerKeys(); return true; });
+  ipcMain.handle('sony-rp', () => ({ path: sonyRp() }));
+  ipcMain.handle('sony-rp-open', async () => { const f = sonyRp(); if (!f) return { ok: false }; const err = await shell.openPath(f); return { ok: !err, err }; });
+  ipcMain.handle('open-url', (e, u) => { if (/^https:\/\//.test(String(u))) shell.openExternal(String(u)); return true; });
+  ipcMain.handle('overlay-reset', () => { overlayCmd('reset'); return true; });
+  ipcMain.handle('overlay-size', (e, pct, h) => {
+    if (!overlay) return false;
+    const b = overlay.getBounds(), d = screen.getDisplayMatching(b).workArea;
+    const w = Math.round(d.width * Math.max(0.3, Math.min(1, pct / 100))), hh = Math.max(120, Math.min(420, h || b.height));
+    const cx = b.x + b.width / 2, nx = Math.round(Math.max(d.x, Math.min(d.x + d.width - w, cx - w / 2)));
+    const ny = Math.round(Math.min(b.y, d.y + d.height - hh));
+    overlay.setBounds({ x: nx, y: ny, width: w, height: hh }); cfg.overlay = overlay.getBounds(); cfg.overlayPct = pct; saveCfg(); return true;
+  });
   ipcMain.handle('get-json', async (e, u) => {
     const url = new URL(String(u));
     if (url.hostname !== 'translate.googleapis.com') throw new Error('blocked');
