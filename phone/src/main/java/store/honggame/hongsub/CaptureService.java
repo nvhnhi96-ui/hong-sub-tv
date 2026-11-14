@@ -405,7 +405,7 @@ public class CaptureService extends Service {
         StringBuilder sb = new StringBuilder();
         if (!prefs.game().isEmpty()) sb.append("Game: ").append(prefs.game()).append('\n');
         if (!prefs.notes().isEmpty()) sb.append("Character / pronoun notes: ").append(prefs.notes()).append('\n');
-        sb.append("Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original; never invent words that are not in the text.\n");
+        sb.append("Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original; never invent words that are not in the text; for \"we\" use \"chúng tôi\" when the listener is not included and \"chúng ta\" when they are; speak politely to elders, leaders and strangers.\n");
         if (!history.isEmpty()) {
             sb.append("Recent lines (for consistency):\n");
             for (String[] h : history) sb.append(h[0]).append(" => ").append(h[1]).append('\n');

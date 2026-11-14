@@ -967,7 +967,7 @@ function context(){
   var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim(), st=styleOf();
   var recent=S.hist.slice(0,3).map(function(h){return (h.who?h.who+': ':'')+h.en+' => '+h.vi;}).join('\n');
   return (g?'Game: '+g+'\n':'')+(n?'Character / pronoun notes: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+
-    'Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text.\n'+
+    'Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text; for "we" use "chúng tôi" when the listener is not included and "chúng ta" when they are; speak politely to elders, leaders and strangers.\n'+
     (recent?'Recent lines (for consistency):\n'+recent+'\n':'');
 }
 function thinkCfg(model){
@@ -1498,7 +1498,7 @@ function askText(prompt,text){
     function startNext(){ if(hasG&&!started.g) run('g'); else if(hasQ&&!started.q) run('q'); else if(S.allowFree&&!started.f) run('f'); }
     if(!hasG&&!hasQ&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
     startNext();
-    if(hasG&&hasQ) tq=setTimeout(function(){ run('q'); },1200);
+    if(hasG&&hasQ) tq=setTimeout(function(){ run('q'); },700);   /* Groq answers text in ~0.3s; Gemini often takes 1-2s */
     if(S.allowFree&&(hasG||hasQ)) tf=setTimeout(function(){ run('f'); },3500);
   });
 }
@@ -1547,6 +1547,7 @@ async function ocrStep(m,force){
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
+  if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
   log('đọc được: '+part);
   enqueue(part);
 }
