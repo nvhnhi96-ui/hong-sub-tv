@@ -99,7 +99,7 @@ public class CaptureService extends Service {
     private boolean editing = false;
     private int[] lastSig, prevSig;
     // new-line detection on bright, text-like pixels only (a moving background no longer blocks lines)
-    private static final int MW = 160, MH = 28;
+    private static final int MW = 200, MH = 32;
     private Mask sentMask, prevMask;
     private long pendSince = 0;
     private final java.util.concurrent.atomic.AtomicInteger inflight = new java.util.concurrent.atomic.AtomicInteger();
@@ -312,15 +312,20 @@ public class CaptureService extends Service {
         return (double) t / a.length;
     }
 
+    /** Where the letters are: points with strong local contrast (letter against its outline, shadow or box).
+     *  A plain bright background (snow, sky) has none, so it no longer looks like a wall of text. */
     private static Mask textMask(Bitmap b) {
         Bitmap s = Bitmap.createScaledBitmap(b, MW, MH, true);
         int[] px = new int[MW * MH];
         s.getPixels(px, 0, MW, 0, 0, MW, MH);
+        float[] L = new float[px.length];
+        for (int i = 0; i < px.length; i++) { int c = px[i]; L[i] = ((c >> 16) & 255) * .3f + ((c >> 8) & 255) * .59f + (c & 255) * .11f; }
         Mask k = new Mask(); k.m = new byte[px.length];
-        for (int i = 0; i < px.length; i++) {
-            int c = px[i], r = (c >> 16) & 255, g = (c >> 8) & 255, bl = c & 255;
-            double l = r * .3 + g * .59 + bl * .11;
-            if (l > 175 || (r > 200 && g > 170 && bl < 120)) { k.m[i] = 1; k.ink++; }
+        for (int y = 1; y < MH - 1; y++) for (int x = 1; x < MW - 1; x++) {
+            int i = y * MW + x; float v = L[i], mx = v, mn = v;
+            int[] nb = {i - 1, i + 1, i - MW, i + MW};
+            for (int j : nb) { float a = L[j]; if (a > mx) mx = a; if (a < mn) mn = a; }
+            if (mx - mn > 70 && mx > 150) { k.m[i] = 1; k.ink++; }
         }
         return k;
     }

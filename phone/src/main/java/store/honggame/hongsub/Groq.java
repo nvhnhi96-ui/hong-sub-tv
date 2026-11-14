@@ -16,15 +16,18 @@ import java.util.regex.Pattern;
 /** Backup translator on Groq (OpenAI-compatible API, vision models). Blocking calls. */
 final class Groq {
     static final String BASE = "https://api.groq.com/openai/v1";
+    /* Groq retires models often (Llama 4 is gone): fast text models first, the real list is read from the key */
     static final List<String> PREF = Arrays.asList(
-            "meta-llama/llama-4-scout-17b-16e-instruct",
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
-            "qwen/qwen3.6-27b");
+            "qwen/qwen3.8-27b",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b");
 
     private final Prefs prefs;
     private int keyIdx = 0;
     private final Map<String, Long> cool = new java.util.concurrent.ConcurrentHashMap<>();
     private final Set<String> noFormat = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<String> noReason = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static volatile long listedAt = 0;
     private String model;
 
     Groq(Prefs p) {
@@ -78,14 +81,21 @@ final class Groq {
         JSONArray data = new JSONObject(r[1]).optJSONArray("data");
         List<String> ids = new ArrayList<>();
         if (data != null) for (int i = 0; i < data.length(); i++) ids.add(data.getJSONObject(i).optString("id"));
+        Pattern skip = Pattern.compile("guard|whisper|tts|orpheus|prompt|allam|compound", Pattern.CASE_INSENSITIVE);
         List<String> out = new ArrayList<>();
-        for (String m : PREF) if (ids.contains(m)) out.add(m);
-        Pattern vision = Pattern.compile("llama-4|vision|-vl\\b|qwen3\\.[6-9]", Pattern.CASE_INSENSITIVE);
-        Pattern skip = Pattern.compile("guard|whisper|tts|prompt", Pattern.CASE_INSENSITIVE);
-        for (String id : ids) {
-            if (!out.contains(id) && vision.matcher(id).find() && !skip.matcher(id).find()) out.add(id);
-        }
+        for (String id : ids) if (!skip.matcher(id).find()) out.add(id);
+        out.sort((a, b) -> Double.compare(score(b), score(a)));
         return out.isEmpty() ? new ArrayList<>(PREF) : out;
+    }
+
+    private static double score(String id) {
+        String l = id.toLowerCase();
+        Matcher q = Pattern.compile("qwen(\\d+(?:\\.\\d+)?)").matcher(l);
+        if (q.find()) return 100 + Double.parseDouble(q.group(1));
+        if (l.contains("gpt-oss-120b")) return 60;
+        if (l.contains("gpt-oss-20b")) return 50;
+        if (l.matches(".*(llama|kimi|deepseek|mistral).*")) return 30;
+        return 10;
     }
 
     private String pickKey() {
@@ -116,6 +126,10 @@ final class Groq {
     }
 
     JSONObject ask(String prompt, String jpegB64, String shape) throws Exception {
+        if (jpegB64 != null) throw new Exception("Groq không đọc ảnh");             // no picture models on Groq now
+        if (System.currentTimeMillis() - listedAt > 6 * 3600_000L && !prefs.groqKeys().isEmpty()) {
+            try { List<String> l = listModels(prefs.groqKeys().get(0)); prefs.groqModels(l); listedAt = System.currentTimeMillis(); } catch (Exception ignored) { }
+        }
         List<String> ms = prefs.groqModels();
         if (!ms.contains(model)) model = ms.get(0);
         Exception last = null;
@@ -135,6 +149,10 @@ final class Groq {
                     .put("max_completion_tokens", 1024)
                     .put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", content)));
             if (!noFormat.contains(model)) body.put("response_format", new JSONObject().put("type", "json_object"));
+            if (!noReason.contains(model)) {
+                if (model.toLowerCase().contains("qwen3")) body.put("reasoning_effort", "none");
+                else if (model.toLowerCase().contains("gpt-oss")) body.put("reasoning_effort", "low");
+            }
             String[] r;
             try {
                 r = http("POST", BASE + "/chat/completions", key, body.toString());
@@ -152,6 +170,7 @@ final class Groq {
             String msg = errMsg(r[1], code);
             last = new Exception(msg);
             String low = msg.toLowerCase();
+            if (code == 400 && low.contains("reasoning") && !noReason.contains(model)) { noReason.add(model); continue; }
             if (code == 400 && (low.contains("response_format") || low.contains("json")) && !noFormat.contains(model)) {
                 noFormat.add(model);
                 continue;

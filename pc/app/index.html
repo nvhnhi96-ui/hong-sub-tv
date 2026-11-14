@@ -582,7 +582,7 @@ html,body{height:100%;overflow:hidden}
             <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
             <div class="dk-set">
               <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
-              <input class="hs-range" id="dkScan" type="range" min="300" max="1500" step="100" value="700">
+              <input class="hs-range" id="dkScan" type="range" min="300" max="1500" step="100" value="500">
               <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1200">Tiết kiệm</button><button type="button" data-v="700" class="on">Vừa</button><button type="button" data-v="400">Nhanh</button></div>
             </div>
             <div class="dk-set">
@@ -807,14 +807,14 @@ var LS='hongsub.v1.';
 function load(k,d){try{var v=localStorage.getItem(LS+k);return v===null?d:JSON.parse(v);}catch(e){return d;}}
 function save(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}}
 var LOG=[];
-function log(t){ var d=new Date(); LOG.push(('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+' '+String(t).replace(/AIza[\w-]{20,}|gsk_[\w]{20,}/g,'[mã]').slice(0,400)); if(LOG.length>500) LOG.shift(); }
+function log(t){ var d=new Date(); LOG.push(('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+' '+String(t).replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_[\w]{20,}/g,'[mã]').slice(0,400)); if(LOG.length>500) LOG.shift(); }
 window.addEventListener('error',function(e){ log('lỗi trang: '+(e.message||'')+' '+(e.lineno||'')); });
 
 var S0={wait:load('wait',900),hold:load('hold',10),allowFree:load('allowFree',true)};
 var S={
   stream:null, demo:null, running:false, busy:false, timer:null,
   region:load('region',{x:.1,y:.74,w:.8,h:.22}),
-  interval:load('interval',700),
+  interval:load('interval',500),
   keys:[], keyIdx:0, cool:{}, model:load('model',null), models:load('models',[]), noThink:{},
   lastSig:null, prevSig:null, lastEn:'', hist:[], pip:null, offlineDemo:false, lastOcr:'', saved:0
 };
@@ -846,7 +846,7 @@ function keys(){return $('hsKeys').value.split(/[\s,]+/).map(function(s){return 
 $('hsKeys').value=load('keys',[]).join('\n');
 function groqKeys(){return $('hsGroq').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
 $('hsGroq').value=load('groq',[]).join('\n');
-$('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gModels=[];save('gmodels',[]);steps();});
+$('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gModels=[];S.gListed=0;save('gmodels2',[]);steps();});
 $('hsKeys').addEventListener('change',function(){save('keys',keys());S.models=[];save('models',[]);steps();});
 function keyMsg(cls,t){var m=$('hsKeyMsg');m.hidden=false;m.className='hs-msg '+cls;m.textContent=t;}
 
@@ -873,7 +873,7 @@ function rankModels(names){
   out.sort(function(a,b){ if(a.lite!==b.lite) return a.lite?-1:1; return b.v-a.v; });
   return out.map(function(o){return o.n;});
 }
-var FALLBACK=['gemini-flash-lite-latest','gemini-flash-latest','gemini-2.5-flash-lite','gemini-2.5-flash'];
+var FALLBACK=['gemini-flash-lite-latest','gemini-3.5-flash-lite','gemini-flash-latest'];
 
 async function listModels(key){
   var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(key));
@@ -898,7 +898,7 @@ $('hsCheck').addEventListener('click',async function(){
   }
   if(!good&&!ggood){keyMsg('err','Không dùng được mã nào. '+errs.join(' · ')+' Kiểm tra lại đã sao chép đủ mã chưa.');steps();return;}
   if(good){S.models=(models&&models.length?models:FALLBACK); save('models',S.models); S.model=S.models[0]; save('model',S.model);}
-  if(ggood){S.gModels=gmodels; save('gmodels',gmodels); S.gModel=gmodels[0];}
+  if(ggood){S.gModels=gmodels; S.gListed=Date.now(); save('gmodels2',gmodels); S.gModel=gmodels[0];}
   var parts=[];
   if(ks.length) parts.push('Gemini '+good+'/'+ks.length+(good?' ('+S.model+')':''));
   if(gs.length) parts.push('Groq '+ggood+'/'+gs.length+(ggood?' ('+S.gModel.split('/').pop()+')':''));
@@ -1069,11 +1069,19 @@ function grab(R,maxW){
   return true;
 }
 function diff(a,b){if(!a||!b) return 255; var t=0; for(var i=0;i<a.length;i++){t+=Math.abs(a[i]-b[i]);} return t/a.length;}
-var MW=160, MH=28, mcv=document.createElement('canvas'); mcv.width=MW; mcv.height=MH; var mcx=mcv.getContext('2d',{willReadFrequently:true});
+var MW=200, MH=32, mcv=document.createElement('canvas'); mcv.width=MW; mcv.height=MH; var mcx=mcv.getContext('2d',{willReadFrequently:true});
+/* where the letters are: points with strong local contrast (letter edge against its outline, shadow or box).
+   A plain bright background such as snow or sky has none, so it no longer looks like a wall of text. */
 function textMask(){
   mcx.drawImage(cap,0,0,MW,MH);
-  var d=mcx.getImageData(0,0,MW,MH).data, m=new Uint8Array(MW*MH), ink=0;
-  for(var i=0;i<m.length;i++){ var r=d[i*4],g=d[i*4+1],b=d[i*4+2], l=r*.3+g*.59+b*.11; if(l>175||(r>200&&g>170&&b<120)){ m[i]=1; ink++; } }
+  var d=mcx.getImageData(0,0,MW,MH).data, n=MW*MH, L=new Float32Array(n), m=new Uint8Array(n), ink=0;
+  for(var i=0;i<n;i++){ L[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11; }
+  for(var y=1;y<MH-1;y++) for(var x=1;x<MW-1;x++){
+    var k=y*MW+x, v=L[k], mx=v, mn=v, a;
+    a=L[k-1]; if(a>mx)mx=a; if(a<mn)mn=a; a=L[k+1]; if(a>mx)mx=a; if(a<mn)mn=a;
+    a=L[k-MW]; if(a>mx)mx=a; if(a<mn)mn=a; a=L[k+MW]; if(a>mx)mx=a; if(a<mn)mn=a;
+    if(mx-mn>70&&mx>150){ m[k]=1; ink++; }
+  }
   return {m:m,ink:ink};
 }
 function maskDiff(a,b){
@@ -1191,7 +1199,7 @@ async function gemini(prompt,b64,schema){
     }
     if(r.status===429){
       if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ S.slow[model]=Date.now()+12*3600e3; continue; } /* model not in free tier */
-      var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:30000); continue;
+      var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:(/per.?day|daily/i.test(msg)?3600e3:45000)); continue;
     }
     if(r.status===404||(r.status===400&&/model/i.test(msg))){ S.slow[model]=Date.now()+12*3600e3; continue; }
     if(r.status===400||r.status===403){S.cool[key]=Date.now()+3600e3; continue;}
@@ -1203,16 +1211,24 @@ async function gemini(prompt,b64,schema){
 
 /* ---------- Groq (backup translator, OpenAI-compatible) ---------- */
 var GROQ='https://api.groq.com/openai/v1';
-var GROQ_PREF=['meta-llama/llama-4-scout-17b-16e-instruct','meta-llama/llama-4-maverick-17b-128e-instruct','qwen/qwen3.6-27b'];
-S.gModels=load('gmodels',[]); S.gModel=S.gModels[0]||GROQ_PREF[0]; S.gcool={}; S.gIdx=0; S.gNoFmt={};
+var GROQ_PREF=['qwen/qwen3.8-27b','openai/gpt-oss-120b','openai/gpt-oss-20b'];
+S.gModels=load('gmodels2',[]); S.gModel=S.gModels[0]||GROQ_PREF[0]; S.gcool={}; S.gIdx=0; S.gNoFmt={}; S.gNoReason={}; S.gListed=0;
+/* Groq retires models often (Llama 4 is gone): read what this key can use and rank fast text models first */
 async function groqList(key){
   var r=await fetch(GROQ+'/models',{headers:{'Authorization':'Bearer '+key}});
   var j=await r.json().catch(function(){return {};});
   if(!r.ok){var e=new Error((j.error&&j.error.message)||('HTTP '+r.status));e.status=r.status;throw e;}
-  var ids=(j.data||[]).map(function(m){return m.id;});
-  var out=GROQ_PREF.filter(function(m){return ids.indexOf(m)>=0;});
-  ids.forEach(function(id){ if(out.indexOf(id)<0&&/llama-4|vision|-vl\b|qwen3\.[6-9]/i.test(id)&&!/guard|whisper|tts|prompt/i.test(id)) out.push(id); });
-  return out.length?out:GROQ_PREF.slice();
+  var ids=(j.data||[]).map(function(m){return m.id;}).filter(function(id){return !/whisper|guard|tts|orpheus|prompt|allam|compound|safeguard/i.test(id);});
+  function score(id){ var v=parseFloat((id.match(/qwen(\d+(?:\.\d+)?)/i)||[0,0])[1]); return /qwen/i.test(id)?100+v:/gpt-oss-120b/.test(id)?60:/gpt-oss-20b/.test(id)?50:/llama|kimi|deepseek|mistral/i.test(id)?30:10; }
+  ids.sort(function(a,b){return score(b)-score(a);});
+  return ids.length?ids:GROQ_PREF.slice();
+}
+async function groqModels(){
+  if(S.gModels.length&&Date.now()-S.gListed<6*3600e3) return S.gModels;
+  var k=groqKeys()[0]; if(!k) return GROQ_PREF;
+  try{ S.gModels=await groqList(k); S.gListed=Date.now(); save('gmodels2',S.gModels); }catch(e){ if(!S.gModels.length) S.gModels=GROQ_PREF.slice(); }
+  if(S.gModels.indexOf(S.gModel)<0) S.gModel=S.gModels[0];
+  return S.gModels;
 }
 function groqPick(){
   var ks=groqKeys(); if(!ks.length) return null; var now=Date.now();
@@ -1221,7 +1237,8 @@ function groqPick(){
 }
 function jsonFrom(t){ t=String(t||'').replace(/<think>[\s\S]*?<\/think>/g,''); var a=t.indexOf('{'), b=t.lastIndexOf('}'); if(a<0||b<a) return null; try{return JSON.parse(t.slice(a,b+1));}catch(e){return null;} }
 async function groq(prompt,b64,shape){
-  var models=S.gModels&&S.gModels.length?S.gModels:GROQ_PREF;
+  if(b64){ var nv=new Error('Groq không đọc ảnh'); throw nv; }               /* Groq has no picture models now */
+  var models=await groqModels();
   if(models.indexOf(S.gModel)<0) S.gModel=models[0];
   var tries=models.length+groqKeys().length+1, lastErr=null;
   for(var t=0;t<tries;t++){
@@ -1229,11 +1246,13 @@ async function groq(prompt,b64,shape){
     var body={model:S.gModel,temperature:0.2,max_completion_tokens:1024,
       messages:[{role:'user',content:[{type:'text',text:prompt+'\nReply with JSON only, exactly this shape: '+shape}].concat(b64?[{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]:[])}]};
     if(!S.gNoFmt[S.gModel]) body.response_format={type:'json_object'};
+    if(!S.gNoReason[S.gModel]){ if(/qwen3/i.test(S.gModel)) body.reasoning_effort='none'; else if(/gpt-oss/i.test(S.gModel)) body.reasoning_effort='low'; }
     var r,j;
     try{ r=await fetch(GROQ+'/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body)}); j=await r.json().catch(function(){return {};}); }
     catch(e){ lastErr=new Error('Mất kết nối mạng'); continue; }
     if(r.ok){ count(key,'q'); var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:''; return jsonFrom(txt); }
     var msg=(j.error&&j.error.message)||('HTTP '+r.status); lastErr=new Error(msg); lastErr.status=r.status;
+    if(r.status===400&&/reasoning/i.test(msg)&&!S.gNoReason[S.gModel]){S.gNoReason[S.gModel]=true;continue;}
     if(r.status===400&&/response_format|json/i.test(msg)&&!S.gNoFmt[S.gModel]){S.gNoFmt[S.gModel]=true;continue;}
     if(r.status===429){var m=msg.match(/try again in ([\d.]+)(ms|s|m)/i); var w=m?parseFloat(m[1])*(m[2]==='ms'?1:m[2]==='m'?60000:1000):20000; S.gcool[key]=Date.now()+w; continue;}
     if(r.status===404||(r.status===400&&/model|decommission/i.test(msg))){var k=models.indexOf(S.gModel); S.gModel=models[(k+1)%models.length]; continue;}
@@ -1532,7 +1551,8 @@ function wordy(line){
 }
 function ocrText(o){
   var ls=o.lines.filter(function(l){ return l.conf>=0.6&&(l.text.match(/[A-Za-z]/g)||[]).length>=3&&wordy(l.text)>=0.6; })
-    .map(function(l){ return l.text.replace(/([.!?,;])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); });
+    .map(function(l){ var t=l.text; if((t.match(/[A-Za-z,.]-(?=[A-Za-z])/g)||[]).length>=2) t=t.replace(/([A-Za-z,.])-(?=[A-Za-z])/g,'$1 ').replace(/(^|\s)-(?=[A-Za-z])/g,'$1');   /* small text: gaps read as "-" */
+      return t.replace(/([.!?,;])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); });
   /* lines of one subtitle are joined; a new speaker ("NAME: ...") starts a new line */
   return ls.reduce(function(a,l){ return a?(a+(/^[A-Z][\w .'-]{0,24}:\s/.test(l)?'\n':' ')+l):l; },'');
 }
@@ -1583,58 +1603,125 @@ function takeResult(res,seq,raw){
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return; } /* an older line finished late: keep it in history only */
   S.shownSeq=seq; S.lastEn=res.en; show(res);
 }
-async function send(force){
-  var seq=++S.seq; S.inflight++;
-  var noKey=!keys().length&&!groqKeys().length;
+/* ---- translating one line of text (from the on-device reader) ---- */
+S.q=[]; S.qActive=0; S.ocrBusy=false; S.ocrMask=null; S.cand=null; S.forceOcr=false;
+var QMAX=3, ocv=document.createElement('canvas'), ocx2=ocv.getContext('2d');
+function countFree(){ if(S.use.d!==today()) S.use={d:today(),k:{}}; S.use.k.free=(S.use.k.free||0)+1; save('use',S.use); keyStats(); }
+function enqueue(text){
+  S.q.push({seq:++S.seq,text:text});
+  if(S.q.length>4) S.q.splice(0,S.q.length-4);           /* far behind: keep the newest lines */
+  pump();
+}
+function pump(){
+  while(S.qActive<QMAX&&S.q.length){
+    var j=S.q.shift(); S.qActive++; S.inflight=S.qActive;
+    translateText(j).then(function(){},function(){}).then(function(){ S.qActive--; S.inflight=S.qActive; pump(); });
+  }
+}
+async function translateText(j){
+  if(S.qActive===1) status('busy','Đang dịch...');
+  var t1=performance.now();
   try{
-    var useText=null, raw=null, t0=performance.now();
-    if(!force&&ocrOn()){
-      try{
-        var o=await HsOcr.read(cap); S.perf.o=o.ms;
-        var txt=ocrText(o);
-        if(txt){
-          OCR.miss=0;
-          if(similar(txt,S.lastOcr)){ S.saved++; runStatus(); return; }
-          S.lastOcr=txt;
-          var part=freshPart(txt);
-          if(!part){ S.saved++; runStatus(); return; }
-          useText=part; raw=part; log('đọc được: '+part);
-        }else{ S.lastOcr=''; OCR.miss++; if(OCR.miss<3||noKey) return; OCR.miss=0; log('bộ đọc chữ không thấy chữ, gửi ảnh cho AI'); }
-      }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); }
-    }
-    if(!useText&&noKey){ status('warn',ocrOn()?'Không đọc được chữ, thử kéo lại khung phụ đề':'Cần nhập mã Gemini (hoặc đợi tải xong bộ đọc chữ)'); return; }
-    if(S.inflight===1) status('busy','Đang dịch...');
-    var t1=performance.now();
-    var res=useText?await ask(textPrompt(useText),null,SCHEMA_SUB,SHAPE_SUB,useText):await ask(subPrompt(),jpeg(.82),SCHEMA_SUB,SHAPE_SUB);
-    S.perf.t=Math.round(performance.now()-t1); if(!useText) S.perf.o=0;
-    if(S.via==='free'){ if(S.use.d!==today()) S.use={d:today(),k:{}}; S.use.k.free=(S.use.k.free||0)+1; save('use',S.use); keyStats(); }
-    if(useText) rememberSents(useText);
+    var res=await askText(textPrompt(j.text),j.text);
+    S.perf.t=Math.round(performance.now()-t1);
+    if(S.via==='free') countFree();
+    rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    takeResult(res,seq,raw);
+    takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
     log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
     if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
     else status('err',String(e.message||e).slice(0,90));
     S.lastOcr='';
+  }
+}
+/* text lines: Gemini first; Groq joins after 1.2s; the free translator after 3.5s or when both fail. First good answer wins. */
+function askText(prompt,text){
+  var hasG=keys().length>0, hasQ=groqKeys().length>0;
+  return new Promise(function(resolve,reject){
+    var done=false, live=0, errs=[], tq=null, tf=null;
+    function win(r,via){ if(done) return; done=true; clearTimeout(tq); clearTimeout(tf); S.via=via; resolve(r); }
+    function lose(e){ errs.push(e); live--; if(done) return; if(!startedAll()) startNext(); else if(live<=0) reject(errs.filter(function(x){return !x.cool;})[0]||errs[0]||new Error('Không dịch được')); }
+    var started={g:false,q:false,f:false};
+    function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.f||!S.allowFree); }
+    function run(k){
+      if(started[k]||done) return; started[k]=true; live++;
+      var p=k==='g'?gemini(prompt,null,SCHEMA_SUB):k==='q'?groq(prompt,null,SHAPE_SUB):freeTr(text);
+      p.then(function(r){ if(r&&typeof r==='object') win(r,k==='g'?'gemini':k==='q'?'groq':'free'); else lose(new Error('trống')); },lose);
+    }
+    function startNext(){ if(hasG&&!started.g) run('g'); else if(hasQ&&!started.q) run('q'); else if(S.allowFree&&!started.f) run('f'); }
+    if(!hasG&&!hasQ&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
+    startNext();
+    if(hasG&&hasQ) tq=setTimeout(function(){ run('q'); },1200);
+    if(S.allowFree&&(hasG||hasQ)) tf=setTimeout(function(){ run('f'); },3500);
+  });
+}
+/* picture of the subtitle area sent to the AI (when the on-device reader is off or sees nothing) */
+async function sendImage(seq){
+  seq=seq||++S.seq; S.inflight++;
+  try{
+    if(S.inflight===1) status('busy','Đang dịch...');
+    var t1=performance.now();
+    var res=await ask(subPrompt(),jpeg(.82),SCHEMA_SUB,SHAPE_SUB);
+    S.perf.t=Math.round(performance.now()-t1); S.perf.o=0;
+    log('dịch ảnh ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
+    takeResult(res,seq,null); runStatus(); perfTag();
+  }catch(e){
+    log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
+    if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
+    else status('err',String(e.message||e).slice(0,90));
   }finally{ S.inflight--; }
+}
+function send(force){ return sendImage(); }   /* kept for older callers */
+/* on-device reading: read again whenever the subtitle area changes, translate when the text is new and complete */
+async function ocrStep(m,force){
+  var noKey=!keys().length&&!groqKeys().length;
+  if(m.ink<MW*MH*0.003){ S.cand=null; S.ocrMask=m; return; }                      /* no text on screen */
+  var again=S.forceOcr; S.forceOcr=false;
+  if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
+  if(S.ocrBusy) return;
+  S.ocrBusy=true;
+  ocv.width=cap.width; ocv.height=cap.height; ocx2.drawImage(cap,0,0);             /* the next tick redraws cap while we read */
+  var o;
+  try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
+  S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
+  var txt=ocrText(o);
+  if(!txt){
+    S.cand=null;
+    if(++OCR.miss>=3&&!noKey&&m.ink>MW*MH*0.02){ OCR.miss=0; log('bộ đọc chữ không thấy chữ, gửi ảnh cho AI'); sendImage(); }
+    return;
+  }
+  OCR.miss=0;
+  if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
+  var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
+  if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
+    var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*2;
+    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=setTimeout(function(){S.quick=null; tick();},200); return; }
+  }
+  S.cand=null; S.lastOcr=txt;
+  var part=force?txt:freshPart(txt);
+  if(!part){ S.saved++; runStatus(); return; }
+  log('đọc được: '+part);
+  enqueue(part);
 }
 async function tick(force){
   if((!S.running&&force!==true)||!S.stream) return;
   force=force===true;
-  if(!grab(S.region,900)) return;
+  if(!grab(S.region,ocrOn()?1280:900)) return;
   if(S.offlineDemo&&S.demo){
     var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
   }
   var m=textMask(), now=Date.now();
-  if(force){ S.lastEn=''; S.lastOcr=''; S.sentMask=m; S.prevMask=m; S.pend=0; send(true); return; }
+  if(ocrOn()){ if(force){ S.lastEn=''; S.lastOcr=''; } return ocrStep(m,force); }
+  if(force){ S.lastEn=''; S.lastOcr=''; S.sentMask=m; S.prevMask=m; S.pend=0; sendImage(); return; }
   var prev=S.prevMask; S.prevMask=m;
-  if(m.ink<MW*MH*0.004){ S.pend=0; return; }                 /* no subtitle on screen */
+  if(m.ink<MW*MH*0.003){ S.pend=0; return; }                 /* no subtitle on screen */
   if(S.sentMask&&maskDiff(m,S.sentMask)<0.22){ S.pend=0; return; } /* same line as the one already sent */
-  if(S.inflight>=2) return;                                     /* two lines already being translated */
+  if(S.inflight>=2) return;                                     /* two pictures already being translated */
   var steady=prev&&maskDiff(m,prev)<0.08;
   if(!S.pend) S.pend=now;
-  if(steady||now-S.pend>S.wait){ S.sentMask=m; S.pend=0; send(false); return; }
+  if(steady||now-S.pend>S.wait){ S.sentMask=m; S.pend=0; sendImage(); return; }
   if(!S.quick) S.quick=setTimeout(function(){S.quick=null; tick();},180);   /* line still appearing: look again soon */
 }
 function startRun(){
@@ -1717,7 +1804,7 @@ $('hsReport').addEventListener('click',function(){
     'Game: '+$('hsGame').value, 'Mã Gemini: '+keys().length+' mã, mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(S.stream?(S.stream.getVideoTracks()[0]||{}).label:'chưa có'), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
-  info=info.replace(/AIza[\w-]{20,}|gsk_\w{20,}/g,'[mã]');
+  info=info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
   try{ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([info],{type:'text/plain;charset=utf-8'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},2000); }catch(e){}
   try{ navigator.clipboard.writeText(info); }catch(e){}
@@ -2051,6 +2138,7 @@ if(D){
       var m=prompt.match(/<<<\n([\s\S]*?)\n>>>/), en=m?m[1].replace(/\n/g,' '):'(ảnh)';
       S.test.asked.push(b64?'image':'text'); return {en:en,vi:'[VI] '+en};
     };
+    askText=async function(prompt,text){ S.test.asked.push('text'); S.via='gemini'; return {en:text,vi:'[VI] '+text.replace(/\n/g,' ')}; };
     var realShow=show; show=function(r){S.test.shown.push(r.vi); realShow(r);};
     window.hsTestState=function(){return {test:S.test,saved:S.saved,running:S.running,stream:!!S.stream,region:S.region,status:$('hsStatusTxt').textContent,voices:dVoices,ocrReady:ocrOn(),ocrFails:OCR.fails,isolated:!!self.crossOriginIsolated,visibility:document.visibilityState};};
   }
