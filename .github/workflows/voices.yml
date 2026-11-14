@@ -1,0 +1,65 @@
+name: Build Vietnamese voice pack
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'voices/**', '.github/workflows/voices.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  voicepack:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Portable Python
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $v = '3.12.10'
+          Invoke-WebRequest "https://www.python.org/ftp/python/$v/python-$v-embed-amd64.zip" -OutFile "$env:RUNNER_TEMP\py.zip"
+          New-Item -ItemType Directory -Force pack\python | Out-Null
+          Expand-Archive "$env:RUNNER_TEMP\py.zip" -DestinationPath pack\python -Force
+          $pth = Get-ChildItem pack\python -Filter 'python3*._pth' | Select-Object -First 1
+          "python312.zip`r`n.`r`nLib\site-packages`r`n..`r`nimport site" | Set-Content $pth.FullName -Encoding ascii
+          Invoke-WebRequest https://bootstrap.pypa.io/get-pip.py -OutFile "$env:RUNNER_TEMP\get-pip.py"
+          pack\python\python.exe "$env:RUNNER_TEMP\get-pip.py" --no-warn-script-location
+          pack\python\python.exe -m pip install --no-warn-script-location --no-deps vieneu==3.8.4
+          pack\python\python.exe -m pip install --no-warn-script-location "sea-g2p>=0.9.1" "onnxruntime>=1.20.0" numpy soundfile soxr "kaldi-native-fbank>=1.20" "tokenizers>=0.20" huggingface_hub PyYAML
+          pack\python\python.exe -m pip list
+
+      - name: Voice engine and models
+        env:
+          HS_VOICE_ONLINE: '1'
+          PYTHONIOENCODING: utf-8
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Copy-Item voices\hs_voice.py, voices\test_voice.py pack\
+          New-Item -ItemType Directory -Force pack\hf | Out-Null
+          $env:HF_HOME = (Resolve-Path pack\hf).Path
+          pack\python\python.exe pack\test_voice.py "$env:RUNNER_TEMP\samples" fp32
+          pack\python\python.exe pack\test_voice.py "$env:RUNNER_TEMP\samples" int8
+          pack\python\python.exe -c "from huggingface_hub import hf_hub_download as d; import re; t=open(d('pnnbao-ump/VieNeu-TTS-v3-Turbo','README.md'),encoding='utf-8').read(); print(t[:1800])"
+          pack\python\python.exe -c "from huggingface_hub import hf_hub_download as d; t=open(d('OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano','README.md'),encoding='utf-8').read(); print(t[:800])"
+
+      - name: Offline check and sizes
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          $env:HF_HOME = (Resolve-Path pack\hf).Path
+          $env:HF_HUB_OFFLINE = '1'
+          pack\python\python.exe pack\test_voice.py "$env:RUNNER_TEMP\samples-offline" fp32
+          Get-ChildItem pack\hf -Recurse -File | Sort-Object Length -Descending | Select-Object -First 25 | ForEach-Object { "{0,12:N0}  {1}" -f $_.Length, $_.FullName.Replace((Resolve-Path pack).Path,'') }
+          "python: {0:N0}" -f ((Get-ChildItem pack\python -Recurse -File | Measure-Object Length -Sum).Sum)
+          "hf: {0:N0}" -f ((Get-ChildItem pack\hf -Recurse -File | Measure-Object Length -Sum).Sum)
+          Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-samples
+          path: ${{ runner.temp }}\samples

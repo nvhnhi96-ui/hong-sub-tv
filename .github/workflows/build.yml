@@ -3,7 +3,7 @@ name: Build Hong Sub
 on:
   push:
     branches: [ main ]
-    paths-ignore: [ 'presets/**', 'README.md' ]
+    paths-ignore: [ 'presets/**', 'README.md', 'voices/**', '.github/workflows/voices.yml' ]
   workflow_dispatch:
 
 permissions:
