@@ -4,32 +4,31 @@
       "ocr": [
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 95,
-          "e": false
+          "c": 93,
+          "ms": 227
         },
         {
-          "t": "told you this place was cursed.",
-          "c": 95,
-          "e": false
+          "t": "I told you this place was cursed.",
+          "c": 89,
+          "ms": 113
         },
         {
           "t": "Grab the map. We head north at dawn.",
-          "c": 95,
-          "e": false
+          "c": 90,
+          "ms": 125
         },
         {
           "t": "We need to get out of here before sunrise.",
-          "c": 95,
-          "e": false
+          "c": 96,
+          "ms": 119
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 95,
-          "e": false
+          "c": 97,
+          "ms": 129
         }
       ],
       "asked": [
-        "text",
         "text",
         "text",
         "text",
@@ -37,13 +36,12 @@
       ],
       "shown": [
         "[VI] Stay close. The bridge will not hold for long.",
-        "[VI] told you this place was cursed.",
+        "[VI] I told you this place was cursed.",
         "[VI] Grab the map. We head north at dawn.",
-        "[VI] We need to get out of here before sunrise.",
-        "[VI] Stay close. The bridge will not hold for long."
+        "[VI] We need to get out of here before sunrise."
       ]
     },
-    "saved": 0,
+    "saved": 1,
     "running": true,
     "stream": true,
     "region": {
@@ -52,26 +50,32 @@
       "w": 0.9,
       "h": 0.16
     },
-    "status": "Đang dịch · Gemini",
+    "status": "Đang dịch, đã bỏ qua 1 câu trùng",
     "voices": [
       {
-        "lang": "en-US",
+        "name": "Giọng Việt Hóng Sub (có sẵn)",
+        "lang": "vi-VN",
+        "id": "hs:piper"
+      },
+      {
         "name": "Microsoft David",
-        "gender": "Male"
+        "lang": "en-US",
+        "id": "win:Microsoft David"
       },
       {
-        "lang": "en-US",
         "name": "Microsoft Zira",
-        "gender": "Female"
+        "lang": "en-US",
+        "id": "win:Microsoft Zira"
       },
       {
-        "lang": "en-US",
         "name": "Microsoft Mark",
-        "gender": "Male"
+        "lang": "en-US",
+        "id": "win:Microsoft Mark"
       }
     ],
     "ocrReady": true,
     "ocrFails": 0,
+    "isolated": true,
     "visibility": "visible"
   },
   "minimized": {
@@ -79,48 +83,46 @@
       "ocr": [
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 95,
-          "e": false
+          "c": 93,
+          "ms": 227
         },
         {
-          "t": "told you this place was cursed.",
-          "c": 95,
-          "e": false
+          "t": "I told you this place was cursed.",
+          "c": 89,
+          "ms": 113
         },
         {
           "t": "Grab the map. We head north at dawn.",
-          "c": 95,
-          "e": false
+          "c": 90,
+          "ms": 125
         },
         {
           "t": "We need to get out of here before sunrise.",
-          "c": 95,
-          "e": false
+          "c": 96,
+          "ms": 119
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 95,
-          "e": false
+          "c": 97,
+          "ms": 129
         },
         {
-          "t": "told you this place was cursed.",
-          "c": 95,
-          "e": false
+          "t": "I told you this place was cursed.",
+          "c": 93,
+          "ms": 129
         },
         {
           "t": "Grab the map. We head north at dawn.",
-          "c": 95,
-          "e": false
+          "c": 90,
+          "ms": 124
         },
         {
           "t": "We need to get out of here before sunrise.",
-          "c": 95,
-          "e": false
+          "c": 96,
+          "ms": 115
         }
       ],
       "asked": [
-        "text",
-        "text",
         "text",
         "text",
         "text",
@@ -130,16 +132,14 @@
       ],
       "shown": [
         "[VI] Stay close. The bridge will not hold for long.",
-        "[VI] told you this place was cursed.",
+        "[VI] I told you this place was cursed.",
         "[VI] Grab the map. We head north at dawn.",
         "[VI] We need to get out of here before sunrise.",
-        "[VI] Stay close. The bridge will not hold for long.",
-        "[VI] told you this place was cursed.",
-        "[VI] Grab the map. We head north at dawn.",
+        "[VI] I told you this place was cursed.",
         "[VI] We need to get out of here before sunrise."
       ]
     },
-    "saved": 0,
+    "saved": 2,
     "running": true,
     "stream": true,
     "region": {
@@ -148,26 +148,32 @@
       "w": 0.9,
       "h": 0.16
     },
-    "status": "Đang dịch · Gemini",
+    "status": "Đang dịch, đã bỏ qua 2 câu trùng",
     "voices": [
       {
-        "lang": "en-US",
+        "name": "Giọng Việt Hóng Sub (có sẵn)",
+        "lang": "vi-VN",
+        "id": "hs:piper"
+      },
+      {
         "name": "Microsoft David",
-        "gender": "Male"
+        "lang": "en-US",
+        "id": "win:Microsoft David"
       },
       {
-        "lang": "en-US",
         "name": "Microsoft Zira",
-        "gender": "Female"
+        "lang": "en-US",
+        "id": "win:Microsoft Zira"
       },
       {
-        "lang": "en-US",
         "name": "Microsoft Mark",
-        "gender": "Male"
+        "lang": "en-US",
+        "id": "win:Microsoft Mark"
       }
     ],
     "ocrReady": true,
     "ocrFails": 0,
+    "isolated": true,
     "visibility": "visible"
   },
   "voices": [
@@ -187,5 +193,29 @@
       "gender": "Male"
     }
   ],
-  "speakOk": true
+  "speakOk": false,
+  "piperOk": true,
+  "remotePlay": {
+    "helper": "D:\\a\\hong-sub-tv\\hong-sub-tv\\pc\\dist\\win-unpacked\\resources\\rp\\hongsub-rp.exe",
+    "version": "exit=0 {\"ok\":true,\"app\":\"hongsub-rp\",\"chiaki\":\"chiaki-ng\"}",
+    "stream": {
+      "code": 0,
+      "events": [
+        "{\"ev\":\"log\",\"level\":4,\"msg\":\"Trying to request session from 127.0.0.1:9295\"}",
+        "{\"ev\":\"log\",\"level\":1,\"msg\":\"Session request connect failed: Timeout\"}",
+        "{\"ev\":\"log\",\"level\":1,\"msg\":\"Session request connect failed eventually.\"}",
+        "{\"ev\":\"log\",\"level\":4,\"msg\":\"Session has quit\"}",
+        "{\"ev\":\"quit\",\"reason\":2,\"text\":\"Unknown Session Request Error\",\"str\":\"\"}",
+        "{\"ev\":\"closed\"}"
+      ]
+    },
+    "picture": {
+      "encoder": true,
+      "chunks": 20,
+      "decodedFrames": 11,
+      "codec": "avc1.42C01E",
+      "err": "",
+      "canvas": "640x360"
+    }
+  }
 }
