@@ -308,7 +308,7 @@ function piperSpeak(text, rate) {
 /* ---------- AI voices (VieNeu-TTS v3 Turbo pack, downloaded once) ---------- */
 const AIV_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/download/voices-1/hong-sub-voices.zip';
 const aiv = { proc: null, ready: false, voices: [], err: '', busy: '', got: 0, total: 0, buf: '', startMs: 0 };
-function aivDir() { return path.join(app.getPath('userData'), 'voices-ai'); }
+function aivDir() { return path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'HongSub', 'voices'); }   /* short ASCII path: Python and long model paths */
 function aivPy() { const d = aivDir(); const py = path.join(d, 'python', 'python.exe'); return fs.existsSync(py) && fs.existsSync(path.join(d, 'hs_voice.py')) ? py : ''; }
 function aivState() { return { installed: !!aivPy(), running: !!aiv.proc, ready: aiv.ready, voices: aiv.voices, err: aiv.err, busy: aiv.busy, got: aiv.got, total: aiv.total, fast: !!cfg.aivFast, startMs: aiv.startMs }; }
 function aivSend(ch, m) { if (win && !win.isDestroyed()) win.webContents.send(ch, m); }
@@ -361,10 +361,19 @@ async function aivInstall() {
     aivStop();
     const dir = aivDir(), part = dir + '.new';
     fs.rmSync(part, { recursive: true, force: true }); fs.mkdirSync(part, { recursive: true });
-    await new Promise((res, rej) => {
-      const tar = spawn(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', tmp, '-C', part], { windowsHide: true });
-      tar.on('exit', c => c === 0 ? res() : rej(new Error('Giải nén lỗi (mã ' + c + ')'))); tar.on('error', rej);
+    const unzip = (cmd, args) => new Promise((res, rej) => {
+      let er = '';
+      const pr = spawn(cmd, args, { windowsHide: true });
+      pr.stderr.on('data', d => { er += d; }); pr.stdout.on('data', () => {});
+      pr.on('exit', c => c === 0 ? res() : rej(new Error('Giải nén lỗi (mã ' + c + ') ' + er.trim().split(/\r?\n/).slice(-2).join(' ').slice(0, 200))));
+      pr.on('error', rej);
     });
+    try { await unzip(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', tmp, '-C', part]); }
+    catch (e1) {
+      fs.rmSync(part, { recursive: true, force: true }); fs.mkdirSync(part, { recursive: true });
+      try { await unzip('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Expand-Archive -LiteralPath '" + tmp.replace(/'/g, "''") + "' -DestinationPath '" + part.replace(/'/g, "''") + "' -Force"]); }
+      catch (e2) { throw new Error(e1.message + ' / ' + e2.message); }
+    }
     fs.rmSync(dir, { recursive: true, force: true }); fs.renameSync(part, dir);
     try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ }
     aiv.busy = ''; cfg.aivOn = true; saveCfg(); aivStart();
