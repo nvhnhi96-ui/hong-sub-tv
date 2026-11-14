@@ -156,8 +156,9 @@ function srcName(){
   if(!S.stream) return 'chưa chọn';
   if(S.demo) return 'xem thử';
   var t=S.stream.getVideoTracks()[0], l=(t&&t.label)||'';
-  if(t&&t.getSettings&&t.getSettings().deviceId&&!/screen|window|web-contents/i.test(l)) return 'capture card';
-  return /remote play/i.test(l)?'PS Remote Play':(l||'cửa sổ game');
+  var set=(t&&t.getSettings)?t.getSettings():{};
+  if(set.displaySurface||/^(screen|window|web-contents)[:-]/i.test(l)) return /remote play/i.test(l)?'PS Remote Play':'cửa sổ game';
+  return 'capture card';
 }
 function rail(){
   var g=$('hsGame').value.trim()||'chưa chọn', k=$('hsKeys').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length, q=$('hsGroq').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length;
