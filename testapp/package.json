@@ -1,0 +1,30 @@
+{
+  "name": "hong-sub-test",
+  "productName": "Hóng Sub Test",
+  "version": "1.0.0",
+  "description": "Thử Hóng Sub và kiểm tra máy tính - Hóng Game Store",
+  "author": "Hóng Game Store",
+  "homepage": "https://honggame.store/hong-sub/",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --publish never"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.31.1"
+  },
+  "devDependencies": {
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "store.honggame.hongsub.test",
+    "productName": "Hóng Sub Test",
+    "asar": false,
+    "files": ["main.js", "preload.js", "ui/**", "package.json", "!**/*.map", "!node_modules/**"],
+    "directories": { "output": "dist" },
+    "win": { "target": "portable", "icon": "ui/icon.png", "artifactName": "hong-sub-test.exe", "executableName": "HongSubTest" },
+    "portable": { "unpackDirName": "HongSubTest" }
+  }
+}
