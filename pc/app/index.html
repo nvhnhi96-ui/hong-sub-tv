@@ -1328,7 +1328,7 @@ function speak(t,res){
 
 /* ---------- đọc chữ ngay trên máy (PaddleOCR chạy trong trình duyệt) ---------- */
 var OCR={fails:0,loading:false,miss:0};
-var OCR_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@ocr-v1/web/ocr/');
+var OCR_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@bc35c65f6bbe936a8a425be6c45c8ebb1399c4e4/web/ocr/');
 var ORT_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/');
 function readMode(){return ($('hsRead')&&$('hsRead').value)||'local';}
 function ocrOn(){return readMode()==='local'&&!!window.HsOcr&&HsOcr.ready()&&OCR.fails<5;}
