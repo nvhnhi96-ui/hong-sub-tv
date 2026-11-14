@@ -565,7 +565,7 @@ async function runSelftest() {
       }
     } catch (e) { log('aiv test failed', String(e && e.stack || e)); }
   }
-  fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000), piperOk: !!(pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
+  fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: typeof sp !== 'undefined' && !!(sp && sp.wav && sp.wav.length > 1000), piperOk: typeof pw !== 'undefined' && !!(pw && pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
   quitting = true; app.quit();
 }
 
