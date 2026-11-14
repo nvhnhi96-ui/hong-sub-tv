@@ -83,6 +83,13 @@ html,body{height:100%;overflow:hidden}
 .hs-hist{margin-top:14px}
 .hs-hist ol{max-height:none}
 .dk-empty{color:var(--muted);font-size:14px;padding:6px 0}
+.dk-bar{height:8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;margin-top:10px}
+.dk-bar span{display:block;height:100%;width:0;background:var(--brand2);transition:width .3s}
+.dk-voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:8px}
+.dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px}
+.dk-voices button:hover{border-color:var(--ink)}
+.dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--ink)}
+.dk-voices b{font-weight:600}.dk-voices small{color:var(--muted);margin-left:auto;white-space:nowrap}
 .dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px}.dk-steps li{margin:4px 0}
 
 @media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}}
@@ -292,6 +299,29 @@ html,body{height:100%;overflow:hidden}
 
       <!-- ============ Giọng đọc ============ -->
       <section class="dk-page" id="p-giong">
+        <div class="dk-card" id="dkAiCard">
+          <h2>Bộ giọng AI tiếng Việt</h2>
+          <p class="hs-note">25 giọng nam và nữ của cả ba miền, đọc tự nhiên. Hóng Sub tự chia cho mỗi nhân vật một giọng riêng đúng nam/nữ, chạy ngay trên máy nên không tốn lượt mã. Chỉ cần tải một lần.</p>
+          <div class="hs-msg" id="dkAiState">Đang kiểm tra...</div>
+          <div class="dk-bar" id="dkAiBar" hidden><span></span></div>
+          <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkAiGet">Tải bộ giọng AI</button></div>
+          <div id="dkAiOpts" hidden>
+            <div class="dk-cols" style="margin-top:6px">
+              <div>
+                <label class="hs-sw dk-sw">Dùng giọng AI cho nhân vật và lời dẫn <input type="checkbox" id="dkAiOn"></label>
+                <label class="hs-sw dk-sw">Máy yếu: đọc nhanh hơn <input type="checkbox" id="dkAiFast"></label>
+                <p class="hs-note">Bật khi giọng đọc bị trễ nhiều so với phụ đề.</p>
+              </div>
+              <div class="dk-set">
+                <label class="lab" for="dkNarr">Giọng cho câu không có tên người nói</label>
+                <select class="hs-in" id="dkNarr"></select>
+              </div>
+            </div>
+            <div class="lab" style="margin-top:16px;font-size:13.5px;font-weight:600">Nghe thử từng giọng</div>
+            <div class="dk-voices" id="dkAiList"></div>
+            <div class="hs-row" style="margin-top:12px"><button class="dk-link" type="button" id="dkAiRemove">Gỡ bộ giọng AI khỏi máy</button></div>
+          </div>
+        </div>
         <div class="dk-cols">
           <div class="dk-card">
             <h2>Đọc to phụ đề</h2>

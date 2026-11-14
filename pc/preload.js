@@ -4,6 +4,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
+let aiId = 0, aiQueue = [], aiPlaying = false, aiRate = 1;
+function aiNext() {
+  if (aiPlaying || !aiQueue.length) return;
+  const m = aiQueue.shift(); aiPlaying = true;
+  audio = new Audio('data:audio/wav;base64,' + m.wav);
+  audio.preservesPitch = true; audio.playbackRate = aiRate;
+  const done = () => { aiPlaying = false; audio = null; aiNext(); };
+  audio.onended = done; audio.onerror = done;
+  audio.play().catch(done);
+}
+ipcRenderer.on('aiv-audio', (e, m) => { if (m.type !== 'audio' || m.id !== aiId) return; aiQueue.push(m); aiNext(); });
 
 contextBridge.exposeInMainWorld('hsDesktop', {
   selftest,
@@ -22,13 +33,27 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   speak: async (text, voice, rate) => {
     const my = ++seq;
     if (audio) { audio.pause(); audio = null; }
+    aiQueue = []; aiPlaying = false; if (aiId) { ipcRenderer.send('aiv-stop'); aiId = 0; }
     if (!text) return;
+    if (String(voice || '').startsWith('ai:')) {             /* AI voice: sentences arrive one by one and play in order */
+      aiId = my; aiRate = rate || 1; aiPlaying = false;
+      ipcRenderer.send('aiv-speak', { id: my, text, voice: String(voice).slice(3) });
+      return;
+    }
     const res = await ipcRenderer.invoke('speak', text, voice, rate);
     if (my !== seq || !res || !res.wav) return;
     audio = new Audio('data:audio/wav;base64,' + res.wav);
     audio.play().catch(() => {});
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
+  aiv: {
+    state: () => ipcRenderer.invoke('aiv-state'),
+    install: () => ipcRenderer.invoke('aiv-install'),
+    start: () => ipcRenderer.invoke('aiv-start'),
+    fast: (on) => ipcRenderer.invoke('aiv-fast', on),
+    remove: () => ipcRenderer.invoke('aiv-remove'),
+    onState: (cb) => ipcRenderer.on('aiv-state', (e, s) => cb(s))
+  },
   update: () => ipcRenderer.invoke('update'),
   version: () => ipcRenderer.invoke('app-version'),
   getJson: (u) => ipcRenderer.invoke('get-json', u),

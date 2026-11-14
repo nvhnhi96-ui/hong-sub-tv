@@ -305,8 +305,85 @@ function piperSpeak(text, rate) {
   });
 }
 
+/* ---------- AI voices (VieNeu-TTS v3 Turbo pack, downloaded once) ---------- */
+const AIV_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/download/voices-1/hong-sub-voices.zip';
+const aiv = { proc: null, ready: false, voices: [], err: '', busy: '', got: 0, total: 0, buf: '', startMs: 0 };
+function aivDir() { return path.join(app.getPath('userData'), 'voices-ai'); }
+function aivPy() { const d = aivDir(); const py = path.join(d, 'python', 'python.exe'); return fs.existsSync(py) && fs.existsSync(path.join(d, 'hs_voice.py')) ? py : ''; }
+function aivState() { return { installed: !!aivPy(), running: !!aiv.proc, ready: aiv.ready, voices: aiv.voices, err: aiv.err, busy: aiv.busy, got: aiv.got, total: aiv.total, fast: !!cfg.aivFast, startMs: aiv.startMs }; }
+function aivSend(ch, m) { if (win && !win.isDestroyed()) win.webContents.send(ch, m); }
+function aivNotify() { aivSend('aiv-state', aivState()); }
+function aivStart() {
+  const py = aivPy();
+  if (!py || aiv.proc) return !!aiv.proc;
+  aiv.ready = false; aiv.err = ''; aiv.buf = ''; const t0 = Date.now();
+  const env = Object.assign({}, process.env, { HS_VOICE_PREC: cfg.aivFast ? 'int8' : 'fp32', PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1', HS_VOICE_THREADS: String(Math.max(2, Math.min(6, os.cpus().length - 2))) });
+  const proc = spawn(py, ['-u', path.join(aivDir(), 'hs_voice.py')], { cwd: aivDir(), windowsHide: true, env });
+  aiv.proc = proc;
+  proc.stdout.setEncoding('utf8');
+  proc.stdout.on('data', (d) => {
+    aiv.buf += d; let i;
+    while ((i = aiv.buf.indexOf('\n')) >= 0) {
+      const line = aiv.buf.slice(0, i).trim(); aiv.buf = aiv.buf.slice(i + 1);
+      if (!line) continue;
+      let m; try { m = JSON.parse(line); } catch (e) { continue; }
+      if (aiv.tap) aiv.tap(m);
+      if (m.type === 'ready') { aiv.ready = true; aiv.voices = m.voices || []; aiv.startMs = Date.now() - t0; aivNotify(); }
+      else if (m.type === 'audio' || m.type === 'error') aivSend('aiv-audio', m);
+      else if (m.type === 'fatal') { aiv.err = m.err || 'lỗi'; aivNotify(); }
+    }
+  });
+  proc.stderr.on('data', () => {});
+  proc.on('exit', (code) => { if (aiv.proc === proc) { aiv.proc = null; aiv.ready = false; if (code && !aiv.err) aiv.err = 'Bộ giọng AI dừng (mã ' + code + ')'; aivNotify(); } });
+  proc.on('error', (e) => { aiv.err = String(e.message || e); aivNotify(); });
+  aivNotify();
+  return true;
+}
+function aivStop() { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"quit"}\n'); } catch (e) { /* ignore */ } const p = aiv.proc; setTimeout(() => { try { p.kill(); } catch (e) { /* ignore */ } }, 1500); aiv.proc = null; aiv.ready = false; } }
+async function aivInstall() {
+  if (aiv.busy) return aivState();
+  aiv.busy = 'download'; aiv.err = ''; aiv.got = 0; aiv.total = 0; aivNotify();
+  const tmp = path.join(app.getPath('temp'), 'hong-sub-voices.zip');
+  try {
+    const r = await net.fetch(AIV_URL);
+    if (!r.ok) throw new Error('Không tải được bộ giọng (HTTP ' + r.status + ')');
+    aiv.total = +r.headers.get('content-length') || 0;
+    const out = fs.createWriteStream(tmp);
+    const reader = r.body.getReader(); let last = 0;
+    for (;;) {
+      const { done, value } = await reader.read(); if (done) break;
+      if (!out.write(Buffer.from(value))) await new Promise(res => out.once('drain', res));
+      aiv.got += value.length;
+      if (Date.now() - last > 400) { last = Date.now(); aivNotify(); }
+    }
+    await new Promise((res, rej) => out.end(err => err ? rej(err) : res()));
+    aiv.busy = 'unzip'; aivNotify();
+    aivStop();
+    const dir = aivDir(), part = dir + '.new';
+    fs.rmSync(part, { recursive: true, force: true }); fs.mkdirSync(part, { recursive: true });
+    await new Promise((res, rej) => {
+      const tar = spawn(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', tmp, '-C', part], { windowsHide: true });
+      tar.on('exit', c => c === 0 ? res() : rej(new Error('Giải nén lỗi (mã ' + c + ')'))); tar.on('error', rej);
+    });
+    fs.rmSync(dir, { recursive: true, force: true }); fs.renameSync(part, dir);
+    try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ }
+    aiv.busy = ''; cfg.aivOn = true; saveCfg(); aivStart();
+  } catch (e) {
+    aiv.busy = ''; aiv.err = String(e.message || e); try { fs.unlinkSync(tmp); } catch (x) { /* ignore */ }
+  }
+  aivNotify();
+  return aivState();
+}
+
 /* ---------- IPC ---------- */
 function setupIpc() {
+  ipcMain.handle('aiv-state', () => aivState());
+  ipcMain.handle('aiv-install', () => aivInstall());
+  ipcMain.handle('aiv-start', () => { aivStart(); return aivState(); });
+  ipcMain.handle('aiv-fast', (e, on) => { cfg.aivFast = !!on; saveCfg(); aivStop(); setTimeout(aivStart, 1600); return aivState(); });
+  ipcMain.handle('aiv-remove', () => { aivStop(); setTimeout(() => { try { fs.rmSync(aivDir(), { recursive: true, force: true }); } catch (e) { /* ignore */ } aivNotify(); }, 1800); return true; });
+  ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart(); if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
+  ipcMain.on('aiv-stop', () => { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"stop"}\n'); } catch (x) { /* ignore */ } } });
   ipcMain.handle('sources', async () => (await listSources(true)).map(s => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL() })));
   ipcMain.handle('windows', async () => (await listSources(false)).map(s => ({ id: s.id, name: s.name })));
   ipcMain.handle('rp-info', () => ({ bundled: !!rpExe(), running: !!(rpProc && rpProc.exitCode === null) }));
@@ -430,6 +507,26 @@ async function runSelftest() {
     await new Promise(r => setTimeout(r, 500));
     const img2 = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main-ps.png'), img2.toPNG());
   } catch (e) { log('picture test failed', String(e)); }
+  if (process.env.HS_TEST_AIV === '1') {
+    try {
+      const t0 = Date.now(); const st = await aivInstall(); log('aiv install', JSON.stringify({ installed: st.installed, err: st.err, ms: Date.now() - t0, mb: Math.round(st.total / 1048576) }));
+      const t1 = Date.now(); while (!aiv.ready && !aiv.err && Date.now() - t1 < 120000) await new Promise(r => setTimeout(r, 500));
+      log('aiv ready', aiv.ready, 'voices', aiv.voices.length, 'start ms', aiv.startMs, aiv.err || '');
+      if (aiv.ready) {
+        for (const [i, v] of [['Trúc Ly'], ['Hải Đăng'], ['Quang Sơn']].entries()) {
+          const t2 = Date.now(); let first = 0, sec = 0, got = 0;
+          await new Promise((res) => {
+            const to = setTimeout(res, 30000);
+            aiv.tap = (m) => { if (m.id !== 900 + i) return; if (m.type === 'error') { log('aiv error', m.err); clearTimeout(to); res(); return; } if (!first) first = Date.now() - t2; sec += m.sec || 0; got++; if (m.i === 0 && i === 0) fs.writeFileSync(path.join(out, 'voice-ai.wav'), Buffer.from(m.wav, 'base64')); if (m.last) { clearTimeout(to); res(); } };
+            aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: 900 + i, text: 'Chúng ta phải rời khỏi đây trước khi trời sáng. Bám sát vào nhé!', voice: v[0] }) + '\n');
+          });
+          aiv.tap = null; log('aiv speak', v[0], 'first audio ms', first, 'speech sec', sec.toFixed(2), 'parts', got, 'total ms', Date.now() - t2);
+        }
+        const r = await win.webContents.executeJavaScript("(function(){var A=window.hsApi; return JSON.stringify({ai:A.aiv.ready,n:A.aiv.list.length,narr:A.narrator(),opts:document.getElementById('hsVoice').options.length});})()");
+        log('aiv in page', r);
+      }
+    } catch (e) { log('aiv test failed', String(e && e.stack || e)); }
+  }
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ visible: s1, minimized: s2, voices: v.voices || v.err, speakOk: !!(sp.wav && sp.wav.length > 1000), piperOk: !!(pw.wav && pw.wav.length > 1000), remotePlay: rl }, null, 2));
   quitting = true; app.quit();
 }
@@ -443,7 +540,7 @@ app.whenReady().then(async () => {
   setupIpc();
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
-  if (!SELFTEST) { createTray(); createMain(); }
+  if (!SELFTEST) { createTray(); createMain(); if (cfg.aivOn !== false && aivPy()) setTimeout(aivStart, 2500); }
   registerKeys();
   ttsStart();
   setTimeout(() => piperStart(1.1), 3000);
@@ -451,5 +548,5 @@ app.whenReady().then(async () => {
 });
 app.on('second-instance', showMain);
 app.on('before-quit', () => { quitting = true; });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

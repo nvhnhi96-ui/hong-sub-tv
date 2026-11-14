@@ -165,11 +165,12 @@ jobs:
         shell: pwsh
         env:
           HS_SELFTEST: '1'
+          HS_TEST_AIV: '1'
           HS_SELFTEST_OUT: ${{ runner.temp }}\selftest
         run: |
           $exe = Get-ChildItem dist\win-unpacked -Filter HongSub.exe | Select-Object -First 1
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' -PassThru
-          if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
+          if (-not $p.WaitForExit(480000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
           Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
           Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
 

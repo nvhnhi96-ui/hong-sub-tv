@@ -1190,7 +1190,16 @@ function loadVoices(){
   sel.value=[].some.call(sel.options,function(o){return o.value===want;})?want:'auto';
   $('hsVoiceTip').hidden=vi.length>0; castUi();
 }
-if(D){ loadVoices(); D.voices().then(function(v){dVoices=v||[]; loadVoices();}).catch(function(){dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();}); }
+/* AI voices of the Windows app (downloaded voice pack): many Vietnamese voices, one per character */
+var winVoices=null, AIV={ready:false,list:[],off:load('aivOff',false)};
+function aiMerge(st){
+  AIV.ready=!!(st&&st.ready); AIV.list=AIV.ready?(st.voices||[]):[];
+  if(winVoices===null) return;
+  dVoices=winVoices.concat(AIV.list.map(function(v){ return {id:'ai:'+v.id,lang:'vi-VN',ai:true,g:v.gender,region:v.region,name:'AI · '+v.id+' ('+(v.gender==='male'?'nam':'nữ')+(v.region?', '+v.region:'')+')'}; }));
+  loadVoices();
+}
+if(D){ loadVoices(); D.voices().then(function(v){winVoices=v||[]; dVoices=winVoices.slice(); aiMerge(AIV.ready?{ready:true,voices:AIV.list}:null); loadVoices();}).catch(function(){winVoices=[]; dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();});
+  if(D.aiv){ D.aiv.onState(aiMerge); D.aiv.state().then(aiMerge).catch(function(){}); } }
 else{ loadVoices(); if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=loadVoices; }
 $('hsVoice').addEventListener('change',function(){save('voice',this.value); castUi(); sample();});
 
@@ -1218,14 +1227,14 @@ function castUi(){
     var x=c[k];
     return '<div class="row" data-k="'+esc(k)+'"><input type="color" value="'+esc(x.c||'#FFC400')+'" aria-label="Màu tên '+esc(x.n)+'"><b style="color:'+esc(x.c||'#FFC400')+'">'+esc(x.n)+'</b>'+
       '<select class="hs-in" data-f="g" aria-label="Nam hay nữ"><option value="">?</option><option value="male"'+(x.g==='male'?' selected':'')+'>Nam</option><option value="female"'+(x.g==='female'?' selected':'')+'>Nữ</option></select>'+
-      '<select class="hs-in" data-f="v" aria-label="Giọng đọc"><option value="">Giọng tự chọn</option>'+vv.map(function(v){return '<option value="'+esc(v.id)+'"'+(v.id===x.v?' selected':'')+'>'+esc(v.name)+'</option>';}).join('')+'</select></div>';
+      '<select class="hs-in" data-f="v" aria-label="Giọng đọc"><option value="">'+(x.av&&AIV.ready?'Tự chọn: '+esc(x.av):'Giọng tự chọn')+'</option>'+vv.map(function(v){return '<option value="'+esc(v.id)+'"'+(v.id===x.v?' selected':'')+'>'+esc(v.name)+'</option>';}).join('')+'</select></div>';
   }).join('')+(ks.length?'<button class="hs-btn" type="button" id="hsCastClear" style="margin-top:8px">Xóa danh sách</button>':'');
   $('hsCastList').querySelectorAll('.row').forEach(function(row){
     var k=row.dataset.k;
     row.querySelector('input[type=color]').addEventListener('input',function(){ var cc=S.cast[castKey()]; cc[k].c=this.value; save('cast',S.cast); });
     row.querySelectorAll('select').forEach(function(sel){ sel.addEventListener('change',function(){
-      var cc=S.cast[castKey()]; cc[k][this.dataset.f]=this.value; if(this.dataset.f==='g') cc[k].auto=false; save('cast',S.cast);
-      stopSpeak(); devSpeak('Xin chào, tôi là '+cc[k].n+'.',cc[k].v||'auto',cc[k].g);
+      var cc=S.cast[castKey()]; cc[k][this.dataset.f]=this.value; if(this.dataset.f==='g'){ cc[k].auto=false; cc[k].av=''; } save('cast',S.cast);
+      stopSpeak(); devSpeak('Xin chào, tôi là '+cc[k].n+'.',cc[k].v||'auto',cc[k].g,cc[k].n); if(this.dataset.f==='g') castUi();
     }); });
   });
   var cl=$('hsCastClear'); if(cl) cl.addEventListener('click',function(){ delete S.cast[castKey()]; save('cast',S.cast); castUi(); });
@@ -1291,7 +1300,21 @@ function speakAi(t,voice,fallbackG){
     .catch(function(e){ S.ttsCool=Date.now()+(e&&e.cool?60e3:10*60e3); if(my===spSeq){ status('warn','Giọng AI tạm hết lượt, dùng giọng có sẵn'); devSpeak(t,'auto',fallbackG||''); } });
 }
 /* voices on this device, picked by gender in "auto" mode */
-function devPick(mode,g){
+function aiVoices(g){ return AIV.ready&&!AIV.off?AIV.list.filter(function(v){return !g||v.gender===g;}):[]; }
+function narrator(){ var n=load('narrator',''); if(n&&AIV.list.some(function(v){return v.id===n;})) return n; var f=aiVoices('female')[0]||AIV.list[0]; return f?f.id:''; }
+/* give each character its own AI voice: same gender, not used by another character of this game */
+function castAuto(who,g){
+  var gk=castKey(), c=S.cast[gk]||(S.cast[gk]={}), k=who.trim().toLowerCase(), e=c[k]||(c[k]={n:who.trim(),g:g||'',auto:true,v:'',c:CAST_COLORS[Object.keys(c).length%CAST_COLORS.length]});
+  var sex=e.g||g||'';
+  if(e.av&&AIV.list.some(function(v){return v.id===e.av&&(!sex||v.gender===sex);})) return e.av;
+  var used=[narrator()]; Object.keys(c).forEach(function(x){ if(x!==k){ if(c[x].av) used.push(c[x].av); if(c[x].v&&c[x].v.indexOf('ai:')===0) used.push(c[x].v.slice(3)); } });
+  var pool=aiVoices(sex); if(!pool.length) pool=AIV.list;
+  var free=pool.filter(function(v){return used.indexOf(v.id)<0;});
+  var pick=(free[0]||pool[Object.keys(c).length%pool.length]);
+  e.av=pick?pick.id:''; save('cast',S.cast); return e.av;
+}
+function devPick(mode,g,who){
+  if((mode==='auto'||mode==='ai')&&AIV.ready&&!AIV.off&&AIV.list.length){ var a=who?castAuto(who,g):(g&&!who?((aiVoices(g)[0]||{}).id||narrator()):narrator()); if(a) return 'ai:'+a; }
   if(mode!=='auto'&&mode!=='ai') return mode;
   var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
   var piper=dv.filter(function(v){return v.id==='hs:piper';})[0], win=dv.filter(function(v){return v.id!=='hs:piper';});
@@ -1304,9 +1327,9 @@ function webVoice(mode,g){
   var male=vi.filter(function(v){return /NamMinh|Nam Minh|\bAn\b|male/i.test(v.name);})[0], female=vi.filter(function(v){return /HoaiMy|Hoai My|female/i.test(v.name);})[0];
   return (g==='male'?(male||female):(female||male))||vi[0]||null;
 }
-function devSpeak(t,mode,g){
+function devSpeak(t,mode,g,who){
   var rate=parseFloat($('hsRate').value);
-  if(D){ D.speak(t,devPick(mode,g),rate); return; }
+  if(D){ D.speak(t,devPick(mode,g,who),rate); return; }
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   var v=webVoice(mode,g);
@@ -1326,7 +1349,7 @@ function speak(t,res){
   if(mode==='ai') mode='auto';
   var ch=castOf(who);
   if(ch){ if(ch.g) g=ch.g; if(ch.v&&mode==='auto') mode=ch.v; }
-  stopSpeak(); devSpeak(t,mode,g);
+  stopSpeak(); devSpeak(t,mode,g,who);
 }
 
 /* ---------- đọc chữ ngay trên máy (PaddleOCR chạy trong trình duyệt) ---------- */
@@ -1887,7 +1910,8 @@ window.hsApi={S:S,save:save,load:load,log:log,status:status,
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){clearInterval(S.timer); S.timer=setInterval(tick,S.interval);} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
   setWait:function(ms){ S.wait=ms; save('wait',ms); }, setHold:function(sec){ S.hold=sec; save('hold',sec); if(D) D.sub({hold:sec}); },
   setFree:function(on){ S.allowFree=!!on; save('allowFree',!!on); },
-  cast:castUi, keyStats:keyStats};
+  cast:castUi, keyStats:keyStats, aiv:AIV, narrator:narrator,
+  sample:function(voice,text){ stopSpeak(); if(D) D.speak(text,voice,parseFloat($('hsRate').value)||1); }};
 steps();
 })();
 </script>

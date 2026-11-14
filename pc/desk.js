@@ -150,6 +150,39 @@ document.addEventListener('keydown',function(e){
 $('dkKeysReset').addEventListener('click',function(){ D.setHotkeys({toggle:'F7',now:'F8',ovl:'F9',move:'F10',full:'F11'}).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg('ok','Đã về phím mặc định F7 đến F11.'); }); });
 keysLoad();
 
+/* ---------- AI voices ---------- */
+var AI={st:null};
+function mb(n){ return Math.round(n/1048576)+' MB'; }
+function aiDraw(st){
+  AI.st=st; var m=$('dkAiState'), bar=$('dkAiBar');
+  bar.hidden=!(st.busy==='download'&&st.total);
+  if(st.total) bar.firstElementChild.style.width=Math.round(st.got/st.total*100)+'%';
+  $('dkAiGet').hidden=st.installed&&!st.busy; $('dkAiGet').disabled=!!st.busy;
+  $('dkAiOpts').hidden=!st.installed||!!st.busy;
+  if(st.busy==='download'){ m.className='hs-msg'; m.textContent='Đang tải bộ giọng: '+mb(st.got)+(st.total?' / '+mb(st.total)+' ('+Math.round(st.got/st.total*100)+'%)':'')+'. Vẫn dùng Hóng Sub bình thường trong lúc tải.'; }
+  else if(st.busy==='unzip'){ m.className='hs-msg'; m.textContent='Đang giải nén bộ giọng...'; }
+  else if(st.err){ m.className='hs-msg err'; m.textContent='Lỗi: '+st.err+'. Bấm Tải bộ giọng AI để thử lại, hoặc gửi lỗi cho shop.'; $('dkAiGet').hidden=false; }
+  else if(!st.installed){ m.className='hs-msg'; m.textContent='Chưa tải. Gói nặng khoảng 510 MB, tải một lần rồi dùng mãi, không cần mạng khi đọc.'; }
+  else if(!st.ready){ m.className='hs-msg'; m.textContent='Đang mở bộ giọng AI...'; }
+  else { m.className='hs-msg ok'; m.textContent='Bộ giọng AI đã sẵn sàng: '+st.voices.length+' giọng ('+st.voices.filter(function(v){return v.gender==='male';}).length+' nam, '+st.voices.filter(function(v){return v.gender==='female';}).length+' nữ).'; }
+  $('dkAiFast').checked=!!st.fast;
+  if(st.ready){
+    var cur=A.narrator();
+    $('dkNarr').innerHTML=st.voices.map(function(v){return '<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+v.id+' ('+(v.gender==='male'?'nam':'nữ')+', '+v.region+')</option>';}).join('');
+    $('dkAiList').innerHTML=st.voices.map(function(v){return '<button type="button" data-v="'+v.id+'"><svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg><b>'+v.id+'</b><small>'+(v.gender==='male'?'nam':'nữ')+' · '+v.region+'</small></button>';}).join('');
+    $('dkAiList').querySelectorAll('button').forEach(function(b){ b.addEventListener('click',function(){ A.sample('ai:'+b.dataset.v,'Xin chào, tôi là '+b.dataset.v+'. Chúng ta phải rời khỏi đây trước khi trời sáng.'); }); });
+  }
+}
+if(D.aiv){
+  D.aiv.onState(aiDraw); D.aiv.state().then(aiDraw);
+  $('dkAiGet').addEventListener('click',function(){ D.aiv.install(); });
+  $('dkAiOn').checked=!A.aiv.off;
+  $('dkAiOn').addEventListener('change',function(){ A.aiv.off=!this.checked; A.save('aivOff',A.aiv.off); });
+  $('dkAiFast').addEventListener('change',function(){ D.aiv.fast(this.checked); });
+  $('dkNarr').addEventListener('change',function(){ A.save('narrator',this.value); A.sample('ai:'+this.value,'Đây là giọng đọc lời dẫn và những câu không có tên người nói.'); });
+  $('dkAiRemove').addEventListener('click',function(){ if(confirm('Gỡ bộ giọng AI khỏi máy? Muốn dùng lại thì phải tải lại.')) D.aiv.remove(); });
+}
+
 /* ---------- left rail summary ---------- */
 function srcName(){
   if(!$('hsPsFull').classList.contains('hs-off')) return 'PS5 / PS4 trong Hóng Sub';
