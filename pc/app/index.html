@@ -1697,7 +1697,7 @@ async function ocrStep(m,force){
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*2;
-    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=setTimeout(function(){S.quick=null; tick();},200); return; }
+    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},200); return; }
   }
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
@@ -1723,8 +1723,24 @@ async function tick(force){
   var steady=prev&&maskDiff(m,prev)<0.08;
   if(!S.pend) S.pend=now;
   if(steady||now-S.pend>S.wait){ S.sentMask=m; S.pend=0; sendImage(); return; }
-  if(!S.quick) S.quick=setTimeout(function(){S.quick=null; tick();},180);   /* line still appearing: look again soon */
+  if(!S.quick) S.quick=later(function(){S.quick=null; tick();},180);   /* line still appearing: look again soon */
 }
+/* Timers that keep running when the browser window is behind the game.
+   Chrome slows normal timers of a hidden page to once a second (later once a minute); a worker's timers are not slowed. */
+var WT=(function(){
+  try{
+    var src='var t={};onmessage=function(e){var d=e.data;clearTimeout(t[d.id]);clearInterval(t[d.id]);if(d.c==="set"){t[d.id]=(d.r?setInterval:setTimeout)(function(){postMessage(d.id);},d.ms);}else{delete t[d.id];}};';
+    var w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'}))), cb={}, n=0;
+    w.onmessage=function(e){ var f=cb[e.data]; if(!f) return; if(!f.r) delete cb[e.data]; f.fn(); };
+    return {
+      set:function(fn,ms,rep){ var id=++n; cb[id]={fn:fn,r:rep}; w.postMessage({c:'set',id:id,ms:ms,r:rep}); return id; },
+      clear:function(id){ if(!id) return; delete cb[id]; w.postMessage({c:'clr',id:id}); }
+    };
+  }catch(e){ return null; }
+})();
+function later(fn,ms){ return WT?WT.set(fn,ms,false):setTimeout(fn,ms); }
+function stopTimer(){ if(WT) WT.clear(S.timer); else clearInterval(S.timer); S.timer=null; }
+function restartTimer(){ stopTimer(); S.timer=WT?WT.set(tick,S.interval,true):setInterval(tick,S.interval); }
 function startRun(){
   if(!S.stream) return;
   ocrLoad();
@@ -1734,10 +1750,10 @@ function startRun(){
   }
   S.sents=[]; OCR.miss=0;
   S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0;
-  clearInterval(S.timer); S.timer=setInterval(tick,S.interval);
+  restartTimer();
   status('run',(keys().length||groqKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
-function stopRun(){S.running=false; clearInterval(S.timer); if(S.stream) status('idle','Tạm dừng'); steps();}
+function stopRun(){S.running=false; stopTimer(); if(S.stream) status('idle','Tạm dừng'); steps();}
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
 
 /* ---------- full-screen translate ---------- */
@@ -1879,7 +1895,7 @@ document.querySelectorAll('#hsSpeed button').forEach(function(b){
   b.addEventListener('click',function(){
     S.interval=+b.dataset.v; save('interval',S.interval);
     document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',x===b);});
-    if(S.running){clearInterval(S.timer); S.timer=setInterval(tick,S.interval);}
+    if(S.running){restartTimer();}
   });
 });
 if(S.model) $('hsModelTag').textContent=S.model;
@@ -2153,7 +2169,7 @@ window.__hongsub=S; /* for testing */
 window.hsApi={S:S,save:save,load:load,log:log,status:status,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
-  setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){clearInterval(S.timer); S.timer=setInterval(tick,S.interval);} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
+  setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
   setWait:function(ms){ S.wait=ms; save('wait',ms); }, setHold:function(sec){ S.hold=sec; save('hold',sec); if(D) D.sub({hold:sec}); },
   setFree:function(on){ S.allowFree=!!on; save('allowFree',!!on); },
   cast:castUi, keyStats:keyStats, aiv:AIV, narrator:narrator,
