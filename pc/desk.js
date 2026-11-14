@@ -98,7 +98,7 @@ $('dkWait').addEventListener('input',function(){ A.setWait(+this.value); timing(
 $('dkHold').addEventListener('input',function(){ A.setHold(+this.value); timing(); });
 timing();
 $('dkDefaults').addEventListener('click',function(){
-  A.setScan(500); A.setWait(900); A.setHold(10); timing();
+  A.setScan(400); A.setWait(900); A.setHold(10); timing();
   $('hsSize').value=28; $('hsSize').dispatchEvent(new Event('input'));
   ST={color:'#FFFFFF',bg:74,width:80}; applyStyle(); D.overlaySize(80);
 });
@@ -195,10 +195,11 @@ function srcName(){
 }
 function rail(){
   var g=$('hsGame').value.trim()||'chưa chọn', k=$('hsKeys').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length, q=$('hsGroq').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length;
-  var via=k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):(S.allowFree?'máy dịch miễn phí':'chưa có mã');
+  var o=$('hsOr')?$('hsOr').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length:0;
+  var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'');
   var src=srcName(), voice=$('hsSpeak').checked?($('hsVoice').selectedOptions[0]?$('hsVoice').selectedOptions[0].textContent:'bật'):'tắt';
   [['dkSrc',src],['dkGame',g],['dkGame2',g],['dkVia',via],['dkVia2',via],['dkVoice2',voice]].forEach(function(x){ if($(x[0]).textContent!==x[1]) $(x[0]).textContent=x[1]; });
-  $('dkKeyBadge').hidden=!!(k||q);
+  $('dkKeyBadge').hidden=!!(k||q||o);
 }
 setInterval(rail,1000); rail();
 D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').textContent='Đang dùng bản '+v+'. Có bản mới Hóng Sub tự báo ở trên cùng.'; });

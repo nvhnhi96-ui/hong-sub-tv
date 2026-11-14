@@ -270,6 +270,17 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-keystat" id="hsKeyStat"></div>
               <p class="hs-note" style="margin-top:6px">Muốn thêm lượt: tạo mã ở <b>dự án khác</b> hoặc tài khoản Google khác. Các mã chung một dự án dùng chung lượt.</p>
             </div>
+            <div class="dk-card" id="hsOrSec">
+              <h2>AI dịch thông minh</h2>
+              <p class="hs-note">Không bắt buộc. Thêm model lớn (DeepSeek, Gemma, Nemotron) qua OpenRouter để dịch hay hơn, nhất là nhiệm vụ và mô tả vật phẩm. <button class="dk-link" type="button" data-url="https://openrouter.ai/keys">Lấy mã OpenRouter</button></p>
+              <textarea class="hs-in" id="hsOr" rows="1" spellcheck="false" autocomplete="off" placeholder="sk-or-..." aria-label="Mã OpenRouter"></textarea>
+              <div class="dk-set"><label class="lab" for="hsOrModel">Model</label><select class="hs-in" id="hsOrModel"><option value="">Tự chọn (khuyên dùng)</option></select></div>
+              <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
+                <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsOrCheck" type="button">Kiểm tra mã</button></div>
+              <div class="hs-msg" id="hsOrMsg" hidden></div>
+              <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
+            </div>
             <div class="dk-card">
               <h2>Mã Groq dự phòng</h2>
               <p class="hs-note">Dùng khi mã Gemini hết lượt. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
@@ -389,8 +400,8 @@ html,body{height:100%;overflow:hidden}
             <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
             <div class="dk-set">
               <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
-              <input class="hs-range" id="dkScan" type="range" min="300" max="1500" step="100" value="500">
-              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1200">Tiết kiệm</button><button type="button" data-v="700" class="on">Vừa</button><button type="button" data-v="400">Nhanh</button></div>
+              <input class="hs-range" id="dkScan" type="range" min="200" max="1500" step="50" value="400">
+              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1000">Tiết kiệm</button><button type="button" data-v="400" class="on">Vừa</button><button type="button" data-v="250">Nhanh</button></div>
             </div>
             <div class="dk-set">
               <div class="lab"><label for="dkWait">Chờ chữ hiện đủ trước khi dịch</label><output id="dkWaitV">0,9 giây</output></div>

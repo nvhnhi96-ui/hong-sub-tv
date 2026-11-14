@@ -322,6 +322,18 @@ body.desk .hs-dk.hs-off{display:none!important}
         <p class="hs-note" style="margin-top:6px">Muốn có thêm lượt: tạo mã ở <b>dự án khác</b> hoặc tài khoản Google khác. Các mã chung một dự án dùng chung lượt.</p>
       </section>
 
+      <section class="hs-sec" id="hsOrSec">
+        <div class="t"><b>AI dịch thông minh</b><a href="https://openrouter.ai/keys" target="_blank" rel="noopener">Lấy mã OpenRouter</a></div>
+        <p class="hs-note">Không bắt buộc. Thêm model lớn (DeepSeek, Gemma, Nemotron) để dịch hay hơn, nhất là nhiệm vụ và mô tả vật phẩm. Đăng nhập OpenRouter bằng Google, tạo mã rồi dán vào đây.</p>
+        <textarea class="hs-in" id="hsOr" rows="1" spellcheck="false" autocomplete="off" placeholder="sk-or-..." aria-label="Mã OpenRouter" style="margin-top:8px"></textarea>
+        <div class="hs-f" style="margin-top:10px"><label for="hsOrModel">Model</label><select class="hs-in" id="hsOrModel"><option value="">Tự chọn (khuyên dùng)</option></select></div>
+        <div class="hs-f" style="margin-top:10px"><label for="hsPrefer">Khi có nhiều AI cùng dịch</label>
+          <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
+        <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsOrCheck" type="button">Kiểm tra mã</button></div>
+        <div class="hs-msg" id="hsOrMsg" hidden></div>
+        <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
+      </section>
+
       <section class="hs-sec">
         <div class="t"><b>Game đang chơi</b></div>
         <div class="hs-f">
@@ -401,11 +413,11 @@ body.desk .hs-dk.hs-off{display:none!important}
           <div class="hs-sub2">
             <b>Tốc độ quét</b>
             <div class="hs-seg" id="hsSpeed" role="group" aria-label="Tốc độ quét">
-              <button type="button" data-v="1200">Tiết kiệm</button>
-              <button type="button" data-v="700" class="on">Vừa</button>
-              <button type="button" data-v="400">Nhanh</button>
+              <button type="button" data-v="1000">Tiết kiệm</button>
+              <button type="button" data-v="400" class="on">Vừa</button>
+              <button type="button" data-v="250">Nhanh</button>
             </div>
-            <p class="hs-note" style="margin-top:6px">Nhanh thì hiện chữ sớm hơn nhưng tốn lượt mã hơn.</p>
+            <p class="hs-note" style="margin-top:6px">Nhanh thì thấy câu mới sớm hơn, máy làm việc nhiều hơn. Khi đọc chữ ngay trên máy thì không tốn thêm lượt mã.</p>
             <div class="hs-f" style="margin-top:10px">
               <label for="hsRead">Cách đọc phụ đề</label>
               <select class="hs-in" id="hsRead">
@@ -670,14 +682,14 @@ var LS='hongsub.v1.';
 function load(k,d){try{var v=localStorage.getItem(LS+k);return v===null?d:JSON.parse(v);}catch(e){return d;}}
 function save(k,v){try{localStorage.setItem(LS+k,JSON.stringify(v));}catch(e){}}
 var LOG=[];
-function log(t){ var d=new Date(); LOG.push(('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+' '+String(t).replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_[\w]{20,}/g,'[mã]').slice(0,400)); if(LOG.length>500) LOG.shift(); }
+function log(t){ var d=new Date(); LOG.push(('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2)+' '+String(t).replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_[\w]{20,}|sk-or-[\w-]{20,}/g,'[mã]').slice(0,400)); if(LOG.length>500) LOG.shift(); }
 window.addEventListener('error',function(e){ log('lỗi trang: '+(e.message||'')+' '+(e.lineno||'')); });
 
 var S0={wait:load('wait',900),hold:load('hold',10),allowFree:load('allowFree',true)};
 var S={
   stream:null, demo:null, running:false, busy:false, timer:null,
   region:load('region',{x:.1,y:.74,w:.8,h:.22}),
-  interval:load('interval',500),
+  interval:(function(){ var v=load('interval',400); if(!load('intv3',false)){ if(v===500||v===700) v=400; save('interval',v); save('intv3',true); } return v; })(),
   keys:[], keyIdx:0, cool:{}, model:load('model',null), models:load('models',[]), noThink:{},
   lastSig:null, prevSig:null, lastEn:'', hist:[], pip:null, offlineDemo:false, lastOcr:'', saved:0
 };
@@ -690,7 +702,7 @@ var sig=document.createElement('canvas'); sig.width=64; sig.height=16; var sigx=
 /* ---------- status / steps ---------- */
 function status(s,t){ if($('hsStatusTxt').textContent!==t&&s!=='run') log('trạng thái: '+t); $('hsStatus').dataset.s=s;$('hsStatusTxt').textContent=t;}
 function steps(){
-  var st={key:keys().length>0||groqKeys().length>0||S.offlineDemo||load('noKeyOk',false), src:!!(S.stream), reg:!!S.stream&&!reg.hidden, run:S.running};
+  var st={key:keys().length>0||groqKeys().length>0||orKeys().length>0||S.offlineDemo||load('noKeyOk',false), src:!!(S.stream), reg:!!S.stream&&!reg.hidden, run:S.running};
   var first=null;
   document.querySelectorAll('#hsSteps .hs-step').forEach(function(el){
     var k=el.dataset.k; el.classList.toggle('done',!!st[k]); el.classList.remove('on');
@@ -809,7 +821,7 @@ function setStream(st,demo){
   st.getVideoTracks()[0].addEventListener('ended',function(){
     stopRun(); S.stream=null; video.srcObject=null; $('hsEmpty').hidden=false; reg.hidden=true; status('warn','Đã ngừng chia sẻ màn hình'); steps();
   });
-  ocrLoad();
+  ocrLoad(); warmNet();
   showRegion(); zList(); setDraw(!load('regionSet',false)); status('idle', S.offlineDemo?'Chạy thử: bấm Bắt đầu dịch':'Sẵn sàng'); steps();
 }
 $('hsPick').addEventListener('click',function(){S.offlineDemo=false;pick(false);});
@@ -995,7 +1007,7 @@ function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>
 async function zTranslate(z,text){
   var k=zKey(text);
   if(S.zcache[k]) return {vi:S.zcache[k],via:'nhớ'};
-  var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true);
+  var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true,'best');
   var vi=(r&&r.vi||'').trim(); if(vi) zCache(k,vi);
   return {vi:vi,via:S.via};
 }
@@ -1112,7 +1124,7 @@ function thinkCfg(model){
   return {thinkingLevel:S.noMin[model]?'low':'minimal'}; /* "low" thinking made each line take ~10s */
 }
 /* speed: remember how fast each model answers on this machine and use the quickest */
-S.lat=load('lat',{}); S.noMin=load('nomin',{}); S.slow={};
+S.lat=load('lat',{}); S.latAt=load('latat',{}); S.noMin=load('nomin',{}); S.slow={}; S.gN=0;
 function mScore(m,i){
   var now=Date.now(), s=(S.lat[m]||2500)+i*40;
   if(S.slow[m]&&S.slow[m]>now) s+=1e6;
@@ -1122,7 +1134,7 @@ function mScore(m,i){
   return s;
 }
 function fastOrder(models){ return models.map(function(m,i){return {m:m,s:mScore(m,i)};}).sort(function(a,b){return a.s-b.s;}).map(function(x){return x.m;}); }
-function noteLat(m,ms){ S.lat[m]=S.lat[m]?Math.round(S.lat[m]*.6+ms*.4):Math.round(ms); save('lat',S.lat); }
+function noteLat(m,ms){ S.lat[m]=S.lat[m]?Math.round(S.lat[m]*.6+ms*.4):Math.round(ms); S.latAt[m]=Date.now(); save('lat',S.lat); save('latat',S.latAt); }
 function gCall(model,key,prompt,b64,schema,ctl){
   var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
   var tc=thinkCfg(model); if(tc) gc.thinkingConfig=tc;
@@ -1131,27 +1143,41 @@ function gCall(model,key,prompt,b64,schema,ctl){
   return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:gc})})
     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {r:r,j:j,model:model,key:key,ms:performance.now()-t0};});});
 }
-/* send to the fastest model; every 2.5s without an answer, also try the next model (max 3) and take whichever answers first */
+/* send to the fastest model. On the first lines of a session (or when this machine has no fresh timing) the two
+   best models start together so the quicker one is learned at once; later the second model joins only when the
+   first is slower than usual. */
 function hedged(order,key,prompt,b64,schema){
   return new Promise(function(resolve,reject){
-    var done=false, pending=0, ctls=[], bad=null, t0=performance.now(), ht=null, next=0, list=order.slice(0,2);
-    function finish(res){ if(done) return; done=true; clearTimeout(ht); ctls.forEach(function(c){try{c.abort();}catch(e){}}); resolve(res); }
+    var done=false, pending=0, ctls=[], bad=null, t0=performance.now(), ht=null, next=0, list=order.slice(0,2), st={}, back={};
+    S.gN++;
+    var top=list[0], learn=list.length>1&&(S.gN<=2||!S.latAt[top]||Date.now()-S.latAt[top]>3*86400e3);
+    function finish(res){
+      if(done) return; done=true; clearTimeout(ht); ctls.forEach(function(c){try{c.abort();}catch(e){}});
+      var now=performance.now();
+      Object.keys(st).forEach(function(m){ if(res&&m!==res.model&&!back[m]){ var el=now-st[m]; if(!S.lat[m]||S.lat[m]<el) noteLat(m,el+300); } });
+      resolve(res);
+    }
     function start(){
       var m=list[next++], k=next===1?key:(pickKey()||key);
-      var ctl=new AbortController(); ctls.push(ctl); pending++;
+      var ctl=new AbortController(); ctls.push(ctl); pending++; st[m]=performance.now();
       var to=setTimeout(function(){ctl.abort();},9000);
       gCall(m,k,prompt,b64,schema,ctl).then(function(res){
-        clearTimeout(to); pending--; if(done) return;
+        clearTimeout(to); pending--; back[m]=true; if(done) return;
         if(res.r.ok) finish(res); else { bad=res; if(pending===0&&next>=list.length) finish(bad); else if(pending===0){ clearTimeout(ht); start(); arm(); } }
       },function(e){
-        clearTimeout(to); pending--;
+        clearTimeout(to); pending--; back[m]=true;
         if(e&&e.name==='AbortError'&&!done){ S.slow[m]=Date.now()+5*60e3; noteLat(m,performance.now()-t0); }
         if(done) return;
         if(pending===0){ if(next<list.length){ clearTimeout(ht); start(); arm(); } else if(bad) finish(bad); else { done=true; clearTimeout(ht); reject(e); } }
       });
     }
-    function arm(){ if(next<list.length) ht=setTimeout(function(){ if(!done){ noteLat(list[next-1],performance.now()-t0+1500); start(); arm(); } },3000); }
-    start(); arm();
+    function arm(){
+      if(next>=list.length) return;
+      var wait=Math.min(3000,Math.max(1100,(S.lat[list[next-1]]||2000)*1.5));
+      ht=setTimeout(function(){ if(!done){ noteLat(list[next-1],performance.now()-t0+800); start(); arm(); } },wait);
+    }
+    start();
+    if(learn) start(); else arm();
   });
 }
 async function gemini(prompt,b64,schema){
@@ -1192,7 +1218,7 @@ async function gemini(prompt,b64,schema){
 /* ---------- Groq (backup translator, OpenAI-compatible) ---------- */
 var GROQ='https://api.groq.com/openai/v1';
 var GROQ_PREF=['qwen/qwen3.8-27b','openai/gpt-oss-120b','openai/gpt-oss-20b'];
-S.gModels=load('gmodels2',[]); S.gModel=S.gModels[0]||GROQ_PREF[0]; S.gcool={}; S.gIdx=0; S.gNoFmt={}; S.gNoReason={}; S.gListed=0;
+S.gModels=load('gmodels2',[]); S.gModel=S.gModels[0]||GROQ_PREF[0]; S.gcool={}; S.gIdx=0; S.gNoFmt={}; S.gNoReason={}; S.gListed=load('glisted',0);
 /* Groq retires models often (Llama 4 is gone): read what this key can use and rank fast text models first */
 async function groqList(key){
   var r=await fetch(GROQ+'/models',{headers:{'Authorization':'Bearer '+key}});
@@ -1206,7 +1232,7 @@ async function groqList(key){
 async function groqModels(){
   if(S.gModels.length&&Date.now()-S.gListed<6*3600e3) return S.gModels;
   var k=groqKeys()[0]; if(!k) return GROQ_PREF;
-  try{ S.gModels=await groqList(k); S.gListed=Date.now(); save('gmodels2',S.gModels); }catch(e){ if(!S.gModels.length) S.gModels=GROQ_PREF.slice(); }
+  try{ S.gModels=await groqList(k); S.gListed=Date.now(); save('gmodels2',S.gModels); save('glisted',S.gListed); }catch(e){ if(!S.gModels.length) S.gModels=GROQ_PREF.slice(); }
   if(S.gModels.indexOf(S.gModel)<0) S.gModel=S.gModels[0];
   return S.gModels;
 }
@@ -1242,6 +1268,121 @@ async function groq(prompt,b64,shape){
   }
   throw lastErr||new Error('Groq không dịch được');
 }
+/* ---------- OpenRouter: one key, many larger models ("AI dịch thông minh") ---------- */
+var ORU='https://openrouter.ai/api/v1';
+/* free models first when the account has no credit; good cheap models first when it has */
+var OR_FREE=[/^google\/gemma-4-31b-it:free$/,/^deepseek\/.*:free$/,/^qwen\/qwen3.*:free$/,/^google\/gemma-4.*:free$/,/^nvidia\/nemotron-3-ultra.*:free$/,/^baidu\/ernie-.*flash.*:free$/];
+var OR_PAID=[/^deepseek\/deepseek-v\d+(\.\d+)?-flash(-\d+)?$/,/^google\/gemini-\d+(\.\d+)?-flash$/,/^qwen\/qwen3[\d.]*-(max|235b[\w-]*)$/,/^moonshotai\/kimi-k\d[\w.-]*$/];
+S.or={all:load('orall',[]),listed:load('orlisted',0),paid:load('orpaid',false),cool:{},idx:0,noFmt:{},noReason:{},bad:{},lat:load('orlat',{})};
+function orKeys(){ var el=$('hsOr'); return el?el.value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;}):[]; }
+function orShort(m){ return String(m||'').split('/').pop().replace(/:free$/,' (miễn phí)'); }
+function orCost(m){ /* dollars for 1000 subtitle lines: ~700 tokens in, ~60 out */
+  var x=S.or.all.filter(function(a){return a.id===m;})[0]; if(!x) return null;
+  return 1000*(700*x.pi+60*x.po);
+}
+function orRank(){
+  var ids=S.or.all.map(function(a){return a.id;}), out=[];
+  function take(list){ list.forEach(function(re){ ids.filter(function(id){return re.test(id);}).sort().reverse().forEach(function(id){ if(out.indexOf(id)<0) out.push(id); }); }); }
+  if(S.or.paid) take(OR_PAID);
+  take(OR_FREE);
+  return out;
+}
+function orOrder(){
+  var pick=$('hsOrModel')?$('hsOrModel').value:'', now=Date.now();
+  var list=orRank().filter(function(m){ return !(S.or.bad[m]>now); });
+  if(pick){ list=[pick].concat(list.filter(function(m){return m!==pick;})); }
+  return list.slice(0,4);
+}
+function orReady(){ if(!orKeys().length) return false; var now=Date.now(); return orKeys().some(function(k){return !(S.or.cool[k]>now);}); }
+function orFill(){
+  var sel=$('hsOrModel'); if(!sel) return; var cur=load('ormodel','');
+  var rk=orRank();
+  sel.innerHTML='<option value="">Tự chọn (khuyên dùng'+(rk[0]?': '+esc(orShort(rk[0])):'')+')</option>'+rk.map(function(m){
+    var c=orCost(m); return '<option value="'+esc(m)+'">'+esc(orShort(m))+(/:free$/.test(m)?'':(c!=null?' · khoảng '+(c<0.1?c.toFixed(2):c.toFixed(1))+'$ / 1000 câu':''))+'</option>';
+  }).join('');
+  sel.value=rk.indexOf(cur)>=0?cur:'';
+}
+async function orList(force){
+  var k=orKeys()[0]; if(!k) return [];
+  if(!force&&S.or.all.length&&Date.now()-S.or.listed<12*3600e3) return orRank();
+  var r=await fetch(ORU+'/models'), j=await r.json().catch(function(){return {};});
+  if(!r.ok) throw new Error('OpenRouter lỗi '+r.status);
+  S.or.all=(j.data||[]).filter(function(m){ var a=(m.architecture&&m.architecture.output_modalities)||['text']; return a.indexOf('text')>=0; })
+    .map(function(m){ return {id:m.id,pi:+(m.pricing&&m.pricing.prompt)||0,po:+(m.pricing&&m.pricing.completion)||0}; })
+    .filter(function(m){ return OR_FREE.concat(OR_PAID).some(function(re){return re.test(m.id);}); });
+  /* does the account have money for paid models? */
+  try{
+    var c=await fetch(ORU+'/credits',{headers:{'Authorization':'Bearer '+k}}), cj=await c.json().catch(function(){return {};});
+    if(c.status===401||c.status===403){ var e=new Error('Mã OpenRouter không hợp lệ'); e.status=c.status; throw e; }
+    if(c.ok&&cj.data) S.or.paid=(+cj.data.total_credits||0)-(+cj.data.total_usage||0)>0.02;
+  }catch(e){ if(e.status) throw e; }
+  S.or.listed=Date.now(); save('orall',S.or.all); save('orlisted',S.or.listed); save('orpaid',S.or.paid);
+  orFill();
+  return orRank();
+}
+function orPick(){
+  var ks=orKeys(), now=Date.now(); if(!ks.length) return null;
+  for(var i=0;i<ks.length;i++){ var k=ks[(S.or.idx+i)%ks.length]; if(!(S.or.cool[k]>now)){ S.or.idx=(S.or.idx+i+1)%ks.length; return k; } }
+  return null;
+}
+function tomorrow(){ var d=new Date(); d.setUTCHours(24,5,0,0); return d.getTime(); }   /* free daily counts reset at 00:00 UTC */
+async function orAsk(prompt,shape){
+  if(!S.or.all.length) await orList(false).catch(function(){});
+  var order=orOrder(); if(!order.length) throw new Error('Chưa có model OpenRouter');
+  var lastErr=null;
+  for(var t=0;t<order.length+2;t++){
+    var m=order[Math.min(t,order.length-1)], key=orPick(); if(!key){ var c=new Error('cool'); c.cool=true; throw c; }
+    if(S.or.bad[m]>Date.now()){ order=orOrder(); if(!order.length) break; continue; }
+    var body={model:m,temperature:0.2,max_tokens:700,messages:[{role:'user',content:prompt+'\nReply with JSON only, exactly this shape: '+shape}]};
+    if(!S.or.noFmt[m]) body.response_format={type:'json_object'};
+    if(!S.or.noReason[m]) body.reasoning={enabled:false};
+    if(!/:free$/.test(m)) body.provider={sort:'latency'};
+    var r,j,t0=performance.now();
+    try{ r=await fetch(ORU+'/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':'https://honggame.store/hong-sub/','X-Title':'Hong Sub'},body:JSON.stringify(body)}); j=await r.json().catch(function(){return {};}); }
+    catch(e){ lastErr=new Error('Mất kết nối mạng'); continue; }
+    var msg=(j.error&&(j.error.message||j.error.code))||('HTTP '+r.status); msg=String(msg);
+    if(r.ok&&!j.error){
+      var ms=performance.now()-t0; S.or.lat[m]=S.or.lat[m]?Math.round(S.or.lat[m]*.6+ms*.4):Math.round(ms); save('orlat',S.or.lat);
+      count(key,'o'); S.orModel=m;
+      var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
+      var out=jsonFrom(txt); if(out) return out;
+      lastErr=new Error('AI thông minh trả lời sai dạng'); continue;
+    }
+    lastErr=new Error(msg); lastErr.status=r.status; log('openrouter '+m+' '+r.status+': '+msg.slice(0,160));
+    if(r.status===400&&/reasoning/i.test(msg)&&!S.or.noReason[m]){ S.or.noReason[m]=true; t--; continue; }
+    if(r.status===400&&/response_format|json/i.test(msg)&&!S.or.noFmt[m]){ S.or.noFmt[m]=true; t--; continue; }
+    if(r.status===402){ S.or.paid=false; save('orpaid',false); orFill(); order=orOrder(); continue; }
+    if(r.status===429){
+      if(/per.?day|daily|free-models-per-day/i.test(msg)){ if(/:free$/.test(m)){ S.or.cool[key]=S.or.paid?Date.now()+60e3:tomorrow(); } }
+      else S.or.bad[m]=Date.now()+30e3;
+      continue;
+    }
+    if(r.status===404||r.status===400){ S.or.bad[m]=Date.now()+12*3600e3; continue; }
+    if(r.status===401||r.status===403){ S.or.cool[key]=Date.now()+3600e3; continue; }
+    if(r.status>=500){ S.or.bad[m]=Date.now()+60e3; continue; }
+    break;
+  }
+  throw lastErr||new Error('AI thông minh không dịch được');
+}
+$('hsOr').value=load('or',[]).join('\n');
+$('hsPrefer').value=load('prefer','balanced');
+$('hsPrefer').addEventListener('change',function(){ save('prefer',this.value); });
+$('hsOrModel').addEventListener('change',function(){ save('ormodel',this.value); });
+$('hsOr').addEventListener('change',function(){ save('or',orKeys()); S.or.cool={}; if(orKeys().length) orList(true).then(function(){},function(){}); steps(); keyStats(); });
+function orMsg(cls,t){ var m=$('hsOrMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t; }
+$('hsOrCheck').addEventListener('click',async function(){
+  save('or',orKeys()); S.or.cool={};
+  if(!orKeys().length){ orMsg('err','Chưa có mã. Bấm "Lấy mã OpenRouter", đăng nhập, tạo mã rồi dán vào ô trên.'); return; }
+  orMsg('','Đang kiểm tra...');
+  try{
+    var list=await orList(true); if(!list.length){ orMsg('warn','Mã dùng được nhưng chưa thấy model phù hợp. Thử lại sau.'); return; }
+    var t0=performance.now(); var r=await orAsk('Translate to Vietnamese: "Stay close to me."','{"vi":""}');
+    var ms=Math.round(performance.now()-t0);
+    orMsg('ok','Dùng được. Model: '+orShort(S.orModel)+', trả lời sau '+(ms/1000).toFixed(1)+' giây ("'+((r&&r.vi)||'').slice(0,40)+'"). '+(S.or.paid?'Tài khoản có tiền nạp: dùng model trả phí rẻ, nhanh.':'Gói miễn phí: 50 câu mỗi ngày.'));
+  }catch(e){ orMsg('err',e.cool?'Mã đã hết lượt hôm nay.':(e.status===401||e.status===403?'Mã không hợp lệ. Kiểm tra đã sao chép đủ mã chưa.':'Lỗi: '+e.message)); }
+  keyStats(); steps();
+});
+if(S.or.all.length) orFill();
 var SHAPE_SUB='{"speaker":"","gender":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}';
 S.via='';
 async function ask(prompt,b64,schema,shape,freeText){
@@ -1252,6 +1393,10 @@ async function ask(prompt,b64,schema,shape,freeText){
   }
   if(groqKeys().length){
     try{ var g=await groq(prompt,b64,shape); S.via='groq'; return g; }
+    catch(e){ err=err&&err.cool&&!e.cool?e:(err||e); }
+  }
+  if(!b64&&orReady()){
+    try{ var o=await orAsk(prompt,shape); S.via='smart'; return o; }
     catch(e){ err=err&&err.cool&&!e.cool?e:(err||e); }
   }
   if(freeText&&S.allowFree){ var f=await freeTr(freeText); S.via='free'; return f; }
@@ -1282,6 +1427,7 @@ function keyStats(){
   var now=Date.now(), rows=[];
   keys().forEach(function(k,i){ var c=S.cool[k]&&S.cool[k]>now; rows.push('<div><span>Gemini '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['g'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   groqKeys().forEach(function(k,i){ var c=S.gcool[k]&&S.gcool[k]>now; rows.push('<div><span>Groq '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['q'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>tạm hết lượt</em>':'')+'</div>'); });
+  orKeys().forEach(function(k,i){ var c=S.or.cool[k]&&S.or.cool[k]>now; rows.push('<div><span>AI thông minh '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['o'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.or.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   if(S.use.k.free) rows.push('<div><span>Máy dịch miễn phí</span><b>'+S.use.k.free+' câu hôm nay</b></div>');
   box.innerHTML=rows.join('');
 }
@@ -1514,10 +1660,16 @@ var OCR_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/gh/nvhnhi96
 var ORT_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/');
 function readMode(){return ($('hsRead')&&$('hsRead').value)||'local';}
 function ocrOn(){return readMode()==='local'&&!!window.HsOcr&&HsOcr.ready()&&OCR.fails<5;}
+function ocrWarm(){
+  var c=document.createElement('canvas'); c.width=480; c.height=72; var x=c.getContext('2d');
+  x.fillStyle='#202830'; x.fillRect(0,0,480,72); x.fillStyle='#fff'; x.font='600 30px Arial'; x.fillText('Stay close, we leave at dawn.',14,46);
+  S.ocrBusy=true;
+  return HsOcr.read(c).then(function(o){ log('làm nóng bộ đọc chữ: '+o.ms+'ms ('+o.text+')'); },function(){}).then(function(){ S.ocrBusy=false; });
+}
 function ocrLoad(){
   if(!window.HsOcr||HsOcr.ready()||OCR.loading||readMode()!=='local'||OCR.fails>=5) return;
   OCR.loading=true; var t0=Date.now(); if(!D) $('hsReadNote').textContent='Đang tải bộ đọc chữ (khoảng 13 MB, chỉ lần đầu)...';
-  HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); })
+  HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); return ocrWarm(); })
     .catch(function(e){ OCR.fails=9; log('không tải được bộ đọc chữ: '+e.message); $('hsReadNote').textContent='Không tải được bộ đọc chữ, Hóng Sub gửi ảnh cho AI đọc.'; })
     .then(function(){ OCR.loading=false; });
 }
@@ -1557,11 +1709,11 @@ function textPrompt(t){
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
 }
 function runStatus(){
-  status('run',(S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
+  status('run',(S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
 S.perf={o:0,t:0};
 function perfTag(){
-  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':(S.model||'');
+  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='smart'?orShort(S.orModel):(S.model||'');
   $('hsModelTag').textContent=via+(on&&S.perf.t?' · đọc chữ '+(S.perf.o/1000).toFixed(2)+'s · dịch '+(S.perf.t/1000).toFixed(2)+'s':'');
 }
 
@@ -1616,26 +1768,48 @@ async function translateText(j){
     S.lastOcr='';
   }
 }
-/* text lines: Gemini first; Groq joins after 1.2s; the free translator after 3.5s or when both fail. First good answer wins. */
-function askText(prompt,text,schema,shape,plain){
-  schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB;
-  var hasG=keys().length>0, hasQ=groqKeys().length>0;
+/* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
+   the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
+   can wait a little for the smart AI ("Cân bằng" 0.6s, "Hay nhất" up to 4s). */
+function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'balanced'; }
+function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
+function askText(prompt,text,schema,shape,plain,prefer){
+  schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
+  var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady();
   return new Promise(function(resolve,reject){
-    var done=false, live=0, errs=[], tq=null, tf=null;
-    function win(r,via){ if(done) return; done=true; clearTimeout(tq); clearTimeout(tf); S.via=via; resolve(r); }
-    function lose(e){ errs.push(e); live--; if(done) return; if(!startedAll()) startNext(); else if(live<=0) reject(errs.filter(function(x){return !x.cool;})[0]||errs[0]||new Error('Không dịch được')); }
-    var started={g:false,q:false,f:false};
-    function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.f||!S.allowFree); }
+    var done=false, live=0, errs=[], tms=[], held=null, oDead=false, t0=Date.now();
+    var started={g:false,q:false,o:false,f:false};
+    function clearAll(){ tms.forEach(function(id){ if(WT) WT.clear(id); else clearTimeout(id); }); tms=[]; }
+    function accept(r,via){ if(done) return; done=true; clearAll(); S.via=via; resolve(r); }
+    function got(r,via){
+      if(done) return;
+      if(via==='smart'||prefer==='fast'||!started.o||oDead) return accept(r,via);
+      if(held) return;
+      held={r:r,via:via};                                      /* keep it, give the smart AI a moment */
+      var wait=prefer==='best'?Math.max(0,4000-(Date.now()-t0)):600;
+      tms.push(later(function(){ if(held) accept(held.r,held.via); },wait));
+    }
+    function lose(k,e){
+      errs.push(e); live--; if(k==='o') oDead=true;
+      if(done) return;
+      if(held&&(k==='o'||live<=0)) return accept(held.r,held.via);
+      if(!startedAll()) startNext();
+      else if(live<=0) reject(errs.filter(function(x){return !x.cool;})[0]||errs[0]||new Error('Không dịch được'));
+    }
+    function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.o||!hasO)&&(started.f||!S.allowFree); }
     function run(k){
       if(started[k]||done) return; started[k]=true; live++;
-      var p=k==='g'?gemini(prompt,null,schema):k==='q'?groq(prompt,null,shape):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
-      p.then(function(r){ if(r&&typeof r==='object') win(r,k==='g'?'gemini':k==='q'?'groq':'free'); else lose(new Error('trống')); },lose);
+      var p=k==='g'?gemini(prompt,null,schema):k==='q'?groq(prompt,null,shape):k==='o'?orAsk(prompt,shape):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
+      p.then(function(r){ if(r&&typeof r==='object') got(r,k==='g'?'gemini':k==='q'?'groq':k==='o'?'smart':'free'); else lose(k,new Error('trống')); },function(e){ lose(k,e); });
     }
-    function startNext(){ if(hasG&&!started.g) run('g'); else if(hasQ&&!started.q) run('q'); else if(S.allowFree&&!started.f) run('f'); }
-    if(!hasG&&!hasQ&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
-    startNext();
-    if(hasG&&hasQ) tq=setTimeout(function(){ run('q'); },700);   /* Groq answers text in ~0.3s; Gemini often takes 1-2s */
-    if(S.allowFree&&(hasG||hasQ)) tf=setTimeout(function(){ run('f'); },3500);
+    function startNext(){ if(hasG&&!started.g) run('g'); else if(hasO&&!started.o) run('o'); else if(hasQ&&!started.q) run('q'); else if(S.allowFree&&!started.f) run('f'); }
+    if(!hasG&&!hasQ&&!hasO&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
+    if(hasG) run('g');
+    if(hasO) run('o');
+    if(!hasG&&!hasO) startNext();
+    /* Groq answers text in ~0.3s; start it at once when Gemini is missing or usually slow here */
+    if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
+    if(S.allowFree&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held) run('f'); },3500));
   });
 }
 /* picture of the subtitle area sent to the AI (when the on-device reader is off or sees nothing) */
@@ -1695,6 +1869,8 @@ async function tick(force){
     var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
   }
   var m=textMask(), now=Date.now();
+  if(readMode()==='local'&&!ocrOn()&&OCR.loading){ if(!S.ocrWait){ S.ocrWait=true; status('busy','Đang chuẩn bị bộ đọc chữ...'); } return; }
+  if(S.ocrWait){ S.ocrWait=false; status('run','Đang dịch'); }
   if(S.zones.length&&!force) later(function(){ zoneTick(false); },30);
   if(ocrOn()){ if(force){ S.lastEn=''; S.lastOcr=''; } return ocrStep(m,force); }
   if(force){ S.lastEn=''; S.lastOcr=''; S.sentMask=m; S.prevMask=m; S.pend=0; sendImage(); return; }
@@ -1723,17 +1899,27 @@ var WT=(function(){
 function later(fn,ms){ return WT?WT.set(fn,ms,false):setTimeout(fn,ms); }
 function stopTimer(){ if(WT) WT.clear(S.timer); else clearInterval(S.timer); S.timer=null; }
 function restartTimer(){ stopTimer(); S.timer=WT?WT.set(tick,S.interval,true):setInterval(tick,S.interval); }
+/* open the connections to the translators before the first line appears: the first answer comes ~0.3-0.8s sooner */
+S.warmAt=0;
+function warmNet(){
+  if(Date.now()-S.warmAt<60e3) return; S.warmAt=Date.now();
+  var k=keys()[0];
+  if(k) listModels(k).then(function(ms){ if(ms&&ms.length){ S.models=ms; save('models',ms); } },function(){});
+  if(groqKeys().length) groqModels().then(function(){},function(){});
+  if(orKeys().length) orList(false).then(function(){},function(){});
+  if(S.allowFree&&!D) fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=ok').then(function(){},function(){});
+}
 function startRun(){
   if(!S.stream) return;
-  ocrLoad();
-  if(!keys().length&&!groqKeys().length&&!S.offlineDemo){
+  ocrLoad(); warmNet();
+  if(!keys().length&&!groqKeys().length&&!orKeys().length&&!S.offlineDemo){
     if(readMode()!=='local'||OCR.fails>=5){status('err','Cần nhập mã Gemini trước'); $('hsKeys').focus(); return;}
     log('chạy không có mã: dùng máy dịch miễn phí');
   }
   S.sents=[]; OCR.miss=0;
   S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0;
-  restartTimer();
-  status('run',(keys().length||groqKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
+  restartTimer(); later(tick,30);
+  status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
 function stopRun(){S.running=false; stopTimer(); if(S.stream) status('idle','Tạm dừng'); steps();}
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
@@ -1852,7 +2038,7 @@ function notesMsg(cls,t){var m=$('hsNotesMsg'); m.hidden=false; m.className='hs-
 $('hsAiNotes').addEventListener('click',async function(){
   var name=$('hsGame').value.trim();
   if(!name){notesMsg('err','Gõ tên game trước, ví dụ: Ghost of Tsushima.'); $('hsGame').focus(); return;}
-  if(!keys().length&&!groqKeys().length){notesMsg('err','Cần nhập mã Gemini trước.'); return;}
+  if(!keys().length&&!groqKeys().length&&!orKeys().length){notesMsg('err','Cần nhập mã Gemini trước.'); return;}
   var btn=this; btn.disabled=true; notesMsg('','AI đang soạn ghi chú cho '+name+'...');
   var prompt='You help translate video game dialogue into Vietnamese.\n'+
     'Game: "'+name+'".\n'+
@@ -1997,7 +2183,7 @@ function psDecoder(codec){
     output:function(f){
       if(PS.cvs.width!==f.displayWidth||PS.cvs.height!==f.displayHeight){ PS.cvs.width=f.displayWidth; PS.cvs.height=f.displayHeight; }
       PS.ctx.drawImage(f,0,0); f.close();
-      if(++PS.frames===1){ psMsg('ok','Đã vào máy. Chúc chơi vui!'); if(load('regionSet',false)&&(keys().length||groqKeys().length)&&!S.running) startRun(); }
+      if(++PS.frames===1){ psMsg('ok','Đã vào máy. Chúc chơi vui!'); if(load('regionSet',false)&&(keys().length||groqKeys().length||orKeys().length)&&!S.running) startRun(); }
     },
     error:function(){ PS.dec=null; PS.waitKey=true; psIdr(); }
   });
@@ -2144,13 +2330,13 @@ if(D){
     window.hsTestState=function(){return {test:S.test,saved:S.saved,running:S.running,stream:!!S.stream,region:S.region,status:$('hsStatusTxt').textContent,voices:dVoices,ocrReady:ocrOn(),ocrFails:OCR.fails,isolated:!!self.crossOriginIsolated,visibility:document.visibilityState};};
   }
   /* Sony's PS Remote Play app: pick its window by itself when it is open */
-  D.windows().then(function(w){ if(w.some(function(x){return /remote play/i.test(x.name);})&&!S.stream){ pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||D.selftest)) startRun(); }); } }).catch(function(){});
+  D.windows().then(function(w){ if(w.some(function(x){return /remote play/i.test(x.name);})&&!S.stream){ pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||orKeys().length||D.selftest)) startRun(); }); } }).catch(function(){});
   psInit();
 }
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,status:status,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
