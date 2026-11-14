@@ -108,7 +108,7 @@ function castEmpty(){ $('dkCastEmpty').hidden=!$('hsCastBox').hidden; }
 new MutationObserver(castEmpty).observe($('hsCastBox'),{attributes:true,attributeFilter:['hidden']}); castEmpty();
 
 /* ---------- shortcuts ---------- */
-var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Dịch cả màn hình (menu, nhiệm vụ)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi'};
+var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Dịch cả màn hình (menu, nhiệm vụ)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm'};
 var KEYS={}, KST={}, rec=null;
 function keysDraw(){
   $('dkKeys').innerHTML=Object.keys(KEYN).map(function(id){
@@ -147,7 +147,7 @@ document.addEventListener('keydown',function(e){
   var o={}; o[rec]=a.acc; rec=null;
   D.setHotkeys(o).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg(r.state[Object.keys(o)[0]]==='ok'?'ok':'warn',r.state[Object.keys(o)[0]]==='ok'?'Đã đổi thành '+a.acc+'.':'Đã lưu '+a.acc+' nhưng app khác đang giữ phím này. Chọn phím khác.'); });
 },true);
-$('dkKeysReset').addEventListener('click',function(){ D.setHotkeys({toggle:'F7',now:'F8',ovl:'F9',move:'F10',full:'F11'}).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg('ok','Đã về phím mặc định F7 đến F11.'); }); });
+$('dkKeysReset').addEventListener('click',function(){ D.setHotkeys({toggle:'F7',now:'F8',ovl:'F9',move:'F10',full:'F11',zones:'F6'}).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg('ok','Đã về phím mặc định F6 đến F11.'); }); });
 keysLoad();
 
 /* ---------- AI voices ---------- */
@@ -202,4 +202,11 @@ function rail(){
 }
 setInterval(rail,1000); rail();
 D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').textContent='Đang dùng bản '+v+'. Có bản mới Hóng Sub tự báo ở trên cùng.'; });
+})();
+
+/* floating panel for the extra areas */
+(function(){
+  var cb=document.getElementById('dkZonePanel'); if(!cb||!window.hsDesktop||!hsDesktop.zonesPanel) return;
+  if(hsDesktop.onOverlay) hsDesktop.onOverlay(function(st){ cb.checked=!st.zonesHidden; });
+  cb.addEventListener('change',function(){ hsDesktop.zonesPanel(cb.checked); });
 })();

@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   onOverlay: (cb) => ipcRenderer.on('overlay-state', (e, s) => cb(s)),
   onHotkey: (cb) => ipcRenderer.on('hotkey', (e, k) => cb(k)),
   onSub: (cb) => ipcRenderer.on('sub', (e, p) => cb(p)),
+  zones: (list) => ipcRenderer.send('zones', list),
+  onZones: (cb) => ipcRenderer.on('zones', (e, l) => cb(l)),
+  zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
   speak: async (text, voice, rate) => {
     const my = ++seq;

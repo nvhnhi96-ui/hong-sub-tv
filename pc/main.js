@@ -25,6 +25,7 @@ protocol.registerSchemesAsPrivileged([{
 if (!SELFTEST && !app.requestSingleInstanceLock()) { app.quit(); }
 app.setAppUserModelId('store.honggame.hongsub.pc');
 
+let zonesWin = null, zonesHave = false;
 let win = null, overlay = null, tray = null, fakeGame = null, ps = null;
 let chosenId = null, quitting = false, moveMode = false;
 
@@ -112,10 +113,34 @@ function createOverlay() {
   overlay.once('ready-to-show', () => { if (!cfg.overlayHidden) overlay.showInactive(); sendOverlayState(); });
   overlay.on('moved', () => { cfg.overlay = overlay.getBounds(); saveCfg(); });
 }
+/* small floating panel with the translations of the extra areas (quests, items) */
+function createZones() {
+  const wa = screen.getPrimaryDisplay().workArea;
+  const z = cfg.zonesWin;
+  const ok = z && screen.getAllDisplays().some(d => z.x >= d.bounds.x - 50 && z.x < d.bounds.x + d.bounds.width && z.y >= d.bounds.y - 50 && z.y < d.bounds.y + d.bounds.height);
+  zonesWin = new BrowserWindow({
+    x: ok ? z.x : wa.x + wa.width - 460, y: ok ? z.y : wa.y + 80, width: 440, height: 420,
+    transparent: true, frame: false, resizable: false, movable: true, alwaysOnTop: true, skipTaskbar: true, focusable: false, hasShadow: false, show: false,
+    title: 'Hóng Sub vùng dịch',
+    webPreferences: { preload: path.join(ROOT, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
+  });
+  zonesWin.setAlwaysOnTop(true, 'screen-saver');
+  zonesWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  zonesWin.setIgnoreMouseEvents(true);
+  zonesWin.setContentProtection(true);
+  zonesWin.loadURL('app://hongsub/zones.html');
+  zonesWin.on('moved', () => { cfg.zonesWin = zonesWin.getBounds(); saveCfg(); });
+}
+function zonesVisible() {
+  if (!zonesWin || zonesWin.isDestroyed()) return;
+  const show = (zonesHave || moveMode) && !cfg.overlayHidden && !cfg.zonesHidden;
+  if (show && !zonesWin.isVisible()) zonesWin.showInactive(); else if (!show && zonesWin.isVisible()) zonesWin.hide();
+}
 function sendOverlayState() {
-  const st = { hidden: !!cfg.overlayHidden, move: moveMode };
+  const st = { hidden: !!cfg.overlayHidden, move: moveMode, zonesHidden: !!cfg.zonesHidden };
   if (win && !win.isDestroyed()) win.webContents.send('overlay-state', st);
   if (overlay && !overlay.isDestroyed()) overlay.webContents.send('overlay-state', st);
+  if (zonesWin && !zonesWin.isDestroyed()) { zonesWin.webContents.send('overlay-state', st); zonesVisible(); }
   buildTrayMenu();
 }
 function overlayCmd(cmd) {
@@ -137,8 +162,10 @@ function setMove(on) {
   if (on) {
     if (cfg.overlayHidden) { cfg.overlayHidden = false; saveCfg(); }
     overlay.setIgnoreMouseEvents(false); overlay.setFocusable(true); overlay.show();
+    if (zonesWin) { zonesWin.setIgnoreMouseEvents(false); zonesWin.setFocusable(true); }
   } else {
     overlay.setIgnoreMouseEvents(true); overlay.setFocusable(false);
+    if (zonesWin) { zonesWin.setIgnoreMouseEvents(true); zonesWin.setFocusable(false); cfg.zonesWin = zonesWin.getBounds(); }
     cfg.overlay = overlay.getBounds(); saveCfg();
     if (!cfg.overlayHidden) overlay.showInactive();
   }
@@ -167,8 +194,8 @@ function showMain() { if (!win) return; if (win.isMinimized()) win.restore(); wi
 
 /* ---------- hotkeys ---------- */
 function hotkey(k) { if (win && !win.isDestroyed()) win.webContents.send('hotkey', k); }
-const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11' };
-const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full') };
+const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11', zones: 'F6' };
+const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full'), zones: () => hotkey('zones') };
 function keys() { return Object.assign({}, KEY_DEFAULT, cfg.hotkeys || {}); }
 function registerKeys() {
   globalShortcut.unregisterAll();
@@ -398,6 +425,8 @@ function setupIpc() {
   ipcMain.handle('rp-info', () => ({ bundled: !!rpExe(), running: !!(rpProc && rpProc.exitCode === null) }));
   ipcMain.handle('rp-launch', (e, opengl) => rpLaunch(!!opengl));
   ipcMain.handle('use', (e, id) => { chosenId = id; return true; });
+  ipcMain.on('zones', (e, list) => { zonesHave = Array.isArray(list) && list.length > 0; if (zonesWin && !zonesWin.isDestroyed()) zonesWin.webContents.send('zones', list || []); zonesVisible(); });
+  ipcMain.handle('zones-panel', (e, on) => { cfg.zonesHidden = !on; saveCfg(); zonesVisible(); return true; });
   ipcMain.on('sub', (e, payload) => { if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload); });
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
   ipcMain.handle('voices', async () => {
@@ -548,7 +577,7 @@ app.whenReady().then(async () => {
   setupCapture();
   setupIpc();
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
-  createOverlay();
+  createOverlay(); createZones();
   if (!SELFTEST) { createTray(); createMain(); if (cfg.aivOn !== false && aivPy()) setTimeout(aivStart, 2500); }
   registerKeys();
   ttsStart();
