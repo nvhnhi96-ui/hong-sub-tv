@@ -1,0 +1,46 @@
+HÓNG SUB TEST - BÁO CÁO
+Thời gian: 14:09:16 14/11/2026
+Bản app thử: 1.0.33
+
+== KIỂM TRA MÁY ==
+[ỔN] Máy tính
+   Windows_NT Windows Server 2025 Datacenter (10.0.26100)
+   CPU: AMD EPYC 9V74 80-Core Processor                 (4 luồng), RAM 16 GB
+   Card đồ họa: ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11-10.0.26100.33648)
+   Màn hình: 1024×768 64Hz
+[ỔN] Mạng và Internet
+   Kết nối: dây mạng (10.1.0.13)
+   Internet: được, 160 ms
+   honggame.store: được, 439 ms
+[ỔN] Máy dịch miễn phí (khi không có mã)
+   Dịch thử: "Ở phía sau tôi và đừng chạm vào bất cứ thứ gì." trong 828 ms
+[--] Mã Gemini
+   Không nhập mã nên bỏ qua.
+   → Muốn kiểm tra mã thì dán mã vào ô Mã Gemini ở trên rồi bấm Kiểm tra lại.
+[ỔN] Bộ đọc chữ trên máy
+   Đọc thử: "MARA: Keep your voice down. They can hear us."
+   Mỗi lần đọc: 147 ms (lần đầu 230 ms, nạp bộ đọc 514 ms), chạy nhiều luồng
+[CHÚ Ý] Giải mã hình PS5 (H.264)
+   Giải mã thử được 15 khung hình.
+   Giải mã bằng card đồ họa: không
+   → Máy giải mã bằng CPU nên tốn sức hơn. Nên chọn chất lượng 720p trong Hóng Sub.
+[CHÚ Ý] PS5 / PS4 trong mạng nhà
+   Không tìm thấy máy PS5 / PS4 nào.
+   → Kiểm tra: PS5 đang bật hoặc ở chế độ nghỉ; máy tính và PS5 dùng chung một mạng (cùng modem); trên PS5 bật Settings › System › Remote Play › Enable Remote Play, và Settings › System › Power Saving › Features Available in Rest Mode › Stay Connected to the Internet. Nếu vẫn không thấy, nhập IP của PS5 vào ô ở trên.
+[--] Capture card
+   Không thấy capture card hay camera nào.
+   → Chỉ cần nếu muốn chơi trên TV và dùng capture card. Cắm capture card vào cổng USB rồi kiểm tra lại.
+[--] Tay cầm
+   Chưa thấy tay cầm nào.
+   → Chỉ cần khi chơi PS5 ngay trong phần mềm Hóng Sub. Cắm tay cầm bằng dây USB (hoặc kết nối Bluetooth), bấm một nút rồi kiểm tra lại.
+[CHÚ Ý] Giọng đọc tiếng Việt
+   Giọng Việt của Windows: chưa có
+   Giọng Việt có sẵn trong Hóng Sub: chưa cài Hóng Sub
+   → Cài phần mềm Hóng Sub (có sẵn giọng Việt), hoặc thêm giọng Tiếng Việt trong Cài đặt Windows › Giọng nói.
+[--] Phần mềm Hóng Sub
+   Máy này chưa cài phần mềm Hóng Sub.
+   Chụp cửa sổ để đọc phụ đề: được (4 cửa sổ/màn hình)
+   → Tải ở honggame.store/hongsubpc. Hoặc dùng trang honggame.store/hong-sub bằng Chrome/Edge.
+
+== THỬ PHỤ ĐỀ ==
+Có tên người nói: 0/0 đúng (đã chiếu 3 câu)
