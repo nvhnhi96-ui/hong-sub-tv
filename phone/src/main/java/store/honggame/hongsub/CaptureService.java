@@ -44,6 +44,12 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -100,6 +106,11 @@ public class CaptureService extends Service {
     private final java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
     private int seq = 0, shownSeq = 0;
     private static final class Mask { byte[] m; int ink; }
+    private TextRecognizer ocr;
+    private volatile String lastOcr = "";
+    private volatile int ocrMiss = 0;
+    private final java.util.concurrent.ConcurrentLinkedDeque<Object[]> recentSents = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    private volatile String via = "";
     private String lastEn = "";
     private int darkTicks = 0;
     private final java.util.concurrent.ConcurrentLinkedDeque<String[]> history = new java.util.concurrent.ConcurrentLinkedDeque<>();
@@ -156,6 +167,7 @@ public class CaptureService extends Service {
 
     @Override
     public void onDestroy() {
+        try { if (ocr != null) ocr.close(); } catch (Exception ignored) { }
         running = false;
         translating = false;
         bg.removeCallbacksAndMessages(null);
@@ -388,6 +400,7 @@ public class CaptureService extends Service {
         StringBuilder sb = new StringBuilder();
         if (!prefs.game().isEmpty()) sb.append("Game: ").append(prefs.game()).append('\n');
         if (!prefs.notes().isEmpty()) sb.append("Character / pronoun notes: ").append(prefs.notes()).append('\n');
+        sb.append("Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original; never invent words that are not in the text.\n");
         if (!history.isEmpty()) {
             sb.append("Recent lines (for consistency):\n");
             for (String[] h : history) sb.append(h[0]).append(" => ").append(h[1]).append('\n');
@@ -411,7 +424,118 @@ public class CaptureService extends Service {
         throw new Exception("Cần nhập mã Gemini hoặc Groq");
     }
 
+    private boolean noKeys() { return prefs.keys().isEmpty() && prefs.groqKeys().isEmpty(); }
+
+    private static final java.util.regex.Pattern SHORTW = java.util.regex.Pattern.compile("^(a|i|o|an|am|as|at|be|by|do|go|he|hi|if|in|is|it|me|my|no|of|oh|ok|on|or|so|to|up|us|we|ya|ye|yo|mr|ms|dr|st)$");
+    /** share of letters that sit in real-looking English words: drops OCR junk like "fdrtglgbou" */
+    private static double wordy(String line) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("[A-Za-z][A-Za-z']*").matcher(line);
+        int ok = 0, all = 0;
+        while (m.find()) {
+            String t = m.group(), l = t.toLowerCase(Locale.ROOT); all += t.length();
+            boolean good = t.length() <= 2 ? SHORTW.matcher(l).matches()
+                    : (l.matches(".*[aeiouy].*") && !l.matches(".*[bcdfghjklmnpqrstvwxz]{5,}.*") && !l.matches(".*(.)\\1\\1.*"));
+            if (good) ok += t.length();
+        }
+        return all == 0 ? 0 : (double) ok / all;
+    }
+
+    /** read the subtitle text on the phone (ML Kit), joined into one paragraph per speaker */
+    private String readText(Bitmap b) throws Exception {
+        if (ocr == null) ocr = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+        Text t = Tasks.await(ocr.process(InputImage.fromBitmap(b, 0)), 4, java.util.concurrent.TimeUnit.SECONDS);
+        StringBuilder sb = new StringBuilder();
+        for (Text.TextBlock blk : t.getTextBlocks()) for (Text.Line ln : blk.getLines()) {
+            String s = ln.getText().trim();
+            int letters = s.replaceAll("[^A-Za-z]", "").length();
+            if (letters < 3 || wordy(s) < 0.6) continue;
+            if (sb.length() > 0) sb.append(s.matches("^[A-Z][\\w .'-]{0,24}:\\s.*") ? "\n" : " ");
+            sb.append(s);
+        }
+        return sb.toString().trim();
+    }
+
+    private static String[] sents(String t) { return t.replaceAll("\\s*\\n\\s*", " ").split("(?<=[.!?…])\\s+(?=[A-Z\"'(\\[¡¿])"); }
+    /** rolling 2-line subtitles: only the sentences not translated in the last 20 seconds */
+    private String freshPart(String text) {
+        long now = System.currentTimeMillis();
+        recentSents.removeIf(x -> now - (Long) x[1] > 20000);
+        String[] parts = sents(text);
+        if (parts.length < 2) return text;
+        StringBuilder fresh = new StringBuilder(); int n = 0;
+        for (String p : parts) {
+            boolean seen = false;
+            for (Object[] x : recentSents) if (similar((String) x[0], p)) { seen = true; break; }
+            if (!seen) { if (fresh.length() > 0) fresh.append(' '); fresh.append(p); n++; }
+        }
+        if (n == 0) return "";
+        return n == parts.length ? text : fresh.toString();
+    }
+    private void remember(String text) { long now = System.currentTimeMillis(); for (String p : sents(text)) recentSents.add(new Object[]{p, now}); }
+
+    /** free Google machine translation: used with no key, or when every key is out of quota */
+    private static String gtx(String text) throws Exception {
+        String[] r = Gemini.http("GET", "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=" + java.net.URLEncoder.encode(text, "UTF-8"), null, 8000);
+        if (!"200".equals(r[0])) throw new Exception("Máy dịch miễn phí lỗi " + r[0]);
+        JSONArray segs = new JSONArray(r[1]).optJSONArray(0);
+        StringBuilder sb = new StringBuilder();
+        if (segs != null) for (int i = 0; i < segs.length(); i++) { JSONArray s = segs.optJSONArray(i); if (s != null && !s.isNull(0)) sb.append(s.optString(0, "")); }
+        if (sb.length() == 0) throw new Exception("Máy dịch miễn phí không trả lời");
+        return sb.toString().trim();
+    }
+    private JSONObject freeTr(String text) throws Exception {
+        String who = "", body = text;
+        java.util.regex.Matcher sm = java.util.regex.Pattern.compile("^\\s*([A-Za-z][A-Za-z0-9 .'\\-]{0,24}?)\\s*[:：]\\s+([\\s\\S]+)$").matcher(text);
+        if (sm.find() && !sm.group(1).matches("(?i)press|hold|tap|objective|quest|mission|tip|hint|note")) { who = sm.group(1).trim(); body = sm.group(2); }
+        body = body.replaceAll("\\s*\\n\\s*", " ").trim();
+        JSONObject o = new JSONObject();
+        if (body.matches("(?i)^(press|hold|tap)\\b.*")) { o.put("en", ""); o.put("vi", ""); return o; }
+        o.put("en", (who.isEmpty() ? "" : who + ": ") + body);
+        o.put("vi", gtx(body));
+        return o;
+    }
+
     private void translate(Bitmap region, int mySeq) throws Exception {
+        String text = null;
+        try {
+            String t = readText(region);
+            if (!t.isEmpty()) {
+                ocrMiss = 0;
+                if (similar(t, lastOcr)) return;
+                lastOcr = t;
+                String part = freshPart(t);
+                if (part.isEmpty()) return;
+                text = part;
+            } else {
+                lastOcr = "";
+                if (++ocrMiss < 3 || noKeys()) return;               // nothing readable: after a few tries let the AI look at the picture
+                ocrMiss = 0;
+            }
+        } catch (Exception e) { /* fall back to the picture */ }
+        if (text == null && noKeys()) return;
+        if (text != null) translateText(text, mySeq);
+        else translateImage(region, mySeq);
+    }
+
+    private void translateText(String text, int mySeq) throws Exception {
+        JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"speaker\":{\"type\":\"STRING\"},\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}");
+        String prompt = "You translate video game subtitles for a Vietnamese player.\n"
+                + "On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes or stray symbols from the HUD.\n<<<\n" + text + "\n>>>\n"
+                + "1. Fix obvious OCR mistakes and keep ONLY the English dialogue/subtitle text in \"en\". Ignore HUD, button prompts and app overlays.\n"
+                + "2. If the line starts with a speaker name and a colon (e.g. \"ATREUS: ...\"), keep that prefix at the start of \"en\". Never add a name that is not in the text.\n"
+                + "3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in \"vi\". Keep names of characters, places and items as they are. Pick Vietnamese pronouns that fit the relationship.\n"
+                + "4. If it is not real dialogue, return \"en\":\"\" and \"vi\":\"\".\n" + context();
+        JSONObject r;
+        if (noKeys()) { r = freeTr(text); via = "free"; }
+        else {
+            try { r = ask(prompt, null, schema, SHAPE_SUB); via = "ai"; }
+            catch (Exception e) { r = freeTr(text); via = "free"; }
+        }
+        remember(text);
+        show(r, mySeq);
+    }
+
+    private void translateImage(Bitmap region, int mySeq) throws Exception {
         JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"speaker\":{\"type\":\"STRING\"},\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}");
         String prompt = "You translate video game subtitles for a Vietnamese player.\n"
                 + "The image is a crop of the game screen where dialogue subtitles appear.\n"
@@ -420,6 +544,11 @@ public class CaptureService extends Service {
                 + "3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in \"vi\". Keep names of characters, places and items as they are. Pick Vietnamese pronouns that fit the relationship.\n"
                 + "4. If there is no readable English subtitle, return \"en\":\"\" and \"vi\":\"\".\n" + context();
         JSONObject r = ask(prompt, jpeg(region, 900, 85), schema, SHAPE_SUB);
+        via = "ai";
+        show(r, mySeq);
+    }
+
+    private void show(JSONObject r, int mySeq) {
         if (r == null) return;
         String en = r.optString("en", "").trim();
         String vi = r.optString("vi", "").trim();
@@ -448,6 +577,17 @@ public class CaptureService extends Service {
                 Bitmap full = grab();
                 if (full == null) return;
                 setStatus("Đang dịch cả màn hình...");
+                if (noKeys()) {
+                    if (ocr == null) ocr = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+                    Text t = Tasks.await(ocr.process(InputImage.fromBitmap(full, 0)), 6, java.util.concurrent.TimeUnit.SECONDS);
+                    java.util.List<String> ls = new java.util.ArrayList<>();
+                    for (Text.TextBlock blk : t.getTextBlocks()) { String s = blk.getText().replaceAll("\\s*\\n\\s*", " ").trim(); if (s.replaceAll("[^A-Za-z]", "").length() >= 3 && wordy(s) >= 0.6) ls.add(s); }
+                    String[] vs = ls.isEmpty() ? new String[0] : gtx(String.join("\n", ls)).split("\n");
+                    JSONArray items = new JSONArray();
+                    for (int i = 0; i < ls.size(); i++) { JSONObject o = new JSONObject(); o.put("en", ls.get(i)); o.put("vi", i < vs.length ? vs[i] : ""); items.put(o); }
+                    main.post(() -> showPanel(items));
+                    return;
+                }
                 JSONObject schema = new JSONObject("{\"type\":\"OBJECT\",\"properties\":{\"items\":{\"type\":\"ARRAY\",\"items\":{\"type\":\"OBJECT\",\"properties\":{\"en\":{\"type\":\"STRING\"},\"vi\":{\"type\":\"STRING\"}},\"required\":[\"en\",\"vi\"]}}},\"required\":[\"items\"]}");
                 JSONObject r = ask("Read all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group words that belong to the same line or paragraph. Ignore button glyphs, numbers-only labels and app overlays. Translate each into natural Vietnamese; keep names as they are.\n" + context(),
                         jpeg(full, 1280, 85), schema, SHAPE_ALL);
@@ -663,18 +803,12 @@ public class CaptureService extends Service {
         playBtn.setText(translating ? "⏸ Dừng" : "▶ Dịch");
         if (translating) {
             if (editing) toggleEdit();
-            if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) {
-                translating = false;
-                playBtn.setText("▶ Dịch");
-                bubbleText("", "Chưa có mã Gemini. Mở app Hóng Sub để nhập mã.", null, 6000);
-                return;
-            }
-            lastSig = null; sentMask = null; prevMask = null;
+            lastSig = null; lastOcr = ""; ocrMiss = 0; recentSents.clear(); sentMask = null; prevMask = null;
             prevSig = null;
             darkTicks = 0;
             bg.removeCallbacks(tick);
             bg.post(tick);
-            bubbleText("", "Đang chờ phụ đề...", null, 2500);
+            bubbleText("", noKeys() ? "Đang chờ phụ đề... (chưa có mã: dịch bằng máy dịch miễn phí)" : "Đang chờ phụ đề...", null, 2500);
         } else {
             bg.removeCallbacks(tick);
         }

@@ -505,10 +505,8 @@ public class MainActivity extends Activity {
             return;
         }
         if (prefs.keys().isEmpty() && prefs.groqKeys().isEmpty()) {
-            keyMsg.setTextColor(Color.rgb(255, 92, 92));
-            keyMsg.setText("Nhập mã Gemini trước khi bắt đầu.");
-            keysEt.requestFocus();
-            return;
+            keyMsg.setTextColor(Color.rgb(255, 159, 67));
+            keyMsg.setText("Chưa có mã: Hóng Sub dịch bằng máy dịch miễn phí. Nhập mã Gemini để dịch tự nhiên và đúng xưng hô hơn.");
         }
         if (!Settings.canDrawOverlays(this)) {
             status.setTextColor(Color.rgb(255, 159, 67));

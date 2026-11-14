@@ -41,7 +41,14 @@ function serveFiles() {
     const rel = decodeURIComponent(u.pathname).replace(/^\/+/, '');
     const file = path.normalize(path.join(ROOT, rel));
     if (!file.startsWith(ROOT)) return new Response('Forbidden', { status: 403 });
-    return net.fetch(pathToFileURL(file).toString());
+    return net.fetch(pathToFileURL(file).toString()).then((res) => {
+      const h = new Headers(res.headers);
+      h.set('Cross-Origin-Opener-Policy', 'same-origin');
+      h.set('Cross-Origin-Embedder-Policy', 'credentialless');
+      if (file.endsWith('.wasm')) h.set('Content-Type', 'application/wasm');
+      else if (file.endsWith('.mjs') || file.endsWith('.js')) h.set('Content-Type', 'text/javascript');
+      return new Response(res.body, { status: res.status, headers: h });
+    });
   });
 }
 
@@ -324,6 +331,13 @@ function setupIpc() {
     } catch (e) { return null; }
   });
   ipcMain.handle('app-version', () => app.getVersion());
+  ipcMain.handle('get-json', async (e, u) => {
+    const url = new URL(String(u));
+    if (url.hostname !== 'translate.googleapis.com') throw new Error('blocked');
+    const r = await net.fetch(url.toString());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
 }
 
 /* ---------- self test (used by the GitHub build on a Windows machine) ---------- */

@@ -11,10 +11,6 @@
     "start": "electron .",
     "dist": "electron-builder --win nsis --publish never"
   },
-  "dependencies": {
-    "tesseract.js": "7.0.0",
-    "@tesseract.js-data/eng": "1.0.0"
-  },
   "devDependencies": {
     "electron": "45.3.1",
     "electron-builder": "26.18.0"
@@ -31,10 +27,9 @@
       "app/**",
       "assets/**",
       "package.json",
-      "!node_modules/@tesseract.js-data/eng/4.0.0/**",
-      "!node_modules/tesseract.js-core/*.wasm",
       "!**/*.map",
-      "ps.js"
+      "ps.js",
+      "!node_modules/**"
     ],
     "directories": {
       "output": "dist"
@@ -63,5 +58,8 @@
         "to": "voices"
       }
     ]
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.31.1"
   }
 }

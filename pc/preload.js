@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
   update: () => ipcRenderer.invoke('update'),
+  version: () => ipcRenderer.invoke('app-version'),
+  getJson: (u) => ipcRenderer.invoke('get-json', u),
   ps: {
     state: () => ipcRenderer.invoke('ps-state'),
     login: () => ipcRenderer.invoke('ps-login'),
