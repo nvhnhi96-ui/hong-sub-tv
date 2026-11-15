@@ -26,6 +26,7 @@
       "zone.html",
       "full.html",
       "tts.ps1",
+      "winrect.ps1",
       "app/**",
       "assets/**",
       "package.json",

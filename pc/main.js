@@ -117,10 +117,54 @@ function createOverlay() {
    By default each window sits where that area is on the main screen, so the Vietnamese covers the English
    (right when the game runs full screen). Moved or resized windows keep their place. */
 const zoneWins = new Map();          // id -> { win, data, key }
+/* the picture Hóng Sub reads: the PS Remote Play window (followed as it moves) or a whole screen */
+let capturedId = '', capRect = null, rectProc = null, rectBuf = '', rectBusy = false, rectTimer = null;
+function capBase() {
+  if (capRect) return capRect;
+  const m = /^screen:(\d+)/.exec(capturedId || '');
+  const ds = screen.getAllDisplays();
+  const dp = (m && ds.find(x => String(x.id) === m[1])) || screen.getPrimaryDisplay();
+  return dp.bounds;
+}
+function rectStart() {
+  if (process.platform !== 'win32' || rectProc) return;
+  try { rectProc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'winrect.ps1')], { windowsHide: true }); }
+  catch (e) { rectProc = null; return; }
+  rectProc.stdout.setEncoding('utf8');
+  rectProc.stdout.on('data', (s) => {
+    rectBuf += s; let i;
+    while ((i = rectBuf.indexOf('\n')) >= 0) { const line = rectBuf.slice(0, i).trim(); rectBuf = rectBuf.slice(i + 1); rectBusy = false; rectGot(line); }
+  });
+  rectProc.on('exit', () => { rectProc = null; rectBusy = false; });
+  rectProc.on('error', () => { rectProc = null; rectBusy = false; });
+}
+function rectGot(line) {
+  const p = line.split(',').map(Number);
+  if (p.length < 5 || p.some(isNaN) || p[2] < 50 || p[3] < 50 || p[4]) return;   // closed or minimized: keep the last place
+  let r = { x: p[0], y: p[1], width: p[2], height: p[3] };
+  try { r = screen.screenToDipRect(null, r); } catch (e) { /* not Windows */ }
+  if (capRect && Math.abs(capRect.x - r.x) < 3 && Math.abs(capRect.y - r.y) < 3 && Math.abs(capRect.width - r.width) < 3 && Math.abs(capRect.height - r.height) < 3) return;
+  capRect = r; zonesFollow();
+}
+function rectAsk() {
+  const m = /^window:(\d+)/.exec(capturedId || '');
+  if (!m) { if (capRect) { capRect = null; zonesFollow(); } return; }
+  if (!zoneWins.size) return;
+  rectStart(); if (!rectProc || rectBusy) return;
+  rectBusy = true; try { rectProc.stdin.write(m[1] + '\n'); } catch (e) { rectBusy = false; }
+}
+/* windows the user did not place by hand follow the game window */
+function zonesFollow() {
+  for (const z of zoneWins.values()) {
+    if (z.win.isDestroyed() || (cfg.zoneWins || {})[z.data.id]) continue;
+    z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300);
+  }
+}
+/* exactly the area on the game picture, so the Vietnamese covers the original text and stays inside it */
 function zoneDefault(d) {
-  const wa = screen.getPrimaryDisplay().workArea;
-  return { x: Math.round(wa.x + d.x * wa.width), y: Math.round(wa.y + d.y * wa.height),
-    width: Math.max(240, Math.round(d.w * wa.width)), height: Math.max(80, Math.round(d.h * wa.height)) };
+  const b = capBase();
+  return { x: Math.round(b.x + d.x * b.width), y: Math.round(b.y + d.y * b.height),
+    width: Math.max(40, Math.round(d.w * b.width)), height: Math.max(24, Math.round(d.h * b.height)) };
 }
 function zoneBounds(d) {
   const s = (cfg.zoneWins || {})[d.id];
@@ -319,6 +363,8 @@ function setupCapture() {
     try {
       const srcs = await listSources(false);
       const s = srcs.find(x => x.id === chosenId) || srcs.find(x => /remote play/i.test(x.name)) || srcs.find(x => x.id.startsWith('screen'));
+      if (s && s.id !== capturedId) { capturedId = s.id; capRect = null; rectBusy = false; rectAsk(); zonesFollow(); }
+      if (!rectTimer) rectTimer = setInterval(rectAsk, 1500);
       cb(s ? { video: s } : {});
     } catch (e) { cb({}); }
   });
@@ -570,7 +616,7 @@ function setupIpc() {
   ipcMain.handle('zones-reset', () => { cfg.zoneWins = {}; saveCfg(); for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300); } return true; });
   ipcMain.on('zone-size', (e, id, w, h) => {
     const z = zoneWins.get(id); if (!z || z.win.isDestroyed() || !moveMode) return;
-    z.win.setSize(Math.max(200, Math.round(w)), Math.max(60, Math.round(h)));
+    z.win.setSize(Math.max(40, Math.round(w)), Math.max(24, Math.round(h)));
     cfg.zoneWins = cfg.zoneWins || {}; cfg.zoneWins[id] = z.win.getBounds(); saveCfg();
   });
   ipcMain.handle('zones-panel', (e, on) => { cfg.zonesHidden = !on; saveCfg(); zonesVisible(); return true; });
@@ -761,5 +807,5 @@ app.whenReady().then(async () => {
 });
 app.on('second-instance', showMain);
 app.on('before-quit', () => { quitting = true; });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper, rectProc]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

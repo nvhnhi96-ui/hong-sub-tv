@@ -1480,8 +1480,10 @@ var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0',
 S.zones=load('zones',[]); S.zcache=load('zcache',{}); S.zBusy=false; S.zLast=0; var zcv=document.createElement('canvas');
 function zName(z){ return z.name||('Vùng '+(S.zones.indexOf(z)+1)); }
 function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
-S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='app'; });
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show};})); }
+var zV2=load('zonesV2',false);
+S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
+save('zonesV2',true);
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1545,9 +1547,9 @@ function zList(){
       '<div class="hs-zopts">'+
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
       '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
-      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('app',z.show,'Đè lên chữ gốc trên hình')+opt('float',z.show,'Thêm khung nổi (khi chơi bằng app Sony)')+'</select></label>':'')+
+      (D?'<label><span>Chữ Việt hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên chữ gốc trên màn hình game')+opt('app',z.show,'Chỉ trên hình trong Hóng Sub')+'</select></label>':'')+
       '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
-      '<label><span>Thời gian hiện</span><select class="hs-in" data-f="hold">'+[['0','Đến khi chữ gốc đổi hay mất'],['5','5 giây'],['8','8 giây'],['12','12 giây'],['20','20 giây'],['30','30 giây'],['60','1 phút']].map(function(o){return opt(o[0],String(z.hold||'0'),o[1]);}).join('')+'</select></label>'+
+      '<label title="0 giây: chữ Việt ở lại đến khi chữ gốc đổi hay mất"><span>Số giây hiện (0 = đến khi chữ gốc đổi)</span><input class="hs-in" type="number" inputmode="numeric" min="0" max="600" step="1" data-f="hold" value="'+(+z.hold||0)+'" aria-label="Số giây chữ Việt hiện trên vùng"></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="tv"'+(z.tv!==false?' checked':'')+'> Hiện trên TV</label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
       '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
@@ -1559,10 +1561,11 @@ function zList(){
     var z=S.zones.filter(function(x){return x.id===row.dataset.id;})[0];
     row.querySelectorAll('select,input').forEach(function(el){ el.addEventListener('change',function(){
       var v=el.type==='checkbox'?el.checked:el.value; if(el.dataset.f==='name') v=String(v).trim();
+      if(el.dataset.f==='hold'){ v=Math.max(0,Math.min(600,Math.round(+v)||0)); el.value=v; if(z.hide&&z.vi){ z.hide=false; } }
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on') z.lastText='';
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='hold') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
     row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
     row.querySelector('[data-a=del]').addEventListener('click',function(){ zDelete(z); });
@@ -1572,7 +1575,7 @@ $('hsZoneAdd').addEventListener('click',function(){
   if(S.zones.length>=ZMAX||!S.stream) return;
   var used=S.zones.map(function(z){return z.kind;}), kind=['quest','item','map','menu'].filter(function(k){return used.indexOf(k)<0;})[0]||'other';
   var n=S.zones.length;
-  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'app',hold:'0',tv:true};
+  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'float',hold:0,tv:true};
   S.zones.push(z); zSave(); zShow(); zList(); zPush(); drawFor(z);
 });
 $('hsZoneNow').addEventListener('click',function(){ zoneTick(true); });
@@ -1613,12 +1616,15 @@ async function zoneTick(force,only){
       if(!force){
         if(m.ink<MW*MH*0.004){                                  /* the text went away: take the translation away too */
           z.prevMask=m; z.empty=(z.empty||0)+1;
-          if(z.empty>=2&&(z.vi||z.lastText)){ var had=!!z.vi; z.vi=''; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); if(had&&!(+z.hold>0)) zTv(z); }
+          if(z.empty>=2&&(z.vi||z.lastText)){
+            if(+z.hold>0){ z.lastText=''; z.doneMask=null; }   /* a set number of seconds: the Vietnamese stays for that long */
+            else{ var had=!!z.vi; z.vi=''; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); if(had) zTv(z); }
+          }
           continue;
         }
         z.empty=0;
         var changed=!z.doneMask||maskDiff(m,z.doneMask)>0.12, steady=z.prevMask&&maskDiff(m,z.prevMask)<0.06;
-        if(changed&&z.vi&&z.doneMask){ z.vi=''; zShow(); zPush(); if(!(+z.hold>0)) zTv(z); }   /* old text is gone: do not leave its translation up */
+        if(changed&&z.vi&&z.doneMask&&!(+z.hold>0)){ z.vi=''; zShow(); zPush(); zTv(z); }   /* old text is gone: do not leave its translation up */
         z.prevMask=m; if(!changed||!steady) continue;
       }
       z.doneMask=m;
@@ -1653,12 +1659,12 @@ function zTv(z){
 }
 function zHold(z){
   clearTimeout(ZT[z.id]);
-  if(+z.hold>0&&z.vi) ZT[z.id]=setTimeout(function(){ z.hide=true; zShow(); },+z.hold*1000);
+  if(+z.hold>0&&z.vi) ZT[z.id]=setTimeout(function(){ z.hide=true; zShow(); zPush(); zTv(z); },+z.hold*1000);
 }
 /* the Windows app shows these translations in a small floating panel too */
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
