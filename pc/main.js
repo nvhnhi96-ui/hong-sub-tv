@@ -557,6 +557,14 @@ function setupIpc() {
   }
   ipcMain.handle('tv-ping', (e, ip) => tvHttp(ip, '/ping'));
   ipcMain.handle('tv-send', (e, ip, msg) => tvHttp(ip, '/sub', msg));
+  /* the TV code way, through honggame.store: sent from here so the page's app:// address never meets CORS */
+  ipcMain.handle('tv-relay', async (e, msg) => {
+    try {
+      const r = await net.fetch('https://honggame.store/wp-json/hgs-sub/v1/push', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'HongSub/' + app.getVersion() }, body: JSON.stringify(msg) });
+      const body = (await r.text()).slice(0, 200);
+      return { ok: r.ok, status: r.status, body };
+    } catch (err) { return { ok: false, status: 0, err: String(err && err.message || err) }; }
+  });
   ipcMain.on('full-overlay', (e, d) => fullShow(d));
   ipcMain.handle('zones-reset', () => { cfg.zoneWins = {}; saveCfg(); for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300); } return true; });
   ipcMain.on('zone-size', (e, id, w, h) => {
@@ -701,6 +709,13 @@ async function runSelftest() {
     await new Promise(r => setTimeout(r, 500));
     const img2 = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main-ps.png'), img2.toPNG());
   } catch (e) { log('picture test failed', String(e)); }
+  try {
+    const rt = await win.webContents.executeJavaScript(`(async function(){ var o={}; var body=JSON.stringify({room:'CITEST',vi:'selftest',kind:'notice'});
+      try{ var r=await fetch('https://honggame.store/wp-json/hgs-sub/v1/push',{method:'POST',headers:{'Content-Type':'application/json'},body:body}); o.page=r.status; }catch(e){ o.page='ERR '+e.message; }
+      try{ var m=await window.hsDesktop.tv.relay({room:'CITEST',vi:'selftest main',kind:'notice'}); o.main=m.status||m.err; }catch(e){ o.main='ERR '+e.message; }
+      return JSON.stringify(o); })()`);
+    log('relay test', rt);
+  } catch (e) { log('relay test failed', String(e)); }
   if (process.env.HS_TEST_AIV === '1') {
     try {
       const t0 = Date.now(); const st = await aivInstall(); log('aiv install', JSON.stringify({ installed: st.installed, err: st.err, ms: Date.now() - t0, mb: Math.round(st.total / 1048576) }));

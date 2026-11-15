@@ -38,7 +38,8 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   tv: {
     find: () => ipcRenderer.invoke('tv-find'),
     ping: (ip) => ipcRenderer.invoke('tv-ping', ip),
-    send: (ip, msg) => ipcRenderer.invoke('tv-send', ip, msg)
+    send: (ip, msg) => ipcRenderer.invoke('tv-send', ip, msg),
+    relay: (msg) => ipcRenderer.invoke('tv-relay', msg)
   },
   onFull: (cb) => ipcRenderer.on('full', (e, d) => cb(d)),
   onZone: (cb) => ipcRenderer.on('zone', (e, d) => cb(d)),

@@ -1885,7 +1885,8 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
 function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el?(el.value||'').trim():''; }
 function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; return o; }
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
-  return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }); }
+  if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
+  return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
 function tvSend(o){
   o=tvBody(o); var ip=tvIp();
   if(ip) return D.tv.send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); if(tvCode().length>=4) return tvRelay(o); throw new Error((r&&r.err)||'TV không trả lời'); });
