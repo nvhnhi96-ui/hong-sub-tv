@@ -161,7 +161,7 @@ function setSource(n){
   var s=document.createElement('source');
   s.setAttribute('type','service/webos-external'); s.setAttribute('src','ext://hdmi:'+n);
   s.addEventListener('error',function(){ srcFail(n); });
-  video.appendChild(s);
+  video.appendChild(s); gameSound();
   try{ video.load(); var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){}
   /* in a web browser (not the installed app) the TV may not allow HDMI inside the page */
   setTimeout(function(){ if(P.src===n&&!srcOk&&(!webos||!packaged)) srcFail(n); },webos?5000:1500);
@@ -172,8 +172,13 @@ function srcFail(n){
   $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV không mở được hình HDMI. Phụ đề vẫn hiện ở đây; muốn có cả hình game thì cài app Hóng Sub cho LG.';
 }
 function homeBtns(){ [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.className='btn'+(+b.getAttribute('data-hdmi')===P.src?' on':''); }); }
-video.addEventListener('playing',function(){ srcOk=true; homeHide(); });
-video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); });
+function gameSound(){
+  try{ video.muted=false; video.volume=1; }catch(e){}
+  try{ var at=video.audioTracks; if(at&&at.length){ var any=false; for(var i=0;i<at.length;i++) if(at[i].enabled) any=true; if(!any) at[0].enabled=true; } }catch(e){}
+}
+video.addEventListener('playing',function(){ srcOk=true; homeHide(); gameSound(); });
+video.addEventListener('volumechange',function(){ if(video.muted) gameSound(); });
+video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); gameSound(); });
 function homeShow(){ $('home').className=''; }
 function homeHide(){ $('home').className='off'; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },6000); }
 
@@ -215,8 +220,10 @@ function zoneShow(j,vi){
 }
 
 /* ---------- reading aloud, one line after another ----------
-   The TV's own Vietnamese voice when it has one; most LG TVs do not, so then Google's Vietnamese voice is played as audio. */
-var viVoice=null, aq=[], audio=null;
+   The TV's own Vietnamese voice when it has one; most LG TVs do not, so then Google's Vietnamese voice is fetched
+   (from Hóng Sub on the computer over the home network, else through honggame.store) and played with Web Audio.
+   Never an <audio> element: on webOS it takes the TV's media player away from the HDMI picture and the game goes silent. */
+var viVoice=null, aq=[], audio=null, actx=null;
 function pickVoice(){ try{ var v=window.speechSynthesis.getVoices(); for(var i=0;i<v.length;i++) if(/^vi/i.test(v[i].lang)){ viVoice=v[i]; return; } }catch(e){} }
 if(window.speechSynthesis){ pickVoice(); try{ window.speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
 function chunks(t){
@@ -230,14 +237,39 @@ function chunks(t){
   if(s) out.push(s);
   return out;
 }
+function ac(){
+  if(!actx){ var C=window.AudioContext||window.webkitAudioContext; if(C){ try{ actx=new C(); }catch(e){ actx=null; } } }
+  if(actx&&actx.state==='suspended'&&actx.resume){ try{ actx.resume(); }catch(e){} }
+  return actx;
+}
+function ttsUrl(t){
+  var q=encodeURIComponent(t);
+  return lanOk()&&P.pc?'http://'+P.pc+'/tts?code='+P.code+'&q='+q:RELAY+'tts?q='+q;
+}
+/* fetched as soon as it is queued, so the next line is ready when the one before ends */
+function ttsLoad(it){
+  var c=ac(); if(!c){ it.done=true; return; }
+  var x=new XMLHttpRequest(), fin=function(buf){ if(it.done) return; it.buf=buf||null; it.done=true; if(aq[0]===it) playNext(); };
+  try{
+    x.open('GET',ttsUrl(it.t),true); x.responseType='arraybuffer'; x.timeout=9000;
+    x.onload=function(){
+      if(x.status!==200||!x.response||x.response.byteLength<200){ fin(null); return; }
+      try{ c.decodeAudioData(x.response,function(b){ fin(b); },function(){ fin(null); }); }catch(e){ fin(null); }
+    };
+    x.onerror=function(){ fin(null); }; x.ontimeout=function(){ fin(null); };
+    x.send();
+  }catch(e){ fin(null); }
+}
 function playNext(){
-  if(audio||!aq.length) return;
-  var it=aq.shift();
-  audio=new Audio('https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q='+encodeURIComponent(it.t));
-  audio.playbackRate=it.fast?1.25:1.1;
-  var done=function(){ audio=null; playNext(); };
-  audio.onended=done; audio.onerror=done;
-  try{ var pr=audio.play(); if(pr&&pr.catch) pr.catch(function(){ done(); }); }catch(e){ done(); }
+  if(audio||!aq.length||!aq[0].done) return;
+  var it=aq.shift(), c=ac();
+  if(!it.buf||!c){ playNext(); return; }
+  var s=c.createBufferSource(), cur={src:s};
+  s.buffer=it.buf; if(it.fast&&s.playbackRate) s.playbackRate.value=1.12;
+  s.connect(c.destination);
+  audio=cur;
+  s.onended=function(){ if(audio===cur){ audio=null; playNext(); } };
+  try{ s.start(0); }catch(e){ audio=null; playNext(); }
 }
 function say(t){
   if(!t) return;
@@ -249,10 +281,16 @@ function say(t){
   }
   var behind=!!audio||aq.length>0;
   if(aq.length>=6) aq.length=0;                       /* far behind: drop what is waiting */
-  chunks(t).forEach(function(c){ aq.push({t:c,fast:behind}); });
+  chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
   playNext();
 }
-function sayStop(){ try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){} aq.length=0; if(audio){ try{ audio.pause(); }catch(e){} audio=null; } }
+function sayStop(){
+  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
+  aq.length=0;
+  if(audio){ try{ audio.src.stop(0); }catch(e){} audio=null; }
+}
+/* LG: Web Audio is not stopped by the TV when the app goes to the background */
+document.addEventListener('visibilitychange',function(){ if(document.hidden) sayStop(); });
 
 /* ---------- messages from Hóng Sub on the computer, through honggame.store ---------- */
 var lastSeq=-1, okAt=0, fails=0;

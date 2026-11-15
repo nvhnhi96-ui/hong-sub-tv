@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const dgram = require('dgram');
 const os = require('os');
 let ssh2 = null;
@@ -111,6 +112,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
     if (u.pathname === '/ping') { reply(res, 200, { app: 'hongsub-pc', ok: true }); return; }
     if (!/^[A-Z0-9]{4,8}$/.test(code)) { reply(res, 400, { ok: false }); return; }
     if (u.pathname === '/alive') { seen.set(code, Date.now()); reply(res, 200, { ok: true }); return; }
+    if (u.pathname === '/tts') { ttsServe(res, u.searchParams.get('q')); return; }
     if (u.pathname === '/sub') {
       seen.set(code, Date.now());
       const b = box(code), since = parseInt(u.searchParams.get('since') || '-1', 10);
@@ -122,6 +124,28 @@ function setup({ ipcMain, app, net, getWin, log }) {
     }
     reply(res, 404, { ok: false });
   });
+  /* the Vietnamese voice for the TV, as plain bytes: the TV plays it through Web Audio,
+     because an <audio> element on webOS takes the sound away from the game on HDMI */
+  const ttsCache = new Map();
+  function ttsGoogle(q) {
+    return new Promise((resolve) => {
+      const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + encodeURIComponent(q);
+      const rq = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 8000 }, (r) => {
+        if (r.statusCode !== 200) { r.resume(); resolve(null); return; }
+        const parts = []; r.on('data', (d) => parts.push(d)); r.on('end', () => resolve(Buffer.concat(parts))); r.on('error', () => resolve(null));
+      });
+      rq.on('timeout', () => { rq.destroy(); resolve(null); }); rq.on('error', () => resolve(null));
+    });
+  }
+  async function ttsServe(res, q) {
+    q = String(q || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!q) { reply(res, 400, { ok: false }); return; }
+    let buf = ttsCache.get(q);
+    if (!buf) { buf = await ttsGoogle(q); if (buf && buf.length > 200) { ttsCache.set(q, buf); if (ttsCache.size > 60) ttsCache.delete(ttsCache.keys().next().value); } }
+    if (!buf || buf.length <= 200) { reply(res, 502, { ok: false }); return; }
+    res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600', 'Content-Length': buf.length });
+    res.end(buf);
+  }
   server.on('error', (e) => { if (log) log('lg lan: ' + e.message); if (e.code === 'EADDRINUSE' && lanPort === LAN_PORT) { lanPort = LAN_PORT + 1; server.listen(lanPort, '0.0.0.0'); } });
   lanPort = LAN_PORT; try { server.listen(lanPort, '0.0.0.0'); } catch (e) { /* ignore */ }
   function push(code, msg) {
