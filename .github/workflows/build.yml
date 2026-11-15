@@ -172,6 +172,11 @@ jobs:
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '--selftest' -PassThru
           if (-not $p.WaitForExit(480000)) { Stop-Process -Id $p.Id -Force; Write-Host 'selftest timed out' }
           Get-Content "$env:HS_SELFTEST_OUT\log.txt" -ErrorAction SilentlyContinue
+          $pic = Select-String -Path "$env:HS_SELFTEST_OUT\log.txt" -Pattern '^picture test (.*)$' | Select-Object -Last 1
+          if (-not $pic) { Write-Host 'PS picture test missing'; exit 1 }
+          $j = $pic.Matches[0].Groups[1].Value | ConvertFrom-Json
+          if ($j.decodedFrames -lt 5 -or $j.split -lt 1) { Write-Host "PS picture test failed: $($pic.Line)"; exit 1 }
+          Write-Host "PS picture test ok: $($j.decodedFrames) frames, settings sent apart $($j.split)x"
           Get-Content "$env:HS_SELFTEST_OUT\result.json" -ErrorAction SilentlyContinue
 
       - name: Save self test pictures to branch selftest-output

@@ -2915,7 +2915,7 @@ function psStartView(){
   }
   PS.ctx.fillStyle='#000'; PS.ctx.fillRect(0,0,PS.cvs.width,PS.cvs.height);
   var stage=$('hsStage'); if(PS.cvs.parentNode!==stage) stage.insertBefore(PS.cvs,$('hsOv'));
-  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now();
+  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now();
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
   psWatchStop(); if(!D.selftest){ PS.watch=setInterval(psWatchTick,1000); psWaitDraw(0,'Đang nối với máy'); }
   PS.stream=PS.cvs.captureStream(30);
@@ -2952,12 +2952,18 @@ function psVideo(payload){
   if(!PS.cvs) return;
   if(++PS.pk===1) log('PS: gói hình đầu tiên sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây');
   var data=payload.subarray(5), info=nalInfo(data), key=info.types.indexOf(5)>=0;
+  var slice=info.types.indexOf(1)>=0||key;
   if(info.sps>=0){
     var codec='avc1.'+hex2(data[info.sps+1])+hex2(data[info.sps+2])+hex2(data[info.sps+3]);
+    /* the PS sends the picture settings (SPS/PPS) once, alone, when the stream starts; keep them for every key frame */
+    if(!slice){ PS.hdr=new Uint8Array(data); PS.hdrCodec=codec; log('PS: nhận thông số hình '+codec+' ('+data.length+' byte)'); }
     if(!PS.dec||PS.dec.state==='closed'||codec!==PS.codec){ if(PS.dec){try{PS.dec.close();}catch(e){}} psDecoder(codec); }
+    if(!slice) return;
   }
+  if((!PS.dec||PS.dec.state==='closed')&&PS.hdrCodec&&(PS.decTry=(PS.decTry||0)+1)<=20) psDecoder(PS.hdrCodec);
   if(!PS.dec||PS.dec.state!=='configured'){ psIdr(); return; }
   if(PS.waitKey){ if(!key){ psIdr(); return; } PS.waitKey=false; }
+  if(key&&info.sps<0&&PS.hdr){ var full=new Uint8Array(PS.hdr.length+data.length); full.set(PS.hdr,0); full.set(data,PS.hdr.length); data=full; }
   if(PS.dec.decodeQueueSize>10&&!key){ PS.waitKey=true; psIdr(); return; } /* falling behind: skip to the next key frame instead of showing broken picture */
   try{ PS.dec.decode(new EncodedVideoChunk({type:key?'key':'delta',timestamp:(PS.ts+=16667),data:data})); }
   catch(e){ PS.waitKey=true; psIdr(); }
@@ -3116,7 +3122,16 @@ async function psSelfTest(){
       var vf=new VideoFrame(c,{timestamp:i*33333}); enc.encode(vf,{keyFrame:i===0}); vf.close(); }
     await enc.flush(); enc.close(); out.chunks=chunks.length;
     PS.host={id:'test',name:'test'}; psStartView();
-    for(var k=0;k<chunks.length;k++){ var pl=new Uint8Array(chunks[k].length+5); pl.set(chunks[k],5); psVideo(pl); }
+    /* like the PS5: SPS/PPS once on their own, then frames without them */
+    var split=function(u8){ var st=[]; for(var i=0;i+3<u8.length;i++){ if(u8[i]===0&&u8[i+1]===0&&(u8[i+2]===1||(u8[i+2]===0&&u8[i+3]===1))){ st.push(i); i+=2; } } var out=[]; for(var s=0;s<st.length;s++){ var a=st[s], b=s+1<st.length?st[s+1]:u8.length, j=u8[a+2]===1?a+3:a+4; out.push({t:u8[j]&31,b:u8.subarray(a,b)}); } return out; };
+    var join=function(parts){ var n=0; parts.forEach(function(x){n+=x.length;}); var o=new Uint8Array(n), p=0; parts.forEach(function(x){o.set(x,p); p+=x.length;}); return o; };
+    var send=function(u8){ var pl=new Uint8Array(u8.length+5); pl.set(u8,5); psVideo(pl); };
+    var hdrSent=false; out.split=0;
+    for(var k=0;k<chunks.length;k++){
+      var nals=split(chunks[k]), hdr=nals.filter(function(x){return x.t===7||x.t===8;}), rest=nals.filter(function(x){return x.t!==7&&x.t!==8;});
+      if(hdr.length){ out.split++; if(!hdrSent){ send(join(hdr.map(function(x){return x.b;}))); hdrSent=true; } }
+      send(join(rest.map(function(x){return x.b;})));
+    }
     await sleepMs(1500); out.decodedFrames=PS.frames; out.codec=PS.codec; out.canvas=PS.cvs.width+'x'+PS.cvs.height;
   }catch(e){ out.err=String(e&&e.message||e); }
   return out;
