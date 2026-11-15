@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><!-- Google's Vietnamese voice refuses requests that name another site -->
 <title>Hóng Sub TV</title>
 <!-- Hóng Sub for LG TVs (webOS). The same file runs as the installed app (.ipk) and as a page in the TV's web browser
      (honggame.store/lg). Plain ES5 and XMLHttpRequest so it also runs on older TVs (webOS 3, Chromium 38). -->
@@ -134,11 +135,12 @@ var P={
   size:load('size',30),
   pos:load('pos','bottom'),
   en:load('en',false),
-  read:load('read',true)              /* read aloud when the computer asks for it */
+  read:load('read','auto')            /* auto: when the computer asks for it; on: always; off */
 };
 /* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
 function launchCode(){ try{ var s=window.PalmSystem&&window.PalmSystem.launchParams; var j=s?(typeof s==='string'?JSON.parse(s):s):null; var c=j&&j.code?String(j.code).toUpperCase():''; return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }catch(e){ return ''; } }
 var lc=launchCode(); if(lc){ P.code=lc; save('code',lc); }
+if(P.read===true) P.read='auto'; else if(P.read===false) P.read='off';
 if(!/^[A-Z0-9]{4,8}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); }
 
 /* ---------- picture from the console: webOS lets an app show an HDMI input inside the page ---------- */
@@ -177,6 +179,7 @@ function applyLook(){
   $('sub').className=($('sub').className.indexOf('on')>=0?'on ':'')+(P.pos==='top'?'top':'');
 }
 function showLine(who,vi,en,hold,readIt){
+  if(readIt===undefined) readIt=false;
   $('vi').innerHTML=(who?'<span class="who">'+esc(who)+':</span>':'')+esc(vi);
   $('en').innerHTML=P.en&&en?esc(en):''; $('en').style.display=P.en&&en?'block':'none';
   $('sub').className='on'+(P.pos==='top'?' top':'');
@@ -184,22 +187,45 @@ function showLine(who,vi,en,hold,readIt){
   if(readIt) say(vi);
 }
 
-/* ---------- reading aloud: the TV's own voice, one line after another ---------- */
-var sayQ=0, viVoice=null;
+/* ---------- reading aloud, one line after another ----------
+   The TV's own Vietnamese voice when it has one; most LG TVs do not, so then Google's Vietnamese voice is played as audio. */
+var viVoice=null, aq=[], audio=null;
 function pickVoice(){ try{ var v=window.speechSynthesis.getVoices(); for(var i=0;i<v.length;i++) if(/^vi/i.test(v[i].lang)){ viVoice=v[i]; return; } }catch(e){} }
 if(window.speechSynthesis){ pickVoice(); try{ window.speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
-function luna(uri,params){ try{ var b=new window.PalmServiceBridge(); b.onservicecallback=function(){}; b.call(uri,JSON.stringify(params)); return true; }catch(e){ return false; } }
+function chunks(t){
+  var out=[], s=String(t).replace(/\s+/g,' ').trim();
+  while(s.length>180){
+    var cut=-1, seps=['. ','! ','? ','… ','; ',', ',' '];
+    for(var i=0;i<seps.length&&cut<0;i++){ var k=s.lastIndexOf(seps[i],180); if(k>40) cut=k+1; }
+    if(cut<0) cut=180;
+    out.push(s.slice(0,cut).trim()); s=s.slice(cut).trim();
+  }
+  if(s) out.push(s);
+  return out;
+}
+function playNext(){
+  if(audio||!aq.length) return;
+  var it=aq.shift();
+  audio=new Audio('https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q='+encodeURIComponent(it.t));
+  audio.playbackRate=it.fast?1.25:1.1;
+  var done=function(){ audio=null; playNext(); };
+  audio.onended=done; audio.onerror=done;
+  try{ var pr=audio.play(); if(pr&&pr.catch) pr.catch(function(){ done(); }); }catch(e){ done(); }
+}
 function say(t){
-  if(!P.read||!t) return;
+  if(!t) return;
   if(window.speechSynthesis&&viVoice){
     var ss=window.speechSynthesis;
     if(ss.pending) ss.cancel();                       /* two lines already waiting: start fresh */
     var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=ss.speaking?1.15:1.05;
     ss.speak(u); return;
   }
-  luna('luna://com.webos.service.tts/speak',{text:t,language:'vi-VN',clear:false});
+  var behind=!!audio||aq.length>0;
+  if(aq.length>=6) aq.length=0;                       /* far behind: drop what is waiting */
+  chunks(t).forEach(function(c){ aq.push({t:c,fast:behind}); });
+  playNext();
 }
-function sayStop(){ try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){} luna('luna://com.webos.service.tts/stop',{}); }
+function sayStop(){ try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){} aq.length=0; if(audio){ try{ audio.pause(); }catch(e){} audio=null; } }
 
 /* ---------- messages from Hóng Sub on the computer, through honggame.store ---------- */
 var lastSeq=-1, okAt=0, fails=0;
@@ -217,8 +243,8 @@ function alive(){ if(!document.hidden) xhr('POST',RELAY+'push',{room:P.code+'T',
 setInterval(alive,20000);
 function handle(j){
   var kind=j.kind||'sub', vi=String(j.vi||'').trim();
-  var readIt=j.hasOwnProperty('speak')?!!j.speak:false;    /* the computer decides where lines are read */
-  if(j.hasOwnProperty('speak')&&!j.speak) sayStop();
+  var readIt=P.read==='on'||(P.read==='auto'&&!!j.speak);   /* "auto": the computer decides where lines are read */
+  if(P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak) sayStop();
   var size=+j.size||0, pos=j.pos||'', changed=false;
   if(size>=18&&size!==P.size){ P.size=size; save('size',size); changed=true; }
   if((pos==='top'||pos==='bottom')&&pos!==P.pos){ P.pos=pos; save('pos',pos); changed=true; }
@@ -255,7 +281,7 @@ var ROWS=[
   {k:'size',t:'Cỡ chữ',v:function(){ return P.size; },ch:function(d){ P.size=Math.max(18,Math.min(90,P.size+d*4)); save('size',P.size); applyLook(); sample(); }},
   {k:'pos',t:'Chỗ hiện chữ',v:function(){ return P.pos==='top'?'Trên màn hình':'Dưới màn hình'; },ch:function(){ P.pos=P.pos==='top'?'bottom':'top'; save('pos',P.pos); applyLook(); sample(); }},
   {k:'en',t:'Hiện câu gốc tiếng Anh',v:function(){ return P.en?'Bật':'Tắt'; },ch:function(){ P.en=!P.en; save('en',P.en); sample(); }},
-  {k:'read',t:'Đọc to trên TV',v:function(){ return P.read?'Theo máy tính':'Tắt'; },ch:function(){ P.read=!P.read; save('read',P.read); if(!P.read) sayStop(); }},
+  {k:'read',t:'Đọc to trên TV',v:function(){ return P.read==='on'?'Luôn đọc':P.read==='off'?'Tắt':'Theo máy tính'; },ch:function(d){ var o=['auto','on','off'], i=(o.indexOf(P.read)+(d<0?2:1))%3; P.read=o[i]; save('read',P.read); if(P.read==='off') sayStop(); else if(P.read==='on') say('Đã bật đọc phụ đề trên TV.'); }},
   {k:'code',t:'Mã TV',v:function(){ return newCode?'Bấm OK lần nữa để đổi':P.code; },act:function(){ if(!newCode){ newCode=1; draw(); return; } newCode=0; P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); lastSeq=-1; codeDraw(); hello(); draw(); }},
   {k:'test',t:'Xem thử phụ đề',v:function(){ return 'OK'; },act:function(){ sample(); }},
   {k:'exit',t:'Thoát Hóng Sub',v:function(){ return 'OK'; },act:function(){ quit(); }}

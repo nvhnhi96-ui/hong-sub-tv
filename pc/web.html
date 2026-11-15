@@ -66,7 +66,8 @@ html,body{margin:0;background:#ECEEF1}
 .hs-zone .hd .x:hover{background:rgba(0,0,0,.4);color:#fff}
 .hs-zone .rs{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border:3px solid;border-left:0;border-top:0;pointer-events:auto;cursor:nwse-resize;touch-action:none}
 .hs-zone.drag{background:rgba(255,255,255,.06)}
-.hs-zone .tx{position:absolute;inset:0;background:rgba(10,12,16,.88);color:#fff;padding:6px 8px;line-height:1.35;white-space:pre-line;overflow:auto;border-radius:4px;font-weight:500}
+.hs-zone .tx{position:absolute;inset:0;background:rgba(8,9,12,.92);color:#fff;padding:5px 8px;line-height:1.3;white-space:pre-line;overflow:hidden;border-radius:4px;font-weight:600;text-shadow:0 1px 2px #000}
+.hs-zone .tx.wait{display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);letter-spacing:.3em}
 .hs-zrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
 .hs-zhead{display:flex;gap:8px;align-items:center}.hs-zhead input.hs-in{flex:1;font-weight:700;padding:6px 8px!important}
 .hs-zopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-items:end}.hs-zopts label span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
@@ -1032,7 +1033,7 @@ ov.addEventListener('pointermove',function(e){
 });
 ov.addEventListener('pointerup',function(){
   if(!start) return; start=null;
-  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
+  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; z.vi=''; later(function(){ if(S.stream) zoneTick(true,z); },350); zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
   save('region',S.region); save('regionSet',true); setDraw(false); S.lastSig=null; steps();
 });
 
@@ -1042,7 +1043,7 @@ var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0',
 S.zones=load('zones',[]); S.zcache=load('zcache',{}); S.zBusy=false; S.zLast=0; var zcv=document.createElement('canvas');
 function zName(z){ return z.name||('Vùng '+(S.zones.indexOf(z)+1)); }
 function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
-S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='float'; });
+S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='app'; });
 function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
@@ -1084,8 +1085,13 @@ function zShow(){
     var c=zCol(z); el.style.borderColor=c; el.querySelector('.hd').style.background=c; el.querySelector('.rs').style.borderColor=c;
     el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+(z.mode==='key'?' · bấm phím':'');
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
-    var tx=el.querySelector('.tx'); tx.hidden=!z.vi||!!z.hide; tx.textContent=z.vi||'';
-    tx.style.fontSize=Math.max(11,Math.min(18,Math.round(z.h*b.h/Math.max(2,(z.vi||'').split('\n').length+1))))+'px';
+    var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
+    tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
+    if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
+      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap={s:20,m:28,l:36}[z.size]||28;
+      var fs=Math.max(10,Math.min(cap,bh/lines*0.62)); tx.style.fontSize=fs+'px';
+      for(var k=0;k<12&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)&&fs>9;k++){ fs*=0.9; tx.style.fontSize=fs+'px'; }
+    } else tx.style.fontSize='16px';
   });
   [].slice.call(zLayer.children).forEach(function(el){ if(!S.zones.some(function(z){return z.el===el;})) el.remove(); });
 }
@@ -1101,7 +1107,7 @@ function zList(){
       '<div class="hs-zopts">'+
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
       '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
-      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Khung nổi riêng')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
+      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('app',z.show,'Đè lên chữ gốc trên hình')+opt('float',z.show,'Thêm khung nổi (khi chơi bằng app Sony)')+'</select></label>':'')+
       '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
       '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
@@ -1124,7 +1130,7 @@ $('hsZoneAdd').addEventListener('click',function(){
   if(S.zones.length>=ZMAX||!S.stream) return;
   var used=S.zones.map(function(z){return z.kind;}), kind=['quest','item','map','menu'].filter(function(k){return used.indexOf(k)<0;})[0]||'other';
   var n=S.zones.length;
-  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'float'};
+  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'app'};
   S.zones.push(z); zSave(); zShow(); zList(); zPush(); drawFor(z);
 });
 $('hsZoneNow').addEventListener('click',function(){ zoneTick(true); });
@@ -1152,8 +1158,9 @@ async function zTranslate(z,text){
 }
 /* the extra areas are checked about once a second, after the subtitle (which always goes first) */
 async function zoneTick(force,only){
-  if(!S.stream||S.zBusy||!S.zones.length) return;
-  if(!force&&(S.ocrBusy||Date.now()-S.zLast<250)) return;
+  if(!S.stream||!S.zones.length) return;
+  if(S.zBusy){ if(force) later(function(){ zoneTick(force,only); },300); return; }   /* a press or a new area waits its turn instead of being dropped */
+  if(!force&&Date.now()-S.zLast<400) return;
   S.zLast=Date.now(); S.zBusy=true;
   try{
     for(var i=0;i<S.zones.length;i++){
@@ -1184,8 +1191,9 @@ async function zoneTick(force,only){
       }
       if(!text||(!force&&similar(text,z.lastText||''))) continue;
       z.lastText=text; log(zName(z)+': '+text.replace(/\n/g,' / ').slice(0,120));
-      var t=await zTranslate(z,text);
-      if(!t.vi) continue;
+      z.pending=true; if(!z.vi) zShow();                  /* cover the foreign text while it is being translated */
+      var t; try{ t=await zTranslate(z,text); } finally{ z.pending=false; }
+      if(!t.vi){ zShow(); continue; }
       z.vi=t.vi; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+t.vi.replace(/\n/g,' / ').slice(0,120));
       zShow(); zList(); zPush();
       if(z.speak&&$('hsSpeak').checked&&speakWhere()!=='tv') devSpeak(t.vi.replace(/\n/g,'. '),voiceMode(),'',null,null,true);
@@ -1195,7 +1203,8 @@ async function zoneTick(force,only){
 }
 /* the Windows app shows these translations in a small floating panel too */
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
-function zPush(){ if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show!=='app';}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
+function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -2465,7 +2474,15 @@ function bindRange(id,vid,key,fn){var el=$(id),v=load(key,null); if(v!==null) el
   el.addEventListener('input',function(){$(vid).textContent=el.value; save(key,el.value); fn&&fn(el.value);});}
 bindRange('hsRate','hsRateV','rate');
 bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
-(function(){ var w=$('hsSpeakWhere'); if(!w) return; w.value=load('speakWhere','pc')||'pc'; w.addEventListener('change',function(){ save('speakWhere',this.value); if(this.value==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }); })();
+(function(){
+  /* where lines are read aloud: the same choice on the Voice page and in the TV card */
+  var els=['hsSpeakWhere','hsTvRead'].map(function(id){return $(id);}).filter(Boolean); if(!els.length) return;
+  var v=load('speakWhere','pc')||'pc'; els.forEach(function(e){ e.value=v; });
+  els.forEach(function(w){ w.addEventListener('change',function(){
+    var val=this.value; save('speakWhere',val); els.forEach(function(e){ e.value=val; });
+    if(val==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){});
+  }); });
+})();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});
 $('hsRead').value=load('read','local');

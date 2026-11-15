@@ -19,8 +19,8 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Dịch và mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề và độ trễ',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
-var SETP=['dich','vung','giong','phude','nhanvat','phim'];
+var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Dịch và mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề và độ trễ',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
+var SETP=['game','dich','vung','giong','phude','nhanvat','phim'];
 function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
   if(!TITLES[p]) p='choi';

@@ -67,7 +67,8 @@ html,body{margin:0;background:#ECEEF1}
 .hs-zone .hd .x:hover{background:rgba(0,0,0,.4);color:#fff}
 .hs-zone .rs{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border:3px solid;border-left:0;border-top:0;pointer-events:auto;cursor:nwse-resize;touch-action:none}
 .hs-zone.drag{background:rgba(255,255,255,.06)}
-.hs-zone .tx{position:absolute;inset:0;background:rgba(10,12,16,.88);color:#fff;padding:6px 8px;line-height:1.35;white-space:pre-line;overflow:auto;border-radius:4px;font-weight:500}
+.hs-zone .tx{position:absolute;inset:0;background:rgba(8,9,12,.92);color:#fff;padding:5px 8px;line-height:1.3;white-space:pre-line;overflow:hidden;border-radius:4px;font-weight:600;text-shadow:0 1px 2px #000}
+.hs-zone .tx.wait{display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);letter-spacing:.3em}
 .hs-zrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
 .hs-zhead{display:flex;gap:8px;align-items:center}.hs-zhead input.hs-in{flex:1;font-weight:700;padding:6px 8px!important}
 .hs-zopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;align-items:end}.hs-zopts label span{display:block;font-size:12px;color:var(--muted);margin-bottom:2px}
@@ -436,6 +437,7 @@ body:not(.desk) .dk-only{display:none!important}
       <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg><span class="dk-only">Kết nối PS và TV</span><span class="hs-web">Kết nối TV</span></button>
       <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="dk-sub" id="dkSub">
+        <button type="button" data-p="game">Game đang chơi</button>
         <button type="button" data-p="dich">Dịch và mã AI</button>
         <button type="button" data-p="vung">Vùng dịch</button>
         <button type="button" data-p="giong">Giọng đọc</button>
@@ -556,7 +558,7 @@ body:not(.desk) .dk-only{display:none!important}
                 <span>Vùng dịch</span><b id="dkZoneSum">chưa có</b>
                 <span>Phím tắt</span><b id="dkKeys2">F7 bật/tắt dịch</b>
               </div>
-              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button><button class="dk-link" type="button" data-go="vung">Vùng dịch</button></div>
+              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="game">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button><button class="dk-link" type="button" data-go="vung">Vùng dịch</button></div>
             </div>
           </div>
         </div>
@@ -700,7 +702,8 @@ body:not(.desk) .dk-only{display:none!important}
                   </div>
                   <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
                 </div>
-                <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
+                <div class="dk-set"><label class="lab" for="hsTvRead">Đọc to phụ đề ở</label><select class="hs-in" id="hsTvRead"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng trên TV)</option><option value="both">Cả máy tính và TV</option></select></div>
+                <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ, chỗ hiện hay chỗ đọc thì TV đổi theo ngay ở câu kế tiếp.</p>
               </div>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
@@ -735,16 +738,6 @@ body:not(.desk) .dk-only{display:none!important}
 
       <!-- ============ Dịch ============ -->
       <section class="dk-page" id="p-dich">
-        <div class="dk-card hl" id="dkBuy">
-          <h2>Mua mã dịch AI</h2>
-          <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
-          <div class="dk-buy">
-            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" bên dưới.</p>
-              <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
-            <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
-              <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
-          </div>
-        </div>
         <div class="dk-cols">
           <div>
             <div class="dk-card" id="hsKeySec">
@@ -767,6 +760,8 @@ body:not(.desk) .dk-only{display:none!important}
               <div class="hs-msg" id="hsOrMsg" hidden></div>
               <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
+          </div>
+          <div>
             <div class="dk-card">
               <h2>Mã Groq dự phòng</h2>
               <p class="hs-note">Dùng khi mã Gemini hết lượt. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
@@ -787,10 +782,26 @@ body:not(.desk) .dk-only{display:none!important}
               </div>
             </div>
           </div>
+        </div>
+        <div class="dk-card hl" id="dkBuy">
+          <h2>Mua mã dịch AI</h2>
+          <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
+          <div class="dk-buy">
+            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" bên dưới.</p>
+              <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
+            <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
+              <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Game đang chơi ============ -->
+      <section class="dk-page" id="p-game">
+        <div class="dk-cols">
           <div>
             <div class="dk-card">
               <h2>Game đang chơi</h2>
-              <p class="hs-note">Chọn đúng game để dịch đúng tên nhân vật và cách xưng hô.</p>
+              <p class="hs-note">Chọn đúng game để AI dịch đúng tên nhân vật, địa danh và cách xưng hô. Đổi game thì đổi ở đây.</p>
               <div class="dk-set"><label class="lab" for="hsPreset">Chọn game</label><select class="hs-in" id="hsPreset"><option value="">Chọn game</option></select></div>
               <div class="dk-set"><label class="lab" for="hsGame">Game khác thì gõ tên</label><input class="hs-in" id="hsGame" type="text" list="hsGameList" autocomplete="off" placeholder="VD: Ghost of Tsushima"><datalist id="hsGameList"></datalist></div>
               <div class="dk-set"><label class="lab" for="hsNotes">Nhân vật và cách xưng hô</label><textarea class="hs-in" id="hsNotes" rows="5" placeholder="VD: Kratos là cha, Atreus là con. Kratos xưng ta, gọi con."></textarea></div>
@@ -800,6 +811,18 @@ body:not(.desk) .dk-only{display:none!important}
                 </select></div>
               <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Để AI viết ghi chú</button></div>
               <div class="hs-msg" id="hsNotesMsg" hidden></div>
+            </div>
+          </div>
+          <div>
+            <div class="dk-card">
+              <h2>Vì sao cần chọn game</h2>
+              <ul class="dk-steps">
+                <li>Tên nhân vật, kỹ năng, địa danh giữ đúng như trong game, không bị dịch lung tung.</li>
+                <li>Xưng hô đúng quan hệ: cha con, sư đồ, kẻ thù, đồng đội.</li>
+                <li>Giọng đọc của từng nhân vật được nhớ riêng cho mỗi game.</li>
+              </ul>
+              <p class="hs-note" style="margin-top:8px">Game chưa có trong danh sách: gõ tên rồi bấm <b>Để AI viết ghi chú</b>, đọc lại và sửa chỗ sai.</p>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-go="nhanvat">Xem nhân vật và giọng đọc</button></div>
             </div>
           </div>
         </div>
@@ -1447,7 +1470,7 @@ ov.addEventListener('pointermove',function(e){
 });
 ov.addEventListener('pointerup',function(){
   if(!start) return; start=null;
-  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
+  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; z.vi=''; later(function(){ if(S.stream) zoneTick(true,z); },350); zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
   save('region',S.region); save('regionSet',true); setDraw(false); S.lastSig=null; steps();
 });
 
@@ -1457,7 +1480,7 @@ var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0',
 S.zones=load('zones',[]); S.zcache=load('zcache',{}); S.zBusy=false; S.zLast=0; var zcv=document.createElement('canvas');
 function zName(z){ return z.name||('Vùng '+(S.zones.indexOf(z)+1)); }
 function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
-S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='float'; });
+S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show) z.show='app'; });
 function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
@@ -1499,8 +1522,13 @@ function zShow(){
     var c=zCol(z); el.style.borderColor=c; el.querySelector('.hd').style.background=c; el.querySelector('.rs').style.borderColor=c;
     el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+(z.mode==='key'?' · bấm phím':'');
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
-    var tx=el.querySelector('.tx'); tx.hidden=!z.vi||!!z.hide; tx.textContent=z.vi||'';
-    tx.style.fontSize=Math.max(11,Math.min(18,Math.round(z.h*b.h/Math.max(2,(z.vi||'').split('\n').length+1))))+'px';
+    var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
+    tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
+    if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
+      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap={s:20,m:28,l:36}[z.size]||28;
+      var fs=Math.max(10,Math.min(cap,bh/lines*0.62)); tx.style.fontSize=fs+'px';
+      for(var k=0;k<12&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)&&fs>9;k++){ fs*=0.9; tx.style.fontSize=fs+'px'; }
+    } else tx.style.fontSize='16px';
   });
   [].slice.call(zLayer.children).forEach(function(el){ if(!S.zones.some(function(z){return z.el===el;})) el.remove(); });
 }
@@ -1516,7 +1544,7 @@ function zList(){
       '<div class="hs-zopts">'+
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
       '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
-      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Khung nổi riêng')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
+      (D?'<label><span>Hiện bản dịch</span><select class="hs-in" data-f="show">'+opt('app',z.show,'Đè lên chữ gốc trên hình')+opt('float',z.show,'Thêm khung nổi (khi chơi bằng app Sony)')+'</select></label>':'')+
       '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
       '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
@@ -1539,7 +1567,7 @@ $('hsZoneAdd').addEventListener('click',function(){
   if(S.zones.length>=ZMAX||!S.stream) return;
   var used=S.zones.map(function(z){return z.kind;}), kind=['quest','item','map','menu'].filter(function(k){return used.indexOf(k)<0;})[0]||'other';
   var n=S.zones.length;
-  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'float'};
+  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'app'};
   S.zones.push(z); zSave(); zShow(); zList(); zPush(); drawFor(z);
 });
 $('hsZoneNow').addEventListener('click',function(){ zoneTick(true); });
@@ -1567,8 +1595,9 @@ async function zTranslate(z,text){
 }
 /* the extra areas are checked about once a second, after the subtitle (which always goes first) */
 async function zoneTick(force,only){
-  if(!S.stream||S.zBusy||!S.zones.length) return;
-  if(!force&&(S.ocrBusy||Date.now()-S.zLast<250)) return;
+  if(!S.stream||!S.zones.length) return;
+  if(S.zBusy){ if(force) later(function(){ zoneTick(force,only); },300); return; }   /* a press or a new area waits its turn instead of being dropped */
+  if(!force&&Date.now()-S.zLast<400) return;
   S.zLast=Date.now(); S.zBusy=true;
   try{
     for(var i=0;i<S.zones.length;i++){
@@ -1599,8 +1628,9 @@ async function zoneTick(force,only){
       }
       if(!text||(!force&&similar(text,z.lastText||''))) continue;
       z.lastText=text; log(zName(z)+': '+text.replace(/\n/g,' / ').slice(0,120));
-      var t=await zTranslate(z,text);
-      if(!t.vi) continue;
+      z.pending=true; if(!z.vi) zShow();                  /* cover the foreign text while it is being translated */
+      var t; try{ t=await zTranslate(z,text); } finally{ z.pending=false; }
+      if(!t.vi){ zShow(); continue; }
       z.vi=t.vi; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+t.vi.replace(/\n/g,' / ').slice(0,120));
       zShow(); zList(); zPush();
       if(z.speak&&$('hsSpeak').checked&&speakWhere()!=='tv') devSpeak(t.vi.replace(/\n/g,'. '),voiceMode(),'',null,null,true);
@@ -1610,7 +1640,8 @@ async function zoneTick(force,only){
 }
 /* the Windows app shows these translations in a small floating panel too */
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
-function zPush(){ if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show!=='app';}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
+function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.vi||'',c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -2880,7 +2911,15 @@ function bindRange(id,vid,key,fn){var el=$(id),v=load(key,null); if(v!==null) el
   el.addEventListener('input',function(){$(vid).textContent=el.value; save(key,el.value); fn&&fn(el.value);});}
 bindRange('hsRate','hsRateV','rate');
 bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
-(function(){ var w=$('hsSpeakWhere'); if(!w) return; w.value=load('speakWhere','pc')||'pc'; w.addEventListener('change',function(){ save('speakWhere',this.value); if(this.value==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }); })();
+(function(){
+  /* where lines are read aloud: the same choice on the Voice page and in the TV card */
+  var els=['hsSpeakWhere','hsTvRead'].map(function(id){return $(id);}).filter(Boolean); if(!els.length) return;
+  var v=load('speakWhere','pc')||'pc'; els.forEach(function(e){ e.value=v; });
+  els.forEach(function(w){ w.addEventListener('change',function(){
+    var val=this.value; save('speakWhere',val); els.forEach(function(e){ e.value=val; });
+    if(val==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){});
+  }); });
+})();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});
 $('hsRead').value=load('read','local');
