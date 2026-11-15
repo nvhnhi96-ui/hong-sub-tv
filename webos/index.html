@@ -54,6 +54,9 @@ body.pan #sub{right:40vw}
 #vi .who{color:#FFC400;margin-right:.3em}
 #en{font-weight:500;color:#C9CED8;margin-top:.2em;line-height:1.3}
 
+/* translations of the extra areas (quests, items...), at the same place as on the computer */
+.zb{position:fixed;z-index:3;background:rgba(8,9,12,.9);color:#fff;border-radius:.6vh;padding:.5vh .9vh;overflow:hidden;white-space:pre-line;font-weight:700;line-height:1.28;text-shadow:0 1px 2px #000;-webkit-transition:opacity .2s;transition:opacity .2s}
+
 /* status line on top of the game: shown for a few seconds when something changes or a key is pressed */
 #pill{position:fixed;left:3vw;top:4vh;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:1vh 1.8vh;border-radius:100px;background:rgba(14,16,20,.86);font-size:2.1vh;opacity:0;-webkit-transition:opacity .25s;transition:opacity .25s}
 #pill.on{opacity:1}
@@ -105,6 +108,7 @@ body.pan #sub{right:40vw}
   <div class="homeFoot"><span class="dot" id="hDot"></span><span id="hState">Đang kết nối...</span><span class="sp"></span><span>Dùng con trỏ của điều khiển hoặc phím mũi tên để chọn</span></div>
 </section>
 
+<div id="zl"></div>
 <div id="sub"><div class="box"><div id="vi"></div><div id="en"></div></div></div>
 <button class="btn" type="button" id="gear">Cài đặt</button>
 <div id="pill"><span class="dot" id="pDot"></span><span id="pText">Hóng Sub</span><span class="k" id="pCode"></span></div>
@@ -191,6 +195,25 @@ function showLine(who,vi,en,hold,readIt){
   if(readIt) say(vi);
 }
 
+/* ---------- translations of the extra areas ---------- */
+var zones={};
+function zoneOff(id){ var z=zones[id]; if(!z) return; clearTimeout(z.t); if(z.el.parentNode) z.el.parentNode.removeChild(z.el); delete zones[id]; }
+function zoneShow(j,vi){
+  var id=String(j.zid||''); if(!id) return;
+  if(!vi){ zoneOff(id); return; }
+  var z=zones[id]; if(!z){ z=zones[id]={el:document.createElement('div'),t:0}; z.el.className='zb'; $('zl').appendChild(z.el); }
+  var W=window.innerWidth, H=window.innerHeight;
+  z.el.style.left=(+j.x||0)*W+'px'; z.el.style.top=(+j.y||0)*H+'px'; z.el.style.width=Math.max(.06,+j.w||.3)*W+'px'; z.el.style.height=Math.max(.04,+j.h||.15)*H+'px';
+  z.el.textContent=vi;
+  /* as big as the area allows, smaller for long text */
+  var bh=Math.max(.04,+j.h||.15)*H, lines=vi.split('\n').length, cap=({s:26,m:34,l:44}[j.zs]||34)*scale();
+  var fs=Math.max(12,Math.min(cap,bh/lines*.62)); z.el.style.fontSize=fs+'px';
+  for(var k=0;k<14&&(z.el.scrollHeight>z.el.clientHeight+1||z.el.scrollWidth>z.el.clientWidth+1)&&fs>11;k++){ fs*=.9; z.el.style.fontSize=fs+'px'; }
+  clearTimeout(z.t);
+  var hold=+j.hold||0;
+  z.t=setTimeout(function(){ zoneOff(id); },hold>0?hold*1000:300000);   /* "until it changes": still gone after 5 minutes without news */
+}
+
 /* ---------- reading aloud, one line after another ----------
    The TV's own Vietnamese voice when it has one; most LG TVs do not, so then Google's Vietnamese voice is played as audio. */
 var viVoice=null, aq=[], audio=null;
@@ -247,6 +270,11 @@ function alive(){ if(!document.hidden) xhr('POST',RELAY+'push',{room:P.code+'T',
 setInterval(alive,20000);
 /* the computer also sees the TV through its home-network questions; this covers the quiet minutes */
 setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
+/* newer senders list every message after the last one seen; older ones only send the latest */
+function takeAll(j,after){
+  if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(it); }); return; }
+  handle(j);
+}
 var mids=[];
 function handle(j){
   if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
@@ -259,17 +287,18 @@ function handle(j){
   if(changed) applyLook();
   if(kind==='hello'||kind==='ctl') return;
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
+  if(kind==='zone'){ zoneShow(j,vi); if(vi&&P.read!=='off'&&j.speak) say(vi.replace(/\n/g,'. ')); return; }
   if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
 }
 function lanOk(){ return Date.now()-lanAt<20000; }
 function poll(){
-  xhr('GET',RELAY+'pull?room='+P.code+'&t='+Date.now(),null,function(j){
+  xhr('GET',RELAY+'pull?room='+P.code+(lastSeq>=0?'&since='+lastSeq:'')+'&t='+Date.now(),null,function(j){
     var wait=lanOk()?3000:450;
     if(j){
       if(!okAt||fails) netState(true); okAt=Date.now(); fails=0;
       var seq=+j.seq||0;
       if(lastSeq<0) lastSeq=seq;                       /* skip what was there before the TV started listening */
-      else if(seq!==lastSeq){ lastSeq=seq; handle(j); }
+      else if(seq!==lastSeq){ takeAll(j,lastSeq); lastSeq=seq; }
     } else { if(++fails===3&&!lanOk()) netState(false); wait=lanOk()?3000:1500; }
     setTimeout(poll,wait);
   });
@@ -287,7 +316,7 @@ function lanPoll(){
       if(!lanOk()) netState(true,true);
       lanAt=Date.now(); lanFails=0;
       var seq=+j.seq||0;
-      if(lanSeq<0) lanSeq=seq; else if(seq!==lanSeq){ lanSeq=seq; handle(j); }
+      if(lanSeq<0) lanSeq=seq; else if(seq!==lanSeq){ takeAll(j,lanSeq); lanSeq=seq; }
       lanPoll(); return;
     }
     lanRetry();

@@ -98,12 +98,13 @@ function setup({ ipcMain, app, net, getWin, log }) {
   let lanPort = 0;
   const boxes = new Map();            // code -> { seq, msg, waiters: [] }
   const seen = new Map();             // code -> time the TV last said it is open
-  const box = (code) => { if (!boxes.has(code)) boxes.set(code, { seq: 0, msg: null, waiters: [] }); return boxes.get(code); };
+  const box = (code) => { if (!boxes.has(code)) boxes.set(code, { seq: 0, msg: null, items: [], waiters: [] }); return boxes.get(code); };
   function reply(res, code, obj) {
     res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(obj));
   }
-  function answer(res, b) { reply(res, 200, Object.assign({}, b.msg || {}, { seq: b.seq })); }
+  /* everything after what the TV already has: a subtitle and an area translation sent together both arrive */
+  function answer(res, b, since) { reply(res, 200, Object.assign({}, b.msg || {}, { seq: b.seq, items: since >= 0 ? b.items.filter((m) => m.seq > since) : [] })); }
   const server = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x'), code = String(u.searchParams.get('code') || '').toUpperCase();
     if (req.method === 'OPTIONS') { reply(res, 204, {}); return; }
@@ -113,8 +114,8 @@ function setup({ ipcMain, app, net, getWin, log }) {
     if (u.pathname === '/sub') {
       seen.set(code, Date.now());
       const b = box(code), since = parseInt(u.searchParams.get('since') || '-1', 10);
-      if (since < 0 || b.seq !== since) { answer(res, b); return; }
-      const w = { res, t: setTimeout(() => { b.waiters = b.waiters.filter(x => x !== w); answer(res, b); }, 15000) };
+      if (since < 0 || b.seq !== since) { answer(res, b, since); return; }
+      const w = { res, since, t: setTimeout(() => { b.waiters = b.waiters.filter(x => x !== w); answer(res, b, since); }, 15000) };
       b.waiters.push(w);
       req.on('close', () => { clearTimeout(w.t); b.waiters = b.waiters.filter(x => x !== w); });
       return;
@@ -125,9 +126,10 @@ function setup({ ipcMain, app, net, getWin, log }) {
   lanPort = LAN_PORT; try { server.listen(lanPort, '0.0.0.0'); } catch (e) { /* ignore */ }
   function push(code, msg) {
     code = String(code || '').toUpperCase(); if (!/^[A-Z0-9]{4,8}$/.test(code)) return false;
-    const b = box(code); b.seq++; b.msg = msg;
+    const b = box(code); b.seq++; b.msg = Object.assign({}, msg, { seq: b.seq });
+    b.items.push(b.msg); if (b.items.length > 12) b.items.shift();
     const ws = b.waiters; b.waiters = [];
-    ws.forEach((w) => { clearTimeout(w.t); try { answer(w.res, b); } catch (e) { /* ignore */ } });
+    ws.forEach((w) => { clearTimeout(w.t); try { answer(w.res, b, w.since); } catch (e) { /* ignore */ } });
     return true;
   }
   /* this computer's address on the same network as the TV */

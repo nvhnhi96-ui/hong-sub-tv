@@ -26,7 +26,12 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.util.DisplayMetrics;
+import java.util.HashMap;
+import java.util.ArrayDeque;
+import org.json.JSONArray;
 import android.widget.TextView;
 
 import org.json.JSONObject;
@@ -54,6 +59,12 @@ public class OverlayService extends Service {
     private TextView viView;
     private TextView enView;
     private WindowManager.LayoutParams lp;
+    /* translations of the extra areas (quests, items...), drawn at the same place as on the computer */
+    private FrameLayout zoneLayer;
+    private final HashMap<String, TextView> zoneViews = new HashMap<>();
+    private final HashMap<String, Runnable> zoneOff = new HashMap<>();
+    /* a line that arrives two ways is shown once */
+    private final ArrayDeque<String> mids = new ArrayDeque<>();
     private Prefs prefs;
     private volatile boolean polling;
     private Thread poller;
@@ -125,6 +136,9 @@ public class OverlayService extends Service {
         if (box != null && wm != null) {
             try { wm.removeView(box); } catch (Exception ignored) { }
         }
+        if (zoneLayer != null && wm != null) {
+            try { wm.removeView(zoneLayer); } catch (Exception ignored) { }
+        }
         if (tts != null) tts.shutdown();
         super.onDestroy();
     }
@@ -195,7 +209,64 @@ public class OverlayService extends Service {
                 PixelFormat.TRANSLUCENT);
         applyStyle();
         box.setVisibility(View.GONE);
+        zoneLayer = new FrameLayout(this);
+        WindowManager.LayoutParams zlp = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT, type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT);
+        zlp.gravity = Gravity.TOP | Gravity.START;
+        try { wm.addView(zoneLayer, zlp); } catch (Exception e) { zoneLayer = null; }
         wm.addView(box, lp);
+    }
+
+    private void zoneShow(JSONObject j, String vi) {
+        final String id = j.optString("zid", "");
+        if (id.isEmpty()) return;
+        final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(0.06, j.optDouble("w", 0.3)), h = Math.max(0.04, j.optDouble("h", 0.15));
+        final int hold = j.optInt("hold", 0);
+        final String zs = j.optString("zs", "m");
+        main.post(() -> {
+            if (zoneLayer == null) return;
+            Runnable old = zoneOff.remove(id);
+            if (old != null) main.removeCallbacks(old);
+            TextView tv = zoneViews.get(id);
+            if (vi.isEmpty()) { if (tv != null) { zoneLayer.removeView(tv); zoneViews.remove(id); } return; }
+            if (tv == null) {
+                tv = new TextView(this);
+                tv.setTextColor(Color.WHITE);
+                tv.setTypeface(Typeface.DEFAULT_BOLD);
+                tv.setShadowLayer(3f, 0f, 1f, Color.BLACK);
+                tv.setPadding(dp(8), dp(5), dp(8), dp(5));
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(Color.argb(230, 8, 9, 12));
+                bg.setCornerRadius(dp(5));
+                tv.setBackground(bg);
+                zoneViews.put(id, tv);
+                zoneLayer.addView(tv);
+            }
+            DisplayMetrics dm = new DisplayMetrics();
+            wm.getDefaultDisplay().getRealMetrics(dm);
+            int W = dm.widthPixels, H = dm.heightPixels, bw = (int) (w * W), bh = (int) (h * H);
+            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(bw, bh);
+            fl.leftMargin = (int) (x * W);
+            fl.topMargin = (int) (y * H);
+            tv.setLayoutParams(fl);
+            tv.setText(vi);
+            // as big as the area allows, smaller for long text
+            float cap = (zs.equals("s") ? 26 : zs.equals("l") ? 44 : 34) * (H / 1080f);
+            int lines = vi.split("\n").length;
+            float fit = Math.max(12f, Math.min(cap, bh / (float) lines * 0.62f));
+            if (Build.VERSION.SDK_INT >= 26) {
+                tv.setAutoSizeTextTypeUniformWithConfiguration(10, Math.max(11, (int) fit), 1, TypedValue.COMPLEX_UNIT_PX);
+            } else {
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, fit);
+            }
+            final TextView view = tv;
+            Runnable off = () -> { zoneLayer.removeView(view); zoneViews.remove(id); zoneOff.remove(id); };
+            zoneOff.put(id, off);
+            main.postDelayed(off, hold > 0 ? hold * 1000L : 300000L);
+        });
     }
 
     private void applyStyle() {
@@ -238,6 +309,14 @@ public class OverlayService extends Service {
 
     /** one message from the computer (through honggame.store or straight over the home network) */
     void handle(JSONObject j) {
+        String mid = j.optString("mid", "");
+        if (!mid.isEmpty()) {
+            synchronized (mids) {
+                if (mids.contains(mid)) return;
+                mids.add(mid);
+                if (mids.size() > 60) mids.poll();
+            }
+        }
         String vi = j.optString("vi", "");
         // text size and position chosen on the computer
         int size = j.optInt("size", 0);
@@ -251,7 +330,11 @@ public class OverlayService extends Service {
         // Hóng Sub on the computer says whether the TV reads aloud (off, or read on the computer instead)
         boolean read = j.has("speak") ? j.optBoolean("speak", false) : prefs.speak();
         if (j.has("speak") && !read && tts != null) { tts.stop(); ttsPending.set(0); }
-        if (kind.equals("hello") || kind.equals("ctl")) { /* nothing to show */ }
+        if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
+        else if (kind.equals("zone")) {
+            zoneShow(j, vi);
+            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, null, "zone" + (++ttsSeq)); }
+        }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
             if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
@@ -282,13 +365,20 @@ public class OverlayService extends Service {
             while (polling) {
                 long wait = POLL_MS;
                 try {
-                    JSONObject j = fetch(Prefs.RELAY + prefs.code() + "&t=" + System.currentTimeMillis());
+                    JSONObject j = fetch(Prefs.RELAY + prefs.code() + (lastSeq >= 0 ? "&since=" + lastSeq : "") + "&t=" + System.currentTimeMillis());
                     long seq = j.optLong("seq", 0);
                     if (lastSeq < 0) {
                         lastSeq = seq; // ignore whatever was there before this TV started listening
                     } else if (seq != lastSeq) {
+                        // newer servers list every message after the last one seen: a subtitle and an area sent together both show
+                        JSONArray items = j.optJSONArray("items");
+                        if (items != null && items.length() > 0) {
+                            for (int i = 0; i < items.length(); i++) {
+                                JSONObject it = items.optJSONObject(i);
+                                if (it != null && it.optLong("seq", 0) > lastSeq) handle(it);
+                            }
+                        } else handle(j);
                         lastSeq = seq;
-                        handle(j);
                     }
                 } catch (Exception e) {
                     wait = 2000;
