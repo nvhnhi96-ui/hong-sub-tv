@@ -362,6 +362,9 @@ html,body{height:100%;overflow:hidden}
 @media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}.dk-buy{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.hs *{animation:none!important;transition:none!important}}
 .hs :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.dk-top h1,.dk-chip{white-space:nowrap}
+.dk-top .hs-pill{white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1200px){#dkSpeakTx{display:none}.dk-chip{padding:9px}.dk-top .hs-pill{max-width:220px}}
 .hs-sw input:checked{background:var(--brand)}
 .hs-sw input:checked::after{background:#111}
 .hs-sw input::after{background:#C9CFD8}
