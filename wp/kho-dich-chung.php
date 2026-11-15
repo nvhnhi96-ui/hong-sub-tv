@@ -105,3 +105,37 @@ add_action('rest_api_init', function () {
     register_rest_route('hgs-sub/v1', '/tm/pack', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_pack'));
     register_rest_route('hgs-sub/v1', '/tm/games', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_games2'));
 });
+
+// Hong Sub: nap ban dich co san (vd ban Viet hoa cua mot game) vao kho dich chung. Chi quan tri vien.
+if (!function_exists('hgs_tm_import')) {
+    function hgs_tm_import($req) {
+        global $wpdb;
+        $t  = hgs_tm_table();
+        $gn = hgs_tm_clean($req->get_param('game'), 120);
+        $g  = hgs_tm_game($gn);
+        $items = $req->get_param('items');
+        if (strlen($g) < 2 || !is_array($items)) return new WP_Error('bad', 'bad request', array('status' => 400));
+        $now = current_time('mysql', 1);
+        $ok = 0;
+        foreach (array_slice($items, 0, 1000) as $it) {
+            if (!is_array($it)) continue;
+            $en = hgs_tm_clean(isset($it['en']) ? $it['en'] : '', 500);
+            $vi = hgs_tm_clean(isset($it['vi']) ? $it['vi'] : '', 800);
+            $nm = hgs_tm_norm($en);
+            if (mb_strlen($nm) < 2 || $vi === '') continue;
+            $kind = (isset($it['kind']) && $it['kind'] === 'z') ? 'z' : 's';
+            $k = sha1($g . '|' . $kind . '|' . $nm);
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,n,t) VALUES (%s,%s,%s,%s,%s,%s,'','',3,1,%s)
+                 ON DUPLICATE KEY UPDATE vi=VALUES(vi), q=3, n=n+1",
+                $g, $gn, $k, $kind, $en, $vi, $now));
+            $ok++;
+        }
+        delete_transient('hgs_tm_games2');
+        return array('ok' => true, 'saved' => $ok);
+    }
+}
+add_action('rest_api_init', function () {
+    register_rest_route('hgs-sub/v1', '/tm/import', array('methods' => 'POST', 'callback' => 'hgs_tm_import',
+        'permission_callback' => function () { return current_user_can('manage_options'); }));
+});

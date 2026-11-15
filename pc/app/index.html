@@ -1635,10 +1635,20 @@ function zPrompt(z,text){
 }
 function zKey(text){ return gameKey($('hsGame').value)+'|'+norm(text); }
 function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>250) delete S.zcache[ks[0]]; save('zcache',S.zcache); }
+function tmZone(text){
+  var k=trKey(text), e=S.tm.zmap[k]||(S.tm.map[k]&&S.tm.map[k].vi);
+  if(e) return e;
+  var lines=String(text).split('\n').filter(function(l){ return l.trim(); });
+  if(lines.length<2) { var f=tmFind(text); return f?f.vi:''; }
+  var out=[];
+  for(var i=0;i<lines.length;i++){ var kk=trKey(lines[i]), h=S.tm.zmap[kk]||(S.tm.map[kk]&&S.tm.map[kk].vi); if(!h){ var f2=tmFind(lines[i]); h=f2&&f2.vi; } if(!h) return ''; out.push(h); }
+  return out.join('\n');
+}
 async function zTranslate(z,text){
   var k=zKey(text);
   if(S.zcache[k]) return {vi:S.zcache[k],via:'nhớ'};
-  var shared=S.tm.zmap[trKey(text)]; if(shared){ zCache(k,shared); return {vi:shared,via:'kho chung'}; }
+  /* the shared store: the whole area as one entry, or every line of it found (a menu, a list of items) */
+  var shared=tmZone(text); if(shared){ zCache(k,shared); return {vi:shared,via:'kho chung'}; }
   var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true);
   var vi=(r&&r.vi||'').trim(); if(vi){ zCache(k,vi); tmAdd('z',text,vi,'','',S.via); }
   return {vi:vi,via:S.via};
@@ -2713,7 +2723,7 @@ function tmFind(text){
   var k=trKey(text), e=S.tm.map[k];
   if(!e&&k.length>=12){
     var b=Math.round(k.length/6);
-    for(var d=-1;d<=1&&!e;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>800) continue;
+    for(var d=-1;d<=1&&!e;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>5000) continue;
       for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(c&&similar(c.en,text)){ e=c; break; } } }
   }
   if(!e) return null;
