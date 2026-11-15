@@ -105,7 +105,8 @@ function setup({ ipcMain, app, net, getWin, log }) {
     res.end(JSON.stringify(obj));
   }
   /* everything after what the TV already has: a subtitle and an area translation sent together both arrive */
-  function answer(res, b, since) { reply(res, 200, Object.assign({}, b.msg || {}, { seq: b.seq, items: since >= 0 ? b.items.filter((m) => m.seq > since) : [] })); }
+  /* you: the TV's own address on the home network, so the TV app can show it */
+  function answer(res, b, since) { const you = String((res.socket && res.socket.remoteAddress) || '').replace(/^::ffff:/, ''); reply(res, 200, Object.assign({}, b.msg || {}, { seq: b.seq, you, items: since >= 0 ? b.items.filter((m) => m.seq > since) : [] })); }
   const server = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://x'), code = String(u.searchParams.get('code') || '').toUpperCase();
     if (req.method === 'OPTIONS') { reply(res, 204, {}); return; }

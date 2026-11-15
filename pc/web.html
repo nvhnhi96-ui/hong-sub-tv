@@ -820,7 +820,7 @@ function steps(){
 
 /* ---------- keys ---------- */
 function keys(){return $('hsKeys').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
-$('hsKeys').value=load('keys',[]).join('\n');
+(function(){ var k=load('keys',[]); $('hsKeys').value=Array.isArray(k)?k.join('\n'):String(k||''); })();
 function groqKeys(){return $('hsGroq').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
 $('hsGroq').value=load('groq',[]).join('\n');
 $('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gModels=[];S.gListed=0;save('gmodels2',[]);steps();});
@@ -903,7 +903,7 @@ function chooseSource(){
 async function pick(manual){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){status('err','Trình duyệt không hỗ trợ chia sẻ màn hình');return false;}
   if(D){
-    var srcs=await D.sources(), rp=srcs.filter(function(x){return /remote play|chiaki/i.test(x.name);})[0];
+    var srcs=await D.sources(); if(!Array.isArray(srcs)) srcs=[]; var rp=srcs.filter(function(x){return /remote play|chiaki/i.test(x.name);})[0];
     var ch=(!manual&&rp)?rp:await chooseSource();
     if(!ch){status('warn','Chưa chọn cửa sổ game');return false;}
     await D.use(ch.id);
@@ -1701,6 +1701,7 @@ function tvTypeUi(){
   var box=$('hsTvType'); if(!box) return;
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.setAttribute('aria-checked',b.getAttribute('data-k')===S.tvType?'true':'false'); });
   [].forEach.call(document.querySelectorAll('.tvp'),function(x){ x.classList.toggle('on',x.getAttribute('data-k')===S.tvType); });
+  [].forEach.call(document.querySelectorAll('.tvlg-only'),function(x){ x.hidden=S.tvType!=='lg'; });
   var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(D&&D.tv?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':'Mã TV (đang hiện trên trình duyệt TV)';
 }
 /* what the TV is doing right now, in one line, with the one thing to do next */
@@ -1742,7 +1743,7 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
    Windows app: straight over the home network when the TV's IP is known (Hóng Sub TV listens on port 8765).
    Otherwise, and on the web page: through honggame.store with the TV code. */
 function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(el.value||'').trim():''; }
-function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(S.tvType==='lg'&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
@@ -1826,10 +1827,16 @@ if(D&&D.tv){
   /* first start: look for the TV by itself */
   if(!load('tvip','')) later(function(){ tvFindUi(true); },2500);
 }
-(function(){ var sz=$('hsTvSize'), ps=$('hsTvPos'); sz.value=load('tvsize',30); $('hsTvSizeV').textContent=sz.value; ps.value=load('tvpos','bottom');
-  var t=0; function send(){ clearTimeout(t); t=setTimeout(function(){ if(tvIp()||tvCode().length>=4) tvSend({vi:'Cỡ chữ '+sz.value+' trên TV',who:'Hóng Sub',kind:'notice'}).catch(function(){}); },500); }
+/* every TV setting lives here on the computer; the TV app only connects and follows */
+(function(){ var sz=$('hsTvSize'), ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); sz.value=load('tvsize',30); $('hsTvSizeV').textContent=sz.value; ps.value=load('tvpos','bottom');
+  if(en) en.checked=load('tven',false); if(hd) hd.value=String(load('tvhdmi',1));
+  var t=0; function send(what){ clearTimeout(t); t=setTimeout(function(){ if(!(tvIp()||tvCode().length>=4)) return;
+      if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
+      else tvSend({vi:'Phụ đề mẫu: cỡ chữ '+sz.value+(ps.value==='top'?', ở trên':', ở dưới'),en:en&&en.checked?'Sample subtitle':'',who:'Hóng Sub',kind:'notice'}).catch(function(){}); },500); }
   sz.addEventListener('input',function(){ $('hsTvSizeV').textContent=sz.value; save('tvsize',+sz.value); send(); });
   ps.addEventListener('change',function(){ save('tvpos',ps.value); send(); });
+  if(en) en.addEventListener('change',function(){ save('tven',en.checked); send(); });
+  if(hd) hd.addEventListener('change',function(){ save('tvhdmi',+hd.value); send('hdmi'); });
   var ca=$('hsCastAuto'); ca.checked=load('castauto',true); ca.addEventListener('change',function(){ save('castauto',ca.checked); var c=S.cast[castKey()]||{}; Object.keys(c).forEach(function(k){ castVoice(c,k); }); save('cast',S.cast); castUi(); });
 })();
 $('hsTvTest').addEventListener('click',function(){ $('hsTv').value=tvCode(); save('tv',$('hsTv').value); tvPush('Hóng Sub đã kết nối với TV','Connected','',true); });
@@ -2618,8 +2625,11 @@ async function fsRun(){
             vis=[]; ((r&&r.items)||[]).forEach(function(it){ var i=(+it.i||0)-1; if(i>=0&&i<need.length) vis[i]=String(it.vi||''); });
           }catch(e){ vis=null; }
         }
-        if(!vis) vis=await Promise.all(need.map(function(b){ return gtx(b.en).catch(function(){return '';}); }));
-        need.forEach(function(b,i){ b.vi=(vis[i]||'').trim(); S.fs.cache.set(norm(b.en),b.vi); });
+        /* whatever the AI left out (or everything, without a key) goes to the free translator; an empty answer is not remembered, so it is tried again */
+        vis=vis||[];
+        var miss=[]; need.forEach(function(b,i){ if(!String(vis[i]||'').trim()) miss.push(i); });
+        if(miss.length){ var gv=await Promise.all(miss.map(function(i){ return gtx(need[i].en).catch(function(){return '';}); })); miss.forEach(function(i,k){ vis[i]=gv[k]; }); }
+        need.forEach(function(b,i){ b.vi=String(vis[i]||'').trim(); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
         if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       }
     }

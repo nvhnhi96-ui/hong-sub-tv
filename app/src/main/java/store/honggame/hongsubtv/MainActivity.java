@@ -28,7 +28,7 @@ public class MainActivity extends Activity {
     private Prefs prefs;
     private TextView codeView, ipView;
     private TextView statusView;
-    private Button permBtn, runBtn, sizeDown, sizeUp, posBtn, speakBtn, enBtn, testBtn, codeBtn;
+    private Button permBtn, runBtn, testBtn, codeBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,20 +151,13 @@ public class MainActivity extends Activity {
 
         right.addView(text("3. Chuyển TV sang cổng HDMI của PS5 và chơi. Phụ đề hiện đè lên game.", 17, Color.WHITE, true));
 
-        TextView setLbl = text("Tuỳ chỉnh", 15, YELLOW, true);
+        // every text setting (size, place, English line, reading aloud) is set in Hóng Sub on the computer
+        TextView setLbl = text("Cỡ chữ, chỗ hiện chữ, câu tiếng Anh và giọng đọc chỉnh trên máy tính: Hóng Sub › Kết nối PS và TV. TV đổi theo ngay.", 15, MUTED, false);
         setLbl.setPadding(0, dp(20), 0, dp(8));
         right.addView(setLbl);
-        LinearLayout r3 = row();
-        sizeDown = button("Chữ nhỏ hơn", false, v -> { prefs.textSize(prefs.textSize() - 3); applyLive(); });
-        sizeUp = button("Chữ to hơn", false, v -> { prefs.textSize(prefs.textSize() + 3); applyLive(); });
-        posBtn = button("", false, v -> { prefs.top(!prefs.top()); applyLive(); });
-        r3.addView(sizeDown); r3.addView(sizeUp); r3.addView(posBtn);
-        right.addView(r3);
         LinearLayout r4 = row();
-        speakBtn = button("", false, v -> { prefs.speak(!prefs.speak()); refresh(); });
-        enBtn = button("", false, v -> { prefs.showEn(!prefs.showEn()); applyLive(); });
         codeBtn = button("Đổi mã TV", false, v -> { prefs.newCode(); applyLive(); });
-        r4.addView(speakBtn); r4.addView(enBtn); r4.addView(codeBtn);
+        r4.addView(codeBtn);
         right.addView(r4);
 
         TextView help = text("Cần cài giúp? Gọi hoặc Zalo Hóng Game Store: 0949 099 992 · 0367 879 283", 14, MUTED, false);
@@ -223,10 +216,6 @@ public class MainActivity extends Activity {
         boolean ok = canOverlay();
         permBtn.setText(ok ? "Đã có quyền ✓" : "Cấp quyền");
         runBtn.setText(prefs.running() ? "Tắt phụ đề" : "Bật phụ đề");
-        posBtn.setText(prefs.top() ? "Phụ đề: ở trên" : "Phụ đề: ở dưới");
-        speakBtn.setText(prefs.speak() ? "Đọc giọng Việt: Bật" : "Đọc giọng Việt: Tắt");
-        enBtn.setText(prefs.showEn() ? "Câu tiếng Anh: Hiện" : "Câu tiếng Anh: Ẩn");
-        sizeDown.setText("Chữ nhỏ hơn (" + prefs.textSize() + ")");
         if (!ok) {
             statusView.setTextColor(Color.rgb(255, 159, 67));
             statusView.setText("Chưa có quyền hiển thị trên ứng dụng khác. Bấm \"Cấp quyền\", bật Hóng Sub TV rồi quay lại.");

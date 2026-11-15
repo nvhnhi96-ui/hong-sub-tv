@@ -323,6 +323,7 @@ public class OverlayService extends Service {
         String pos = j.optString("pos", "");
         boolean changed = false;
         if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
+        if (j.has("sen") && j.optBoolean("sen", false) != prefs.showEn()) { prefs.showEn(j.optBoolean("sen", false)); }   // English line: set on the computer
         if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
         if (changed) main.post(this::applyStyle);

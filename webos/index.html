@@ -24,6 +24,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0E1014;col
 .brand small{font-weight:500;color:#8A93A3;font-size:.62em;margin-left:.8em}
 .homeMain{-webkit-flex:1;flex:1;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center}
 .codeWrap .lab{font-size:2.6vh;color:#8A93A3;margin:0 0 1.6vh}
+.ipl{margin-top:1.6vh!important;font-size:2.4vh!important;letter-spacing:.02em!important;text-transform:none!important}.ipl b{color:#fff;font-weight:700;letter-spacing:.04em}
 .code{display:-webkit-flex;display:flex}
 .code span{display:block;width:8.6vh;height:11vh;line-height:11vh;margin-right:1.4vh;border-radius:1.6vh;background:#FFC400;color:#0E1014;font-weight:700;font-size:7.4vh;text-align:center}
 .steps{margin:5vh 0 0;padding:0;list-style:none;font-size:2.7vh;line-height:1.5;color:#C9CED8;max-width:60vw}
@@ -90,10 +91,11 @@ body.pan #sub{right:40vw}
     <div class="codeWrap">
       <p class="lab">Mã TV</p>
       <div class="code" id="code"></div>
+      <p class="lab ipl">IP của TV: <b id="ip">đang tìm...</b></p>
       <ol class="steps">
         <li>Trên máy tính, mở <b>Hóng Sub</b> và vào <b>Kết nối TV</b>.</li>
         <li>Gõ mã ở trên vào ô <b>Mã TV</b> rồi bấm <b>Gửi thử</b>.</li>
-        <li>Không cần bấm gì thêm: phụ đề tự hiện trên TV. Muốn thấy cả hình game, chọn cổng HDMI đang cắm máy PS5 ở dưới.</li>
+        <li>Không cần bấm gì thêm: phụ đề tự hiện trên TV. Cỡ chữ, chỗ hiện, cổng HDMI đều chỉnh trên máy tính.</li>
       </ol>
       <div class="btns" id="homeBtns">
         <button class="btn" type="button" data-hdmi="1">HDMI 1</button>
@@ -139,7 +141,7 @@ var P={
   size:load('size',30),
   pos:load('pos','bottom'),
   en:load('en',false),
-  read:load('read','auto')            /* auto: when the computer asks for it; on: always; off */
+  read:'auto'                         /* reading aloud is decided on the computer */
 };
 /* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
 function launchParams(){ try{ var s=window.PalmSystem&&window.PalmSystem.launchParams; return (s?(typeof s==='string'?JSON.parse(s):s):null)||{}; }catch(e){ return {}; } }
@@ -324,6 +326,8 @@ function handle(j){
   var size=+j.size||0, pos=j.pos||'', changed=false;
   if(size>=18&&size!==P.size){ P.size=size; save('size',size); changed=true; }
   if((pos==='top'||pos==='bottom')&&pos!==P.pos){ P.pos=pos; save('pos',pos); changed=true; }
+  if(j.hasOwnProperty('sen')&&!!j.sen!==P.en){ P.en=!!j.sen; save('en',P.en); }
+  if(j.hasOwnProperty('hdmi')&&packaged){ var hn=+j.hdmi; if(hn>=0&&hn<=4&&hn!==P.src){ P.src=hn; save('src',hn); setSource(hn); } }
   if(changed) applyLook();
   if(kind==='hello'||kind==='ctl') return;
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
@@ -346,6 +350,18 @@ function poll(){
 /* ---------- straight from the computer over the home network (installed app only: a web page may not call the home network) ----------
    The TV asks for the next line and the computer answers as soon as there is one. */
 var lanSeq=-1, lanAt=0, lanFails=0;
+var myIp='';
+function ipShow(ip){ ip=String(ip||'').replace(/^::ffff:/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)||ip==='127.0.0.1'||ip===myIp) return; myIp=ip; var el=$('ip'); if(el) el.textContent=ip; if(panelOn) draw(); }
+var pbs=[];
+function ipAsk(){
+  if(!window.PalmServiceBridge) return;
+  ['luna://com.palm.connectionmanager/getStatus','luna://com.webos.service.connectionmanager/getStatus'].forEach(function(u){
+    try{ var b=new PalmServiceBridge(); pbs.push(b);
+      b.onservicecallback=function(m){ try{ var j=JSON.parse(m), w=(j.wired&&j.wired.state==='connected'&&j.wired)||(j.wifi&&j.wifi.state==='connected'&&j.wifi); if(w&&w.ipAddress) ipShow(w.ipAddress); }catch(e){} };
+      b.call(u,'{}'); }catch(e){}
+  });
+}
+ipAsk(); setTimeout(function(){ if(!myIp){ var el=$('ip'); if(el) el.textContent='mở Hóng Sub trên máy tính để thấy IP'; } },6000);
 function lanPoll(){
   if(!packaged||!P.pc){ setTimeout(lanPoll,5000); return; }
   var x=new XMLHttpRequest(), url='http://'+P.pc+'/sub?code='+P.code+'&since='+lanSeq+'&t='+Date.now();
@@ -354,7 +370,7 @@ function lanPoll(){
     var j=null; try{ j=JSON.parse(x.responseText); }catch(e){}
     if(x.status===200&&j){
       if(!lanOk()) netState(true,true);
-      lanAt=Date.now(); lanFails=0;
+      lanAt=Date.now(); lanFails=0; if(j.you) ipShow(j.you);
       var seq=+j.seq||0;
       if(lanSeq<0) lanSeq=seq; else if(seq!==lanSeq){ takeAll(j,lanSeq); lanSeq=seq; }
       lanPoll(); return;
@@ -378,10 +394,7 @@ function pill(t,keep){ if($('home').className!=='off'){ $('pill').className=''; 
 var panelOn=false, fi=0, newCode=0;
 var ROWS=[
   {k:'src',t:'Hình từ',v:function(){ return P.src?'HDMI '+P.src:'Không hiện hình'; },ch:function(d){ P.src=(P.src+d+5)%5; save('src',P.src); setSource(P.src); }},
-  {k:'size',t:'Cỡ chữ',v:function(){ return P.size; },ch:function(d){ P.size=Math.max(18,Math.min(90,P.size+d*4)); save('size',P.size); applyLook(); sample(); }},
-  {k:'pos',t:'Chỗ hiện chữ',v:function(){ return P.pos==='top'?'Trên màn hình':'Dưới màn hình'; },ch:function(){ P.pos=P.pos==='top'?'bottom':'top'; save('pos',P.pos); applyLook(); sample(); }},
-  {k:'en',t:'Hiện câu gốc tiếng Anh',v:function(){ return P.en?'Bật':'Tắt'; },ch:function(){ P.en=!P.en; save('en',P.en); sample(); }},
-  {k:'read',t:'Đọc to trên TV',v:function(){ return P.read==='on'?'Luôn đọc (khi máy tính bật đọc)':P.read==='off'?'Tắt':'Theo máy tính'; },ch:function(d){ var o=['auto','on','off'], i=(o.indexOf(P.read)+(d<0?2:1))%3; P.read=o[i]; save('read',P.read); if(P.read==='off') sayStop(); else if(P.read==='on') say('Đã bật đọc phụ đề trên TV.'); }},
+  {k:'ip',t:'IP của TV',v:function(){ return myIp||'chưa biết'; },act:function(){ ipAsk(); }},
   {k:'code',t:'Mã TV',v:function(){ return newCode?'Bấm OK lần nữa để đổi':P.code; },act:function(){ if(!newCode){ newCode=1; draw(); return; } newCode=0; P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); lastSeq=-1; codeDraw(); hello(); draw(); }},
   {k:'test',t:'Xem thử phụ đề',v:function(){ return 'OK'; },act:function(){ sample(); }},
   {k:'exit',t:'Thoát Hóng Sub',v:function(){ return 'OK'; },act:function(){ quit(); }}
@@ -394,7 +407,7 @@ function draw(){
     el.onmouseover=function(){ if(fi===i) return; fi=i; [].forEach.call($('rows').children,function(x,j){ x.className=x.className.replace(/ f\b/,'')+(j===i?' f':''); }); };   /* the pointer moves the highlight */
     el.onclick=function(ev){ var r=ROWS[i], d=ev&&ev.target&&ev.target.getAttribute?+ev.target.getAttribute('data-d'):0; fi=i; if(r.act) r.act(); else r.ch(d||1); draw(); focusRow(); };
   });
-  $('note').innerHTML='Hóng Sub '+VERSION+(packaged?' cho TV LG':' trên trình duyệt')+'. Trên máy tính: <b>Kết nối TV</b>, gõ mã <b>'+P.code+'</b>.'+(packaged||!webos?'':' Trình duyệt của TV có thể không hiện được hình HDMI: cài app Hóng Sub cho LG để có hình game và phụ đề cùng lúc.');
+  $('note').innerHTML='Hóng Sub '+VERSION+(packaged?' cho TV LG':' trên trình duyệt')+'. Cỡ chữ, chỗ hiện chữ, câu tiếng Anh và giọng đọc chỉnh trên máy tính: <b>Kết nối TV</b>, mã <b>'+P.code+'</b>.'+(packaged||!webos?'':' Trình duyệt của TV có thể không hiện được hình HDMI: cài app Hóng Sub cho LG để có hình game và phụ đề cùng lúc.');
 }
 function focusRow(){ var el=$('rows').children[fi]; if(el&&el.focus) try{ el.focus(); }catch(e){} }
 function panel(on){
