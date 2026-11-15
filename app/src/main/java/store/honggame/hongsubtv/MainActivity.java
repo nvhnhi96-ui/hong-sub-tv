@@ -26,7 +26,7 @@ public class MainActivity extends Activity {
     private static final int MUTED = Color.rgb(160, 160, 172);
 
     private Prefs prefs;
-    private TextView codeView;
+    private TextView codeView, ipView;
     private TextView statusView;
     private Button permBtn, runBtn, sizeDown, sizeUp, posBtn, speakBtn, enBtn, testBtn, codeBtn;
 
@@ -40,6 +40,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // opening the app means the TV should be ready: start listening right away
+        if (canOverlay() && !prefs.running()) restartService(null);
         refresh();
         if (!canOverlay()) permBtn.requestFocus(); else runBtn.requestFocus();
     }
@@ -118,7 +120,12 @@ public class MainActivity extends Activity {
         codeView = text("", 64, Color.WHITE, true);
         codeView.setLetterSpacing(0.18f);
         left.addView(codeView);
-        TextView codeHelp = text("Nhập mã này vào ô \"Gửi lên TV\" trong Hóng Sub trên máy tính.", 15, MUTED, false);
+        TextView ipLbl = text("IP MẠNG CỦA TV", 14, YELLOW, true);
+        ipLbl.setPadding(0, dp(18), 0, dp(4));
+        left.addView(ipLbl);
+        ipView = text("", 40, Color.WHITE, true);
+        left.addView(ipView);
+        TextView codeHelp = text("Trên máy tính: Hóng Sub › Kết nối PS và TV › bấm \"Tìm TV\", hoặc nhập IP này. Máy tính và TV phải dùng chung một mạng wifi/modem. Không cùng mạng thì dùng mã TV.", 15, MUTED, false);
         codeHelp.setPadding(0, dp(4), 0, 0);
         left.addView(codeHelp);
 
@@ -136,7 +143,7 @@ public class MainActivity extends Activity {
         permBtn = button("Cấp quyền", true, v -> askPermission());
         LinearLayout r1 = row(); r1.setPadding(0, dp(8), 0, dp(14)); r1.addView(permBtn); right.addView(r1);
 
-        right.addView(text("2. Trên máy tính: mở honggame.store/hong-sub, nhập mã TV, bấm Bắt đầu dịch", 17, Color.WHITE, true));
+        right.addView(text("2. Trên máy tính: mở Hóng Sub › Kết nối PS và TV › bấm Tìm TV (hoặc nhập IP bên trái)", 17, Color.WHITE, true));
         LinearLayout r2 = row(); r2.setPadding(0, dp(8), 0, dp(14));
         runBtn = button("Bật phụ đề", true, v -> toggleRun());
         testBtn = button("Thử hiện chữ", false, v -> restartService(OverlayService.ACTION_REFRESH));
@@ -211,6 +218,8 @@ public class MainActivity extends Activity {
 
     private void refresh() {
         codeView.setText(prefs.code());
+        String ip = LanServer.ip();
+        ipView.setText(ip.isEmpty() ? "Chưa nối mạng" : ip);
         boolean ok = canOverlay();
         permBtn.setText(ok ? "Đã có quyền ✓" : "Cấp quyền");
         runBtn.setText(prefs.running() ? "Tắt phụ đề" : "Bật phụ đề");

@@ -57,6 +57,7 @@ public class OverlayService extends Service {
     private Thread poller;
     private TextToSpeech tts;
     private boolean ttsReady;
+    private LanServer lan;
     private final Runnable hideRunnable = () -> { if (box != null) box.setVisibility(View.GONE); };
 
     @Override
@@ -81,7 +82,10 @@ public class OverlayService extends Service {
             }
         });
         startPolling();
-        showLine("", "Hóng Sub TV đang chờ phụ đề · Mã " + prefs.code(), null, 6000, false);
+        lan = new LanServer(this, prefs, this::handle);
+        lan.start();
+        String ip = LanServer.ip();
+        showLine("", "Hóng Sub TV đang chờ phụ đề · Mã " + prefs.code() + (ip.isEmpty() ? "" : " · IP " + ip), null, 8000, false);
     }
 
     @Override
@@ -103,6 +107,7 @@ public class OverlayService extends Service {
     @Override
     public void onDestroy() {
         polling = false;
+        if (lan != null) lan.stop();
         if (poller != null) poller.interrupt();
         main.removeCallbacksAndMessages(null);
         if (box != null && wm != null) {
@@ -216,6 +221,29 @@ public class OverlayService extends Service {
         });
     }
 
+    /** one message from the computer (through honggame.store or straight over the home network) */
+    void handle(JSONObject j) {
+        String vi = j.optString("vi", "");
+        // text size and position chosen on the computer
+        int size = j.optInt("size", 0);
+        String pos = j.optString("pos", "");
+        boolean changed = false;
+        if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
+        if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
+        if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
+        if (changed) main.post(this::applyStyle);
+        String kind = j.optString("kind", "sub");
+        if (kind.equals("hello")) { /* nothing to show */ }
+        else if (kind.equals("notice")) {
+            // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
+            if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
+        }
+        else if (!vi.isEmpty()) {
+            long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
+            showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, true);
+        }
+    }
+
     /** tells the computer that this TV is on: Hóng Sub on the computer then wakes the PS5 and answers */
     private void hello() {
         try {
@@ -242,25 +270,7 @@ public class OverlayService extends Service {
                         lastSeq = seq; // ignore whatever was there before this TV started listening
                     } else if (seq != lastSeq) {
                         lastSeq = seq;
-                        String vi = j.optString("vi", "");
-                        // text size and position chosen on the computer
-                        int size = j.optInt("size", 0);
-                        String pos = j.optString("pos", "");
-                        boolean changed = false;
-                        if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
-                        if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
-                        if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
-                        if (changed) main.post(this::applyStyle);
-                        String kind = j.optString("kind", "sub");
-                        if (kind.equals("hello")) { /* nothing to show */ }
-                        else if (kind.equals("notice")) {
-                            // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
-                            if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
-                        }
-                        else if (!vi.isEmpty()) {
-                            long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
-                            showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, true);
-                        }
+                        handle(j);
                     }
                 } catch (Exception e) {
                     wait = 2000;

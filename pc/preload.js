@@ -32,6 +32,11 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   onSub: (cb) => ipcRenderer.on('sub', (e, p) => cb(p)),
   zones: (list) => ipcRenderer.send('zones', list),
   fullOverlay: (data) => ipcRenderer.send('full-overlay', data),
+  tv: {
+    find: () => ipcRenderer.invoke('tv-find'),
+    ping: (ip) => ipcRenderer.invoke('tv-ping', ip),
+    send: (ip, msg) => ipcRenderer.invoke('tv-send', ip, msg)
+  },
   onFull: (cb) => ipcRenderer.on('full', (e, d) => cb(d)),
   onZone: (cb) => ipcRenderer.on('zone', (e, d) => cb(d)),
   zoneSize: (id, w, h) => ipcRenderer.send('zone-size', id, w, h),

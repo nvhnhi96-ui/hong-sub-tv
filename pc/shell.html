@@ -344,8 +344,8 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
               <div class="hs-msg" id="hsPsMsg" hidden></div>
               <label class="hs-sw dk-sw">Chỉ xem để dịch, vẫn chơi bằng tay cầm trên TV <input type="checkbox" id="hsPsWatch"></label>
-              <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
               <p class="hs-note">Máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
+              <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
               <div class="dk-set">
                 <label class="lab" for="hsPsQ">Chất lượng hình</label>
                 <select class="hs-in" id="hsPsQ"><option value="1080/60">1080p, 60 hình/giây (PS5)</option><option value="720/60">720p, 60 hình/giây</option><option value="540/30">540p, 30 hình/giây (mạng yếu)</option></select>
@@ -355,7 +355,14 @@ html,body{height:100%;overflow:hidden}
           <div>
             <div class="dk-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
-              <p class="hs-note">Cho TV Android / Google TV. Nhập mã đang hiện trên app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+              <p class="hs-note">Cho TV Android / Google TV có app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+              <div class="dk-set">
+                <label class="lab" for="hsTvIp">Nối qua mạng nhà (khuyên dùng)</label>
+                <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
+                <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
+                <p class="hs-note" id="hsTvLanNote">TV và máy tính dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+              </div>
+              <div class="dk-set"><span class="lab">Hoặc dùng mã TV (khi TV khác mạng, đi qua internet)</span></div>
               <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
                 <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
                 <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>

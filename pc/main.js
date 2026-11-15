@@ -492,6 +492,44 @@ function setupIpc() {
   ipcMain.handle('rp-launch', (e, opengl) => rpLaunch(!!opengl));
   ipcMain.handle('use', (e, id) => { chosenId = id; return true; });
   ipcMain.on('zones', (e, list) => zonesUpdate(list));
+  /* ---------- the TV on the home network (Hóng Sub TV listens on 8765, answers broadcasts on 8766) ---------- */
+  ipcMain.handle('tv-find', () => new Promise((resolve) => {
+    const dgram = require('dgram'), os = require('os'), found = {};
+    const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    sock.on('error', () => {});
+    sock.on('message', (m, r) => { try { const j = JSON.parse(String(m)); if (j.app === 'hongsubtv') found[r.address] = Object.assign(j, { ip: r.address }); } catch (e) { /* ignore */ } });
+    sock.bind(0, () => {
+      try { sock.setBroadcast(true); } catch (e) { /* ignore */ }
+      const q = Buffer.from('HONGSUB_TV?');
+      const targets = new Set(['255.255.255.255']);
+      for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) {
+        if (a.family !== 'IPv4' || a.internal || !a.netmask) continue;
+        const ip = a.address.split('.').map(Number), mask = a.netmask.split('.').map(Number);
+        targets.add(ip.map((v, i) => (v & mask[i]) | (~mask[i] & 255)).join('.'));
+      }
+      const send = () => { for (const t of targets) sock.send(q, 8766, t, () => {}); };
+      send(); setTimeout(send, 400); setTimeout(send, 900);
+    });
+    setTimeout(() => { try { sock.close(); } catch (e) { /* ignore */ } resolve(Object.values(found)); }, 1800);
+  }));
+  function tvHttp(ip, pathname, body) {
+    return new Promise((resolve) => {
+      const http = require('http');
+      if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(String(ip || ''))) return resolve({ ok: false, err: 'ip' });
+      const data = body ? Buffer.from(JSON.stringify(body)) : null;
+      const req = http.request({ host: ip, port: 8765, path: pathname, method: data ? 'POST' : 'GET', timeout: 3000,
+        headers: data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {} }, (res) => {
+        let t = ''; res.on('data', (c) => { t += c; });
+        res.on('end', () => { try { resolve(Object.assign({ ok: res.statusCode === 200 }, JSON.parse(t || '{}'))); } catch (e) { resolve({ ok: res.statusCode === 200 }); } });
+      });
+      req.on('timeout', () => { req.destroy(); resolve({ ok: false, err: 'timeout' }); });
+      req.on('error', (e) => resolve({ ok: false, err: e.code || e.message }));
+      if (data) req.write(data);
+      req.end();
+    });
+  }
+  ipcMain.handle('tv-ping', (e, ip) => tvHttp(ip, '/ping'));
+  ipcMain.handle('tv-send', (e, ip, msg) => tvHttp(ip, '/sub', msg));
   ipcMain.on('full-overlay', (e, d) => fullShow(d));
   ipcMain.handle('zones-reset', () => { cfg.zoneWins = {}; saveCfg(); for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300); } return true; });
   ipcMain.on('zone-size', (e, id, w, h) => {

@@ -462,6 +462,11 @@ body.desk .hs-dk.hs-off{display:none!important}
               <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
               <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
             </div>
+            <div class="hs-dk" style="margin-top:10px">
+              <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn" id="hsTvFind" type="button">Tìm TV</button></div>
+              <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
+              <p class="hs-note" id="hsTvLanNote">Cùng mạng nhà: bấm Tìm TV hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+            </div>
             <div class="hs-f" style="margin-top:10px"><label for="hsTvSize">Cỡ chữ trên TV: <output id="hsTvSizeV">30</output></label><input class="hs-range" id="hsTvSize" type="range" min="20" max="60" step="2" value="30"></div>
             <div class="hs-f" style="margin-top:8px"><label for="hsTvPos">Chỗ hiện chữ trên TV</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
             <div class="hs-msg" id="hsTvMsg" hidden></div>
@@ -1563,31 +1568,89 @@ function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/
 $('hsTv').value=load('tv','');
 $('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value);});
 function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
-var tvFails=0;
-/* short messages to the TV (Hóng Sub opened, PS5 waking up...), shown there but not read aloud */
-function tvNotice(text){
-  var c=tvCode(); if(c.length<4||!D) return;
-  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:text,who:'Hóng Sub',kind:'notice',size:+$('hsTvSize').value||0,pos:$('hsTvPos').value})}).catch(function(){});
+/* ---------- the TV ----------
+   Windows app: straight over the home network when the TV's IP is known (Hóng Sub TV listens on port 8765).
+   Otherwise, and on the web page: through honggame.store with the TV code. */
+function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el?(el.value||'').trim():''; }
+function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; return o; }
+function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
+  return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }); }
+function tvSend(o){
+  o=tvBody(o); var ip=tvIp();
+  if(ip) return D.tv.send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); if(tvCode().length>=4) return tvRelay(o); throw new Error((r&&r.err)||'TV không trả lời'); });
+  return tvRelay(o);
 }
-/* the TV says hello when its app opens: the computer then wakes the PS5 */
-S.tvHello=-1;
+/* short messages to the TV (Hóng Sub opened, PS5 waking up...), shown there but not read aloud */
+function tvNotice(text){ if(!D||(!tvIp()&&tvCode().length<4)) return; tvSend({vi:text,who:'Hóng Sub',kind:'notice'}).catch(function(){}); }
+var tvFails=0;
+function tvPush(vi,en,who,manual){
+  if(!tvIp()&&tvCode().length<4){ if(manual) tvMsg('err',D?'Bấm "Tìm TV", hoặc nhập IP (hay mã) đang hiện trên app Hóng Sub TV.':'Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
+  tvSend({vi:vi,en:en||'',who:who||''})
+    .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'); })
+    .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err',tvIp()?'TV không trả lời. Kiểm tra TV đã mở app Hóng Sub TV, và máy tính với TV dùng chung một mạng.':'Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
+}
+/* connection state shown under the IP box */
+S.tvOk=null;
+function tvLan(ok,name){
+  S.tvOk=ok; if(name) S.tvName=name;
+  var n=$('hsTvLanNote'); if(!n) return;
+  n.className='hs-note '+(ok?'ok':'');
+  n.textContent=ok?('Đã nối với TV '+(S.tvName?S.tvName+' ':'')+'('+tvIp()+') qua mạng nhà.'):'Chưa nối được TV '+tvIp()+'. Mở app Hóng Sub TV trên TV, kiểm tra TV và máy tính dùng chung một mạng.';
+}
+function tvUse(ip,info){
+  $('hsTvIp').value=ip; save('tvip',ip);
+  if(info){ S.tvName=info.name||''; if(info.code&&tvCode().length<4){ $('hsTv').value=info.code; save('tv',info.code); } S.tvBoot=info.boot||''; }
+  tvLan(true,S.tvName); tvNotice('Đã nối với Hóng Sub trên máy tính.');
+}
+function tvFindUi(silent){
+  if(!D||!D.tv) return Promise.resolve([]);
+  var b=$('hsTvFind'), L=$('hsTvList'); b.disabled=true; b.textContent='Đang tìm...';
+  return D.tv.find().then(function(list){
+    b.disabled=false; b.textContent='Tìm TV';
+    list=list||[];
+    if(list.length===1){ tvUse(list[0].ip,list[0]); L.innerHTML=''; if(!silent) tvMsg('ok','Đã tìm thấy TV '+list[0].name+' ('+list[0].ip+').'); }
+    else if(list.length>1){
+      L.innerHTML=list.map(function(t,i){ return '<button class="hs-btn" type="button" data-i="'+i+'">'+esc(t.name)+' · '+esc(t.ip)+'</button>'; }).join('');
+      L.querySelectorAll('button').forEach(function(x){ x.onclick=function(){ var t=list[+x.dataset.i]; tvUse(t.ip,t); L.innerHTML=''; }; });
+      if(!silent) tvMsg('','Thấy '+list.length+' TV. Chọn TV đang dùng.');
+    } else if(!silent) tvMsg('err','Chưa thấy TV nào. Trên TV mở app Hóng Sub TV (bản mới), kiểm tra TV và máy tính dùng chung một modem/wifi, hoặc nhập IP đang hiện trên TV.');
+    return list;
+  }).catch(function(){ b.disabled=false; b.textContent='Tìm TV'; return []; });
+}
+/* the TV says hello when its app opens (home network: a new "boot" in /ping; otherwise a message through
+   honggame.store): the computer then wakes the PS5 */
+S.tvHello=-1; S.tvBoot='';
+function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên máy tính.'); }
 function tvListen(){
-  var c=tvCode();
-  if(c.length>=4&&D) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+  var ip=tvIp(), c=tvCode();
+  if(ip){
+    D.tv.ping(ip).then(function(r){
+      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; tvLan(true);
+        if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
+      else tvLan(false);
+    }).catch(function(){ tvLan(false); });
+  } else if(c.length>=4&&D) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
     var seq=+j.seq||0;
     if(S.tvHello<0){ S.tvHello=seq; return; }
-    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello'){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên máy tính.'); } }
+    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello') tvHello(); }
   }).catch(function(){});
   later(tvListen,4000);
 }
-function tvPush(vi,en,who,manual){
-  var c=tvCode(); if(c.length<4){ if(manual) tvMsg('err','Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
-  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:vi,en:en||'',who:who||'',size:+$('hsTvSize').value||0,pos:$('hsTvPos').value})})
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: kiểm tra mã, và trên TV đã bấm "Bật phụ đề" chưa.'); })
-    .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err','Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
+if(D&&D.tv){
+  $('hsTvIp').value=load('tvip','');
+  $('hsTvFind').addEventListener('click',function(){ tvFindUi(false); });
+  $('hsTvIpGo').addEventListener('click',function(){
+    var ip=($('hsTvIp').value||'').trim().replace(/^https?:\/\//,'').replace(/[:/].*$/,'');
+    if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ tvMsg('err','IP chưa đúng. Nhập đúng dãy số đang hiện trên TV, VD: 192.168.1.50'); return; }
+    $('hsTvIp').value=ip; tvMsg('','Đang nối TV '+ip+'...');
+    D.tv.ping(ip).then(function(r){ if(r&&r.ok&&r.app==='hongsubtv'){ tvUse(ip,r); tvMsg('ok','Đã nối với TV '+(r.name||'')+' ('+ip+'). Bấm "Gửi thử" để xem chữ trên TV.'); } else { save('tvip',ip); tvLan(false); tvMsg('err','TV '+ip+' chưa trả lời ('+((r&&r.err)||'lỗi')+'). Mở app Hóng Sub TV trên TV, kiểm tra IP và TV dùng chung mạng với máy tính.'); } });
+  });
+  $('hsTvIp').addEventListener('keydown',function(e){ if(e.key==='Enter') $('hsTvIpGo').click(); });
+  /* first start: look for the TV by itself */
+  if(!load('tvip','')) later(function(){ tvFindUi(true); },2500);
 }
 (function(){ var sz=$('hsTvSize'), ps=$('hsTvPos'); sz.value=load('tvsize',30); $('hsTvSizeV').textContent=sz.value; ps.value=load('tvpos','bottom');
-  var t=0; function send(){ clearTimeout(t); t=setTimeout(function(){ if(tvCode().length>=4) tvPush('Cỡ chữ '+sz.value+' trên TV','','',false); },500); }
+  var t=0; function send(){ clearTimeout(t); t=setTimeout(function(){ if(tvIp()||tvCode().length>=4) tvSend({vi:'Cỡ chữ '+sz.value+' trên TV',who:'Hóng Sub',kind:'notice'}).catch(function(){}); },500); }
   sz.addEventListener('input',function(){ $('hsTvSizeV').textContent=sz.value; save('tvsize',+sz.value); send(); });
   ps.addEventListener('change',function(){ save('tvpos',ps.value); send(); });
   var ca=$('hsCastAuto'); ca.checked=load('castauto',true); ca.addEventListener('change',function(){ save('castauto',ca.checked); var c=S.cast[castKey()]||{}; Object.keys(c).forEach(function(k){ castVoice(c,k); }); save('cast',S.cast); castUi(); });
