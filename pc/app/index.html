@@ -53,6 +53,9 @@ html,body{margin:0;background:#ECEEF1}
 .hs-region span{position:absolute;bottom:100%;left:-2px;margin-bottom:4px;background:var(--brand);color:#000;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
+.hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
+.hs-fsb{position:absolute;box-sizing:border-box;width:max-content;background:rgba(12,14,18,.92);color:#fff;border-radius:3px;padding:1px 4px;line-height:1.22;font-weight:600;overflow:hidden;box-shadow:0 0 0 1px rgba(255,196,0,.35)}
+.hs-btn.on{background:var(--ink);color:var(--panel)!important;border-color:var(--ink)}
 .hs-zone{position:absolute;border:2px dashed #3FB6FF;border-radius:6px}
 .hs-zone span{position:absolute;bottom:100%;left:-2px;margin-bottom:3px;color:#000;font-size:11.5px;font-weight:700;padding:0 6px;border-radius:4px;white-space:nowrap}
 .hs-zone .tx{position:absolute;inset:0;background:rgba(10,12,16,.88);color:#fff;padding:6px 8px;line-height:1.35;white-space:pre-line;overflow:auto;border-radius:4px;font-weight:500}
@@ -222,91 +225,146 @@ body.desk .hs-dk.hs-off{display:none!important}
 
 </style>
 <style>
-/* ---------- Windows app layout: dark rail of pages on the left, one page at a time on the right ---------- */
+/* ---------- Windows app: graphite night theme, Hóng yellow only where it matters ---------- */
 html,body{height:100%;overflow:hidden}
-.hs{--rail:#15171C;--rail2:#23262E;--railtx:#A9AEB8;min-height:0;height:100vh;display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:100%}
-.dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:16px 10px 12px;min-height:0}
-.dk-logo{display:flex;align-items:center;gap:6px;padding:2px 10px 18px;font-weight:800;font-size:21px;letter-spacing:-.01em}
-.dk-logo span{background:#fff;color:#000;border-radius:5px;padding:1px 7px 2px;font-weight:700}
-.dk-nav{display:flex;flex-direction:column;gap:2px}
-.dk-nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:var(--railtx);font-weight:600;font-size:14.5px;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;position:relative}
-.dk-nav button svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hs{--page:#0F1216;--panel:#171B21;--panel2:#1C2128;--sunk:#12161B;--line:#252B34;--line2:#353C47;--ink:#EDF0F4;--muted:#9AA3AF;--soft:#6E7784;--brand:#FFC400;--brand2:#E6B000;
+  --rail:#0B0D11;--rail2:#191D24;--railtx:#9AA3AF;--ok:#3FD08A;--warn:#FFB347;--err:#FF6B6B;
+  color-scheme:dark;background:var(--page);color:var(--ink);min-height:0;height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:100%}
+.hs ::selection{background:rgba(255,196,0,.35)}
+.hs select option{background:#171B21;color:#EDF0F4}
+.hs-btn:hover{border-color:var(--soft)}
+.hs-btn:disabled{opacity:.45}
+.hs-msg{background:var(--sunk)!important;border-color:var(--line2)!important;color:var(--ink)!important}
+.hs-msg.ok{border-color:rgba(63,208,138,.5)!important}.hs-msg.err{border-color:rgba(255,107,107,.55)!important}.hs-msg.warn{border-color:rgba(255,179,71,.55)!important}
+.hs-sub{background:#08090B!important;border-color:var(--line)!important}
+.hs-stage{border-radius:12px;background:#07080A;box-shadow:0 0 0 1px var(--line)}
+
+/* rail */
+.dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:18px 12px 12px;min-height:0;border-right:1px solid #181C22}
+.dk-logo{display:flex;align-items:center;gap:7px;padding:0 10px 20px;font-weight:800;font-size:22px;letter-spacing:-.015em}
+.dk-logo span{background:var(--brand);color:#000;border-radius:6px;padding:1px 8px 2px;font-weight:800}
+.dk-nav{display:flex;flex-direction:column;gap:2px;overflow:auto;min-height:0}
+.dk-nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:var(--railtx);font-weight:600;font-size:14.5px;padding:10px 11px;border-radius:9px;cursor:pointer;text-align:left;position:relative;font-family:inherit}
+.dk-nav button svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .dk-nav button:hover{background:var(--rail2);color:#fff}
 .dk-nav button.on{background:var(--rail2);color:#fff}
-.dk-nav button.on::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.dk-nav button.on::before{content:"";position:absolute;left:-12px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.dk-nav .chev{margin-left:auto;width:14px!important;height:14px!important;transition:transform .15s}
+.dk-nav .grp.open .chev{transform:rotate(90deg)}
+.dk-sub{display:none;flex-direction:column;gap:1px;margin:2px 0 6px 21px;padding-left:10px;border-left:1px solid #262B33}
+.dk-sub.open{display:flex}
+.dk-sub button{font-size:13.5px;padding:7px 10px;font-weight:500}
+.dk-sub button.on::before{left:-11px;top:7px;bottom:7px}
 .dk-nav .badge{margin-left:auto;font-size:11.5px;font-weight:700;color:#000;background:var(--brand);border-radius:9px;padding:0 6px;line-height:18px}
-.dk-railinfo{margin-top:auto;border-top:1px solid #2E323B;padding:12px 10px 0;font-size:12.5px;color:var(--railtx);line-height:1.6}
+.dk-railinfo{margin-top:auto;border-top:1px solid #1E232A;padding:12px 10px 0;font-size:12.5px;color:var(--railtx);line-height:1.65}
 .dk-railinfo b{color:#fff;font-weight:600}
-.dk-railinfo .v{color:#6F7581;margin-top:6px}
+.dk-railinfo .v{color:#5E6672;margin-top:6px}
 
+/* top bar */
 .dk-main{display:flex;flex-direction:column;min-height:0;min-width:0}
-.dk-top{display:flex;align-items:center;gap:14px;padding:12px 22px;background:var(--panel);border-bottom:1px solid var(--line);min-height:62px}
-.dk-top h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.005em}
+.dk-top{position:relative;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--page);border-bottom:1px solid var(--line);min-height:64px}
+.dk-top h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
 .dk-top .sp{flex:1}
-.dk-top .hs-pill{font-size:13.5px}
-#hsRun{padding:9px 16px}
+.dk-top .hs-pill{font-size:13.5px;background:var(--panel);border-color:var(--line2)}
+.dk-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 13px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit}
+.dk-chip svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dk-chip[aria-pressed=false]{color:var(--soft)}
+.dk-chip[aria-pressed=false] .on-i,.dk-chip[aria-pressed=true] .off-i{display:none}
+.dk-bell{position:relative;width:38px;height:38px;border-radius:50%;border:1px solid var(--line2);background:var(--panel);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.dk-bell svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dk-bell b{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--brand);color:#000;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.dk-noti{position:absolute;right:22px;top:58px;width:380px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:50;padding:6px}
+.dk-noti h3{margin:8px 10px 6px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.dk-noti .it{padding:10px 12px;border-radius:9px;display:grid;grid-template-columns:8px 1fr;gap:3px 10px}
+.dk-noti .it:hover{background:var(--panel2)}
+.dk-noti .it i{grid-row:span 3;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--line2)}
+.dk-noti .it.new i{background:var(--brand)}
+.dk-noti .it b{font-size:14px}.dk-noti .it p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.dk-noti .it small{color:var(--soft);font-size:12px}
+.dk-noti .it .dk-link{justify-self:start;margin-top:2px;grid-column:2}.dk-noti .it small{grid-column:2}
+.dk-toast{position:fixed;right:20px;bottom:20px;max-width:360px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.5);z-index:60;font-size:13.5px;animation:dkIn .25s ease-out}
+.dk-toast b{display:block;margin-bottom:2px}
+@keyframes dkIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 .hs-upd{margin:12px 22px 0}
 .dk-body{flex:1;overflow:auto;padding:20px 22px 28px;min-height:0}
-.dk-page{display:none;max-width:1180px}
+.dk-page{display:none;max-width:1240px}
 .dk-page.on{display:block}
 
 /* play page */
-.dk-play{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
-.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.dk-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
-.dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700}
+.dk-play{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.dk-tools .sep{width:1px;height:26px;background:var(--line2);margin:0 4px}
+.dk-tools .hs-btn kbd,.hs-btn kbd{font-family:inherit;font-size:11px;font-weight:700;color:var(--soft);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-left:2px}
+.dk-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700;letter-spacing:-.005em}
 .dk-card > .hs-note{margin-bottom:10px}
+.dk-card.hl{border-color:rgba(255,196,0,.45);background:linear-gradient(180deg,rgba(255,196,0,.07),rgba(255,196,0,0) 60%),var(--panel)}
 .dk-src{display:grid;gap:8px}
-.dk-src button{display:grid;grid-template-columns:34px 1fr;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:10px 12px;cursor:pointer}
-.dk-src button:hover{border-color:var(--ink)}
-.dk-src svg{grid-row:span 2;width:30px;height:30px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dk-src button{display:grid;grid-template-columns:34px 1fr;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line2);background:var(--panel2);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink);font-family:inherit}
+.dk-src button:hover{border-color:var(--brand)}
+.dk-src svg{grid-row:span 2;width:30px;height:30px;stroke:var(--brand);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .dk-src b{font-weight:700;font-size:14.5px}.dk-src small{color:var(--muted);font-size:12.5px;line-height:1.35}
-.dk-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.dk-cur{display:flex;align-items:center;gap:10px}
+.dk-cur .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(63,208,138,.15);flex:none}
+.dk-cur b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-quick{display:grid;gap:2px}
+.dk-quick .hs-sw{margin:0;padding:8px 0;border-top:1px solid var(--line)}
+.dk-quick .hs-sw:first-child{border-top:0}
+.dk-kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13.5px}
 .dk-kv span{color:var(--muted)}.dk-kv b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dk-link{background:none;border:0;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px;cursor:pointer;font-size:13.5px}
+.dk-link{background:none;border:0;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px;cursor:pointer;font-size:13.5px;font-family:inherit}
 
-/* settings pages: two columns of cards */
+/* settings pages */
 .dk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
 .dk-cols > div{min-width:0}
 .dk-set{display:grid;gap:4px;margin-top:14px}
 .dk-set:first-of-type{margin-top:6px}
 .dk-set .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:600}
-.dk-set .lab output{font-weight:700;color:var(--ink)}
+.dk-set .lab output{font-weight:700;color:var(--brand)}
 .dk-set .hs-note{margin-top:2px}
 .dk-sw{margin-top:12px}
 .dk-colors{display:flex;gap:8px;flex-wrap:wrap}
 .dk-colors button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);cursor:pointer;padding:0}
-.dk-colors button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
-.dk-prev{background:#3A3F4A url() center/cover;border-radius:9px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;
-  background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
+.dk-colors button.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--panel) inset}
+.dk-prev{border-radius:10px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
 .dk-prev div{background:rgba(8,8,10,.74);border-radius:10px;padding:6px 16px;text-align:center;max-width:100%}
 .dk-prev b{display:block;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 2px 3px #000}
 .dk-prev small{display:block;color:#C9C9D2;font-size:12px}
+.dk-buy{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.dk-buy > div{border:1px solid var(--line2);border-radius:10px;padding:14px;background:var(--panel2);display:flex;flex-direction:column;gap:6px}
+.dk-buy b{font-size:14.5px}.dk-buy p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.dk-buy .hs-row{margin-top:auto;padding-top:6px}
 
 /* shortcut table */
 .dk-keys{width:100%;border-collapse:collapse;font-size:14px}
 .dk-keys td{border-top:1px solid var(--line);padding:10px 6px;vertical-align:middle}
 .dk-keys tr:first-child td{border-top:0}
 .dk-keys td:last-child{text-align:right;white-space:nowrap}
-.dk-keys kbd{display:inline-block;min-width:40px;text-align:center;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 8px;background:var(--sunk)}
-.dk-keys .rec kbd{border-color:var(--brand2);background:#FFF6D6}
+.dk-keys kbd{display:inline-block;min-width:40px;text-align:center;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 8px;background:var(--sunk);color:var(--ink)}
+.dk-keys .rec kbd{border-color:var(--brand);background:rgba(255,196,0,.12)}
 .dk-keys .st{font-size:12px;color:var(--warn);margin-left:6px}
 
 .hs-cast{margin:0}.hs-cast > summary{display:none}
-.hs-hist{margin-top:14px}
+.hs-cast .row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.hs-cast .row b{min-width:110px}
+.hs-cast .row select{width:auto!important;flex:1 1 120px}
+.hs-hist{margin-top:14px;background:var(--panel)!important;border-color:var(--line)!important}
 .hs-hist ol{max-height:none}
 .dk-empty{color:var(--muted);font-size:14px;padding:6px 0}
 .dk-bar{height:8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;margin-top:10px}
-.dk-bar span{display:block;height:100%;width:0;background:var(--brand2);transition:width .3s}
+.dk-bar span{display:block;height:100%;width:0;background:var(--brand);transition:width .3s}
 .dk-voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:8px}
-.dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px}
-.dk-voices button:hover{border-color:var(--ink)}
-.dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--ink)}
+.dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px;font-family:inherit}
+.dk-voices button:hover{border-color:var(--brand)}
+.dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--brand)}
 .dk-voices b{font-weight:600}.dk-voices small{color:var(--muted);margin-left:auto;white-space:nowrap}
-.dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px}.dk-steps li{margin:4px 0}
+.dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.55}.dk-steps li{margin:5px 0}
 
-@media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}.dk-buy{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.hs *{animation:none!important;transition:none!important}}
+.hs :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.hs-sw input:checked{background:var(--brand)}
+.hs-sw input:checked::after{background:#111}
+.hs-sw input::after{background:#C9CFD8}
 </style>
 </head>
 <body class="desk">
@@ -315,13 +373,16 @@ html,body{height:100%;overflow:hidden}
     <div class="dk-logo">Hóng<span>Sub</span></div>
     <nav class="dk-nav" aria-label="Các trang">
       <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
-      <button type="button" data-p="vung"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/></svg>Vùng dịch</button>
       <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS và TV</button>
-      <button type="button" data-p="dich"><svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2M5 9c1.5 3 4 5 7 6M11 5c-1 4-3.5 7-7 9"/><path d="M13 21l4-10 4 10M14.5 18h5"/></svg>Dịch<span class="badge" id="dkKeyBadge" hidden>!</span></button>
-      <button type="button" data-p="giong"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Giọng đọc</button>
-      <button type="button" data-p="phude"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 13h4M13 13h4M7 16h7"/></svg>Phụ đề và độ trễ</button>
-      <button type="button" data-p="nhanvat"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5A5 5 0 0 1 21 19"/></svg>Nhân vật</button>
-      <button type="button" data-p="phim"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Phím tắt</button>
+      <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="dk-sub" id="dkSub">
+        <button type="button" data-p="dich">Dịch và mã AI</button>
+        <button type="button" data-p="vung">Vùng dịch</button>
+        <button type="button" data-p="giong">Giọng đọc</button>
+        <button type="button" data-p="phude">Phụ đề và độ trễ</button>
+        <button type="button" data-p="nhanvat">Nhân vật</button>
+        <button type="button" data-p="phim">Phím tắt</button>
+      </div>
       <button type="button" data-p="khac"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg>Hỗ trợ</button>
     </nav>
     <div class="dk-railinfo">
@@ -337,7 +398,10 @@ html,body{height:100%;overflow:hidden}
       <h1 id="dkTitle">Màn hình chơi</h1>
       <span class="sp"></span>
       <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
+      <button class="dk-chip" id="dkSpeakChip" type="button" aria-pressed="true" title="Bật hoặc tắt đọc to phụ đề (F5)"><svg class="on-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><svg class="off-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg><span id="dkSpeakTx">Đọc phụ đề: bật</span></button>
+      <button class="dk-bell" id="dkBell" type="button" aria-label="Thông báo" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><b id="dkBellN" hidden>0</b></button>
       <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch</button>
+      <div class="dk-noti" id="dkNoti" hidden><h3>Thông báo <button class="dk-link" type="button" id="dkNotiRead">Đánh dấu đã xem</button></h3><div id="dkNotiList"></div></div>
     </div>
     <div class="hs-upd" id="hsUpd"></div>
     <div class="hs-mobile" id="hsMobile" hidden></div>
@@ -372,13 +436,16 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-en" id="hsEn"></div>
             </div>
             <div class="dk-tools">
-              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm đang có trên màn hình">Dịch cả màn hình</button>
+              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ Anh">Dịch cả màn hình</button>
+              <button class="hs-btn" id="dkNow" type="button" disabled title="Dịch ngay câu đang hiện">Dịch câu này <kbd>F8</kbd></button>
               <button class="hs-btn" id="hsDraw" type="button" disabled>Chọn vùng phụ đề</button>
-              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+              <button class="hs-btn" id="dkZoneAdd2" type="button">Thêm vùng dịch</button>
+              <span class="sep"></span>
               <button class="hs-btn" id="hsOvShow" type="button">Ẩn phụ đề nổi</button>
               <button class="hs-btn" id="hsOvMove" type="button">Di chuyển phụ đề nổi</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
               <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
             </div>
             <details class="hs-hist" id="hsHistBox" open>
@@ -387,8 +454,10 @@ html,body{height:100%;overflow:hidden}
             </details>
           </div>
           <div>
-            <div class="dk-card">
+            <div class="dk-card" id="dkSrcCard">
               <h2>Nguồn hình</h2>
+              <div class="dk-cur" id="dkCur" hidden><span class="dot"></span><b id="dkCurName">Đang nhận hình</b><button class="dk-link" type="button" id="dkCurChange">Đổi</button></div>
+              <div id="dkSrcPick">
               <p class="hs-note">Hóng Sub đọc phụ đề từ đâu.</p>
               <div class="dk-src">
                 <button type="button" id="dkSrcPs"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
@@ -396,11 +465,16 @@ html,body{height:100%;overflow:hidden}
                 <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Capture card</b><small>Chơi trên TV, máy tính chỉ nhận hình</small></button>
                 <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
               </div>
+              </div>
             </div>
             <div class="dk-card">
-              <h2>Vùng dịch</h2>
-              <p class="hs-note" id="dkZoneSum">Dịch thêm nhiệm vụ, vật phẩm, bản đồ ở chỗ khác trên màn hình.</p>
-              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkZoneAdd2">Thêm vùng</button><button class="hs-btn" type="button" data-go="vung">Quản lý vùng</button></div>
+              <h2>Bật nhanh</h2>
+              <div class="dk-quick">
+                <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
+                <label class="hs-sw">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
+                <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
+              </div>
             </div>
             <div class="dk-card">
               <h2>Đang dùng</h2>
@@ -408,9 +482,10 @@ html,body{height:100%;overflow:hidden}
                 <span>Game</span><b id="dkGame2">chưa chọn</b>
                 <span>Dịch bằng</span><b id="dkVia2">chưa có mã</b>
                 <span>Giọng đọc</span><b id="dkVoice2">bật</b>
+                <span>Vùng dịch</span><b id="dkZoneSum">chưa có</b>
                 <span>Phím tắt</span><b id="dkKeys2">F7 bật/tắt dịch</b>
               </div>
-              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button></div>
+              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button><button class="dk-link" type="button" data-go="vung">Vùng dịch</button></div>
             </div>
           </div>
         </div>
@@ -478,6 +553,12 @@ html,body{height:100%;overflow:hidden}
                 <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
                 <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
               </div>
+              <div class="dk-set">
+                <div class="lab"><label for="hsTvSize">Cỡ chữ trên TV</label><output id="hsTvSizeV">30</output></div>
+                <input class="hs-range" id="hsTvSize" type="range" min="20" max="60" step="2" value="30">
+              </div>
+              <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ trên TV</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
+              <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
             <div class="dk-card">
@@ -511,6 +592,16 @@ html,body{height:100%;overflow:hidden}
 
       <!-- ============ Dịch ============ -->
       <section class="dk-page" id="p-dich">
+        <div class="dk-card hl" id="dkBuy">
+          <h2>Mua mã dịch AI</h2>
+          <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
+          <div class="dk-buy">
+            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" bên dưới.</p>
+              <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
+            <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
+              <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
+          </div>
+        </div>
         <div class="dk-cols">
           <div>
             <div class="dk-card" id="hsKeySec">
@@ -624,6 +715,7 @@ html,body{height:100%;overflow:hidden}
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
             <label class="hs-sw dk-sw">Hiện câu tiếng Anh gốc <input type="checkbox" id="hsShowEn" checked></label>
+            <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
               <input class="hs-range" id="hsSize" type="range" min="18" max="56" step="2" value="28">
@@ -676,6 +768,8 @@ html,body{height:100%;overflow:hidden}
         <div class="dk-card" style="max-width:760px">
           <h2>Nhân vật đã gặp</h2>
           <p class="hs-note">Khi phụ đề có tên người nói (ví dụ "ATREUS: ..."), nhân vật tự vào đây. Chọn nam/nữ, giọng đọc và màu tên cho từng người. Mỗi game lưu riêng.</p>
+          <label class="hs-sw dk-sw">Tự chọn giọng riêng cho từng nhân vật <input type="checkbox" id="hsCastAuto" checked></label>
+          <p class="hs-note">Hóng Sub tự nhận nam/nữ và tuổi (trẻ em, thanh niên, người lớn, người già), rồi gán cho mỗi người một giọng riêng: giọng AI khác nhau nếu đã tải bộ giọng AI, và cao độ khác nhau để hai người không bao giờ nghe giống nhau. Bấm Nghe để thử.</p>
           <p class="dk-empty" id="dkCastEmpty">Chưa gặp nhân vật nào trong game này.</p>
           <details class="hs-cast" id="hsCastBox" hidden open>
             <summary>Nhân vật đã gặp (<span id="hsCastN">0</span>)</summary>
@@ -695,7 +789,7 @@ html,body{height:100%;overflow:hidden}
         </div>
       </section>
 
-      <!-- ============ TV và hỗ trợ ============ -->
+      <!-- ============ Hỗ trợ ============ -->
       <section class="dk-page" id="p-khac">
         <div class="dk-cols">
           <div>
@@ -844,12 +938,49 @@ function lineUp(items){
   }).filter(function(l){return l.text;});
 }
 
+/* whole screen: boxes on one row are joined only when close together (menus have several columns),
+   then lines that sit right under each other with the same height and alignment become one block */
+function blockUp(items){
+  items.sort(function(a,b){return (a.y+a.h/2)-(b.y+b.h/2)||a.x-b.x;});
+  var rows=[];
+  items.forEach(function(it){
+    var hit=null;
+    for(var i=rows.length-1;i>=0&&i>=rows.length-6;i--){ var L=rows[i], last=L.parts[L.parts.length-1];
+      if(Math.abs((it.y+it.h/2)-(L.y+L.h/2))<Math.min(it.h,L.h)*0.5&&it.x>=last.x&&it.x-(last.x+last.w)<Math.max(it.h,L.h)*1.6){ hit=L; break; } }
+    if(hit){ hit.parts.push(it); var y2=Math.max(hit.y+hit.h,it.y+it.h); hit.y=Math.min(hit.y,it.y); hit.h=y2-hit.y; }
+    else rows.push({y:it.y,h:it.h,parts:[it]});
+  });
+  var lines=rows.map(function(L){
+    L.parts.sort(function(a,b){return a.x-b.x;});
+    var x=L.parts[0].x, x2=Math.max.apply(null,L.parts.map(function(p){return p.x+p.w;}));
+    var tl=L.parts.reduce(function(a,p){return a+p.text.length;},0);
+    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h};
+  }).filter(function(l){return l.text;});
+  lines.sort(function(a,b){return a.y-b.y;});
+  var blocks=[];
+  lines.forEach(function(l){
+    var best=null;
+    blocks.forEach(function(b){
+      var last=b.lines[b.lines.length-1], gap=l.y-(last.y+last.h), hr=Math.max(l.h,last.h)/Math.min(l.h,last.h);
+      var overlap=Math.min(l.x+l.w,b.x+b.w)-Math.max(l.x,b.x);
+      var aligned=Math.abs(l.x-b.x)<last.h*1.5||Math.abs((l.x+l.w/2)-(b.x+b.w/2))<last.h*1.5;
+      if(gap>-last.h*0.3&&gap<last.h*0.55&&hr<1.3&&overlap>0&&aligned) best=b;
+    });
+    if(best){ best.lines.push(l); var x2=Math.max(best.x+best.w,l.x+l.w), y2=l.y+l.h; best.x=Math.min(best.x,l.x); best.w=x2-best.x; best.h=y2-best.y; }
+    else blocks.push({x:l.x,y:l.y,w:l.w,h:l.h,lines:[l]});
+  });
+  return blocks.map(function(b){
+    var tl=b.lines.reduce(function(a,l){return a+l.text.length;},0);
+    return {x:b.x,y:b.y,w:b.w,h:b.h,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl)};
+  });
+}
 async function read(src,opts){
   if(!det||!rec) throw new Error('OCR chưa sẵn sàng');
   var t0=performance.now(), W=src.width, H=src.height;
   var boxes=await detect(src,W,H), items=[];
   if(opts&&opts.maxBoxes) boxes=boxes.slice(0,opts.maxBoxes);
   for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i]); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; items.push(boxes[i]); } }
+  if(opts&&opts.blocks) return {blocks:blockUp(items), W:W, H:H, ms:Math.round(performance.now()-t0)};
   var lines=lineUp(items);
   var tl=lines.reduce(function(a,l){return a+l.text.length;},0);
   return {lines:lines, text:lines.map(function(l){return l.text;}).join('\n'), conf:tl?lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/tl:0, ms:Math.round(performance.now()-t0)};
@@ -998,6 +1129,7 @@ async function pick(manual){
   }catch(e){status('warn','Chưa chọn màn hình'); return false;}
 }
 function setStream(st,demo){
+  if(S.fs&&S.fs.on) fsStop();
   stopRun();
   if(S.stream&&S.stream!==st){S.stream.getTracks().forEach(function(t){t.stop();});}
   if(S.demo&&S.demo!==demo){S.demo.stop();}
@@ -1297,7 +1429,7 @@ function splitSpeaker(res,raw){
 function jpeg(q){return cap.toDataURL('image/jpeg',q||.82).split(',')[1];}
 
 /* ---------- Gemini ---------- */
-var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},gender:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
+var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},gender:{type:'STRING'},age:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
 var SCHEMA_ALL={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']}}},required:['items']};
 var STYLES={
   modern:'everyday modern speech, natural like a Vietnamese dub, not bookish',
@@ -1586,7 +1718,9 @@ $('hsOrCheck').addEventListener('click',async function(){
   keyStats(); steps();
 });
 if(S.or.all.length) orFill();
-var SHAPE_SUB='{"speaker":"","gender":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}';
+var SHAPE_SUB='{"speaker":"","gender":"","age":"","en":"","vi":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}', SHAPE_FS='{"items":[{"en":"","vi":"","box":[0,0,0,0]}]}', SHAPE_FSI='{"items":[{"i":1,"vi":""}]}';
+var SCHEMA_FS={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'},box:{type:'ARRAY',items:{type:'INTEGER'}}},required:['en','vi','box']}}},required:['items']};
+var SCHEMA_FSI={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{i:{type:'INTEGER'},vi:{type:'STRING'}},required:['i','vi']}}},required:['items']};
 S.via='';
 async function ask(prompt,b64,schema,shape,freeText){
   var err=null;
@@ -1644,10 +1778,16 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
 var tvFails=0;
 function tvPush(vi,en,who,manual){
   var c=tvCode(); if(c.length<4){ if(manual) tvMsg('err','Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
-  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:vi,en:en||'',who:who||''})})
+  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:vi,en:en||'',who:who||'',size:+$('hsTvSize').value||0,pos:$('hsTvPos').value})})
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: kiểm tra mã, và trên TV đã bấm "Bật phụ đề" chưa.'); })
     .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err','Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
 }
+(function(){ var sz=$('hsTvSize'), ps=$('hsTvPos'); sz.value=load('tvsize',30); $('hsTvSizeV').textContent=sz.value; ps.value=load('tvpos','bottom');
+  var t=0; function send(){ clearTimeout(t); t=setTimeout(function(){ if(tvCode().length>=4) tvPush('Cỡ chữ '+sz.value+' trên TV','','',false); },500); }
+  sz.addEventListener('input',function(){ $('hsTvSizeV').textContent=sz.value; save('tvsize',+sz.value); send(); });
+  ps.addEventListener('change',function(){ save('tvpos',ps.value); send(); });
+  var ca=$('hsCastAuto'); ca.checked=load('castauto',true); ca.addEventListener('change',function(){ save('castauto',ca.checked); var c=S.cast[castKey()]||{}; Object.keys(c).forEach(function(k){ castVoice(c,k); }); save('cast',S.cast); castUi(); });
+})();
 $('hsTvTest').addEventListener('click',function(){ $('hsTv').value=tvCode(); save('tv',$('hsTv').value); tvPush('Hóng Sub đã kết nối với TV','Connected','',true); });
 
 /* ---------- display + speech ---------- */
@@ -1656,7 +1796,7 @@ function similar(a,b){a=norm(a);b=norm(b); if(!a||!b) return false; if(a===b) re
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function show(res){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
-  var ch=who?castMeet(who,res.gender):null;
+  var ch=who?castMeet(who,res.gender,res.age):null;
   var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi);
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=html;
   $('hsEn').textContent=$('hsShowEn').checked?en:'';
@@ -1711,12 +1851,28 @@ $('hsVoice').addEventListener('change',function(){save('voice',this.value); cast
 /* --- characters met in this game: gender, voice and name colour per character --- */
 var CAST_COLORS=['#FFC400','#7CC4FF','#FF8FA3','#8BE28B','#C9A7FF','#FFB067','#5EE6D0','#F28BFF'];
 function castKey(){return gameKey($('hsGame').value)||'_';}
-function castMeet(who,g){
+function castMeet(who,g,age){
   g=(g||'').toLowerCase(); g=g==='male'||g==='female'?g:'';
+  age=(age||'').toLowerCase(); age=/^(child|young|adult|old)$/.test(age)?age:'';
   var gk=castKey(), c=S.cast[gk]||(S.cast[gk]={}), k=who.trim().toLowerCase();
-  if(!c[k]){ c[k]={n:who.trim(),g:g,auto:true,v:'',c:CAST_COLORS[Object.keys(c).length%CAST_COLORS.length]}; save('cast',S.cast); castUi(); }
-  else if(c[k].auto&&g&&c[k].g!==g){ c[k].g=g; save('cast',S.cast); castUi(); }
+  if(!c[k]){ c[k]={n:who.trim(),g:g,a:age,auto:true,v:'',c:CAST_COLORS[Object.keys(c).length%CAST_COLORS.length]}; castVoice(c,k); save('cast',S.cast); castUi(); }
+  else{ var ch=false;
+    if(c[k].auto&&g&&c[k].g!==g){ c[k].g=g; c[k].av=''; ch=true; }
+    if(age&&!c[k].a){ c[k].a=age; ch=true; }
+    if(ch){ castVoice(c,k); save('cast',S.cast); castUi(); } }
   return c[k];
+}
+/* every character of a game gets a voice of its own: a different AI voice when there are enough of them, and
+   a slightly different pitch (children higher, old people lower) so two characters never sound the same */
+var AGE_PITCH={child:1.14,young:1.05,adult:1,old:0.92}, PITCH_STEP=[1,0.94,1.06,0.89,1.11,0.97,1.03];
+function castAutoOn(){ return !$('hsCastAuto')||$('hsCastAuto').checked; }
+function castVoice(c,k){
+  var e=c[k]; if(!castAutoOn()){ e.p=1; return; }
+  var same=Object.keys(c).filter(function(x){ return x!==k&&c[x].g===e.g; });
+  if(AIV.ready&&!AIV.off&&AIV.list.length){ castAuto(e.n,e.g); same=same.filter(function(x){ return c[x].av&&c[x].av===e.av; }); }
+  var base=AGE_PITCH[e.a]||1, taken=same.map(function(x){ return c[x].p||1; });
+  var p=base; for(var i=0;i<PITCH_STEP.length;i++){ var t=Math.round(base*PITCH_STEP[i]*100)/100; if(!taken.some(function(q){return Math.abs(q-t)<0.03;})){ p=t; break; } }
+  e.p=p;
 }
 function castOf(who){ if(!who) return null; var c=S.cast[castKey()]; return c?c[who.trim().toLowerCase()]||null:null; }
 function viVoices(){
@@ -1732,15 +1888,19 @@ function castUi(){
     var x=c[k];
     return '<div class="row" data-k="'+esc(k)+'"><input type="color" value="'+esc(x.c||'#FFC400')+'" aria-label="Màu tên '+esc(x.n)+'"><b style="color:'+esc(x.c||'#FFC400')+'">'+esc(x.n)+'</b>'+
       '<select class="hs-in" data-f="g" aria-label="Nam hay nữ"><option value="">?</option><option value="male"'+(x.g==='male'?' selected':'')+'>Nam</option><option value="female"'+(x.g==='female'?' selected':'')+'>Nữ</option></select>'+
-      '<select class="hs-in" data-f="v" aria-label="Giọng đọc"><option value="">'+(x.av&&AIV.ready?'Tự chọn: '+esc(x.av):'Giọng tự chọn')+'</option>'+vv.map(function(v){return '<option value="'+esc(v.id)+'"'+(v.id===x.v?' selected':'')+'>'+esc(v.name)+'</option>';}).join('')+'</select></div>';
+      '<select class="hs-in" data-f="a" aria-label="Tuổi"><option value="">Tuổi?</option><option value="child"'+(x.a==='child'?' selected':'')+'>Trẻ em</option><option value="young"'+(x.a==='young'?' selected':'')+'>Thanh niên</option><option value="adult"'+(x.a==='adult'?' selected':'')+'>Người lớn</option><option value="old"'+(x.a==='old'?' selected':'')+'>Người già</option></select>'+
+      '<select class="hs-in" data-f="v" aria-label="Giọng đọc"><option value="">'+(x.av&&AIV.ready?'Tự chọn: '+esc(x.av):'Giọng tự chọn')+(x.p&&x.p!==1?' · cao độ '+Math.round(x.p*100)+'%':'')+'</option>'+vv.map(function(v){return '<option value="'+esc(v.id)+'"'+(v.id===x.v?' selected':'')+'>'+esc(v.name)+'</option>';}).join('')+'</select>'+
+      '<button class="hs-btn" type="button" data-a="hear" title="Nghe thử giọng '+esc(x.n)+'">Nghe</button></div>';
   }).join('')+(ks.length?'<button class="hs-btn" type="button" id="hsCastClear" style="margin-top:8px">Xóa danh sách</button>':'');
   $('hsCastList').querySelectorAll('.row').forEach(function(row){
     var k=row.dataset.k;
     row.querySelector('input[type=color]').addEventListener('input',function(){ var cc=S.cast[castKey()]; cc[k].c=this.value; save('cast',S.cast); });
     row.querySelectorAll('select').forEach(function(sel){ sel.addEventListener('change',function(){
-      var cc=S.cast[castKey()]; cc[k][this.dataset.f]=this.value; if(this.dataset.f==='g'){ cc[k].auto=false; cc[k].av=''; } save('cast',S.cast);
-      stopSpeak(); devSpeak('Xin chào, tôi là '+cc[k].n+'.',cc[k].v||'auto',cc[k].g,cc[k].n); if(this.dataset.f==='g') castUi();
+      var cc=S.cast[castKey()]; cc[k][this.dataset.f]=this.value; if(this.dataset.f==='g'){ cc[k].auto=false; cc[k].av=''; }
+      if(this.dataset.f==='g'||this.dataset.f==='a') castVoice(cc,k); save('cast',S.cast);
+      stopSpeak(); devSpeak('Xin chào, tôi là '+cc[k].n+'.',cc[k].v||'auto',cc[k].g,cc[k].n); if(this.dataset.f!=='v') castUi();
     }); });
+    row.querySelector('[data-a=hear]').addEventListener('click',function(){ var cc=S.cast[castKey()]; stopSpeak(); devSpeak('Xin chào, tôi là '+cc[k].n+'. Chúng ta lên đường thôi.',cc[k].v||'auto',cc[k].g,cc[k].n); });
   });
   var cl=$('hsCastClear'); if(cl) cl.addEventListener('click',function(){ delete S.cast[castKey()]; save('cast',S.cast); castUi(); });
 }
@@ -1832,14 +1992,15 @@ function webVoice(mode,g){
   var male=vi.filter(function(v){return /NamMinh|Nam Minh|\bAn\b|male/i.test(v.name);})[0], female=vi.filter(function(v){return /HoaiMy|Hoai My|female/i.test(v.name);})[0];
   return (g==='male'?(male||female):(female||male))||vi[0]||null;
 }
-function devSpeak(t,mode,g,who){
+function devSpeak(t,mode,g,who,pitch){
   var rate=parseFloat($('hsRate').value);
-  if(D){ D.speak(t,devPick(mode,g,who),rate); return; }
+  if(pitch==null){ var ce=castOf(who); pitch=ce&&castAutoOn()?(ce.p||1):1; }
+  if(D){ D.speak(t,devPick(mode,g,castAutoOn()?who:''),rate,pitch); return; }
   if(!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   var v=webVoice(mode,g);
   if(!v){ if(!S.noViWarned){ S.noViWarned=true; status('warn','Máy chưa có giọng tiếng Việt nên chưa đọc to. Mở bằng Edge, hoặc chọn Giọng AI Google.'); } return; } /* never read Vietnamese with an English voice */
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.voice=v; speechSynthesis.speak(u);
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
@@ -1848,6 +2009,7 @@ function sample(){
   stopSpeak(); devSpeak(SAMPLE,mode,'');
 }
 $('hsVoiceTest').addEventListener('click',sample);
+function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
 function speak(t,res){
   if(!$('hsSpeak').checked||!t) return;
   var mode=voiceMode(), who=(res&&res.speaker)||'', g=((res&&res.gender)||'').toLowerCase();
@@ -1908,7 +2070,7 @@ function textPrompt(t){
     '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the English dialogue/subtitle text in "en". Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not in the text.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
-    '4. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes).\n'+
+    '4. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes). In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
 }
 function runStatus(){
@@ -1928,7 +2090,7 @@ function subPrompt(){
     '1. Copy ONLY the subtitle/dialogue text in English into "en", exactly as written. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not written on screen.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
-    '4. In "gender" put the speaker\'s gender if a speaker name is shown: "male", "female", or "".\n'+
+    '4. In "gender" put the speaker\'s gender if a speaker name is shown: "male", "female", or "". In "age" put "child", "young", "adult" or "old", or "".\n'+
     '5. If there is no readable English subtitle, return "en":"" and "vi":"".\n'+context();
 }
 function takeResult(res,seq,raw){
@@ -2128,30 +2290,115 @@ function stopRun(){S.running=false; stopTimer(); if(S.stream) status('idle','T�
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
 
 /* ---------- full-screen translate ---------- */
+/* ---------- whole screen: Vietnamese drawn over the English, at the same place ----------
+   F11 (T on the web) turns it on. While on, the picture is watched: when the screen changes (another menu,
+   another page) the old translation goes away and, once the picture is still again, the new text is read and
+   translated. Blocks already translated come from memory at once. */
+var fsLayer=document.createElement('div'); fsLayer.className='hs-fs'; fsLayer.hidden=true; $('hsStage').appendChild(fsLayer);
+var fsv=document.createElement('canvas'), fsSm=document.createElement('canvas'); fsSm.width=160; fsSm.height=90;
+var fsSx=fsSm.getContext('2d',{willReadFrequently:true});
+S.fs={on:false,items:[],busy:false,sig:null,still:0,timer:0,cache:new Map(),seq:0};
+function fsAuto(){ return !$('hsFsAuto')||$('hsFsAuto').checked; }
+function fsSig(){
+  var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
+  fsSx.drawImage(video,0,0,vw,vh,0,0,160,90);
+  var d=fsSx.getImageData(0,0,160,90).data, g=new Uint8Array(160*90);
+  for(var i=0;i<g.length;i++) g[i]=(d[i*4]*3+d[i*4+1]*6+d[i*4+2])/10;
+  return g;
+}
+function fsDraw(){
+  var b=videoBox(), html='';
+  S.fs.items.forEach(function(it){
+    if(!it.vi) return;
+    var L=b.l+it.x*b.w, W=it.w*b.w, room=b.l+b.w-L;
+    html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;min-width:'+W+'px;max-width:'+Math.max(W,Math.min(room,W*1.7+60))+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.62))+'px">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
+  });
+  fsLayer.innerHTML=html; fsLayer.hidden=!S.fs.on||!html;
+  /* shrink text that does not fit its box */
+  [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.25+8; while(f>10&&el.scrollHeight>h){ f--; el.style.fontSize=f+'px'; } });
+  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};})}:null);
+}
+window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
+function fsClear(){ S.fs.items=[]; fsDraw(); }
+function fsStop(){ S.fs.on=false; S.fs.seq++; WT?WT.clear(S.fs.timer):clearTimeout(S.fs.timer); fsClear(); $('hsFull').classList.remove('on'); $('hsFull').textContent='Dịch cả màn hình'; if(S.running) runStatus(); }
+/* share of small picture points that changed clearly: a new menu page or text changes a few percent */
+function fsMoved(a,b){ if(!a||!b) return 0; var n=0; for(var i=0;i<a.length;i++){ if(Math.abs(a[i]-b[i])>28) n++; } return n/a.length; }
+function fsWatch(){
+  if(!S.fs.on) return;
+  var g=fsSig(), moved=g&&S.fs.sig?fsMoved(g,S.fs.sig):0;
+  if(g&&S.fs.sig&&moved>0.006){                                   /* the screen changed: drop the old translation */
+    if(S.fs.items.length) fsClear();
+    S.fs.still=0; S.fs.sig=g;
+  } else if(g){
+    S.fs.still++;
+    if(!S.fs.items.length&&!S.fs.busy&&S.fs.still>=2&&fsAuto()) fsRun();
+  }
+  if(!S.fs.sig) S.fs.sig=g;
+  S.fs.timer=later(fsWatch,350);
+}
+async function fsBlocks(){
+  var vw=video.videoWidth, vh=video.videoHeight, sc=Math.min(1,1600/vw);
+  fsv.width=Math.round(vw*sc); fsv.height=Math.round(vh*sc); fsv.getContext('2d').drawImage(video,0,0,fsv.width,fsv.height);
+  if(ocrOn()){
+    var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<2000) await new Promise(function(r){later(r,40);});
+    S.ocrBusy=true;
+    try{ var o=await HsOcr.read(fsv,{blocks:true}); }
+    finally{ S.ocrBusy=false; }
+    return o.blocks.filter(function(b){ return b.conf>=0.55&&(b.text.match(/[A-Za-z]/g)||[]).length>=3&&wordy(b.text)>=0.55; })
+      .map(function(b){ return {x:b.x/o.W,y:b.y/o.H,w:b.w/o.W,h:b.h/o.H,lh:b.lh/o.H,en:b.text}; });
+  }
+  return null;   /* no reader on this machine: the AI reads the picture */
+}
+function fsPrompt(list){
+  return 'You translate text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
+    'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
+    list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
+    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+context();
+}
+async function fsRun(){
+  if(!S.stream||S.fs.busy) return;
+  S.fs.busy=true; var my=++S.fs.seq;
+  status('busy','Đang dịch cả màn hình...');
+  try{
+    var blocks=await fsBlocks();
+    if(blocks===null){                                          /* picture to the AI, with the place of each text */
+      grab({x:0,y:0,w:1,h:1},1400);
+      var res=await ask('Find all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group lines of one paragraph or one menu entry together. Ignore button glyphs and numbers-only labels. For each group give "en", natural Vietnamese "vi" (keep names as they are), and "box" = [ymin, xmin, ymax, xmax] of the group on the image, each from 0 to 1000.\n'+context(),jpeg(.85),SCHEMA_FS,SHAPE_FS);
+      blocks=((res&&res.items)||[]).filter(function(it){return it.box&&it.box.length===4&&it.vi;}).map(function(it){
+        var b=it.box, n=Math.max(1,(it.en||'').split('\n').length), h=(b[2]-b[0])/1000;
+        return {x:b[1]/1000,y:b[0]/1000,w:(b[3]-b[1])/1000,h:h,lh:h/n,en:it.en||'',vi:it.vi}; });
+    } else {
+      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(b.en)); if(c!=null) b.vi=c; else need.push(b); });
+      if(S.fs.on&&my===S.fs.seq&&blocks.some(function(b){return b.vi;})){ S.fs.items=blocks; fsDraw(); }
+      if(need.length){
+        var vis;
+        if(keys().length||groqKeys().length||orKeys().length){
+          try{
+            var r=await askText(fsPrompt(need.map(function(b){return b.en;})),need.map(function(b){return b.en;}).join('\n'),SCHEMA_FSI,SHAPE_FSI,false);
+            vis=[]; ((r&&r.items)||[]).forEach(function(it){ var i=(+it.i||0)-1; if(i>=0&&i<need.length) vis[i]=String(it.vi||''); });
+          }catch(e){ vis=null; }
+        }
+        if(!vis) vis=await Promise.all(need.map(function(b){ return gtx(b.en).catch(function(){return '';}); }));
+        need.forEach(function(b,i){ b.vi=(vis[i]||'').trim(); S.fs.cache.set(norm(b.en),b.vi); });
+        if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
+      }
+    }
+    if(my!==S.fs.seq||!S.fs.on) return;
+    S.fs.items=blocks; fsDraw();
+    var n=blocks.filter(function(b){return b.vi;}).length;
+    status(n?'run':'warn',n?('Đã dịch '+n+' khối chữ trên màn hình. Bấm lại "Dịch cả màn hình" để tắt.'):'Không thấy chữ tiếng Anh trên màn hình.');
+    $('hsModalList').innerHTML=blocks.filter(function(b){return b.vi;}).map(function(b){return '<li><b>'+esc(b.vi)+'</b><small>'+esc(b.en)+'</small></li>';}).join('');
+  }catch(e){ status('warn',e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Dịch cả màn hình lỗi: '+e.message); }
+  finally{ S.fs.busy=false; S.fs.sig=fsSig(); S.fs.still=0; }
+}
 async function fullScreen(){
   if(!S.stream) return;
-  var modal=$('hsModal'), list=$('hsModalList'); modal.classList.add('open');
-  list.innerHTML=''; $('hsModalNote').textContent='Đang đọc toàn bộ chữ trên màn hình...';
-  grab({x:0,y:0,w:1,h:1},1400);
-  if(S.offlineDemo){var L=S.demo.line(); list.innerHTML='<li><b>'+esc(L.vi)+'</b><small>'+esc(L.en)+'</small></li>'; $('hsModalNote').textContent='Chạy thử bằng câu mẫu.'; return;}
-  if(!keys().length&&!groqKeys().length){
-    if(!ocrOn()){ $('hsModalNote').textContent='Cần mã Gemini, hoặc đợi tải xong bộ đọc chữ.'; return; }
-    try{
-      var full=document.createElement('canvas'); full.width=cap.width; full.height=cap.height; full.getContext('2d').drawImage(cap,0,0);
-      var o=await HsOcr.read(full), ls=o.lines.filter(function(l){return l.conf>=0.6&&(l.text.match(/[A-Za-z]/g)||[]).length>=3&&wordy(l.text)>=0.6;}).map(function(l){return l.text;});
-      if(!ls.length){ $('hsModalNote').textContent='Không thấy chữ tiếng Anh trên màn hình.'; return; }
-      var vs=(await gtx(ls.join('\n'))).split(/\n/);
-      $('hsModalNote').textContent=ls.length+' dòng, dịch bằng máy dịch miễn phí';
-      list.innerHTML=ls.map(function(l,i){return '<li><b>'+esc(vs[i]||'')+'</b><small>'+esc(l)+'</small></li>';}).join('');
-    }catch(e){ $('hsModalNote').textContent='Lỗi: '+e.message; }
-    return;
-  }
-  try{
-    var res=await ask('Read all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group words that belong to the same line or paragraph. Ignore button glyphs and numbers-only labels. Translate each into natural Vietnamese; keep names as they are.\n'+context(),jpeg(.85),SCHEMA_ALL,SHAPE_ALL);
-    var items=(res&&res.items)||[];
-    $('hsModalNote').textContent=items.length?items.length+' mục':'Không thấy chữ tiếng Anh trên màn hình.';
-    list.innerHTML=items.map(function(it){return '<li><b>'+esc(it.vi)+'</b><small>'+esc(it.en)+'</small></li>';}).join('');
-  }catch(e){$('hsModalNote').textContent=e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Lỗi: '+e.message;}
+  if(S.fs.on){ fsStop(); return; }
+  if(S.offlineDemo){ var L=S.demo.line(); S.fs.on=true; S.fs.items=[{x:.3,y:.4,w:.4,h:.08,lh:.04,en:L.en,vi:L.vi}]; fsDraw(); $('hsFull').classList.add('on'); $('hsFull').textContent='Tắt dịch cả màn hình'; return; }
+  S.fs.on=true; S.fs.items=[]; S.fs.sig=fsSig(); S.fs.still=0;
+  $('hsFull').classList.add('on'); $('hsFull').textContent='Tắt dịch cả màn hình';
+  if(!ocrOn()&&!keys().length){ status('warn','Đợi bộ đọc chữ tải xong, hoặc nhập mã Gemini để dịch cả màn hình.'); fsStop(); return; }
+  fsRun(); S.fs.timer=later(fsWatch,600);
 }
 $('hsFull').addEventListener('click',fullScreen);
 $('hsModalX').addEventListener('click',function(){$('hsModal').classList.remove('open');});
@@ -2183,6 +2430,7 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ stopSpeak(); }});});
 $('hsRead').value=load('read','local');
 $('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
+$('hsFsAuto').checked=load('fsauto',true); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
@@ -2277,7 +2525,8 @@ function hotkey(e){
   if(e.code==='Space'&&S.stream){e.preventDefault(); S.running?stopRun():startRun();}
   else if((e.key==='t'||e.key==='T'||e.key==='m'||e.key==='M')&&S.stream){e.preventDefault(); fullScreen();}
   else if((e.key==='n'||e.key==='N')&&S.stream){e.preventDefault(); zoneTick(true);}
-  else if(e.key==='Escape'){$('hsModal').classList.remove('open');}
+  else if(e.key==='Escape'){$('hsModal').classList.remove('open'); if(S.fs.on) fsStop();}
+  else if((e.key==='r'||e.key==='R')&&S.stream){e.preventDefault(); setSpeak(!$('hsSpeak').checked);}
 }
 document.addEventListener('keydown',hotkey);
 
@@ -2539,6 +2788,7 @@ if(D){
     else if(k==='now'){ if(S.stream) tick(true); }
     else if(k==='full'){ if(S.stream) fullScreen(); }
     else if(k==='zones'){ if(S.stream) zoneTick(true); }
+    else if(k==='speak'){ setSpeak(!$('hsSpeak').checked); }
   });
   if(D.version) D.version().then(function(v){S.appVer=v;}).catch(function(){});
   D.update().then(function(u){ if(u&&u.newer){var b=$('hsUpd'); b.innerHTML='Có bản Hóng Sub mới ('+esc(u.version)+'). <a href="https://honggame.store/hongsubpc" target="_blank" rel="noopener">Bấm để tải về</a>, cài đè lên là xong, mã và cài đặt vẫn giữ nguyên.'; b.style.display='block';}}).catch(function(){});
@@ -2562,7 +2812,7 @@ window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
 window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
-  start:startRun, stop:stopRun, full:fullScreen, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
+  start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
   setWait:function(ms){ S.wait=ms; save('wait',ms); }, setHold:function(sec){ S.hold=sec; save('hold',sec); if(D) D.sub({hold:sec}); },
   setFree:function(on){ S.allowFree=!!on; save('allowFree',!!on); },

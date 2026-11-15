@@ -8,16 +8,20 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',vung:'Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Dịch',giong:'Giọng đọc',phude:'Phụ đề và độ trễ',nhanvat:'Nhân vật',phim:'Phím tắt',khac:'Hỗ trợ'};
+var TITLES={choi:'Màn hình chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Dịch và mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề và độ trễ',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
+var SETP=['dich','vung','giong','phude','nhanvat','phim'];
+function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
   if(!TITLES[p]) p='choi';
+  var inSet=SETP.indexOf(p)>=0; subOpen(inSet);
   document.querySelectorAll('.dk-nav button').forEach(function(b){ b.classList.toggle('on',b.dataset.p===p); if(b.dataset.p===p) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   document.querySelectorAll('.dk-page').forEach(function(s){ s.classList.toggle('on',s.id==='p-'+p); });
-  $('dkTitle').textContent=TITLES[p]; A.save('dkPage',p);
+  $('dkTitle').textContent=TITLES[p]; A.save('dkPage',p); if(inSet) A.save('dkSet',p);
   document.querySelector('.dk-body').scrollTop=0;
   if(p==='phim') keysLoad();
 }
-document.querySelectorAll('.dk-nav button').forEach(function(b){ b.addEventListener('click',function(){ go(b.dataset.p); }); });
+document.querySelectorAll('.dk-nav button[data-p]').forEach(function(b){ b.addEventListener('click',function(){ go(b.dataset.p); }); });
+$('dkSetBtn').addEventListener('click',function(){ var open=$('dkSub').classList.contains('open'); if(open&&SETP.indexOf(A.load('dkPage','choi'))<0) subOpen(false); else if(!open) go(A.load('dkSet','dich')); });
 document.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click',function(){ go(b.dataset.go); }); });
 document.querySelectorAll('[data-url]').forEach(function(b){ b.addEventListener('click',function(){ D.openUrl(b.dataset.url); }); });
 window.hsGo=go;
@@ -109,7 +113,7 @@ function castEmpty(){ $('dkCastEmpty').hidden=!$('hsCastBox').hidden; }
 new MutationObserver(castEmpty).observe($('hsCastBox'),{attributes:true,attributeFilter:['hidden']}); castEmpty();
 
 /* ---------- shortcuts ---------- */
-var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Dịch cả màn hình (menu, nhiệm vụ)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm'};
+var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
 var KEYS={}, KST={}, rec=null;
 function keysDraw(){
   $('dkKeys').innerHTML=Object.keys(KEYN).map(function(id){
@@ -148,7 +152,7 @@ document.addEventListener('keydown',function(e){
   var o={}; o[rec]=a.acc; rec=null;
   D.setHotkeys(o).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg(r.state[Object.keys(o)[0]]==='ok'?'ok':'warn',r.state[Object.keys(o)[0]]==='ok'?'Đã đổi thành '+a.acc+'.':'Đã lưu '+a.acc+' nhưng app khác đang giữ phím này. Chọn phím khác.'); });
 },true);
-$('dkKeysReset').addEventListener('click',function(){ D.setHotkeys({toggle:'F7',now:'F8',ovl:'F9',move:'F10',full:'F11',zones:'F6'}).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg('ok','Đã về phím mặc định F6 đến F11.'); }); });
+$('dkKeysReset').addEventListener('click',function(){ D.setHotkeys({toggle:'F7',now:'F8',ovl:'F9',move:'F10',full:'F11',zones:'F6',speak:'F5'}).then(function(r){ KEYS=r.keys; KST=r.state; keysDraw(); keyMsg('ok','Đã về phím mặc định F5 đến F11.'); }); });
 keysLoad();
 
 /* ---------- AI voices ---------- */
@@ -222,8 +226,91 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   if(hsDesktop.onOverlay&&mv) hsDesktop.onOverlay(function(st){ mv.textContent=st.move?'Xong di chuyển':'Di chuyển các khung'; });
   function upd(){
     var zs=window.hsApi.S.zones||[], on=zs.filter(function(z){return z.on;}).length;
-    if(sum) sum.textContent=zs.length?('Đang có '+zs.length+' vùng ('+on+' bật): '+zs.map(function(z,i){return z.name||('Vùng '+(i+1));}).join(', ')+'.'):'Dịch thêm nhiệm vụ, vật phẩm, bản đồ ở chỗ khác trên màn hình.';
+    if(sum) sum.textContent=zs.length?(zs.length+' vùng, '+on+' đang bật'):'chưa có';
     if(add2){ var b=document.getElementById('hsZoneAdd'); add2.textContent=b.textContent; add2.disabled=zs.length>=8; }
   }
   setInterval(upd,1000); upd();
+})();
+
+/* ---------- play page: current source, quick switches, read-aloud chip ---------- */
+(function(){
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop, S=A.S;
+  /* a quick switch mirrors a setting that lives on a settings page */
+  function mirror(qid,id,after){
+    var q=$(qid), o=$(id); if(!q||!o) return;
+    function pull(){ q.checked=o.checked; if(after) after(); }
+    q.addEventListener('change',function(){ if(id==='hsSpeak'){ A.setSpeak(q.checked); } else { o.checked=q.checked; o.dispatchEvent(new Event('change')); } pull(); });
+    o.addEventListener('change',pull); o.addEventListener('hs-speak',pull); pull();
+  }
+  function chip(){ var on=$('hsSpeak').checked; $('dkSpeakChip').setAttribute('aria-pressed',on?'true':'false'); $('dkSpeakTx').textContent='Đọc phụ đề: '+(on?'bật':'tắt'); }
+  mirror('dkQSpeak','hsSpeak',chip); mirror('dkQOvl','dkOvl'); mirror('dkQCast','hsCastAuto'); mirror('dkQFs','hsFsAuto');
+  $('dkSpeakChip').addEventListener('click',function(){ A.setSpeak(!$('hsSpeak').checked); chip(); });
+  $('hsSpeak').addEventListener('hs-speak',chip); $('hsSpeak').addEventListener('change',chip); chip();
+  $('dkNow').addEventListener('click',function(){ A.now(); });
+  function cur(){
+    var on=!!S.stream; $('dkCur').hidden=!on; $('dkSrcPick').hidden=on&&!S.pickOpen; $('dkNow').disabled=!on;
+    if(on){ var n=$('dkSrc').textContent; $('dkCurName').textContent='Đang nhận hình: '+n; }
+  }
+  $('dkCurChange').addEventListener('click',function(){ S.pickOpen=!S.pickOpen; cur(); });
+  setInterval(cur,800); cur();
+  $('dkBuyZalo').addEventListener('click',function(){
+    var msg='Chào shop, mình muốn nhờ nạp tiền OpenRouter để dùng AI dịch thông minh trên Hóng Sub.';
+    try{ navigator.clipboard.writeText(msg); }catch(e){}
+    A.status('idle','Đã chép sẵn tin nhắn, dán (Ctrl+V) vào Zalo của shop.');
+    D.openUrl('https://zalo.me/0949099992');
+  });
+})();
+
+/* ---------- notifications: new version, new games, AI voices, news from the shop ---------- */
+(function(){
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop;
+  var FEED='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/web/notices.json';
+  var GAMES='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/games.json';
+  var list=A.load('notices',[]);
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function when(t){ var d=new Date(t); return d.toLocaleDateString('vi-VN')+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function draw(){
+    var n=list.filter(function(x){return !x.read;}).length;
+    $('dkBellN').hidden=!n; $('dkBellN').textContent=n>9?'9+':n;
+    $('dkNotiList').innerHTML=list.length?list.map(function(x){
+      return '<div class="it'+(x.read?'':' new')+'"><i></i><b>'+esc(x.title)+'</b><p>'+esc(x.body||'')+'</p>'+
+        (x.go?'<button class="dk-link" type="button" data-go2="'+esc(x.go)+'">'+esc(x.btn||'Mở')+'</button>':x.url?'<button class="dk-link" type="button" data-url2="'+esc(x.url)+'">'+esc(x.btn||'Mở')+'</button>':'')+
+        '<small>'+when(x.t)+'</small></div>';
+    }).join(''):'<p class="dk-empty" style="padding:10px 12px">Chưa có thông báo nào.</p>';
+    $('dkNotiList').querySelectorAll('[data-go2]').forEach(function(b){ b.onclick=function(){ $('dkNoti').hidden=true; window.hsGo(b.dataset.go2); }; });
+    $('dkNotiList').querySelectorAll('[data-url2]').forEach(function(b){ b.onclick=function(){ D.openUrl(b.dataset.url2); }; });
+  }
+  function toast(x){
+    var t=document.createElement('div'); t.className='dk-toast'; t.setAttribute('role','status');
+    t.innerHTML='<b>'+esc(x.title)+'</b>'+esc(x.body||'');
+    t.onclick=function(){ t.remove(); $('dkNoti').hidden=false; draw(); };
+    ($('hs')||document.body).appendChild(t); setTimeout(function(){ t.remove(); },7000);
+  }
+  function add(x){
+    if(list.some(function(y){return y.id===x.id;})) return;
+    x.t=x.t||Date.now(); x.read=false; list.unshift(x); list=list.slice(0,30); A.save('notices',list); draw(); toast(x);
+  }
+  $('dkBell').addEventListener('click',function(e){ e.stopPropagation(); var h=!$('dkNoti').hidden; $('dkNoti').hidden=h; $('dkBell').setAttribute('aria-expanded',h?'false':'true'); draw(); });
+  $('dkNotiRead').addEventListener('click',function(){ list.forEach(function(x){x.read=true;}); A.save('notices',list); draw(); });
+  document.addEventListener('click',function(e){ if(!$('dkNoti').hidden&&!$('dkNoti').contains(e.target)) $('dkNoti').hidden=true; });
+  draw();
+  function check(){
+    /* a newer Hóng Sub */
+    D.update().then(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Tải về rồi cài đè lên bản cũ, mã và cài đặt vẫn giữ nguyên.',url:'https://honggame.store/hongsubpc',btn:'Tải bản mới'}); }).catch(function(){});
+    /* games added to the list */
+    fetch(GAMES+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      var names=(Array.isArray(j)?j:(j.games||[])).map(function(g){return g.name||g.title||'';}).filter(Boolean);
+      var seen=A.load('seenGames',null);
+      if(seen===null){ A.save('seenGames',names); return; }
+      var fresh=names.filter(function(n){return seen.indexOf(n)<0;});
+      if(fresh.length){ add({id:'games-'+fresh.join('|').slice(0,80),title:'Có '+fresh.length+' game mới trong danh sách',body:fresh.slice(0,6).join(', ')+(fresh.length>6?'...':'')+'. Chọn game để dịch đúng tên và xưng hô.',go:'dich',btn:'Chọn game'}); A.save('seenGames',names); }
+    }).catch(function(){});
+    /* AI voices not downloaded yet */
+    if(D.aiv) D.aiv.state().then(function(st){ if(st&&!st.ready&&!st.installing) add({id:'aiv-pack-1',title:'Có bộ 25 giọng đọc AI tiếng Việt',body:'Mỗi nhân vật một giọng riêng, đọc tự nhiên, chạy ngay trên máy. Tải một lần khoảng 510 MB.',go:'giong',btn:'Tải bộ giọng'}); }).catch(function(){});
+    /* news from the shop: new voices, new features */
+    fetch(FEED+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+      (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
+    }).catch(function(){});
+  }
+  setTimeout(check,4000); setInterval(check,3*3600e3);
 })();

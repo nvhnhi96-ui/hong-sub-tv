@@ -172,6 +172,35 @@ function zonesUpdate(list) {
   }
 }
 function zonesVisible() { for (const z of zoneWins.values()) zoneVisible(z); }
+
+/* ---------- whole-screen translation: one click-through window over the main screen ----------
+   Each translated block is drawn where the English is (positions are shares of the game picture, which is
+   right when the game fills the screen). Content protection keeps it out of our own capture. */
+let fullWin = null, fullData = null;
+function fullMake() {
+  const b = screen.getPrimaryDisplay().bounds;
+  fullWin = new BrowserWindow({
+    x: b.x, y: b.y, width: b.width, height: b.height,
+    transparent: true, frame: false, resizable: false, movable: false, alwaysOnTop: true, skipTaskbar: true, focusable: false, hasShadow: false, show: false,
+    title: 'Hóng Sub dịch cả màn hình',
+    webPreferences: { preload: path.join(ROOT, 'preload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
+  });
+  fullWin.setAlwaysOnTop(true, 'screen-saver');
+  fullWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  fullWin.setIgnoreMouseEvents(true);
+  fullWin.setContentProtection(true);
+  fullWin.loadURL('app://hongsub/full.html');
+  fullWin.webContents.on('did-finish-load', () => { if (fullData) fullWin.webContents.send('full', fullData); });
+  fullWin.on('closed', () => { fullWin = null; });
+}
+function fullShow(d) {
+  fullData = d && d.items && d.items.length ? d : null;
+  if (!fullData) { if (fullWin && !fullWin.isDestroyed()) { fullWin.webContents.send('full', null); fullWin.hide(); } return; }
+  if (!fullWin || fullWin.isDestroyed()) fullMake();
+  const b = screen.getPrimaryDisplay().bounds; fullWin.setBounds(b);
+  if (!fullWin.webContents.isLoading()) fullWin.webContents.send('full', fullData);
+  if (!fullWin.isVisible()) fullWin.showInactive();
+}
 function sendOverlayState() {
   const st = { hidden: !!cfg.overlayHidden, move: moveMode, zonesHidden: !!cfg.zonesHidden };
   if (win && !win.isDestroyed()) win.webContents.send('overlay-state', st);
@@ -231,8 +260,8 @@ function showMain() { if (!win) return; if (win.isMinimized()) win.restore(); wi
 
 /* ---------- hotkeys ---------- */
 function hotkey(k) { if (win && !win.isDestroyed()) win.webContents.send('hotkey', k); }
-const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11', zones: 'F6' };
-const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full'), zones: () => hotkey('zones') };
+const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11', zones: 'F6', speak: 'F5' };
+const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full'), zones: () => hotkey('zones'), speak: () => hotkey('speak') };
 function keys() { return Object.assign({}, KEY_DEFAULT, cfg.hotkeys || {}); }
 function registerKeys() {
   globalShortcut.unregisterAll();
@@ -463,6 +492,7 @@ function setupIpc() {
   ipcMain.handle('rp-launch', (e, opengl) => rpLaunch(!!opengl));
   ipcMain.handle('use', (e, id) => { chosenId = id; return true; });
   ipcMain.on('zones', (e, list) => zonesUpdate(list));
+  ipcMain.on('full-overlay', (e, d) => fullShow(d));
   ipcMain.handle('zones-reset', () => { cfg.zoneWins = {}; saveCfg(); for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300); } return true; });
   ipcMain.on('zone-size', (e, id, w, h) => {
     const z = zoneWins.get(id); if (!z || z.win.isDestroyed() || !moveMode) return;

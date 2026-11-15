@@ -24,6 +24,7 @@
       "preload.js",
       "overlay.html",
       "zone.html",
+      "full.html",
       "tts.ps1",
       "app/**",
       "assets/**",

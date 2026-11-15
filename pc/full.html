@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>Hóng Sub dịch cả màn hình</title>
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Be Vietnam Pro",system-ui,sans-serif;user-select:none}
+.b{position:absolute;box-sizing:border-box;width:max-content;background:rgba(12,14,18,.93);color:#fff;border-radius:3px;padding:1px 5px;line-height:1.22;font-weight:600;overflow:hidden;box-shadow:0 0 0 1px rgba(255,196,0,.35);white-space:normal;word-break:break-word}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+  var root=document.getElementById('root');
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  window.hsDesktop.onFull(function(d){
+    root.innerHTML='';
+    if(!d||!d.items) return;
+    var W=window.innerWidth, H=window.innerHeight;
+    d.items.forEach(function(it){
+      var el=document.createElement('div'); el.className='b';
+      var L=it.x*W, w=it.w*W; el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.minWidth=w+'px'; el.style.maxWidth=Math.max(w,Math.min(W-L,w*1.7+60))+'px'; el.style.minHeight=(it.h*H)+'px';
+      var f=Math.max(11,Math.round(it.lh*H*0.62)); el.style.fontSize=f+'px';
+      el.innerHTML=esc(it.vi).replace(/\n/g,'<br>');
+      root.appendChild(el);
+      /* Vietnamese is often longer: shrink until it fits about the space of the English */
+      var maxH=it.h*H*1.25+8; while(f>11&&el.scrollHeight>maxH){ f--; el.style.fontSize=f+'px'; }
+    });
+  });
+})();
+</script>
+</body></html>

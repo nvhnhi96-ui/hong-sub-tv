@@ -230,6 +230,14 @@ public class OverlayService extends Service {
                     } else if (seq != lastSeq) {
                         lastSeq = seq;
                         String vi = j.optString("vi", "");
+                        // text size and position chosen on the computer
+                        int size = j.optInt("size", 0);
+                        String pos = j.optString("pos", "");
+                        boolean changed = false;
+                        if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
+                        if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
+                        if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
+                        if (changed) main.post(this::applyStyle);
                         if (!vi.isEmpty()) {
                             long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
                             showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, true);

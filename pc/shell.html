@@ -9,91 +9,146 @@
 /*WEBCSS*/
 </style>
 <style>
-/* ---------- Windows app layout: dark rail of pages on the left, one page at a time on the right ---------- */
+/* ---------- Windows app: graphite night theme, Hóng yellow only where it matters ---------- */
 html,body{height:100%;overflow:hidden}
-.hs{--rail:#15171C;--rail2:#23262E;--railtx:#A9AEB8;min-height:0;height:100vh;display:grid;grid-template-columns:212px minmax(0,1fr);grid-template-rows:100%}
-.dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:16px 10px 12px;min-height:0}
-.dk-logo{display:flex;align-items:center;gap:6px;padding:2px 10px 18px;font-weight:800;font-size:21px;letter-spacing:-.01em}
-.dk-logo span{background:#fff;color:#000;border-radius:5px;padding:1px 7px 2px;font-weight:700}
-.dk-nav{display:flex;flex-direction:column;gap:2px}
-.dk-nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:var(--railtx);font-weight:600;font-size:14.5px;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;position:relative}
-.dk-nav button svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hs{--page:#0F1216;--panel:#171B21;--panel2:#1C2128;--sunk:#12161B;--line:#252B34;--line2:#353C47;--ink:#EDF0F4;--muted:#9AA3AF;--soft:#6E7784;--brand:#FFC400;--brand2:#E6B000;
+  --rail:#0B0D11;--rail2:#191D24;--railtx:#9AA3AF;--ok:#3FD08A;--warn:#FFB347;--err:#FF6B6B;
+  color-scheme:dark;background:var(--page);color:var(--ink);min-height:0;height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:100%}
+.hs ::selection{background:rgba(255,196,0,.35)}
+.hs select option{background:#171B21;color:#EDF0F4}
+.hs-btn:hover{border-color:var(--soft)}
+.hs-btn:disabled{opacity:.45}
+.hs-msg{background:var(--sunk)!important;border-color:var(--line2)!important;color:var(--ink)!important}
+.hs-msg.ok{border-color:rgba(63,208,138,.5)!important}.hs-msg.err{border-color:rgba(255,107,107,.55)!important}.hs-msg.warn{border-color:rgba(255,179,71,.55)!important}
+.hs-sub{background:#08090B!important;border-color:var(--line)!important}
+.hs-stage{border-radius:12px;background:#07080A;box-shadow:0 0 0 1px var(--line)}
+
+/* rail */
+.dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:18px 12px 12px;min-height:0;border-right:1px solid #181C22}
+.dk-logo{display:flex;align-items:center;gap:7px;padding:0 10px 20px;font-weight:800;font-size:22px;letter-spacing:-.015em}
+.dk-logo span{background:var(--brand);color:#000;border-radius:6px;padding:1px 8px 2px;font-weight:800}
+.dk-nav{display:flex;flex-direction:column;gap:2px;overflow:auto;min-height:0}
+.dk-nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:var(--railtx);font-weight:600;font-size:14.5px;padding:10px 11px;border-radius:9px;cursor:pointer;text-align:left;position:relative;font-family:inherit}
+.dk-nav button svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .dk-nav button:hover{background:var(--rail2);color:#fff}
 .dk-nav button.on{background:var(--rail2);color:#fff}
-.dk-nav button.on::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.dk-nav button.on::before{content:"";position:absolute;left:-12px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.dk-nav .chev{margin-left:auto;width:14px!important;height:14px!important;transition:transform .15s}
+.dk-nav .grp.open .chev{transform:rotate(90deg)}
+.dk-sub{display:none;flex-direction:column;gap:1px;margin:2px 0 6px 21px;padding-left:10px;border-left:1px solid #262B33}
+.dk-sub.open{display:flex}
+.dk-sub button{font-size:13.5px;padding:7px 10px;font-weight:500}
+.dk-sub button.on::before{left:-11px;top:7px;bottom:7px}
 .dk-nav .badge{margin-left:auto;font-size:11.5px;font-weight:700;color:#000;background:var(--brand);border-radius:9px;padding:0 6px;line-height:18px}
-.dk-railinfo{margin-top:auto;border-top:1px solid #2E323B;padding:12px 10px 0;font-size:12.5px;color:var(--railtx);line-height:1.6}
+.dk-railinfo{margin-top:auto;border-top:1px solid #1E232A;padding:12px 10px 0;font-size:12.5px;color:var(--railtx);line-height:1.65}
 .dk-railinfo b{color:#fff;font-weight:600}
-.dk-railinfo .v{color:#6F7581;margin-top:6px}
+.dk-railinfo .v{color:#5E6672;margin-top:6px}
 
+/* top bar */
 .dk-main{display:flex;flex-direction:column;min-height:0;min-width:0}
-.dk-top{display:flex;align-items:center;gap:14px;padding:12px 22px;background:var(--panel);border-bottom:1px solid var(--line);min-height:62px}
-.dk-top h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.005em}
+.dk-top{position:relative;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--page);border-bottom:1px solid var(--line);min-height:64px}
+.dk-top h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
 .dk-top .sp{flex:1}
-.dk-top .hs-pill{font-size:13.5px}
-#hsRun{padding:9px 16px}
+.dk-top .hs-pill{font-size:13.5px;background:var(--panel);border-color:var(--line2)}
+.dk-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 13px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit}
+.dk-chip svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dk-chip[aria-pressed=false]{color:var(--soft)}
+.dk-chip[aria-pressed=false] .on-i,.dk-chip[aria-pressed=true] .off-i{display:none}
+.dk-bell{position:relative;width:38px;height:38px;border-radius:50%;border:1px solid var(--line2);background:var(--panel);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.dk-bell svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dk-bell b{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--brand);color:#000;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.dk-noti{position:absolute;right:22px;top:58px;width:380px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:50;padding:6px}
+.dk-noti h3{margin:8px 10px 6px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.dk-noti .it{padding:10px 12px;border-radius:9px;display:grid;grid-template-columns:8px 1fr;gap:3px 10px}
+.dk-noti .it:hover{background:var(--panel2)}
+.dk-noti .it i{grid-row:span 3;width:8px;height:8px;border-radius:50%;margin-top:6px;background:var(--line2)}
+.dk-noti .it.new i{background:var(--brand)}
+.dk-noti .it b{font-size:14px}.dk-noti .it p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.dk-noti .it small{color:var(--soft);font-size:12px}
+.dk-noti .it .dk-link{justify-self:start;margin-top:2px;grid-column:2}.dk-noti .it small{grid-column:2}
+.dk-toast{position:fixed;right:20px;bottom:20px;max-width:360px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.5);z-index:60;font-size:13.5px;animation:dkIn .25s ease-out}
+.dk-toast b{display:block;margin-bottom:2px}
+@keyframes dkIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 .hs-upd{margin:12px 22px 0}
 .dk-body{flex:1;overflow:auto;padding:20px 22px 28px;min-height:0}
-.dk-page{display:none;max-width:1180px}
+.dk-page{display:none;max-width:1240px}
 .dk-page.on{display:block}
 
 /* play page */
-.dk-play{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
-.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.dk-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
-.dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700}
+.dk-play{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.dk-tools .sep{width:1px;height:26px;background:var(--line2);margin:0 4px}
+.dk-tools .hs-btn kbd,.hs-btn kbd{font-family:inherit;font-size:11px;font-weight:700;color:var(--soft);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-left:2px}
+.dk-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700;letter-spacing:-.005em}
 .dk-card > .hs-note{margin-bottom:10px}
+.dk-card.hl{border-color:rgba(255,196,0,.45);background:linear-gradient(180deg,rgba(255,196,0,.07),rgba(255,196,0,0) 60%),var(--panel)}
 .dk-src{display:grid;gap:8px}
-.dk-src button{display:grid;grid-template-columns:34px 1fr;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:10px 12px;cursor:pointer}
-.dk-src button:hover{border-color:var(--ink)}
-.dk-src svg{grid-row:span 2;width:30px;height:30px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.dk-src button{display:grid;grid-template-columns:34px 1fr;gap:2px 10px;align-items:center;text-align:left;border:1px solid var(--line2);background:var(--panel2);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink);font-family:inherit}
+.dk-src button:hover{border-color:var(--brand)}
+.dk-src svg{grid-row:span 2;width:30px;height:30px;stroke:var(--brand);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .dk-src b{font-weight:700;font-size:14.5px}.dk-src small{color:var(--muted);font-size:12.5px;line-height:1.35}
-.dk-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.dk-cur{display:flex;align-items:center;gap:10px}
+.dk-cur .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(63,208,138,.15);flex:none}
+.dk-cur b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-quick{display:grid;gap:2px}
+.dk-quick .hs-sw{margin:0;padding:8px 0;border-top:1px solid var(--line)}
+.dk-quick .hs-sw:first-child{border-top:0}
+.dk-kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13.5px}
 .dk-kv span{color:var(--muted)}.dk-kv b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dk-link{background:none;border:0;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px;cursor:pointer;font-size:13.5px}
+.dk-link{background:none;border:0;padding:0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px;cursor:pointer;font-size:13.5px;font-family:inherit}
 
-/* settings pages: two columns of cards */
+/* settings pages */
 .dk-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
 .dk-cols > div{min-width:0}
 .dk-set{display:grid;gap:4px;margin-top:14px}
 .dk-set:first-of-type{margin-top:6px}
 .dk-set .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;font-weight:600}
-.dk-set .lab output{font-weight:700;color:var(--ink)}
+.dk-set .lab output{font-weight:700;color:var(--brand)}
 .dk-set .hs-note{margin-top:2px}
 .dk-sw{margin-top:12px}
 .dk-colors{display:flex;gap:8px;flex-wrap:wrap}
 .dk-colors button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);cursor:pointer;padding:0}
-.dk-colors button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
-.dk-prev{background:#3A3F4A url() center/cover;border-radius:9px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;
-  background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
+.dk-colors button.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--panel) inset}
+.dk-prev{border-radius:10px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
 .dk-prev div{background:rgba(8,8,10,.74);border-radius:10px;padding:6px 16px;text-align:center;max-width:100%}
 .dk-prev b{display:block;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 2px 3px #000}
 .dk-prev small{display:block;color:#C9C9D2;font-size:12px}
+.dk-buy{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.dk-buy > div{border:1px solid var(--line2);border-radius:10px;padding:14px;background:var(--panel2);display:flex;flex-direction:column;gap:6px}
+.dk-buy b{font-size:14.5px}.dk-buy p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.dk-buy .hs-row{margin-top:auto;padding-top:6px}
 
 /* shortcut table */
 .dk-keys{width:100%;border-collapse:collapse;font-size:14px}
 .dk-keys td{border-top:1px solid var(--line);padding:10px 6px;vertical-align:middle}
 .dk-keys tr:first-child td{border-top:0}
 .dk-keys td:last-child{text-align:right;white-space:nowrap}
-.dk-keys kbd{display:inline-block;min-width:40px;text-align:center;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 8px;background:var(--sunk)}
-.dk-keys .rec kbd{border-color:var(--brand2);background:#FFF6D6}
+.dk-keys kbd{display:inline-block;min-width:40px;text-align:center;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 8px;background:var(--sunk);color:var(--ink)}
+.dk-keys .rec kbd{border-color:var(--brand);background:rgba(255,196,0,.12)}
 .dk-keys .st{font-size:12px;color:var(--warn);margin-left:6px}
 
 .hs-cast{margin:0}.hs-cast > summary{display:none}
-.hs-hist{margin-top:14px}
+.hs-cast .row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.hs-cast .row b{min-width:110px}
+.hs-cast .row select{width:auto!important;flex:1 1 120px}
+.hs-hist{margin-top:14px;background:var(--panel)!important;border-color:var(--line)!important}
 .hs-hist ol{max-height:none}
 .dk-empty{color:var(--muted);font-size:14px;padding:6px 0}
 .dk-bar{height:8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;margin-top:10px}
-.dk-bar span{display:block;height:100%;width:0;background:var(--brand2);transition:width .3s}
+.dk-bar span{display:block;height:100%;width:0;background:var(--brand);transition:width .3s}
 .dk-voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:8px}
-.dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px}
-.dk-voices button:hover{border-color:var(--ink)}
-.dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--ink)}
+.dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px;font-family:inherit}
+.dk-voices button:hover{border-color:var(--brand)}
+.dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--brand)}
 .dk-voices b{font-weight:600}.dk-voices small{color:var(--muted);margin-left:auto;white-space:nowrap}
-.dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px}.dk-steps li{margin:4px 0}
+.dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.55}.dk-steps li{margin:5px 0}
 
-@media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}.dk-buy{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.hs *{animation:none!important;transition:none!important}}
+.hs :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.hs-sw input:checked{background:var(--brand)}
+.hs-sw input:checked::after{background:#111}
+.hs-sw input::after{background:#C9CFD8}
 </style>
 </head>
 <body class="desk">
@@ -102,13 +157,16 @@ html,body{height:100%;overflow:hidden}
     <div class="dk-logo">Hóng<span>Sub</span></div>
     <nav class="dk-nav" aria-label="Các trang">
       <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
-      <button type="button" data-p="vung"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><path d="M17 14v6M14 17h6"/></svg>Vùng dịch</button>
       <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS và TV</button>
-      <button type="button" data-p="dich"><svg viewBox="0 0 24 24"><path d="M4 5h8M8 3v2M5 9c1.5 3 4 5 7 6M11 5c-1 4-3.5 7-7 9"/><path d="M13 21l4-10 4 10M14.5 18h5"/></svg>Dịch<span class="badge" id="dkKeyBadge" hidden>!</span></button>
-      <button type="button" data-p="giong"><svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>Giọng đọc</button>
-      <button type="button" data-p="phude"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 13h4M13 13h4M7 16h7"/></svg>Phụ đề và độ trễ</button>
-      <button type="button" data-p="nhanvat"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5A5 5 0 0 1 21 19"/></svg>Nhân vật</button>
-      <button type="button" data-p="phim"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Phím tắt</button>
+      <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="dk-sub" id="dkSub">
+        <button type="button" data-p="dich">Dịch và mã AI</button>
+        <button type="button" data-p="vung">Vùng dịch</button>
+        <button type="button" data-p="giong">Giọng đọc</button>
+        <button type="button" data-p="phude">Phụ đề và độ trễ</button>
+        <button type="button" data-p="nhanvat">Nhân vật</button>
+        <button type="button" data-p="phim">Phím tắt</button>
+      </div>
       <button type="button" data-p="khac"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg>Hỗ trợ</button>
     </nav>
     <div class="dk-railinfo">
@@ -124,7 +182,10 @@ html,body{height:100%;overflow:hidden}
       <h1 id="dkTitle">Màn hình chơi</h1>
       <span class="sp"></span>
       <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
+      <button class="dk-chip" id="dkSpeakChip" type="button" aria-pressed="true" title="Bật hoặc tắt đọc to phụ đề (F5)"><svg class="on-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><svg class="off-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg><span id="dkSpeakTx">Đọc phụ đề: bật</span></button>
+      <button class="dk-bell" id="dkBell" type="button" aria-label="Thông báo" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><b id="dkBellN" hidden>0</b></button>
       <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch</button>
+      <div class="dk-noti" id="dkNoti" hidden><h3>Thông báo <button class="dk-link" type="button" id="dkNotiRead">Đánh dấu đã xem</button></h3><div id="dkNotiList"></div></div>
     </div>
     <div class="hs-upd" id="hsUpd"></div>
     <div class="hs-mobile" id="hsMobile" hidden></div>
@@ -159,13 +220,16 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-en" id="hsEn"></div>
             </div>
             <div class="dk-tools">
-              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm đang có trên màn hình">Dịch cả màn hình</button>
+              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ Anh">Dịch cả màn hình</button>
+              <button class="hs-btn" id="dkNow" type="button" disabled title="Dịch ngay câu đang hiện">Dịch câu này <kbd>F8</kbd></button>
               <button class="hs-btn" id="hsDraw" type="button" disabled>Chọn vùng phụ đề</button>
-              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+              <button class="hs-btn" id="dkZoneAdd2" type="button">Thêm vùng dịch</button>
+              <span class="sep"></span>
               <button class="hs-btn" id="hsOvShow" type="button">Ẩn phụ đề nổi</button>
               <button class="hs-btn" id="hsOvMove" type="button">Di chuyển phụ đề nổi</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
+              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
               <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
             </div>
             <details class="hs-hist" id="hsHistBox" open>
@@ -174,8 +238,10 @@ html,body{height:100%;overflow:hidden}
             </details>
           </div>
           <div>
-            <div class="dk-card">
+            <div class="dk-card" id="dkSrcCard">
               <h2>Nguồn hình</h2>
+              <div class="dk-cur" id="dkCur" hidden><span class="dot"></span><b id="dkCurName">Đang nhận hình</b><button class="dk-link" type="button" id="dkCurChange">Đổi</button></div>
+              <div id="dkSrcPick">
               <p class="hs-note">Hóng Sub đọc phụ đề từ đâu.</p>
               <div class="dk-src">
                 <button type="button" id="dkSrcPs"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
@@ -183,11 +249,16 @@ html,body{height:100%;overflow:hidden}
                 <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Capture card</b><small>Chơi trên TV, máy tính chỉ nhận hình</small></button>
                 <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
               </div>
+              </div>
             </div>
             <div class="dk-card">
-              <h2>Vùng dịch</h2>
-              <p class="hs-note" id="dkZoneSum">Dịch thêm nhiệm vụ, vật phẩm, bản đồ ở chỗ khác trên màn hình.</p>
-              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkZoneAdd2">Thêm vùng</button><button class="hs-btn" type="button" data-go="vung">Quản lý vùng</button></div>
+              <h2>Bật nhanh</h2>
+              <div class="dk-quick">
+                <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
+                <label class="hs-sw">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
+                <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
+              </div>
             </div>
             <div class="dk-card">
               <h2>Đang dùng</h2>
@@ -195,9 +266,10 @@ html,body{height:100%;overflow:hidden}
                 <span>Game</span><b id="dkGame2">chưa chọn</b>
                 <span>Dịch bằng</span><b id="dkVia2">chưa có mã</b>
                 <span>Giọng đọc</span><b id="dkVoice2">bật</b>
+                <span>Vùng dịch</span><b id="dkZoneSum">chưa có</b>
                 <span>Phím tắt</span><b id="dkKeys2">F7 bật/tắt dịch</b>
               </div>
-              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button></div>
+              <div class="hs-row" style="margin-top:10px"><button class="dk-link" type="button" data-go="dich">Đổi game</button><button class="dk-link" type="button" data-go="phude">Chỉnh phụ đề</button><button class="dk-link" type="button" data-go="vung">Vùng dịch</button></div>
             </div>
           </div>
         </div>
@@ -265,6 +337,12 @@ html,body{height:100%;overflow:hidden}
                 <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
                 <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
               </div>
+              <div class="dk-set">
+                <div class="lab"><label for="hsTvSize">Cỡ chữ trên TV</label><output id="hsTvSizeV">30</output></div>
+                <input class="hs-range" id="hsTvSize" type="range" min="20" max="60" step="2" value="30">
+              </div>
+              <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ trên TV</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
+              <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
             <div class="dk-card">
@@ -298,6 +376,16 @@ html,body{height:100%;overflow:hidden}
 
       <!-- ============ Dịch ============ -->
       <section class="dk-page" id="p-dich">
+        <div class="dk-card hl" id="dkBuy">
+          <h2>Mua mã dịch AI</h2>
+          <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
+          <div class="dk-buy">
+            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" bên dưới.</p>
+              <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
+            <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
+              <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
+          </div>
+        </div>
         <div class="dk-cols">
           <div>
             <div class="dk-card" id="hsKeySec">
@@ -411,6 +499,7 @@ html,body{height:100%;overflow:hidden}
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
             <label class="hs-sw dk-sw">Hiện câu tiếng Anh gốc <input type="checkbox" id="hsShowEn" checked></label>
+            <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
               <input class="hs-range" id="hsSize" type="range" min="18" max="56" step="2" value="28">
@@ -463,6 +552,8 @@ html,body{height:100%;overflow:hidden}
         <div class="dk-card" style="max-width:760px">
           <h2>Nhân vật đã gặp</h2>
           <p class="hs-note">Khi phụ đề có tên người nói (ví dụ "ATREUS: ..."), nhân vật tự vào đây. Chọn nam/nữ, giọng đọc và màu tên cho từng người. Mỗi game lưu riêng.</p>
+          <label class="hs-sw dk-sw">Tự chọn giọng riêng cho từng nhân vật <input type="checkbox" id="hsCastAuto" checked></label>
+          <p class="hs-note">Hóng Sub tự nhận nam/nữ và tuổi (trẻ em, thanh niên, người lớn, người già), rồi gán cho mỗi người một giọng riêng: giọng AI khác nhau nếu đã tải bộ giọng AI, và cao độ khác nhau để hai người không bao giờ nghe giống nhau. Bấm Nghe để thử.</p>
           <p class="dk-empty" id="dkCastEmpty">Chưa gặp nhân vật nào trong game này.</p>
           <details class="hs-cast" id="hsCastBox" hidden open>
             <summary>Nhân vật đã gặp (<span id="hsCastN">0</span>)</summary>
@@ -482,7 +573,7 @@ html,body{height:100%;overflow:hidden}
         </div>
       </section>
 
-      <!-- ============ TV và hỗ trợ ============ -->
+      <!-- ============ Hỗ trợ ============ -->
       <section class="dk-page" id="p-khac">
         <div class="dk-cols">
           <div>

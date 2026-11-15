@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "id": "2026-11-15-ui",
+      "date": "2026-11-15T08:00:00+07:00",
+      "title": "Hóng Sub có giao diện mới",
+      "body": "Dịch cả màn hình giờ đè chữ Việt lên đúng chỗ chữ Anh, mỗi nhân vật tự có giọng riêng, chỉnh cỡ chữ trên TV ngay từ máy tính, bật/tắt đọc phụ đề bằng F5.",
+      "go": "choi",
+      "btn": "Xem màn hình chơi"
+    },
+    {
+      "id": "2026-11-15-ai",
+      "date": "2026-11-15T08:00:00+07:00",
+      "title": "AI dịch thông minh",
+      "body": "Dịch hay hơn với DeepSeek, Gemma, Nemotron qua OpenRouter. Không có thẻ quốc tế thì nhờ Hóng Game Store nạp hộ.",
+      "go": "dich",
+      "btn": "Xem cách mua mã"
+    }
+  ]
+}

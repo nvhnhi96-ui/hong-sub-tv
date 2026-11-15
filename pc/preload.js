@@ -4,12 +4,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-let aiId = 0, aiQueue = [], aiPlaying = false, aiRate = 1;
+let aiId = 0, aiQueue = [], aiPlaying = false, aiRate = 1, aiPitch = 1;
 function aiNext() {
   if (aiPlaying || !aiQueue.length) return;
   const m = aiQueue.shift(); aiPlaying = true;
   audio = new Audio('data:audio/wav;base64,' + m.wav);
-  audio.preservesPitch = true; audio.playbackRate = aiRate;
+  /* each character can have its own pitch: play a little faster/slower without keeping the pitch */
+  audio.preservesPitch = aiPitch === 1; audio.playbackRate = aiRate * aiPitch;
   const done = () => { aiPlaying = false; audio = null; aiNext(); };
   audio.onended = done; audio.onerror = done;
   audio.play().catch(done);
@@ -30,24 +31,27 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   onHotkey: (cb) => ipcRenderer.on('hotkey', (e, k) => cb(k)),
   onSub: (cb) => ipcRenderer.on('sub', (e, p) => cb(p)),
   zones: (list) => ipcRenderer.send('zones', list),
+  fullOverlay: (data) => ipcRenderer.send('full-overlay', data),
+  onFull: (cb) => ipcRenderer.on('full', (e, d) => cb(d)),
   onZone: (cb) => ipcRenderer.on('zone', (e, d) => cb(d)),
   zoneSize: (id, w, h) => ipcRenderer.send('zone-size', id, w, h),
   zonesReset: () => ipcRenderer.invoke('zones-reset'),
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
-  speak: async (text, voice, rate) => {
+  speak: async (text, voice, rate, pitch) => {
     const my = ++seq;
     if (audio) { audio.pause(); audio = null; }
     aiQueue = []; aiPlaying = false; if (aiId) { ipcRenderer.send('aiv-stop'); aiId = 0; }
     if (!text) return;
     if (String(voice || '').startsWith('ai:')) {             /* AI voice: sentences arrive one by one and play in order */
-      aiId = my; aiRate = rate || 1; aiPlaying = false;
+      aiId = my; aiRate = rate || 1; aiPitch = pitch || 1; aiPlaying = false;
       ipcRenderer.send('aiv-speak', { id: my, text, voice: String(voice).slice(3) });
       return;
     }
     const res = await ipcRenderer.invoke('speak', text, voice, rate);
     if (my !== seq || !res || !res.wav) return;
     audio = new Audio('data:audio/wav;base64,' + res.wav);
+    if (pitch && pitch !== 1) { audio.preservesPitch = false; audio.playbackRate = pitch; }
     audio.play().catch(() => {});
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
