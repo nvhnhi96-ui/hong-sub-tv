@@ -1,12 +1,22 @@
 {
   "items": [
     {
+      "id": "2026-11-15-web",
+      "date": "2026-11-15T11:00:00+07:00",
+      "web": true,
+      "title": "Hóng Sub trên web có giao diện mới",
+      "body": "Giống phần mềm Windows: menu bên trái, Cài đặt gom một chỗ, bật nhanh đọc phụ đề, gửi phụ đề lên TV bằng mã. Phím R bật/tắt đọc phụ đề.",
+      "go": "choi",
+      "btn": "Xem màn hình chơi"
+    },
+    {
       "id": "2026-11-15-ui",
       "date": "2026-11-15T08:00:00+07:00",
       "title": "Hóng Sub có giao diện mới",
       "body": "Dịch cả màn hình giờ đè chữ Việt lên đúng chỗ chữ Anh, mỗi nhân vật tự có giọng riêng, chỉnh cỡ chữ trên TV ngay từ máy tính, bật/tắt đọc phụ đề bằng F5.",
       "go": "choi",
-      "btn": "Xem màn hình chơi"
+      "btn": "Xem màn hình chơi",
+      "pc": true
     },
     {
       "id": "2026-11-15-ai",

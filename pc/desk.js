@@ -1,9 +1,20 @@
 /* Hóng Sub for Windows: page navigation and the settings that only the Windows app has.
    The translating engine (shared with the web page) runs before this file and exposes window.hsApi. */
+/* On the web page there is no Windows app behind the page: a stand-in answers for it, and the parts only the
+   app can do are hidden by the .dk-only class. */
+window.hsDeskApi=window.hsDesktop||{
+  web:true,
+  openUrl:function(u){ window.open(u,'_blank','noopener'); },
+  sonyRp:function(){ return Promise.resolve({path:''}); }, openSonyRp:function(){ return Promise.resolve({ok:false}); }, windows:function(){ return Promise.resolve([]); },
+  sub:function(){}, overlay:function(){}, overlaySize:function(){}, overlayReset:function(){ return Promise.resolve(); }, onOverlay:function(){},
+  hotkeys:function(){ return Promise.resolve({keys:{toggle:'Space',full:'T',zones:'N',speak:'R'},state:{}}); }, pauseHotkeys:function(){}, setHotkeys:function(){ return this.hotkeys(); },
+  version:function(){ return Promise.resolve('trên web'); },
+  update:function(){ return Promise.resolve({}); }, updateInstall:function(){ return Promise.resolve({ok:false,err:'web'}); }
+};
 (function(){
 'use strict';
 var $=function(id){return document.getElementById(id);};
-var D=window.hsDesktop, A=window.hsApi;
+var D=window.hsDeskApi, A=window.hsApi;
 if(!D||!A) return;
 var S=A.S;
 
@@ -44,8 +55,10 @@ function sonyInfo(){
     $('dkSonyOpen').disabled=!sony; $('dkSonyNote').textContent=sony?'Mở app của Sony, Hóng Sub tự đọc cửa sổ đó':'Chưa cài, bấm để tải';
   });
 }
-sonyInfo();
+if((D.web===true)){ TITLES.ketnoi='Kết nối TV'; $('dkSonyNote').textContent='Mở app của Sony rồi chọn cửa sổ đó'; $('dkSrcWin').querySelector('small').textContent='Game trên máy tính, phim, tab khác'; if(A.load('dkPage','choi')==='ketnoi') $('dkTitle').textContent=TITLES.ketnoi; }
+else sonyInfo();
 function openSony(){
+  if((D.web===true)){ A.pick(false); return; }
   if(!sony){ D.openUrl('https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/'); A.status('warn','Máy chưa có app PS Remote Play. Tải và cài xong thì bấm lại.'); return; }
   D.openSonyRp().then(function(r){
     if(!r.ok){ A.status('err','Không mở được PS Remote Play'); return; }
@@ -213,14 +226,14 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 
 /* floating panel for the extra areas */
 (function(){
-  var cb=document.getElementById('dkZonePanel'); if(!cb||!window.hsDesktop||!hsDesktop.zonesPanel) return;
+  var cb=document.getElementById('dkZonePanel'); var hsDesktop=window.hsDeskApi; if(!cb||!hsDesktop||!hsDesktop.zonesPanel) return;
   if(hsDesktop.onOverlay) hsDesktop.onOverlay(function(st){ cb.checked=!st.zonesHidden; });
   cb.addEventListener('change',function(){ hsDesktop.zonesPanel(cb.checked); });
 })();
 
 /* zones page: buttons that only the Windows app has, and the short card on the play page */
 (function(){
-  var add2=document.getElementById('dkZoneAdd2'), sum=document.getElementById('dkZoneSum');
+  var hsDesktop=window.hsDeskApi, add2=document.getElementById('dkZoneAdd2'), sum=document.getElementById('dkZoneSum');
   if(add2) add2.addEventListener('click',function(){ var b=document.getElementById('hsZoneAdd'); if(!b.disabled) b.click(); else window.hsApi.status('warn','Chọn nguồn hình trước rồi mới thêm vùng.'); });
   var mv=document.getElementById('dkZoneMove'); if(mv) mv.addEventListener('click',function(){ hsDesktop.overlay('move'); });
   var rs=document.getElementById('dkZoneReset'); if(rs) rs.addEventListener('click',function(){ if(hsDesktop.zonesReset) hsDesktop.zonesReset(); });
@@ -235,7 +248,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 
 /* ---------- play page: current source, quick switches, read-aloud chip ---------- */
 (function(){
-  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop, S=A.S;
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDeskApi, S=A.S;
   /* a quick switch mirrors a setting that lives on a settings page */
   function mirror(qid,id,after){
     var q=$(qid), o=$(id); if(!q||!o) return;
@@ -264,7 +277,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 
 /* ---------- notifications: new version, new games, AI voices, news from the shop ---------- */
 (function(){
-  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop;
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDeskApi;
   var FEED='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/web/notices.json';
   var GAMES='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/games.json';
   var list=A.load('notices',[]);
@@ -311,7 +324,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     if(D.aiv) D.aiv.state().then(function(st){ if(st&&!st.ready&&!st.installing) add({id:'aiv-pack-1',title:'Có bộ 25 giọng đọc AI tiếng Việt',body:'Mỗi nhân vật một giọng riêng, đọc tự nhiên, chạy ngay trên máy. Tải một lần khoảng 510 MB.',go:'giong',btn:'Tải bộ giọng'}); }).catch(function(){});
     /* news from the shop: new voices, new features */
     fetch(FEED+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
+      (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())&&!(x.pc&&(D.web===true))&&!(x.web&&!(D.web===true))) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
     }).catch(function(){});
   }
   if(D.onUpdate) D.onUpdate(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); });
@@ -320,7 +333,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 
 /* ---------- new version: green button in the top bar, one click to update ---------- */
 (function(){
-  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop;
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDeskApi;
   var btn=$('dkUpdBtn'), info=null, busy=false;
   function show(u){
     if(!u||!u.newer) return; info=u;

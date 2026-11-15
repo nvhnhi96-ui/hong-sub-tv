@@ -252,6 +252,9 @@ html,body{height:100%;overflow:hidden}
 .hs-sub{background:#08090B!important;border-color:var(--line)!important}
 .hs-stage{border-radius:12px;background:#07080A;box-shadow:0 0 0 1px var(--line)}
 
+/* parts only the Windows app can do; the web page shows .hs-web parts instead */
+body:not(.desk) .dk-only{display:none!important}
+
 /* rail */
 .dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:18px 12px 12px;min-height:0;border-right:1px solid #181C22}
 .dk-logo{display:flex;align-items:center;gap:7px;padding:0 10px 20px;font-weight:800;font-size:22px;letter-spacing:-.015em}
@@ -404,7 +407,7 @@ html,body{height:100%;overflow:hidden}
     <div class="dk-logo">Hóng<span>Sub</span></div>
     <nav class="dk-nav" aria-label="Các trang">
       <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
-      <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg>Kết nối PS và TV</button>
+      <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg><span class="dk-only">Kết nối PS và TV</span><span class="hs-web">Kết nối TV</span></button>
       <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="dk-sub" id="dkSub">
         <button type="button" data-p="dich">Dịch và mã AI</button>
@@ -448,9 +451,10 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-empty" id="hsEmpty">
                 <div>
                   <b>Chọn nguồn hình game</b>
-                  <p>Chơi PS5 / PS4 ngay trong Hóng Sub, dùng app PS Remote Play của Sony, hoặc capture card nếu chơi trên TV. Chọn ở cột bên phải.</p>
+                  <p class="dk-only">Chơi PS5 / PS4 ngay trong Hóng Sub, dùng app PS Remote Play của Sony, hoặc capture card nếu chơi trên TV. Chọn ở cột bên phải.</p>
+                  <p class="hs-web">Mở app PS Remote Play của Sony (hoặc game trên máy tính) rồi bấm Chọn cửa sổ game. Chơi trên TV qua capture card thì bấm Capture card.</p>
                   <div class="hs-row">
-                    <button class="hs-btn pri" id="hsPsGo" type="button">Chơi PS5 / PS4</button>
+                    <button class="hs-btn pri dk-only" id="hsPsGo" type="button">Chơi PS5 / PS4</button>
                     <button class="hs-btn" id="hsPick" type="button">Chọn cửa sổ game</button>
                     <button class="hs-btn" id="hsCam" type="button">Capture card</button>
                     <button class="hs-btn" id="hsDemo" type="button">Xem thử</button>
@@ -476,7 +480,7 @@ html,body{height:100%;overflow:hidden}
                 <button class="hs-btn" id="hsDraw" type="button" disabled title="Kéo khung quanh dòng phụ đề"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 14h8"/></svg><span>Vùng phụ đề</span></button>
                 <button class="hs-btn" id="dkZoneAdd2" type="button" title="Thêm một vùng dịch (nhiệm vụ, vật phẩm...). Kéo và xóa vùng ngay trên hình."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" stroke-dasharray="3 2"/><path d="M19 15v6M16 18h6"/></svg><span>Thêm vùng</span><b class="dk-cnt" id="dkZoneCnt" hidden>0</b></button>
               </div>
-              <div class="dk-tg">
+              <div class="dk-tg dk-only">
                 <button class="hs-btn" id="hsOvShow" type="button" title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
                 <button class="hs-btn" id="hsOvMove" type="button" title="Kéo phụ đề nổi và các khung vùng dịch tới chỗ khác (F10)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg><span>Di chuyển phụ đề nổi</span></button>
               </div>
@@ -484,7 +488,7 @@ html,body{height:100%;overflow:hidden}
                 <button class="hs-btn" id="hsPick2" type="button" disabled title="Chọn lại nguồn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a8 8 0 0 0 14 2M19 9A8 8 0 0 0 5 7"/></svg><span>Đổi nguồn</span></button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
-                <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
+                <button class="hs-btn hs-web" id="hsPip" type="button" disabled title="Cửa sổ nhỏ luôn nằm trên game, hiện phụ đề tiếng Việt"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg><span>Cửa sổ nổi</span></button>
               </div>
             </div>
             <details class="hs-hist" id="hsHistBox" open>
@@ -499,7 +503,7 @@ html,body{height:100%;overflow:hidden}
               <div id="dkSrcPick">
               <p class="hs-note">Hóng Sub đọc phụ đề từ đâu.</p>
               <div class="dk-src">
-                <button type="button" id="dkSrcPs"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
+                <button type="button" id="dkSrcPs" class="dk-only"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
                 <button type="button" id="dkSrcSony"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>App PS Remote Play của Sony</b><small id="dkSonyNote">Mở app của Sony, Hóng Sub tự đọc cửa sổ đó</small></button>
                 <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Capture card</b><small>Chơi trên TV, máy tính chỉ nhận hình</small></button>
                 <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
@@ -510,7 +514,7 @@ html,body{height:100%;overflow:hidden}
               <h2>Bật nhanh</h2>
               <div class="dk-quick">
                 <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
-                <label class="hs-sw">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
               </div>
@@ -549,10 +553,11 @@ html,body{height:100%;overflow:hidden}
                 <li>Chọn nguồn hình ở <b>Màn hình chơi</b> trước.</li>
                 <li>Bấm <b>Thêm vùng</b>, kéo chuột bao quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ. Muốn thêm chỗ khác thì bấm tiếp <b>Thêm vùng</b>.</li>
                 <li>Mỗi vùng chọn được loại chữ, tự dịch hay chỉ dịch khi bấm F6, cỡ chữ và có đọc to không. Đổi tên vùng ngay ở ô tên.</li>
-                <li>Bản dịch mỗi vùng hiện ở khung nổi riêng, nằm đè lên đúng chỗ chữ gốc khi game chạy toàn màn hình. Bấm <b>Di chuyển các khung</b> để kéo khung tới chỗ khác.</li>
+                <li class="hs-web">Bản dịch mỗi vùng hiện ngay trên hình, đè lên đúng chỗ chữ gốc. Kéo thanh tên vùng để dời, kéo góc để đổi cỡ, bấm × để xóa.</li>
+                <li class="dk-only">Bản dịch mỗi vùng hiện ở khung nổi riêng, nằm đè lên đúng chỗ chữ gốc khi game chạy toàn màn hình. Bấm <b>Di chuyển các khung</b> để kéo khung tới chỗ khác.</li>
               </ol>
             </div>
-            <div class="dk-card">
+            <div class="dk-card dk-only">
               <h2>Khung nổi của các vùng</h2>
               <label class="hs-sw dk-sw">Hiện khung nổi bản dịch các vùng <input type="checkbox" id="dkZonePanel" checked></label>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" id="dkZoneMove">Di chuyển các khung</button><button class="hs-btn" type="button" id="dkZoneReset">Đặt lại chỗ cũ</button></div>
@@ -566,6 +571,17 @@ html,body{height:100%;overflow:hidden}
       <section class="dk-page" id="p-ketnoi">
         <div class="dk-cols">
           <div>
+            <div class="dk-card hs-web">
+              <h2>Chơi PS5 / PS4 trên trình duyệt</h2>
+              <ol class="dk-steps">
+                <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>.</li>
+                <li>Cài và mở app <button class="dk-link" type="button" data-url="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">PS Remote Play của Sony</button>, đăng nhập và kết nối PS5.</li>
+                <li>Về <b>Màn hình chơi</b>, bấm <b>App PS Remote Play của Sony</b>, chọn cửa sổ PS Remote Play rồi bấm <b>Chia sẻ</b>.</li>
+                <li>Chơi trên TV qua capture card thì chọn <b>Capture card</b>.</li>
+              </ol>
+              <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và phụ đề nổi trên game.</p>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
+            </div>
             <div class="dk-card hs-dk" id="hsPsSec">
               <h2>PS5 / PS4 trong Hóng Sub</h2>
               <p class="hs-note">Hóng Sub nhận hình PS5/PS4 qua Chơi từ xa để đọc phụ đề, rồi gửi bản dịch lên TV. Làm đủ 5 bước dưới đây một lần, các lần sau mở Hóng Sub là tự chạy.</p>
@@ -592,13 +608,13 @@ html,body{height:100%;overflow:hidden}
             <div class="dk-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
               <p class="hs-note">Cho TV Android / Google TV có app Hóng Sub TV. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
-              <div class="dk-set">
+              <div class="dk-set dk-only">
                 <label class="lab" for="hsTvIp">Nối qua mạng nhà (khuyên dùng)</label>
                 <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
                 <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
                 <p class="hs-note" id="hsTvLanNote">TV và máy tính dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
               </div>
-              <div class="dk-set"><span class="lab">Hoặc dùng mã TV (khi TV khác mạng, đi qua internet)</span></div>
+              <div class="dk-set"><span class="lab dk-only">Hoặc dùng mã TV (khi TV khác mạng, đi qua internet)</span><span class="lab hs-web">Mã TV (đang hiện trên app Hóng Sub TV)</span></div>
               <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
                 <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
                 <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
@@ -611,7 +627,7 @@ html,body{height:100%;overflow:hidden}
               <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
-            <div class="dk-card">
+            <div class="dk-card dk-only">
               <h2>Kết nối lần đầu</h2>
               <ol class="dk-steps">
                 <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>. Máy tính và PS5 dùng chung mạng.</li>
@@ -620,7 +636,7 @@ html,body{height:100%;overflow:hidden}
                 <li>Bấm <b>Chơi</b>. Cắm tay cầm vào máy tính. Không có tay cầm: mũi tên, Enter là ✕, Backspace là ○, P là nút PS.</li>
               </ol>
             </div>
-            <div class="dk-card">
+            <div class="dk-card dk-only">
               <h2>App PS Remote Play của Sony</h2>
               <p class="hs-note" id="dkSonyState">Đang kiểm tra...</p>
               <div class="hs-row">
@@ -628,7 +644,7 @@ html,body{height:100%;overflow:hidden}
                 <button class="hs-btn" type="button" id="dkSonyGet">Tải PS Remote Play</button>
               </div>
             </div>
-            <div class="dk-card">
+            <div class="dk-card dk-only">
               <h2>Tài khoản PlayStation</h2>
               <p class="hs-note">Mở trang của Sony để xem Online ID, tạo tài khoản phụ hoặc đổi mật khẩu.</p>
               <div class="hs-row">
@@ -714,7 +730,12 @@ html,body{height:100%;overflow:hidden}
 
       <!-- ============ Giọng đọc ============ -->
       <section class="dk-page" id="p-giong">
-        <div class="dk-card" id="dkAiCard">
+        <div class="dk-card hs-web">
+          <h2>25 giọng AI tiếng Việt</h2>
+          <p class="hs-note">Phần mềm Hóng Sub cho Windows có bộ 25 giọng AI nam và nữ của cả ba miền, mỗi nhân vật tự có một giọng riêng, đọc ngay trên máy không tốn lượt mã. Trên trình duyệt, Hóng Sub dùng giọng có sẵn của máy (Microsoft Edge có giọng HoaiMy và NamMinh).</p>
+          <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
+        </div>
+        <div class="dk-card dk-only" id="dkAiCard">
           <h2>Bộ giọng AI tiếng Việt</h2>
           <p class="hs-note">25 giọng nam và nữ của cả ba miền, đọc tự nhiên. Hóng Sub tự chia cho mỗi nhân vật một giọng riêng đúng nam/nữ, chạy ngay trên máy nên không tốn lượt mã. Chỉ cần tải một lần.</p>
           <div class="hs-msg" id="dkAiState">Đang kiểm tra...</div>
@@ -752,7 +773,7 @@ html,body{height:100%;overflow:hidden}
             </div>
             <p class="hs-note" id="hsVoiceTip" hidden></p>
           </div>
-          <div class="dk-card">
+          <div class="dk-card dk-only">
             <h2>Thêm giọng tiếng Việt</h2>
             <p class="hs-note">Hóng Sub có sẵn một giọng nữ tiếng Việt. Muốn thêm giọng nam "An" của Windows: bấm nút dưới, chọn <b>Thêm giọng nói</b>, tìm <b>Tiếng Việt</b> rồi cài, xong mở lại Hóng Sub.</p>
             <div id="hsVoiceTipD"><button class="hs-btn" id="hsVoiceSet" type="button">Mở cài đặt giọng nói của Windows</button></div>
@@ -765,9 +786,10 @@ html,body{height:100%;overflow:hidden}
         <div class="dk-cols">
           <div class="dk-card">
             <h2>Hiển thị phụ đề</h2>
-            <p class="hs-note">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
+            <p class="hs-note dk-only">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
+            <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
-            <label class="hs-sw dk-sw">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
+            <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
             <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
@@ -787,11 +809,11 @@ html,body{height:100%;overflow:hidden}
               <div class="lab"><label for="dkBg">Độ đậm nền sau chữ</label><output id="dkBgV">74%</output></div>
               <input class="hs-range" id="dkBg" type="range" min="0" max="100" step="2" value="74">
             </div>
-            <div class="dk-set">
+            <div class="dk-set dk-only">
               <div class="lab"><label for="dkWidth">Độ rộng khung phụ đề</label><output id="dkWidthV">80%</output></div>
               <input class="hs-range" id="dkWidth" type="range" min="40" max="100" step="5" value="80">
             </div>
-            <div class="hs-row" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
+            <div class="hs-row dk-only" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
           </div>
           <div class="dk-card">
             <h2>Độ trễ dịch</h2>
@@ -834,7 +856,19 @@ html,body{height:100%;overflow:hidden}
 
       <!-- ============ Phím tắt ============ -->
       <section class="dk-page" id="p-phim">
-        <div class="dk-card" style="max-width:760px">
+        <div class="dk-card hs-web" style="max-width:760px">
+          <h2>Phím tắt</h2>
+          <p class="hs-note">Dùng khi đang ở trang Hóng Sub và đã chọn nguồn hình.</p>
+          <table class="dk-keys"><tbody>
+            <tr><td>Bật / tắt dịch</td><td><kbd>Space</kbd></td><td></td></tr>
+            <tr><td>Bật / tắt dịch cả màn hình (đè lên chữ Anh)</td><td><kbd>T</kbd></td><td></td></tr>
+            <tr><td>Dịch các vùng nhiệm vụ, vật phẩm</td><td><kbd>N</kbd></td><td></td></tr>
+            <tr><td>Bật / tắt đọc phụ đề</td><td><kbd>R</kbd></td><td></td></tr>
+            <tr><td>Thoát dịch cả màn hình</td><td><kbd>Esc</kbd></td><td></td></tr>
+          </tbody></table>
+          <p class="hs-note" style="margin-top:10px">Phần mềm cho Windows có phím tắt dùng được cả khi đang ở trong game và đổi được phím.</p>
+        </div>
+        <div class="dk-card dk-only" style="max-width:760px">
           <h2>Phím tắt</h2>
           <p class="hs-note">Dùng được cả khi đang ở trong game. Bấm <b>Đổi</b> rồi nhấn phím mới (có thể kèm Ctrl, Alt, Shift). Esc để hủy.</p>
           <table class="dk-keys"><tbody id="dkKeys"></tbody></table>
@@ -860,7 +894,12 @@ html,body{height:100%;overflow:hidden}
               <p>754 Hùng Vương, Ngã Bảy, Cần Thơ.<br>Gọi hoặc Zalo <b>0949 099 992</b>, <b>0367 879 283</b>.</p>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
             </div>
-            <div class="dk-card">
+            <div class="dk-card hs-web">
+              <h2>Phần mềm Hóng Sub cho Windows</h2>
+              <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phụ đề nổi trên game, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải cho Windows</button><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubtv">App Hóng Sub TV</button></div>
+            </div>
+            <div class="dk-card dk-only">
               <h2>Phiên bản</h2>
               <p class="hs-note" id="dkVerNote"></p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubpc">Tải bản mới nhất</button></div>
