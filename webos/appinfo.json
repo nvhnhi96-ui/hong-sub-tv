@@ -1,0 +1,16 @@
+{
+  "id": "store.honggame.hongsubtv",
+  "version": "1.0.0",
+  "vendor": "Hóng Game Store",
+  "type": "web",
+  "main": "index.html",
+  "title": "Hóng Sub",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#0E1014",
+  "iconColor": "#0E1014",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "transparent": false,
+  "requiredACG": []
+}

@@ -50,6 +50,26 @@ jobs:
             hong-sub-tv.apk
             hong-sub-android.apk
 
+  webos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build the LG webOS app
+        run: |
+          V=1.0.${{ github.run_number }}
+          jq --arg v "$V" '.version=$v' webos/appinfo.json > /tmp/a.json && mv /tmp/a.json webos/appinfo.json
+          sed -i "s/var VERSION='[^']*'/var VERSION='$V'/" webos/index.html
+          npx --yes -p @webos-tools/cli ares-package webos -o out
+          cp out/*.ipk hong-sub-lg.ipk
+          ls -la hong-sub-lg.ipk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webos
+          path: hong-sub-lg.ipk
+
   rp-helper:
     runs-on: windows-latest
     defaults:
@@ -215,8 +235,8 @@ jobs:
           path: pc/dist/hong-sub-pc.exe
 
   release:
-    needs: [ android, windows ]
-    if: needs.android.result == 'success' && needs.windows.result == 'success'
+    needs: [ android, windows, webos ]
+    if: needs.android.result == 'success' && needs.windows.result == 'success' && needs.webos.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -235,8 +255,10 @@ jobs:
             - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
             - hong-sub-android.apk: điện thoại Android, dùng kèm app PS Remote Play.
+            - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
           files: |
             out/hong-sub-pc.exe
             out/hong-sub-tv.apk
             out/hong-sub-android.apk
+            out/hong-sub-lg.ipk
           make_latest: true
