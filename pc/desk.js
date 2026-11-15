@@ -203,7 +203,8 @@ function rail(){
   var o=$('hsOr')?$('hsOr').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length:0;
   var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'');
   var src=srcName(), voice=$('hsSpeak').checked?($('hsVoice').selectedOptions[0]?$('hsVoice').selectedOptions[0].textContent:'bật'):'tắt';
-  [['dkSrc',src],['dkGame',g],['dkGame2',g],['dkVia',via],['dkVia2',via],['dkVoice2',voice]].forEach(function(x){ if($(x[0]).textContent!==x[1]) $(x[0]).textContent=x[1]; });
+  var lang=$('hsLang')&&$('hsLang').selectedOptions[0]?$('hsLang').selectedOptions[0].textContent:'Tiếng Anh';
+  [['dkSrc',src],['dkGame',g],['dkGame2',g],['dkVia',via],['dkVia2',via],['dkVoice2',voice],['dkLang2',lang]].forEach(function(x){ if($(x[0]).textContent!==x[1]) $(x[0]).textContent=x[1]; });
   $('dkKeyBadge').hidden=!!(k||q||o);
 }
 setInterval(rail,1000); rail();
@@ -227,7 +228,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   function upd(){
     var zs=window.hsApi.S.zones||[], on=zs.filter(function(z){return z.on;}).length;
     if(sum) sum.textContent=zs.length?(zs.length+' vùng, '+on+' đang bật'):'chưa có';
-    if(add2){ var b=document.getElementById('hsZoneAdd'); add2.textContent=b.textContent; add2.disabled=zs.length>=8; }
+    if(add2){ add2.disabled=zs.length>=8; var cn=document.getElementById('dkZoneCnt'); if(cn){ cn.hidden=!zs.length; cn.textContent=zs.length; } }
   }
   setInterval(upd,1000); upd();
 })();

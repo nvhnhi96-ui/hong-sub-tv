@@ -57,7 +57,11 @@ html,body{margin:0;background:#ECEEF1}
 .hs-fsb{position:absolute;box-sizing:border-box;width:max-content;background:rgba(12,14,18,.92);color:#fff;border-radius:3px;padding:1px 4px;line-height:1.22;font-weight:600;overflow:hidden;box-shadow:0 0 0 1px rgba(255,196,0,.35)}
 .hs-btn.on{background:var(--ink);color:var(--panel)!important;border-color:var(--ink)}
 .hs-zone{position:absolute;border:2px dashed #3FB6FF;border-radius:6px}
-.hs-zone span{position:absolute;bottom:100%;left:-2px;margin-bottom:3px;color:#000;font-size:11.5px;font-weight:700;padding:0 6px;border-radius:4px;white-space:nowrap}
+.hs-zone .hd{position:absolute;bottom:100%;left:-2px;margin-bottom:3px;display:flex;align-items:center;gap:2px;color:#000;font-size:11.5px;font-weight:700;padding:0 0 0 7px;border-radius:5px;white-space:nowrap;pointer-events:auto;cursor:move;user-select:none;touch-action:none}
+.hs-zone .hd .x{border:0;background:rgba(0,0,0,.18);color:#000;font-weight:800;font-size:14px;line-height:1;width:20px;height:19px;border-radius:0 5px 5px 0;cursor:pointer;padding:0;margin-left:4px}
+.hs-zone .hd .x:hover{background:rgba(0,0,0,.4);color:#fff}
+.hs-zone .rs{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border:3px solid;border-left:0;border-top:0;pointer-events:auto;cursor:nwse-resize;touch-action:none}
+.hs-zone.drag{background:rgba(255,255,255,.06)}
 .hs-zone .tx{position:absolute;inset:0;background:rgba(10,12,16,.88);color:#fff;padding:6px 8px;line-height:1.35;white-space:pre-line;overflow:auto;border-radius:4px;font-weight:500}
 .hs-zrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
 .hs-zhead{display:flex;gap:8px;align-items:center}.hs-zhead input.hs-in{flex:1;font-weight:700;padding:6px 8px!important}
@@ -291,8 +295,6 @@ html,body{height:100%;overflow:hidden}
 
 /* play page */
 .dk-play{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
-.dk-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
-.dk-tools .sep{width:1px;height:26px;background:var(--line2);margin:0 4px}
 .dk-tools .hs-btn kbd,.hs-btn kbd{font-family:inherit;font-size:11px;font-weight:700;color:var(--soft);border:1px solid var(--line2);border-radius:4px;padding:0 4px;margin-left:2px}
 .dk-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
 .dk-card > h2{margin:0 0 4px;font-size:15.5px;font-weight:700;letter-spacing:-.005em}
@@ -362,6 +364,19 @@ html,body{height:100%;overflow:hidden}
 @media (max-width:1100px){.dk-play{grid-template-columns:minmax(0,1fr)}.dk-cols{grid-template-columns:minmax(0,1fr)}.dk-buy{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.hs *{animation:none!important;transition:none!important}}
 .hs :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+/* tool row under the picture: fixed groups, buttons keep their place when labels change */
+.dk-tools{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.dk-tg{display:flex;gap:6px;padding-right:10px;border-right:1px solid var(--line)}
+.dk-tg:last-child{border-right:0;padding-right:0}
+.dk-tools .hs-btn{gap:7px;padding:8px 12px;border-color:transparent;background:var(--panel2)}
+.dk-tools .hs-btn:hover:not(:disabled){border-color:var(--line2);background:#232933}
+.dk-tools .hs-btn svg{width:17px;height:17px;flex:none;stroke:var(--brand);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dk-tools .hs-btn:disabled svg{stroke:var(--soft)}
+.dk-tools .hs-btn.on{background:var(--brand);color:#000!important}
+.dk-tools .hs-btn.on svg{stroke:#000}
+#hsOvShow{min-width:132px}
+.dk-cnt{min-width:18px;height:18px;border-radius:9px;background:var(--brand);color:#000;font-size:11px;font-weight:800;display:inline-grid;place-items:center;padding:0 5px}
+
 .dk-top h1,.dk-chip{white-space:nowrap}
 .dk-top .hs-pill{white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1200px){#dkSpeakTx{display:none}.dk-chip{padding:9px}.dk-top .hs-pill{max-width:220px}}
@@ -438,18 +453,25 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-vi placeholder" id="hsVi">Phụ đề tiếng Việt hiện ở đây</div>
               <div class="hs-en" id="hsEn"></div>
             </div>
-            <div class="dk-tools">
-              <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ Anh">Dịch cả màn hình</button>
-              <button class="hs-btn" id="dkNow" type="button" disabled title="Dịch ngay câu đang hiện">Dịch câu này <kbd>F8</kbd></button>
-              <button class="hs-btn" id="hsDraw" type="button" disabled>Chọn vùng phụ đề</button>
-              <button class="hs-btn" id="dkZoneAdd2" type="button">Thêm vùng dịch</button>
-              <span class="sep"></span>
-              <button class="hs-btn" id="hsOvShow" type="button">Ẩn phụ đề nổi</button>
-              <button class="hs-btn" id="hsOvMove" type="button">Di chuyển phụ đề nổi</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
-              <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
-              <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi nguồn hình</button>
-              <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
+            <div class="dk-tools" role="toolbar" aria-label="Công cụ dịch">
+              <div class="dk-tg">
+                <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ gốc (F11)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 13h10M7 17h4"/></svg><span>Dịch cả màn hình</span></button>
+                <button class="hs-btn" id="dkNow" type="button" disabled title="Dịch ngay câu đang hiện (F8)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span>Dịch câu này</span></button>
+              </div>
+              <div class="dk-tg">
+                <button class="hs-btn" id="hsDraw" type="button" disabled title="Kéo khung quanh dòng phụ đề"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 14h8"/></svg><span>Vùng phụ đề</span></button>
+                <button class="hs-btn" id="dkZoneAdd2" type="button" title="Thêm một vùng dịch (nhiệm vụ, vật phẩm...). Kéo và xóa vùng ngay trên hình."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" stroke-dasharray="3 2"/><path d="M19 15v6M16 18h6"/></svg><span>Thêm vùng</span><b class="dk-cnt" id="dkZoneCnt" hidden>0</b></button>
+              </div>
+              <div class="dk-tg">
+                <button class="hs-btn" id="hsOvShow" type="button" title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
+                <button class="hs-btn" id="hsOvMove" type="button" title="Kéo phụ đề nổi và các khung vùng dịch tới chỗ khác (F10)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg><span>Di chuyển phụ đề nổi</span></button>
+              </div>
+              <div class="dk-tg">
+                <button class="hs-btn" id="hsPick2" type="button" disabled title="Chọn lại nguồn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a8 8 0 0 0 14 2M19 9A8 8 0 0 0 5 7"/></svg><span>Đổi nguồn</span></button>
+                <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
+                <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+                <button class="hs-btn" id="hsPip" type="button" hidden>Cửa sổ nổi</button>
+              </div>
             </div>
             <details class="hs-hist" id="hsHistBox" open>
               <summary>Các câu trước (<span id="hsHistN">0</span>)</summary>
@@ -483,6 +505,7 @@ html,body{height:100%;overflow:hidden}
               <h2>Đang dùng</h2>
               <div class="dk-kv" style="margin-top:8px">
                 <span>Game</span><b id="dkGame2">chưa chọn</b>
+                <span>Ngôn ngữ</span><b id="dkLang2">Tiếng Anh</b>
                 <span>Dịch bằng</span><b id="dkVia2">chưa có mã</b>
                 <span>Giọng đọc</span><b id="dkVoice2">bật</b>
                 <span>Vùng dịch</span><b id="dkZoneSum">chưa có</b>
@@ -541,6 +564,7 @@ html,body{height:100%;overflow:hidden}
               <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
               <div class="hs-msg" id="hsPsMsg" hidden></div>
               <label class="hs-sw dk-sw">Chỉ xem để dịch, vẫn chơi bằng tay cầm trên TV <input type="checkbox" id="hsPsWatch"></label>
+              <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
               <p class="hs-note">Máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
               <div class="dk-set">
                 <label class="lab" for="hsPsQ">Chất lượng hình</label>
@@ -635,12 +659,16 @@ html,body{height:100%;overflow:hidden}
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
             <div class="dk-card">
-              <h2>Cách đọc phụ đề</h2>
-              <select class="hs-in" id="hsRead" aria-label="Cách đọc phụ đề" style="margin-top:6px">
+              <h2>Ngôn ngữ và cách đọc chữ</h2>
+              <div class="dk-set"><label class="lab" for="hsLang">Ngôn ngữ chữ trong game</label><select class="hs-in" id="hsLang"></select>
+                <p class="hs-note">Tiếng Anh và tiếng Trung đọc được ngay. Tiếng Nhật, Hàn, Nga và Pháp, Đức, Tây Ban Nha, Ý, Bồ Đào Nha tải thêm bộ đọc chữ khoảng 10 MB ở lần đầu chọn.</p></div>
+              <div class="dk-set"><label class="lab" for="hsRead">Cách đọc chữ</label>
+              <select class="hs-in" id="hsRead" aria-label="Cách đọc phụ đề">
                 <option value="local">Đọc ngay trên máy (nhanh, đỡ tốn lượt)</option>
                 <option value="ai">Gửi ảnh cho AI đọc (đọc được chữ kiểu cách, chậm hơn)</option>
               </select>
               <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
+              </div>
             </div>
           </div>
           <div>
@@ -717,7 +745,7 @@ html,body{height:100%;overflow:hidden}
             <p class="hs-note">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
-            <label class="hs-sw dk-sw">Hiện câu tiếng Anh gốc <input type="checkbox" id="hsShowEn" checked></label>
+            <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
             <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
@@ -861,9 +889,28 @@ async function init(base,ortBase){
     det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt);
     rec=await ort.InferenceSession.create(new Uint8Array(r[1]),opt);
     chars=['']; r[2].split(/\r?\n/).forEach(function(c){ if(c!=='') chars.push(c); }); chars.push(' ');
+    base0={rec:rec,chars:chars};
     return true;
   })().catch(function(e){ loading=null; throw e; });
   return loading;
+}
+/* other languages: another recognition model (Japanese, Korean, Latin, Cyrillic); '' = the built-in one
+   (English and Chinese) */
+var base0=null, recCache={}, recLang='';
+async function setLang(code,url){
+  if(!det||!rec) throw new Error('OCR chưa sẵn sàng');
+  if(code===recLang) return true;
+  if(!code){ rec=base0.rec; chars=base0.chars; recLang=''; return true; }
+  if(!recCache[code]){
+    var u=url.replace(/\/?$/,'/')+code+'/';
+    var r=await Promise.all([
+      fetch(u+'rec.onnx').then(function(x){if(!x.ok) throw new Error('rec '+x.status); return x.arrayBuffer();}),
+      fetch(u+'keys.txt').then(function(x){if(!x.ok) throw new Error('keys '+x.status); return x.text();})
+    ]);
+    var ch=['']; r[1].split(/\r?\n/).forEach(function(c){ if(c!=='') ch.push(c); }); ch.push(' ');
+    recCache[code]={rec:await ort.InferenceSession.create(new Uint8Array(r[0]),{executionProviders:['wasm'],graphOptimizationLevel:'all'}),chars:ch};
+  }
+  rec=recCache[code].rec; chars=recCache[code].chars; recLang=code; return true;
 }
 
 var cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
@@ -989,7 +1036,7 @@ async function read(src,opts){
   return {lines:lines, text:lines.map(function(l){return l.text;}).join('\n'), conf:tl?lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/tl:0, ms:Math.round(performance.now()-t0)};
 }
 
-window.HsOcr={init:init, read:read, ready:function(){return !!(det&&rec);}};
+window.HsOcr={init:init, read:read, setLang:setLang, lang:function(){return recLang;}, ready:function(){return !!(det&&rec);}};
 })();
 </script>
 <script>
@@ -1238,7 +1285,7 @@ video.addEventListener('loadedmetadata',showRegion);
 window.addEventListener('resize',function(){if(S.stream)showRegion();});
 var drawing=false, start=null;
 function setDraw(on){drawing=on; ov.classList.toggle('off',!on); $('hsHint').hidden=!on;}
-$('hsDraw').addEventListener('click',function(){drawTarget=null; $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề tiếng Anh'; setDraw(true);});
+$('hsDraw').addEventListener('click',function(){drawTarget=null; $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; setDraw(true);});
 ov.addEventListener('pointerdown',function(e){
   if(!drawing) return;
   var b=videoBox(); start={x:e.clientX-b.r.left,y:e.clientY-b.r.top,b:b};
@@ -1255,7 +1302,7 @@ ov.addEventListener('pointermove',function(e){
 });
 ov.addEventListener('pointerup',function(){
   if(!start) return; start=null;
-  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề tiếng Anh'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
+  if(drawTarget){ var z=drawTarget; drawTarget=null; z.doneMask=null; z.lastText=''; zSave(); setDraw(false); $('hsHint').textContent='Kéo chuột bao quanh dòng phụ đề gốc'; zList(); zPush(); if(z.on) zoneTick(true,z); return; }
   save('region',S.region); save('regionSet',true); setDraw(false); S.lastSig=null; steps();
 });
 
@@ -1272,15 +1319,40 @@ function zEl(z){
   if(z.el) return z.el;
   var c=zCol(z);
   z.el=document.createElement('div'); z.el.className='hs-zone'; z.el.style.borderColor=c;
-  z.el.innerHTML='<span style="background:'+c+'"></span><div class="tx" hidden></div>';
-  zLayer.appendChild(z.el); return z.el;
+  z.el.innerHTML='<div class="hd" style="background:'+c+'" title="Kéo để di chuyển vùng"><span></span><button type="button" class="x" title="Xóa vùng này" aria-label="Xóa vùng">×</button></div><div class="tx" hidden></div><i class="rs" style="border-color:'+c+'" title="Kéo để đổi cỡ"></i>';
+  zLayer.appendChild(z.el);
+  /* move or resize right on the picture */
+  function drag(e,mode){
+    if(e.button!==0) return; e.preventDefault(); e.stopPropagation();
+    var b=videoBox(), sx=e.clientX, sy=e.clientY, x0=z.x, y0=z.y, w0=z.w, h0=z.h, tgt=e.currentTarget;
+    try{ tgt.setPointerCapture(e.pointerId); }catch(err){}
+    z.el.classList.add('drag');
+    function mv(ev){
+      var dx=(ev.clientX-sx)/b.w, dy=(ev.clientY-sy)/b.h;
+      if(mode==='move'){ z.x=Math.max(0,Math.min(1-z.w,x0+dx)); z.y=Math.max(0,Math.min(1-z.h,y0+dy)); }
+      else{ z.w=Math.max(.04,Math.min(1-z.x,w0+dx)); z.h=Math.max(.03,Math.min(1-z.y,h0+dy)); }
+      zShow();
+    }
+    function up(){ tgt.removeEventListener('pointermove',mv); tgt.removeEventListener('pointerup',up); tgt.removeEventListener('pointercancel',up); z.el.classList.remove('drag');
+      z.doneMask=null; z.prevMask=null; z.lastText=''; zSave(); zList(); zPush(); }
+    tgt.addEventListener('pointermove',mv); tgt.addEventListener('pointerup',up); tgt.addEventListener('pointercancel',up);
+  }
+  z.el.querySelector('.hd').addEventListener('pointerdown',function(e){ if(e.target.classList.contains('x')) return; drag(e,'move'); });
+  z.el.querySelector('.rs').addEventListener('pointerdown',function(e){ drag(e,'size'); });
+  z.el.querySelector('.x').addEventListener('click',function(e){ e.stopPropagation(); zDelete(z); });
+  return z.el;
+}
+function zDelete(z){
+  if(z.el) z.el.remove(); var n=zName(z);
+  S.zones=S.zones.filter(function(x){return x!==z;}); zSave(); zShow(); zList(); zPush();
+  status(S.running?'run':'idle','Đã xóa '+n);
 }
 function zShow(){
   var b=videoBox(), live={};
   S.zones.forEach(function(z,i){
     var el=zEl(z); live[z.id]=1;
-    var c=zCol(z); el.style.borderColor=c; el.querySelector('span').style.background=c;
-    el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+' · '+ZKINDS[z.kind].n+(z.mode==='key'?' (bấm phím)':'');
+    var c=zCol(z); el.style.borderColor=c; el.querySelector('.hd').style.background=c; el.querySelector('.rs').style.borderColor=c;
+    el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+(z.mode==='key'?' · bấm phím':'');
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
     var tx=el.querySelector('.tx'); tx.hidden=!z.vi||!!z.hide; tx.textContent=z.vi||'';
     tx.style.fontSize=Math.max(11,Math.min(18,Math.round(z.h*b.h/Math.max(2,(z.vi||'').split('\n').length+1))))+'px';
@@ -1315,7 +1387,7 @@ function zList(){
       zSave(); zShow(); zList(); zPush(); }); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
     row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
-    row.querySelector('[data-a=del]').addEventListener('click',function(){ if(z.el) z.el.remove(); S.zones=S.zones.filter(function(x){return x!==z;}); zSave(); zShow(); zList(); zPush(); });
+    row.querySelector('[data-a=del]').addEventListener('click',function(){ zDelete(z); });
   });
 }
 $('hsZoneAdd').addEventListener('click',function(){
@@ -1331,27 +1403,27 @@ var drawTarget=null;
 function drawFor(z){ if(window.hsGo) hsGo('choi'); drawTarget=z; setDraw(true); $('hsHint').textContent='Kéo chuột bao quanh '+zName(z)+' ('+ZKINDS[z.kind].n.toLowerCase()+')'; }
 /* text for menus and descriptions: keep every readable line */
 function zText(o){
-  return o.lines.filter(function(l){ return l.conf>=0.55&&(l.text.match(/[A-Za-z]/g)||[]).length>=2&&wordy(l.text)>=0.5; })
+  return o.lines.filter(function(l){ return l.conf>=0.55&&langOk(l.text,2,0.5); })
     .map(function(l){ return l.text.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); }).join('\n');
 }
 function zPrompt(z,text){
-  return 'You translate on-screen video game text ('+ZKINDS[z.kind].d+') for a Vietnamese player.\n'+
+  return 'You translate on-screen video game text ('+ZKINDS[z.kind].d+') from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>>. It may contain OCR mistakes or words stuck together.\n<<<\n'+text+'\n>>>\n'+
     'Translate it into short, clear Vietnamese in "vi". Keep one output line for each input line, joined with \\n. Keep names of characters, places, items and skills as they are; numbers, stats and button names stay unchanged. Ignore lines that are only button prompts or numbers. If it is not real text, return "vi":"".\n'+context();
 }
-function zKey(text){ return gameKey($('hsGame').value)+'|'+text.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function zKey(text){ return gameKey($('hsGame').value)+'|'+norm(text); }
 function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>250) delete S.zcache[ks[0]]; save('zcache',S.zcache); }
 async function zTranslate(z,text){
   var k=zKey(text);
   if(S.zcache[k]) return {vi:S.zcache[k],via:'nhớ'};
-  var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true,'best');
+  var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true);
   var vi=(r&&r.vi||'').trim(); if(vi) zCache(k,vi);
   return {vi:vi,via:S.via};
 }
 /* the extra areas are checked about once a second, after the subtitle (which always goes first) */
 async function zoneTick(force,only){
   if(!S.stream||S.zBusy||!S.zones.length) return;
-  if(!force&&(S.ocrBusy||Date.now()-S.zLast<900)) return;
+  if(!force&&(S.ocrBusy||Date.now()-S.zLast<250)) return;
   S.zLast=Date.now(); S.zBusy=true;
   try{
     for(var i=0;i<S.zones.length;i++){
@@ -1360,8 +1432,14 @@ async function zoneTick(force,only){
       var m=textMask();
       zcv.width=cap.width; zcv.height=cap.height; zcv.getContext('2d').drawImage(cap,0,0);   /* keep this crop: the subtitle check reuses cap meanwhile */
       if(!force){
-        if(m.ink<MW*MH*0.004){ z.prevMask=m; continue; }
+        if(m.ink<MW*MH*0.004){                                  /* the text went away: take the translation away too */
+          z.prevMask=m; z.empty=(z.empty||0)+1;
+          if(z.empty>=2&&(z.vi||z.lastText)){ z.vi=''; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); }
+          continue;
+        }
+        z.empty=0;
         var changed=!z.doneMask||maskDiff(m,z.doneMask)>0.12, steady=z.prevMask&&maskDiff(m,z.prevMask)<0.06;
+        if(changed&&z.vi&&z.doneMask){ z.vi=''; zShow(); zPush(); }   /* old text is gone: do not leave its translation up */
         z.prevMask=m; if(!changed||!steady) continue;
       }
       z.doneMask=m;
@@ -1371,7 +1449,7 @@ async function zoneTick(force,only){
         S.ocrBusy=true; try{ var o=await HsOcr.read(zcv); text=zText(o); } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
-        var r=await ask('Read the English text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
+        var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
         z.vi=(r&&r.vi||'').trim(); z.hide=false; zShow(); zList(); zPush(); continue;
       }
       if(!text||(!force&&similar(text,z.lastText||''))) continue;
@@ -1752,7 +1830,7 @@ async function freeTr(text){
   return {en:(who?who+': ':'')+body, vi:vi, gender:''};
 }
 async function gtx(text){
-  var u='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q='+encodeURIComponent(text);
+  var u='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+LG()+'&tl=vi&dt=t&q='+encodeURIComponent(text);
   var j=D&&D.getJson?await D.getJson(u):await fetch(u).then(function(r){ if(!r.ok) throw new Error('Máy dịch miễn phí lỗi '+r.status); return r.json(); });
   var vi=((j&&j[0])||[]).map(function(x){return x&&x[0]||'';}).join('').trim();
   if(!vi) throw new Error('Máy dịch miễn phí không trả lời');
@@ -1779,6 +1857,22 @@ $('hsTv').value=load('tv','');
 $('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value);});
 function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
 var tvFails=0;
+/* short messages to the TV (Hóng Sub opened, PS5 waking up...), shown there but not read aloud */
+function tvNotice(text){
+  var c=tvCode(); if(c.length<4||!D) return;
+  fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:text,who:'Hóng Sub',kind:'notice',size:+$('hsTvSize').value||0,pos:$('hsTvPos').value})}).catch(function(){});
+}
+/* the TV says hello when its app opens: the computer then wakes the PS5 */
+S.tvHello=-1;
+function tvListen(){
+  var c=tvCode();
+  if(c.length>=4&&D) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var seq=+j.seq||0;
+    if(S.tvHello<0){ S.tvHello=seq; return; }
+    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello'){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên máy tính.'); } }
+  }).catch(function(){});
+  later(tvListen,4000);
+}
 function tvPush(vi,en,who,manual){
   var c=tvCode(); if(c.length<4){ if(manual) tvMsg('err','Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
   fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({room:c,vi:vi,en:en||'',who:who||'',size:+$('hsTvSize').value||0,pos:$('hsTvPos').value})})
@@ -1794,8 +1888,11 @@ function tvPush(vi,en,who,manual){
 $('hsTvTest').addEventListener('click',function(){ $('hsTv').value=tvCode(); save('tv',$('hsTv').value); tvPush('Hóng Sub đã kết nối với TV','Connected','',true); });
 
 /* ---------- display + speech ---------- */
-function norm(s){return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
-function similar(a,b){a=norm(a);b=norm(b); if(!a||!b) return false; if(a===b) return true; var A=a.split(' '),B=b.split(' '),hit=0; A.forEach(function(w){if(B.indexOf(w)>=0)hit++;}); return hit/Math.max(A.length,B.length)>.85;}
+function norm(s){return (s||'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+function similar(a,b){a=norm(a);b=norm(b); if(!a||!b) return false; if(a===b) return true;
+  /* Chinese, Japanese, Korean: no spaces between words, compare pairs of characters */
+  if(/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(a+b)){ var g=function(t){ t=t.replace(/ /g,''); var o={}; for(var i=0;i<t.length-1;i++) o[t.substr(i,2)]=1; return Object.keys(o); }, P=g(a), Q=g(b), h=0; P.forEach(function(x){ if(Q.indexOf(x)>=0) h++; }); return h/Math.max(P.length,Q.length,1)>.8; }
+  var A=a.split(' '),B=b.split(' '),hit=0; A.forEach(function(w){if(B.indexOf(w)>=0)hit++;}); return hit/Math.max(A.length,B.length)>.85;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function show(res){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
@@ -2037,10 +2134,45 @@ function ocrWarm(){
 function ocrLoad(){
   if(!window.HsOcr||HsOcr.ready()||OCR.loading||readMode()!=='local'||OCR.fails>=5) return;
   OCR.loading=true; var t0=Date.now(); if(!D) $('hsReadNote').textContent='Đang tải bộ đọc chữ (khoảng 13 MB, chỉ lần đầu)...';
-  HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); return ocrWarm(); })
+  HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); return ocrWarm(); }).then(function(){ return ocrLang(); })
     .catch(function(e){ OCR.fails=9; log('không tải được bộ đọc chữ: '+e.message); $('hsReadNote').textContent='Không tải được bộ đọc chữ, Hóng Sub gửi ảnh cho AI đọc.'; })
     .then(function(){ OCR.loading=false; });
 }
+/* ---------- the language of the game text ----------
+   ocr: recognition model ('' = built in, reads English and Chinese); sc: which letters count as text */
+var LANGS={
+  en:{n:'Tiếng Anh',e:'English',ocr:'',sc:'lat'}, ja:{n:'Tiếng Nhật',e:'Japanese',ocr:'ja',sc:'cjk'}, zh:{n:'Tiếng Trung',e:'Chinese',ocr:'',sc:'cjk'},
+  ko:{n:'Tiếng Hàn',e:'Korean',ocr:'ko',sc:'kor'}, fr:{n:'Tiếng Pháp',e:'French',ocr:'latin',sc:'lat'}, de:{n:'Tiếng Đức',e:'German',ocr:'latin',sc:'lat'},
+  es:{n:'Tiếng Tây Ban Nha',e:'Spanish',ocr:'latin',sc:'lat'}, pt:{n:'Tiếng Bồ Đào Nha',e:'Portuguese',ocr:'latin',sc:'lat'}, it:{n:'Tiếng Ý',e:'Italian',ocr:'latin',sc:'lat'},
+  ru:{n:'Tiếng Nga',e:'Russian',ocr:'ru',sc:'cyr'}
+};
+var OCR_LANG=window.HS_OCR_LANG||'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@1417b96b57792dda0270801c2ac01a03a5aceaa1/web/ocr/lang/';
+function LG(){ var c=$('hsLang')&&$('hsLang').value; return LANGS[c]?c:'en'; }
+function LN(){ return LANGS[LG()].e; }                 /* name used in the AI prompts */
+var SC={lat:/[A-Za-zÀ-ÖØ-öø-ÿĀ-žẞß]/g, cjk:/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g, kor:/[\uac00-\ud7af\u1100-\u11ff]/g, cyr:/[\u0400-\u04ff]/g};
+/* is this OCR line real text of the game's language? */
+function langOk(t,minLetters,minWordy){
+  var L=LANGS[LG()], n=(t.match(SC[L.sc])||[]).length;
+  if(L.sc==='lat') return n>=minLetters&&(LG()!=='en'||wordy(t)>=minWordy);
+  return n>=Math.max(2,Math.ceil(minLetters/2));
+}
+async function ocrLang(){
+  if(!ocrOn()) return;
+  var want=LANGS[LG()].ocr;
+  if(HsOcr.lang()===want) return;
+  status('busy','Đang tải bộ đọc chữ '+LANGS[LG()].n.toLowerCase()+' (khoảng 10 MB, chỉ lần đầu)...');
+  var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<3000) await new Promise(function(r){setTimeout(r,40);});
+  S.ocrBusy=true;
+  try{ await HsOcr.setLang(want,OCR_LANG); log('bộ đọc chữ: '+LANGS[LG()].n); status(S.running?'run':'idle',S.running?'Đang dịch':'Sẵn sàng đọc '+LANGS[LG()].n.toLowerCase()); }
+  catch(e){ log('không tải được bộ đọc chữ '+LG()+': '+e.message); status('warn','Không tải được bộ đọc chữ '+LANGS[LG()].n.toLowerCase()+', thử lại sau.'); }
+  finally{ S.ocrBusy=false; }
+}
+(function(){
+  var sel=$('hsLang');
+  sel.innerHTML=Object.keys(LANGS).map(function(k){return '<option value="'+k+'">'+LANGS[k].n+'</option>';}).join('');
+  sel.value=LANGS[load('lang','en')]?load('lang','en'):'en';
+  sel.addEventListener('change',function(){ save('lang',sel.value); S.lastEn=''; S.lastOcr=''; S.fs&&S.fs.cache.clear(); S.zones.forEach(function(z){z.lastText=''; z.doneMask=null;}); ocrLang(); });
+})();
 /* share of tokens that look like real English words: drops OCR junk like "fdrtglgbou" */
 var SHORTW=/^(a|i|o|an|am|as|at|be|by|do|go|he|hi|if|in|is|it|me|my|no|of|oh|ok|on|or|so|to|up|us|we|ya|ye|yo|mr|ms|dr|st)$/;
 function wordy(line){
@@ -2050,7 +2182,7 @@ function wordy(line){
   return all?ok/all:0;
 }
 function ocrText(o){
-  var ls=o.lines.filter(function(l){ return l.conf>=0.6&&(l.text.match(/[A-Za-z]/g)||[]).length>=3&&wordy(l.text)>=0.6; })
+  var ls=o.lines.filter(function(l){ return l.conf>=0.6&&langOk(l.text,3,0.6); })
     .map(function(l){ var t=l.text; if((t.match(/[A-Za-z,.]-(?=[A-Za-z])/g)||[]).length>=2) t=t.replace(/([A-Za-z,.])-(?=[A-Za-z])/g,'$1 ').replace(/(^|\s)-(?=[A-Za-z])/g,'$1');   /* small text: gaps read as "-" */
       return t.replace(/([.!?,;])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); });
   /* lines of one subtitle are joined; a new speaker ("NAME: ...") starts a new line */
@@ -2058,7 +2190,7 @@ function ocrText(o){
 }
 /* rolling 2-line subtitles: the old sentence stays on top when a new one appears; only translate the new part */
 S.sents=[];
-function splitSents(t){ return t.replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…])\s+(?=[A-Z"'(\[¡¿])/).filter(Boolean); }
+function splitSents(t){ return t.replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…])\s+(?=[A-ZÀ-ÖØ-ÞА-Я"'(\[¡¿«])|(?<=[。！？])/).filter(Boolean); }
 function freshPart(text){
   var now=Date.now(); S.sents=S.sents.filter(function(x){return now-x.t<20000;});
   var parts=splitSents(text); if(parts.length<2) return text;
@@ -2068,9 +2200,9 @@ function freshPart(text){
 }
 function rememberSents(text){ var now=Date.now(); splitSents(text).forEach(function(p){ S.sents.push({s:p,t:now}); }); }
 function textPrompt(t){
-  return 'You translate video game subtitles for a Vietnamese player.\n'+
+  return 'You translate video game subtitles from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
-    '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the English dialogue/subtitle text in "en". Ignore HUD, button prompts and labels like "DEMO".\n'+
+    '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the '+LN()+' dialogue/subtitle text in "en" (in the original language). Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not in the text.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes). In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
@@ -2090,11 +2222,11 @@ S.inflight=0; S.seq=0; S.shownSeq=0; S.sentMask=null; S.prevMask=null; S.pend=0;
 function subPrompt(){
   return 'You translate video game subtitles for a Vietnamese player.\n'+
     'The image is a crop of the game screen where dialogue subtitles appear.\n'+
-    '1. Copy ONLY the subtitle/dialogue text in English into "en", exactly as written. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
+    '1. Copy ONLY the subtitle/dialogue text in '+LN()+' into "en", exactly as written in the original language. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not written on screen.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender if a speaker name is shown: "male", "female", or "". In "age" put "child", "young", "adult" or "old", or "".\n'+
-    '5. If there is no readable English subtitle, return "en":"" and "vi":"".\n'+context();
+    '5. If there is no readable '+LN()+' subtitle, return "en":"" and "vi":"".\n'+context();
 }
 function takeResult(res,seq,raw){
   res=splitSpeaker(res,raw);
@@ -2239,7 +2371,7 @@ async function tick(force){
   var m=textMask(), now=Date.now();
   if(readMode()==='local'&&!ocrOn()&&OCR.loading){ if(!S.ocrWait){ S.ocrWait=true; status('busy','Đang chuẩn bị bộ đọc chữ...'); } return; }
   if(S.ocrWait){ S.ocrWait=false; status('run','Đang dịch'); }
-  if(S.zones.length&&!force) later(function(){ zoneTick(false); },30);
+  if(S.zones.length&&!force) later(function(){ zoneTick(false); },10);
   if(ocrOn()){ if(force){ S.lastEn=''; S.lastOcr=''; } return ocrStep(m,force); }
   if(force){ S.lastEn=''; S.lastOcr=''; S.sentMask=m; S.prevMask=m; S.pend=0; sendImage(); return; }
   var prev=S.prevMask; S.prevMask=m;
@@ -2301,6 +2433,8 @@ var fsLayer=document.createElement('div'); fsLayer.className='hs-fs'; fsLayer.hi
 var fsv=document.createElement('canvas'), fsSm=document.createElement('canvas'); fsSm.width=160; fsSm.height=90;
 var fsSx=fsSm.getContext('2d',{willReadFrequently:true});
 S.fs={on:false,items:[],busy:false,sig:null,still:0,timer:0,cache:new Map(),seq:0};
+/* the Windows app keeps an icon in the button: only the word changes there, the button stays the same size */
+function fsLabel(on){ var b=$('hsFull'), sp=b.querySelector('span'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); if(sp) b.title=on?'Đang dịch cả màn hình. Bấm để tắt (F11)':'Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ gốc (F11)'; else b.textContent=on?'Tắt dịch cả màn hình':'Dịch cả màn hình'; }
 function fsAuto(){ return !$('hsFsAuto')||$('hsFsAuto').checked; }
 function fsSig(){
   var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
@@ -2323,7 +2457,7 @@ function fsDraw(){
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
-function fsStop(){ S.fs.on=false; S.fs.seq++; WT?WT.clear(S.fs.timer):clearTimeout(S.fs.timer); fsClear(); $('hsFull').classList.remove('on'); $('hsFull').textContent='Dịch cả màn hình'; if(S.running) runStatus(); }
+function fsStop(){ S.fs.on=false; S.fs.seq++; WT?WT.clear(S.fs.timer):clearTimeout(S.fs.timer); fsClear(); fsLabel(false); if(S.running) runStatus(); }
 /* share of small picture points that changed clearly: a new menu page or text changes a few percent */
 function fsMoved(a,b){ if(!a||!b) return 0; var n=0; for(var i=0;i<a.length;i++){ if(Math.abs(a[i]-b[i])>28) n++; } return n/a.length; }
 function fsWatch(){
@@ -2347,13 +2481,13 @@ async function fsBlocks(){
     S.ocrBusy=true;
     try{ var o=await HsOcr.read(fsv,{blocks:true}); }
     finally{ S.ocrBusy=false; }
-    return o.blocks.filter(function(b){ return b.conf>=0.55&&(b.text.match(/[A-Za-z]/g)||[]).length>=3&&wordy(b.text)>=0.55; })
+    return o.blocks.filter(function(b){ return b.conf>=0.55&&langOk(b.text,3,0.55); })
       .map(function(b){ return {x:b.x/o.W,y:b.y/o.H,w:b.w/o.W,h:b.h/o.H,lh:b.lh/o.H,en:b.text}; });
   }
   return null;   /* no reader on this machine: the AI reads the picture */
 }
 function fsPrompt(list){
-  return 'You translate text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
+  return 'You translate '+LN()+' text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
     'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
     list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
     'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+context();
@@ -2366,7 +2500,7 @@ async function fsRun(){
     var blocks=await fsBlocks();
     if(blocks===null){                                          /* picture to the AI, with the place of each text */
       grab({x:0,y:0,w:1,h:1},1400);
-      var res=await ask('Find all English text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group lines of one paragraph or one menu entry together. Ignore button glyphs and numbers-only labels. For each group give "en", natural Vietnamese "vi" (keep names as they are), and "box" = [ymin, xmin, ymax, xmax] of the group on the image, each from 0 to 1000.\n'+context(),jpeg(.85),SCHEMA_FS,SHAPE_FS);
+      var res=await ask('Find all '+LN()+' text visible on this video game screen (menus, quest text, item descriptions, dialogue, tutorials). Group lines of one paragraph or one menu entry together. Ignore button glyphs and numbers-only labels. For each group give "en", natural Vietnamese "vi" (keep names as they are), and "box" = [ymin, xmin, ymax, xmax] of the group on the image, each from 0 to 1000.\n'+context(),jpeg(.85),SCHEMA_FS,SHAPE_FS);
       blocks=((res&&res.items)||[]).filter(function(it){return it.box&&it.box.length===4&&it.vi;}).map(function(it){
         var b=it.box, n=Math.max(1,(it.en||'').split('\n').length), h=(b[2]-b[0])/1000;
         return {x:b[1]/1000,y:b[0]/1000,w:(b[3]-b[1])/1000,h:h,lh:h/n,en:it.en||'',vi:it.vi}; });
@@ -2389,7 +2523,7 @@ async function fsRun(){
     if(my!==S.fs.seq||!S.fs.on) return;
     S.fs.items=blocks; fsDraw();
     var n=blocks.filter(function(b){return b.vi;}).length;
-    status(n?'run':'warn',n?('Đã dịch '+n+' khối chữ trên màn hình. Bấm lại "Dịch cả màn hình" để tắt.'):'Không thấy chữ tiếng Anh trên màn hình.');
+    status(n?'run':'warn',n?('Đã dịch '+n+' khối chữ trên màn hình. Bấm lại "Dịch cả màn hình" để tắt.'):'Không thấy chữ '+LANGS[LG()].n.toLowerCase()+' trên màn hình.');
     $('hsModalList').innerHTML=blocks.filter(function(b){return b.vi;}).map(function(b){return '<li><b>'+esc(b.vi)+'</b><small>'+esc(b.en)+'</small></li>';}).join('');
   }catch(e){ status('warn',e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Dịch cả màn hình lỗi: '+e.message); }
   finally{ S.fs.busy=false; S.fs.sig=fsSig(); S.fs.still=0; }
@@ -2397,9 +2531,9 @@ async function fsRun(){
 async function fullScreen(){
   if(!S.stream) return;
   if(S.fs.on){ fsStop(); return; }
-  if(S.offlineDemo){ var L=S.demo.line(); S.fs.on=true; S.fs.items=[{x:.3,y:.4,w:.4,h:.08,lh:.04,en:L.en,vi:L.vi}]; fsDraw(); $('hsFull').classList.add('on'); $('hsFull').textContent='Tắt dịch cả màn hình'; return; }
+  if(S.offlineDemo){ var L=S.demo.line(); S.fs.on=true; S.fs.items=[{x:.3,y:.4,w:.4,h:.08,lh:.04,en:L.en,vi:L.vi}]; fsDraw(); fsLabel(true); return; }
   S.fs.on=true; S.fs.items=[]; S.fs.sig=fsSig(); S.fs.still=0;
-  $('hsFull').classList.add('on'); $('hsFull').textContent='Tắt dịch cả màn hình';
+  fsLabel(true);
   if(!ocrOn()&&!keys().length){ status('warn','Đợi bộ đọc chữ tải xong, hoặc nhập mã Gemini để dịch cả màn hình.'); fsStop(); return; }
   fsRun(); S.fs.timer=later(fsWatch,600);
 }
@@ -2433,6 +2567,7 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ stopSpeak(); }});});
 $('hsRead').value=load('read','local');
 $('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
+$('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
 $('hsFsAuto').checked=load('fsauto',true); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
@@ -2611,13 +2746,13 @@ async function psPlay(h){
   if(h.state!=='ready'){
     psMsg('','Đang bật '+h.name+'...'); await D.ps.wake(h.id);
     for(var i=0;i<20;i++){ await sleepMs(2500); var l=await D.ps.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) D.ps.wake(h.id); }
-    if(h.state!=='ready'){ psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Chơi lại.'); return; }
+    if(h.state!=='ready'){ psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Chơi lại.'); tvNotice('Chưa bật được '+h.name+'. Hãy bật máy bằng tay cầm.'); return; }
   }
   var q=($('hsPsQ').value||'1080/60').split('/');
   psMsg('','Đang kết nối '+h.name+'...');
   var r=await D.ps.connect(h.id,{res:+q[0],fps:+q[1]});
-  if(!r||!r.ok){ psMsg('err','Không kết nối được: '+((r&&r.err)||'')); return; }
-  PS.host=h; psStartView();
+  if(!r||!r.ok){ psMsg('err','Không kết nối được: '+((r&&r.err)||'')); tvNotice('Không kết nối được '+h.name+'.'); return; }
+  PS.host=h; psStartView(); tvNotice('Đã kết nối '+h.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.');
 }
 /* --- picture --- */
 function nalInfo(u8){
@@ -2753,11 +2888,25 @@ function psInit(){
   $('hsPsGo').onclick=function(){ $('hsPsSec').scrollIntoView({behavior:'smooth',block:'start'}); var reg=PS.hosts.filter(function(h){return h.registered&&h.state!=='offline';})[0]; if(reg) psPlay(reg); else if(!PS.acc||!PS.acc.loggedIn) psLogin(); else psFind(); };
   $('hsPsFull').onclick=function(){ $('hsStage').requestFullscreen().then(function(){ if(PS.cvs) PS.cvs.focus(); }).catch(function(){}); };
   $('hsPsEnd').onclick=function(){ D.ps.stop(false); };
-  psRefresh().then(function(){ return psFind(); }).then(function(list){
-    var ready=(list||[]).filter(function(h){return h.registered&&h.state==='ready';});
-    if(ready.length===1&&load('psAuto',true)&&!S.stream&&!D.selftest) psPlay(ready[0]);
-  }).catch(function(){});
+  tvNotice('Hóng Sub trên máy tính đã mở. Đang tìm máy PS...');
+  psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
+  later(tvListen,3000);
   if(D.selftest) window.hsPsTest=psSelfTest;
+}
+/* find the paired PS5/PS4 and turn it on (from rest mode) when Hóng Sub opens or the TV app opens */
+async function psWakeUp(why){
+  if(D.selftest) return;
+  var list=await psFind(); list=list||[];
+  var reg=list.filter(function(h){return h.registered;});
+  if(!reg.length){ if(why==='tv') tvNotice('Đã kết nối với Hóng Sub trên máy tính. Chưa ghép máy PS nào.'); return; }
+  var h=reg.filter(function(x){return x.state==='ready';})[0]||reg.filter(function(x){return x.state!=='offline';})[0];
+  if(!h){ tvNotice('Không thấy '+reg[0].name+' trong mạng. Hãy bật máy PS bằng tay cầm.'); return; }
+  if(S.stream&&PS.stream){ tvNotice('Đang chơi '+h.name+' trong Hóng Sub.'); return; }
+  if(!$('hsPsAutoWake')||$('hsPsAutoWake').checked){
+    tvNotice(h.state==='ready'?('Đang kết nối '+h.name+'...'):('Đang bật '+h.name+'...'));
+    if(load('psAuto',true)&&!S.stream) psPlay(h);
+    else if(h.state!=='ready') D.ps.wake(h.id);
+  }
 }
 /* self test: encode a few frames with WebCodecs and push them through the same picture path */
 async function psSelfTest(){

@@ -216,9 +216,22 @@ public class OverlayService extends Service {
         });
     }
 
+    /** tells the computer that this TV is on: Hóng Sub on the computer then wakes the PS5 and answers */
+    private void hello() {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(Prefs.RELAY.replace("pull?room=", "push")).openConnection();
+            c.setConnectTimeout(5000); c.setReadTimeout(5000); c.setDoOutput(true); c.setRequestMethod("POST");
+            c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            String body = new JSONObject().put("room", prefs.code() + "T").put("kind", "hello").put("vi", "tv").toString();
+            try (java.io.OutputStream os = c.getOutputStream()) { os.write(body.getBytes(StandardCharsets.UTF_8)); }
+            c.getResponseCode(); c.disconnect();
+        } catch (Exception ignored) { }
+    }
+
     private void startPolling() {
         polling = true;
         poller = new Thread(() -> {
+            hello();
             long lastSeq = -1;
             while (polling) {
                 long wait = POLL_MS;
@@ -238,7 +251,13 @@ public class OverlayService extends Service {
                         if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
                         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
                         if (changed) main.post(this::applyStyle);
-                        if (!vi.isEmpty()) {
+                        String kind = j.optString("kind", "sub");
+                        if (kind.equals("hello")) { /* nothing to show */ }
+                        else if (kind.equals("notice")) {
+                            // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
+                            if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
+                        }
+                        else if (!vi.isEmpty()) {
                             long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
                             showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, true);
                         }
