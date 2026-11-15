@@ -332,8 +332,7 @@ public class OverlayService extends Service {
         if (j.has("speak") && !read && tts != null) { tts.stop(); ttsPending.set(0); }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("zone")) {
-            zoneShow(j, vi);
-            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, null, "zone" + (++ttsSeq)); }
+            zoneShow(j, vi);   // quest and item text is shown, never read aloud
         }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud

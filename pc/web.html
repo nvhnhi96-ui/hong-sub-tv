@@ -1046,7 +1046,7 @@ function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
 var zV2=load('zonesV2',false);
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,speak:z.speak,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1114,7 +1114,6 @@ function zList(){
       '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
       '<label title="0 giây: chữ Việt ở lại đến khi chữ gốc đổi hay mất"><span>Số giây hiện (0 = đến khi chữ gốc đổi)</span><input class="hs-in" type="number" inputmode="numeric" min="0" max="600" step="1" data-f="hold" value="'+(+z.hold||0)+'" aria-label="Số giây chữ Việt hiện trên vùng"></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="tv"'+(z.tv!==false?' checked':'')+'> Hiện trên TV</label>'+
-      '<label class="hs-zon"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
       '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
       (z.vi?'<div class="hs-zout">'+esc(z.vi).replace(/\n/g,'<br>')+'</div>':'')+'</div>';
   }).join('')||'<p class="hs-note">Chưa có vùng nào. Bấm <b>Thêm vùng</b> rồi kéo khung quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ.</p>';
@@ -1138,22 +1137,47 @@ $('hsZoneAdd').addEventListener('click',function(){
   if(S.zones.length>=ZMAX||!S.stream) return;
   var used=S.zones.map(function(z){return z.kind;}), kind=['quest','item','map','menu'].filter(function(k){return used.indexOf(k)<0;})[0]||'other';
   var n=S.zones.length;
-  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',speak:false,size:'m',show:'float',hold:0,tv:true};
+  var z={id:'z'+Date.now().toString(36),name:'',kind:kind,x:.6-(n%3)*.05,y:.1+(n%4)*.06,w:.34,h:.26,on:true,mode:'auto',size:'m',show:'float',hold:0,tv:true};
   S.zones.push(z); zSave(); zShow(); zList(); zPush(); drawFor(z);
 });
 $('hsZoneNow').addEventListener('click',function(){ zoneTick(true); });
 /* drawing a box: the subtitle area or one of the extra areas */
 var drawTarget=null;
 function drawFor(z){ if(window.hsGo) hsGo('choi'); drawTarget=z; setDraw(true); $('hsHint').textContent='Kéo chuột bao quanh '+zName(z)+' ('+ZKINDS[z.kind].n.toLowerCase()+')'; }
-/* text for menus and descriptions: keep every readable line */
+/* text for quests, items and menus: keep every readable line, but not the controller hints
+   (L1, R2, R3, ✕ Chọn, ○ Quay lại, "Press △ to..."): those are not worth translating */
+var ZBTN=/(^|[^A-Za-z0-9])(?:[LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕◯⨯⭘])(?![A-Za-z0-9])/g;
+var ZPROMPT=/^(?:back|select|confirm|cancel|close|exit|return|track|untrack|details?|zoom|move|scroll|sort|filter|equip|unequip|use|drop|discard|inspect|view|map|menu|options|toggle|skip|next|prev(?:ious)?|page|tab|hold|press|rotate|info|more|compare|mark|unmark|buy|sell|collect|read|open|show|hide|set|waypoint|navigate|change|switch|upgrade|craft|dismantle|favorite|favourite|lock|unlock|accept|decline|continue|quit|help|controls|legend|quests?|journal|inventory|camera|reset|aim|fire|shoot|sprint|run|walk|jump|crouch|attack|heavy|light|dodge|roll|block|parry|reload|interact|climb|swim|dive|throw|heal|whistle|call|mount|dismount|ride|lock|target|vision|scan|focus|sneak|loot|pick|up|on|off|and|or|to|the|a|of|all)$/i;
+function zBtnLine(s){
+  var n=0; s=s.replace(ZBTN,function(m,a){ n++; return a+' '; }).replace(/[()\[\]{}<>|]+\s*[()\[\]{}<>|]*/g,function(x){ return /\w/.test(x)?x:' '; }).replace(/\s+/g,' ').trim();
+  if(/^(?:press|hold|tap|mash|use|click)\b.{0,40}\bto\b/i.test(s)&&n||/^(?:press|hold|tap|mash)\s+(?:\S{1,3}\s+)?to\b/i.test(s)) return '';   /* "Press R3 to track" */
+  var w=s.split(' ').filter(Boolean), glyph=n>0||w.some(function(x){ return /^[XOABY]$/.test(x); });   /* the reader often turns ✕ ○ into X O */
+  if(glyph&&w.length&&w.every(function(x){ return ZPROMPT.test(x.replace(/[^A-Za-z]/g,''))||!/[A-Za-z]{2}/.test(x); })) return '';   /* "✕ Select  ○ Back" */
+  return s;
+}
 function zText(o){
   return o.lines.filter(function(l){ return l.conf>=0.55&&langOk(l.text,2,0.5); })
-    .map(function(l){ return l.text.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); }).join('\n');
+    .map(function(l){ return zBtnLine(l.text.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim()); })
+    .filter(function(s){ return s&&langOk(s,2,0.5); }).join('\n');
+}
+/* only a number changed (a distance, "2/5 collected", a timer): put the new numbers into the old translation, no new request */
+function zNumOnly(a,b){ var A=String(a||'').replace(/\d+/g,'#'), B=String(b||'').replace(/\d+/g,'#'); return a!==b&&A===B&&/\d/.test(b); }
+function zNumSwap(oldTx,newTx,vi){
+  var o=String(oldTx).match(/\d+/g)||[], n=String(newTx).match(/\d+/g)||[], out=vi, ok=true;
+  if(o.length!==n.length) return '';
+  o.forEach(function(x,i){ if(x===n[i]) return; var k=out.indexOf(x); if(k<0||out.indexOf(x,k+1)>=0){ ok=false; return; } out=out.slice(0,k)+n[i]+out.slice(k+x.length); });
+  return ok?out:'';
 }
 function zPrompt(z,text){
   return 'You translate on-screen video game text ('+ZKINDS[z.kind].d+') from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>>. It may contain OCR mistakes or words stuck together.\n<<<\n'+text+'\n>>>\n'+
-    'Translate it into short, clear Vietnamese in "vi". Keep one output line for each input line, joined with \\n. Keep names of characters, places, items and skills as they are; numbers, stats and button names stay unchanged. Ignore lines that are only button prompts or numbers. If it is not real text, return "vi":"".\n'+context();
+    'Translate it into short, clear Vietnamese in "vi". Keep one output line for each input line, joined with \\n. Keep names of characters and places as they are; numbers and stats stay unchanged. '+
+    'Leave out every controller hint: button names like L1, L2, L3, R1, R2, R3, LB, RT, ✕ ○ △ □, Options, Touchpad, and lines such as "Press R3 to track" or "Back / Select". Ignore lines that are only numbers or icons. '+
+    ({quest:'This is a quest or objective: write it as a short instruction a player can act on (e.g. "Đi đến ...", "Nói chuyện với ...", "Tìm ... (2/5)"), keep the quest title as a title. ',
+      item:'This is an item: on the first line give the item name in Vietnamese followed by the original name in parentheses, e.g. "Kiếm sắt (Iron Sword)"; a unique named item keeps its name. Then translate the description and effects clearly; keep numbers, rarity and stats. ',
+      map:'These are map labels and hints: keep place names, translate the generic words (e.g. "Camp" → "Trại", "Fast Travel" → "Dịch chuyển nhanh"). ',
+      menu:'This is a game menu: use the short Vietnamese words players expect (e.g. "Tiếp tục", "Cài đặt", "Trang bị"). '}[z.kind]||'')+
+    'If it is not real text, return "vi":"".\n'+context();
 }
 function zKey(text){ return gameKey($('hsGame').value)+'|'+norm(text); }
 function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>250) delete S.zcache[ks[0]]; save('zcache',S.zcache); }
@@ -1173,51 +1197,71 @@ async function zoneTick(force,only){
   try{
     for(var i=0;i<S.zones.length;i++){
       var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force)) continue;
-      if(!grab(z,1280)) continue;
+      if(!grab(z,1280,900)) continue;                       /* small quest text is enlarged so the reader catches it */
       var m=textMask();
       zcv.width=cap.width; zcv.height=cap.height; zcv.getContext('2d').drawImage(cap,0,0);   /* keep this crop: the subtitle check reuses cap meanwhile */
       if(!force){
         if(m.ink<MW*MH*0.004){                                  /* the text went away: take the translation away too */
           z.prevMask=m; z.empty=(z.empty||0)+1;
-          if(z.empty>=2&&(z.vi||z.lastText)){
-            if(+z.hold>0){ z.lastText=''; z.doneMask=null; }   /* a set number of seconds: the Vietnamese stays for that long */
-            else{ var had=!!z.vi; z.vi=''; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); if(had) zTv(z); }
-          }
+          if(z.empty>=2&&(z.vi||z.lastText)) zGone(z);
           continue;
         }
         z.empty=0;
         var changed=!z.doneMask||maskDiff(m,z.doneMask)>0.12, steady=z.prevMask&&maskDiff(m,z.prevMask)<0.06;
-        if(changed&&z.vi&&z.doneMask&&!(+z.hold>0)){ z.vi=''; zShow(); zPush(); zTv(z); }   /* old text is gone: do not leave its translation up */
-        z.prevMask=m; if(!changed||!steady) continue;
+        z.prevMask=m;
+        if(!changed){ z.wobble=0; continue; }
+        /* quest text in a corner sits over the moving game world, so it never holds perfectly still:
+           read it anyway after a moment, not too often. The translation only changes if the words do. */
+        if(!steady){ z.wobble=(z.wobble||0)+1; if(!ocrOn()||z.wobble<3||Date.now()-(z.readAt||0)<2500) continue; }
+        z.wobble=0;
       }
-      z.doneMask=m;
+      z.doneMask=m; z.readAt=Date.now();
       var text='';
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
         S.ocrBusy=true; try{ var o=await HsOcr.read(zcv); text=zText(o); } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
-        var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
-        z.vi=(r&&r.vi||'').trim(); z.hide=false; zShow(); zList(); zPush(); zHold(z); zTv(z); continue;
+        var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Leave out controller hints (L1, R2, R3, ✕ ○ △ □, "Press ... to ...", "Back / Select"). Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
+        var v=zViClean(r&&r.vi); if(!v) continue;
+        z.vi=v; z.hide=false; zShow(); zList(); zPush(); zHold(z); zTv(z); continue;
       }
-      if(!text||(!force&&similar(text,z.lastText||''))) continue;
+      if(!text){                                             /* only hints or nothing readable left */
+        if(!force){ z.miss=(z.miss||0)+1; if(z.miss>=2&&(z.vi||z.lastText)) zGone(z); }
+        continue;
+      }
+      z.miss=0;
+      if(!force&&similar(text,z.lastText||'')) continue;
+      if(z.vi&&z.lastText&&zNumOnly(z.lastText,text)){        /* "2/5" became "3/5", "125m" became "98m" */
+        var sw=zNumSwap(z.lastText,text,z.vi);
+        if(sw){ z.lastText=text; z.vi=sw; z.hide=false; zShow(); zList(); zPush(); zHold(z); zTv(z); continue; }
+      }
       z.lastText=text; log(zName(z)+': '+text.replace(/\n/g,' / ').slice(0,120));
       z.pending=true; if(!z.vi) zShow();                  /* cover the foreign text while it is being translated */
       var t; try{ t=await zTranslate(z,text); } finally{ z.pending=false; }
-      if(!t.vi){ zShow(); continue; }
-      z.vi=t.vi; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+t.vi.replace(/\n/g,' / ').slice(0,120));
+      var vt=zViClean(t.vi);
+      if(!vt){ zShow(); continue; }
+      z.vi=vt; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+vt.replace(/\n/g,' / ').slice(0,120));
       zShow(); zList(); zPush(); zHold(z); zTv(z);
-      if(z.speak&&$('hsSpeak').checked&&speakWhere()!=='tv') devSpeak(t.vi.replace(/\n/g,'. '),voiceMode(),'',null,null,true);
     }
   }catch(e){ log('vùng dịch lỗi: '+(e.cool?'mã hết lượt':e.message)); }
   finally{ S.zBusy=false; }
+}
+/* the original text is gone: so is the translation (unless a number of seconds was set) */
+function zGone(z){
+  if(+z.hold>0){ z.lastText=''; z.doneMask=null; return; }
+  var had=!!z.vi; z.vi=''; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); if(had) zTv(z);
+}
+/* a controller hint that slipped into the translation is taken out too */
+function zViClean(v){
+  return String(v||'').split('\n').map(function(l){ return l.replace(ZBTN,'$1').replace(/\(\s*\)|\[\s*\]/g,'').replace(/\s{2,}/g,' ').trim(); }).filter(Boolean).join('\n');
 }
 /* the translation of an area on the TV too, at the same place on the picture, for the chosen time */
 var ZT={};
 function zTv(z){
   if(z.tv===false&&z.vi) return;
   if(!(tvIp()||tvCode().length>=4)) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',speak:!!(z.vi&&z.speak&&$('hsSpeak').checked&&speakWhere()!=='pc')};
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',speak:false};
   tvSend(o).catch(function(){});
 }
 function zHold(z){
@@ -1231,10 +1275,10 @@ function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.st
 zList();
 
 /* ---------- frame grab + change detection ---------- */
-function grab(R,maxW){
+function grab(R,maxW,minW){
   var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
   var sx=R.x*vw, sy=R.y*vh, sw=R.w*vw, sh=R.h*vh;
-  var sc=Math.min(1,maxW/sw); cap.width=Math.round(sw*sc); cap.height=Math.round(sh*sc);
+  var sc=Math.min(1,maxW/sw); if(minW&&sw<minW) sc=Math.min(2.5,minW/sw); cap.width=Math.round(sw*sc); cap.height=Math.round(sh*sc);
   capx.drawImage(video,sx,sy,sw,sh,0,0,cap.width,cap.height);
   return true;
 }
@@ -3044,7 +3088,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },

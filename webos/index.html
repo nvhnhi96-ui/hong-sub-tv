@@ -325,7 +325,7 @@ function handle(j){
   if(changed) applyLook();
   if(kind==='hello'||kind==='ctl') return;
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
-  if(kind==='zone'){ zoneShow(j,vi); if(vi&&P.read!=='off'&&j.speak) say(vi.replace(/\n/g,'. ')); return; }
+  if(kind==='zone'){ zoneShow(j,vi); return; }   /* quest and item text is shown, never read aloud */
   if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
 }
 function lanOk(){ return Date.now()-lanAt<20000; }
