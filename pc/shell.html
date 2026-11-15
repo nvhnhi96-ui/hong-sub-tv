@@ -26,6 +26,27 @@ html,body{height:100%;overflow:hidden}
 /* parts only the Windows app can do; the web page shows .hs-web parts instead */
 body:not(.desk) .dk-only{display:none!important}
 
+/* TV: one panel per kind of TV */
+.tvk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
+.tvk button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:11px 12px 10px;border:1.5px solid var(--line2);border-radius:11px;background:var(--panel2);color:var(--ink);text-align:left;cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
+.tvk button:hover{border-color:#4A5260}
+.tvk svg{width:22px;height:22px;fill:none;stroke:var(--muted);stroke-width:1.7;stroke-linecap:round;margin-bottom:5px}
+.tvk b{font-size:14.5px;font-weight:700}
+.tvk small{font-size:12px;color:var(--muted);line-height:1.35}
+.tvk button[aria-checked="true"]{border-color:var(--brand);background:rgba(255,196,0,.07)}
+.tvk button[aria-checked="true"] svg{stroke:var(--brand)}
+.tvs{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 13px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);font-size:13.5px;margin-bottom:12px;min-height:44px}
+.tvs i{width:9px;height:9px;border-radius:50%;background:var(--soft);flex:none}
+.tvs.ok i{background:#3FD08A;box-shadow:0 0 0 3px rgba(63,208,138,.18)}
+.tvs.bad i{background:#FF6B5E}
+.tvs span{flex:1;line-height:1.4}
+.tvs .hs-btn{padding:6px 12px;font-size:13px}
+.tvp{display:none}.tvp.on{display:block}
+.tvd{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--sunk)}
+.tvd summary{cursor:pointer;font-weight:700;font-size:14px}
+.tvc{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.tvc2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;align-items:end}
+
 /* rail */
 .dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:18px 12px 12px;min-height:0;border-right:1px solid #181C22}
 .dk-logo{display:flex;align-items:center;gap:7px;padding:0 10px 20px;font-weight:800;font-size:22px;letter-spacing:-.015em}
@@ -379,48 +400,75 @@ body:not(.desk) .dk-only{display:none!important}
           <div>
             <div class="dk-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
-              <p class="hs-note">Cho TV Android / Google TV và TV LG (webOS) có app Hóng Sub. <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button> TV LG chưa cài app: mở trình duyệt trên TV vào <b>honggame.store/lg</b>.</p>
-              <div class="dk-set dk-only">
-                <label class="lab" for="hsTvIp">Nối qua mạng nhà (khuyên dùng)</label>
-                <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
-                <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
-                <p class="hs-note" id="hsTvLanNote">TV và máy tính dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+              <div class="tvk" id="hsTvType" role="radiogroup" aria-label="Loại TV">
+                <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
+                <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
+                <button type="button" role="radio" aria-checked="false" data-k="web"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV khác</b><small>dùng trình duyệt trên TV</small></button>
               </div>
-              <div class="dk-set"><span class="lab dk-only">Hoặc dùng mã TV (TV LG, hoặc khi TV khác mạng)</span><span class="lab hs-web">Mã TV (đang hiện trên app Hóng Sub TV)</span></div>
-              <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
-                <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
-                <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
+              <div class="tvs" id="hsTvState"><i></i><span id="hsTvStateT">Chưa nối TV</span><button class="hs-btn" type="button" id="hsTvStateB" hidden></button></div>
+
+              <div class="tvp" data-k="android">
+                <p class="hs-note">Trên TV cài app <b>Hóng Sub TV</b> rồi bấm "Bật phụ đề". <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+                <div class="dk-set dk-only">
+                  <label class="lab" for="hsTvIp">Nối qua mạng nhà (nhanh nhất)</label>
+                  <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
+                  <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
+                  <p class="hs-note" id="hsTvLanNote">TV và máy tính dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+                </div>
               </div>
-              <div class="dk-set">
-                <div class="lab"><label for="hsTvSize">Cỡ chữ trên TV</label><output id="hsTvSizeV">30</output></div>
-                <input class="hs-range" id="hsTvSize" type="range" min="20" max="60" step="2" value="30">
+
+              <div class="tvp" data-k="lg">
+                <p class="hs-note">App Hóng Sub cho TV LG hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Mã TV được điền sẵn khi cài từ máy tính.</p>
+                <div class="hs-row dk-only" id="dkLgDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkLgOpen">Mở Hóng Sub trên TV</button></div>
+                <label class="hs-sw dk-sw dk-only" id="dkLgAutoRow" hidden>Mở Hóng Sub trên TV LG khi mở phần mềm <input type="checkbox" id="dkLgAuto" checked></label>
+                <details class="tvd dk-only" id="dkLg" open>
+                  <summary id="dkLgSum">Cài app lên TV LG</summary>
+                  <p class="hs-note" id="dkLgState">Làm một lần trên TV, phần còn lại máy tính tự làm.</p>
+                  <ol class="dk-steps">
+                    <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                    <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                    <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                    <li>Gõ IP của TV và <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
+                  </ol>
+                  <div class="dk-set">
+                    <label class="lab" for="dkLgIp">IP của TV LG</label>
+                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" type="button" id="dkLgFind">Tìm TV LG</button></div>
+                    <div class="hs-row" id="dkLgList" style="margin-top:6px"></div>
+                  </div>
+                  <div class="dk-set">
+                    <label class="lab" for="dkLgPass">Passphrase trên TV</label>
+                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="dkLgGo">Cài app lên TV</button></div>
+                  </div>
+                  <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+                </details>
+                <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
+                <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
               </div>
-              <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ trên TV</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
-              <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
+
+              <div class="tvp" data-k="web">
+                <ol class="dk-steps">
+                  <li>Trên TV mở trình duyệt web, vào <b>honggame.store/lg</b>.</li>
+                  <li>Gõ mã đang hiện trên TV vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>.</li>
+                </ol>
+                <p class="hs-note">Trình duyệt chỉ hiện phụ đề trên nền tối, không hiện được hình game. Muốn phụ đề nằm trên hình game, dùng TV Android hoặc TV LG có app.</p>
+              </div>
+
+              <div class="tvc">
+                <div class="dk-set"><label class="lab" for="hsTv" id="hsTvCodeLab">Mã TV</label></div>
+                <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
+                  <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
+                  <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
+                </div>
+                <div class="tvc2">
+                  <div class="dk-set">
+                    <div class="lab"><label for="hsTvSize">Cỡ chữ trên TV</label><output id="hsTvSizeV">30</output></div>
+                    <input class="hs-range" id="hsTvSize" type="range" min="20" max="60" step="2" value="30">
+                  </div>
+                  <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
+                </div>
+                <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
+              </div>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
-            </div>
-            <div class="dk-card dk-only" id="dkLg">
-              <h2>TV LG: phụ đề nằm trên hình game</h2>
-              <p class="hs-note" id="dkLgState">Hóng Sub cài app lên TV LG giúp anh. App hiện hình PS5 từ cổng HDMI và phụ đề nằm ngay trên hình.</p>
-              <ol class="dk-steps" id="dkLgSteps">
-                <li>Trên TV LG mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
-                <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
-                <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
-                <li>Gõ IP của TV và mã <b>Passphrase</b> (6 chữ hiện trong app Developer Mode) vào đây rồi bấm Cài.</li>
-              </ol>
-              <div class="dk-set">
-                <label class="lab" for="dkLgIp">IP của TV LG</label>
-                <div class="hs-row"><input class="hs-in" id="dkLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" style="flex:1"><button class="hs-btn" type="button" id="dkLgFind">Tìm TV LG</button></div>
-                <div class="hs-row" id="dkLgList" style="margin-top:6px"></div>
-              </div>
-              <div class="dk-set">
-                <label class="lab" for="dkLgPass">Passphrase trên TV</label>
-                <div class="hs-row"><input class="hs-in" id="dkLgPass" placeholder="6 chữ, VD: A1B2C3" maxlength="8" autocomplete="off" style="flex:1;text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="dkLgGo">Cài app lên TV</button></div>
-              </div>
-              <div class="hs-row" id="dkLgDone" hidden style="margin-top:10px"><button class="hs-btn" type="button" id="dkLgOpen">Mở Hóng Sub trên TV</button></div>
-              <label class="hs-sw dk-sw" id="dkLgAutoRow" hidden>Mở Hóng Sub trên TV LG khi mở phần mềm <input type="checkbox" id="dkLgAuto" checked></label>
-              <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở app Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
-              <div class="hs-msg" id="dkLgMsg" hidden></div>
             </div>
             <div class="dk-card dk-only">
               <h2>Kết nối lần đầu</h2>

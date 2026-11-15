@@ -366,13 +366,26 @@ var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false;
 function msg(cls,t){ var m=$('dkLgMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 /* the TV app is told which TV code to listen on, so nobody has to type it */
 function code(){
-  var el=$('hsTv'), v=(el.value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(v.length<4){ v=''; for(var i=0;i<6;i++) v+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); el.value=v; el.dispatchEvent(new Event('change',{bubbles:true})); }
+  var v=String(A.tvCodeFor('lg')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(v.length<4){
+    v=''; for(var i=0;i<6;i++) v+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length));
+    if(A.tvType()==='lg'){ var el=$('hsTv'); el.value=v; el.dispatchEvent(new Event('change',{bubbles:true})); } else A.save('tv_lg',v);
+  }
   return v;
+}
+function openOnTv(){
+  msg('','Đang mở Hóng Sub trên TV...');
+  return D.lg.launch(code()).then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được: '+((r&&r.err)||'')+'. Kiểm tra TV đang bật và Developer Mode chưa hết hạn.'); if(A.tvState) A.tvState(); return r; });
 }
 function done(st){
   $('dkLgDone').hidden=!st.installed; $('dkLgAutoRow').hidden=!st.installed; $('dkLgAuto').checked=st.auto!==false;
-  if(st.installed){ $('dkLgState').innerHTML='Đã cài Hóng Sub trên TV LG <b>'+st.ip+'</b>. Phụ đề gửi bằng mã TV <b>'+code()+'</b>.'; $('dkLgGo').textContent='Cài lại'; if(!$('dkLgIp').value) $('dkLgIp').value=st.ip; }
+  if(st.installed){
+    window.hsLgOpen=openOnTv;
+    $('dkLgState').innerHTML='Đã cài trên TV LG <b>'+st.ip+'</b>. Cài lại khi có bản mới hoặc khi TV đã gỡ app.';
+    $('dkLgSum').textContent='Cài lại / cập nhật app trên TV LG'; $('dkLg').open=false;
+    $('dkLgGo').textContent='Cài lại'; if(!$('dkLgIp').value) $('dkLgIp').value=st.ip;
+  }
+  if(A.tvState) A.tvState();
 }
 D.lg.onProgress(function(t){ msg('',t); });
 $('dkLgFind').onclick=function(){
@@ -391,6 +404,7 @@ $('dkLgGo').onclick=function(){
   if(!ip){ msg('warn','Gõ IP của TV LG, hoặc bấm Tìm TV LG.'); return; }
   if(pass.length<4){ msg('warn','Gõ mã Passphrase đang hiện trong app Developer Mode trên TV.'); return; }
   busy=true; this.disabled=true;
+  if(A.tvType()!=='lg') A.setTvType('lg');
   var b=this, c=code();
   D.lg.install(ip,pass,c).then(function(r){
     busy=false; b.disabled=false;
@@ -398,11 +412,11 @@ $('dkLgGo').onclick=function(){
     else msg('err',(r&&r.err)||'Chưa cài được.');
   });
 };
-$('dkLgOpen').onclick=function(){ msg('','Đang mở Hóng Sub trên TV...'); D.lg.launch(code()).then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được: '+((r&&r.err)||'')+'. Kiểm tra TV đang bật và Developer Mode chưa hết hạn.'); }); };
+$('dkLgOpen').onclick=function(){ openOnTv(); };
 $('dkLgAuto').onchange=function(){ D.lg.auto(this.checked); };
 D.lg.state().then(function(st){
   done(st);
   /* when the computer app opens, open Hóng Sub on the TV too (TV must be on) */
-  if(st.installed&&st.auto!==false&&!D.selftest) setTimeout(function(){ D.lg.launch(code()).then(function(r){ if(r&&r.ok&&A.toast) A.toast('Đã mở Hóng Sub trên TV LG'); }); },6000);
+  if(st.installed&&st.auto!==false&&!D.selftest&&A.tvType()==='lg') setTimeout(function(){ D.lg.launch(code()).then(function(){ if(A.tvState) A.tvState(); }); },6000);
 });
 })();

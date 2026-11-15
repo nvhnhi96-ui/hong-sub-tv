@@ -1602,13 +1602,62 @@ function keyStats(){
 /* ---------- send to TV (relay on honggame.store) ---------- */
 var RELAY=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/push';
 function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
-$('hsTv').value=load('tv','');
-$('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value);});
+/* the kind of TV picked on the Connect page: Android TV (Hóng Sub TV app, home network or code), LG (webOS app, code),
+   or any other TV through its web browser (code). Each kind keeps its own code, so switching does not lose it. */
+var TVK={android:'Android TV',lg:'TV LG',web:'trình duyệt TV'};
+if(load('tv_android',null)===null&&load('tvtype',null)===null) save('tv_android',load('tv',''));
+S.tvType=load('tvtype','android'); if(!TVK[S.tvType]) S.tvType='android';
+S.tvSeen=0;
+$('hsTv').value=load('tv_'+S.tvType,load('tv',''));
+$('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value); save('tv_'+S.tvType,this.value); S.tvSeen=0; S.tvHello=-1; tvState();});
+function tvCodeFor(k){ return k===S.tvType?tvCode():String(load('tv_'+k,'')||''); }
+function tvTypeSet(k){
+  if(!TVK[k]) return;
+  if(k!==S.tvType){ save('tv_'+S.tvType,tvCode()); S.tvType=k; save('tvtype',k); $('hsTv').value=load('tv_'+k,''); save('tv',$('hsTv').value); S.tvSeen=0; S.tvHello=-1; S.tvOk=null; }
+  tvTypeUi(); tvState();
+}
+function tvTypeUi(){
+  var box=$('hsTvType'); if(!box) return;
+  [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.setAttribute('aria-checked',b.getAttribute('data-k')===S.tvType?'true':'false'); });
+  [].forEach.call(document.querySelectorAll('.tvp'),function(x){ x.classList.toggle('on',x.getAttribute('data-k')===S.tvType); });
+  var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(D&&D.tv?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':'Mã TV (đang hiện trên trình duyệt TV)';
+}
+/* what the TV is doing right now, in one line, with the one thing to do next */
+function tvStatus(){
+  var k=S.tvType, c=tvCode(), ip=tvIp(), seen=Date.now()-S.tvSeen<65000;
+  if(k==='android'){
+    if(ip){
+      if(S.tvOk) return {ok:true,t:'Đã nối TV '+(S.tvName?S.tvName+' ':'')+'('+ip+') qua mạng nhà.'};
+      if(S.tvOk===false) return {bad:true,t:'TV '+ip+' chưa trả lời. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".',a:'Tìm lại TV',f:function(){ tvFindUi(false); }};
+      return {t:'Đang kiểm tra TV '+ip+'...'};
+    }
+    if(c.length>=4) return seen?{ok:true,t:'TV đang mở Hóng Sub TV (mã '+c+').'}:{ok:true,t:'Gửi phụ đề bằng mã '+c+'. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'};
+    return {t:'Chưa nối TV.',a:D&&D.tv?'Tìm TV':'',f:function(){ tvFindUi(false); }};
+  }
+  if(k==='lg'){
+    if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG ở dưới (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
+    if(seen) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+').'};
+    return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').',a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
+  }
+  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/lg, gõ mã đang hiện trên TV vào ô Mã TV.'};
+  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:{bad:true,t:'TV chưa mở trang honggame.store/lg với mã '+c+'.'};
+}
+function tvState(){
+  var box=$('hsTvState'); if(!box) return;
+  var st=tvStatus(), b=$('hsTvStateB');
+  box.className='tvs'+(st.ok?' ok':st.bad?' bad':'');
+  $('hsTvStateT').textContent=st.t;
+  b.hidden=!(st.a&&st.f); if(st.a){ b.textContent=st.a; b.onclick=st.f; }
+}
+(function(){ var box=$('hsTvType'); if(!box) return;
+  [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.addEventListener('click',function(){ tvTypeSet(b.getAttribute('data-k')); }); });
+  tvTypeUi(); setInterval(tvState,3000);
+})();
 function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
 /* ---------- the TV ----------
    Windows app: straight over the home network when the TV's IP is known (Hóng Sub TV listens on port 8765).
    Otherwise, and on the web page: through honggame.store with the TV code. */
-function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el?(el.value||'').trim():''; }
+function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(el.value||'').trim():''; }
 function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; return o; }
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
@@ -1622,15 +1671,15 @@ function tvSend(o){
 function tvNotice(text){ if(!D||(!tvIp()&&tvCode().length<4)) return; tvSend({vi:text,who:'Hóng Sub',kind:'notice'}).catch(function(){}); }
 var tvFails=0;
 function tvPush(vi,en,who,manual){
-  if(!tvIp()&&tvCode().length<4){ if(manual) tvMsg('err',D?'Bấm "Tìm TV", hoặc nhập IP (hay mã) đang hiện trên app Hóng Sub TV.':'Nhập mã đang hiện trên app Hóng Sub TV trước.'); return; }
+  if(!tvIp()&&tvCode().length<4){ if(manual) tvMsg('err',S.tvType==='android'?(D?'Bấm "Tìm TV", hoặc nhập IP (hay mã) đang hiện trên app Hóng Sub TV.':'Nhập mã đang hiện trên app Hóng Sub TV trước.'):'Nhập mã đang hiện trên TV vào ô Mã TV trước.'); return; }
   tvSend({vi:vi,en:en||'',who:who||''})
-    .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'); })
+    .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: '+(S.tvType==='lg'?'trên TV mở app Hóng Sub, kiểm tra mã trên TV đúng là '+tvCode()+'.':S.tvType==='web'?'trên TV mở honggame.store/lg, kiểm tra mã trên TV đúng là '+tvCode()+'.':'trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".')); })
     .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err',tvIp()?'TV không trả lời. Kiểm tra TV đã mở app Hóng Sub TV, và máy tính với TV dùng chung một mạng.':'Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
 }
 /* connection state shown under the IP box */
 S.tvOk=null;
 function tvLan(ok,name){
-  S.tvOk=ok; if(name) S.tvName=name;
+  S.tvOk=ok; if(name) S.tvName=name; tvState();
   var n=$('hsTvLanNote'); if(!n) return;
   n.className='hs-note '+(ok?'ok':'');
   n.textContent=ok?('Đã nối với TV '+(S.tvName?S.tvName+' ':'')+'('+tvIp()+') qua mạng nhà.'):'Chưa nối được TV '+tvIp()+'. Mở app Hóng Sub TV trên TV, kiểm tra TV và máy tính dùng chung một mạng.';
@@ -1667,10 +1716,10 @@ function tvListen(){
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else tvLan(false);
     }).catch(function(){ tvLan(false); });
-  } else if(c.length>=4&&D) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    var seq=+j.seq||0;
-    if(S.tvHello<0){ S.tvHello=seq; return; }
-    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello') tvHello(); }
+  } else if(c.length>=4) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65;
+    if(S.tvHello<0){ S.tvHello=seq; if(fresh&&(j.kind==='hello'||j.kind==='alive')){ S.tvSeen=Date.now(); tvState(); } return; }
+    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello'||j.kind==='alive'){ S.tvSeen=Date.now(); tvState(); } if(j.kind==='hello'&&D) tvHello(); }
   }).catch(function(){});
   later(tvListen,4000);
 }
@@ -2841,13 +2890,13 @@ var PSST={running:false};
 function psSteps(){
   var L=$('hsPsSteps'); if(!L||!D||!D.ps) return;
   var acc=PS.acc||{}, reg=(Array.isArray(PS.hosts)?PS.hosts:[]).filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
-  var tvOn=!!(S.tvOk||(!tvIp()&&tvCode().length>=4)), tvSet=!!(tvIp()||tvCode().length>=4);
+  var tst=tvStatus(), tvOn=!!tst.ok, tvSet=!!(tvIp()||tvCode().length>=4);
   var st=[
     {t:'Đăng nhập PSN',ok:!!acc.loggedIn,d:acc.loggedIn?(acc.onlineId||'đã đăng nhập'):'chỉ cần làm một lần',a:'Đăng nhập',f:psLogin},
     {t:'Ghép máy PS5/PS4',ok:reg.length>0,d:reg.length?reg.map(function(h){return h.name;}).join(', '):'bấm Tìm máy rồi Ghép máy, nhập mã 8 số trên PS5',a:'Tìm máy',f:function(){psFind();}},
     {t:'Bật máy và vào Chơi từ xa',ok:live,d:live?('đang nhận hình '+PS.host.name):(PS.err?('lỗi: '+PS.err):(reg.length?(reg[0].state==='ready'?'máy đang bật':reg[0].state==='offline'?'chưa thấy máy trong mạng':'máy đang nghỉ, Hóng Sub sẽ bật'):'')),a:PS.fwNeed?'Cho phép qua tường lửa':'Kết nối',f:function(){ if(PS.fwNeed) psFwFix(); else psAutoRun(); },bad:(!!PS.err||!!PS.fwNeed)&&!live},
     {t:'Dịch phụ đề',ok:!!S.running,d:S.running?'đang dịch':'tự bật khi có hình',a:'Bắt đầu',f:function(){ if(S.stream) startRun(); }},
-    {t:'Hiện lên TV',ok:tvOn,d:tvOn?(tvIp()?('TV '+(S.tvName||'')+' '+tvIp()):'qua mã TV '+tvCode()):(tvSet?'TV chưa trả lời, mở app Hóng Sub TV':'chưa nối TV (không bắt buộc)'),a:'Tìm TV',f:function(){ if(window.hsGo) hsGo('ketnoi'); tvFindUi(false); },bad:tvSet&&!tvOn}
+    {t:'Hiện lên TV ('+TVK[S.tvType]+')',ok:tvOn,d:tvSet||S.tvType!=='android'?tst.t:'chưa nối TV (không bắt buộc)',a:tst.a||'Xem',f:function(){ if(tst.f) tst.f(); else { var el=$('hsTvSec'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); } },bad:!!tst.bad}
   ];
   var cur=-1; st.forEach(function(x,i){ if(cur<0&&!x.ok&&i<4) cur=i; });
   var html=st.map(function(x,i){ var cls=x.ok?'ok':x.bad?'bad':i===cur?'now':'';
@@ -2946,7 +2995,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
