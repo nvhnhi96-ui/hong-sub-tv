@@ -5,32 +5,32 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 136
+          "ms": 237
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 212
+          "ms": 166
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 151
+          "ms": 137
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 177
+          "ms": 176
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 155
+          "ms": 166
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 160
+          "ms": 162
         }
       ],
       "asked": [
@@ -89,47 +89,47 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 136
+          "ms": 237
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 212
+          "ms": 166
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 151
+          "ms": 137
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 177
+          "ms": 176
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 155
+          "ms": 166
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 160
+          "ms": 162
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 139
+          "ms": 136
         },
         {
           "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 194
+          "c": 91,
+          "ms": 199
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 168
+          "ms": 165
         }
       ],
       "asked": [
