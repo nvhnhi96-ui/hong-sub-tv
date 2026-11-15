@@ -5,32 +5,32 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 127
+          "ms": 202
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 192
+          "c": 94,
+          "ms": 170
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 158
+          "ms": 148
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 185
+          "ms": 183
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 162
+          "ms": 169
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 165
+          "ms": 228
         }
       ],
       "asked": [
@@ -89,47 +89,47 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 127
+          "ms": 202
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 192
+          "c": 94,
+          "ms": 170
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 158
+          "ms": 148
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 185
+          "ms": 183
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 162
+          "ms": 169
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 165
+          "ms": 228
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 156
+          "ms": 143
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 218
+          "ms": 200
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 180
+          "ms": 171
         }
       ],
       "asked": [
@@ -227,6 +227,7 @@
       "decodedFrames": 11,
       "codec": "avc1.42C01E",
       "err": "",
+      "split": 1,
       "canvas": "640x360"
     }
   }
