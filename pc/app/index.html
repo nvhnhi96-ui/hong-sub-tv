@@ -2062,12 +2062,12 @@ function show(res){
   $('hsHistN').textContent=S.hist.length;
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+esc(h.en)+'</small></li>';}).join('');
   pipRender(html,$('hsEn').textContent);
-  coverShow(html);
+  S.lastHtml=html; coverShow(html);
   if(D) D.sub({html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
   tvPush(vi,en,who,false);
   speak(vi,res);
   clearTimeout(S.holdT);
-  if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); if(D) D.sub({html:'',en:''}); },S.hold*1000);
+  if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); },S.hold*1000);
 }
 /* the Vietnamese line drawn over the original subtitle, right on the game picture */
 function coverOn(){ var c=$('hsCover'); return !!(c&&c.checked); }
@@ -2408,10 +2408,11 @@ function subPrompt(){
     '4. In "gender" put the speaker\'s gender if a speaker name is shown: "male", "female", or "". In "age" put "child", "young", "adult" or "old", or "".\n'+
     '5. If there is no readable '+LN()+' subtitle, return "en":"" and "vi":"".\n'+context();
 }
+function coverBack(){ if(S.coverHtml&&S.coverHtml.indexOf('class="wait"')>=0){ if(S.lastHtml) coverShow(S.lastHtml); else coverHide(); } }   /* nothing new to show: put back the last line */
 function takeResult(res,seq,raw){
   res=splitSpeaker(res,raw);
-  if(!res||!res.en||!res.vi) return;
-  if(similar(res.en,S.lastEn)) return;
+  if(!res||!res.en||!res.vi){ coverBack(); return; }
+  if(similar(res.en,S.lastEn)){ coverBack(); return; }
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return; } /* an older line finished late: keep it in history only */
   S.shownSeq=seq; S.lastEn=res.en; show(res);
 }
@@ -2454,7 +2455,7 @@ async function translateText(j){
     log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
     if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
     else status('err',String(e.message||e).slice(0,90));
-    S.lastOcr='';
+    S.lastOcr=''; coverBack();
   }finally{ var bi=S.busyTexts.indexOf(j.text); if(bi>=0) S.busyTexts.splice(bi,1); }
 }
 /* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
