@@ -317,8 +317,10 @@ var mids=[];
 function handle(j){
   if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
   var kind=j.kind||'sub', vi=String(j.vi||'').trim();
-  var readIt=P.read==='on'||(P.read==='auto'&&!!j.speak);   /* "auto": the computer decides where lines are read */
-  if(P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak) sayStop();
+  /* "Đọc phụ đề" turned off on the computer (rd:false) wins over every TV setting, "Luôn đọc" included */
+  var pcOff=j.rd===false;
+  var readIt=!pcOff&&(P.read==='on'||(P.read==='auto'&&!!j.speak));   /* "auto": the computer decides where lines are read */
+  if(pcOff||(kind==='ctl'&&P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak)) sayStop();   /* an area or a notice never cuts the line being read */
   var size=+j.size||0, pos=j.pos||'', changed=false;
   if(size>=18&&size!==P.size){ P.size=size; save('size',size); changed=true; }
   if((pos==='top'||pos==='bottom')&&pos!==P.pos){ P.pos=pos; save('pos',pos); changed=true; }
@@ -379,7 +381,7 @@ var ROWS=[
   {k:'size',t:'Cỡ chữ',v:function(){ return P.size; },ch:function(d){ P.size=Math.max(18,Math.min(90,P.size+d*4)); save('size',P.size); applyLook(); sample(); }},
   {k:'pos',t:'Chỗ hiện chữ',v:function(){ return P.pos==='top'?'Trên màn hình':'Dưới màn hình'; },ch:function(){ P.pos=P.pos==='top'?'bottom':'top'; save('pos',P.pos); applyLook(); sample(); }},
   {k:'en',t:'Hiện câu gốc tiếng Anh',v:function(){ return P.en?'Bật':'Tắt'; },ch:function(){ P.en=!P.en; save('en',P.en); sample(); }},
-  {k:'read',t:'Đọc to trên TV',v:function(){ return P.read==='on'?'Luôn đọc':P.read==='off'?'Tắt':'Theo máy tính'; },ch:function(d){ var o=['auto','on','off'], i=(o.indexOf(P.read)+(d<0?2:1))%3; P.read=o[i]; save('read',P.read); if(P.read==='off') sayStop(); else if(P.read==='on') say('Đã bật đọc phụ đề trên TV.'); }},
+  {k:'read',t:'Đọc to trên TV',v:function(){ return P.read==='on'?'Luôn đọc (khi máy tính bật đọc)':P.read==='off'?'Tắt':'Theo máy tính'; },ch:function(d){ var o=['auto','on','off'], i=(o.indexOf(P.read)+(d<0?2:1))%3; P.read=o[i]; save('read',P.read); if(P.read==='off') sayStop(); else if(P.read==='on') say('Đã bật đọc phụ đề trên TV.'); }},
   {k:'code',t:'Mã TV',v:function(){ return newCode?'Bấm OK lần nữa để đổi':P.code; },act:function(){ if(!newCode){ newCode=1; draw(); return; } newCode=0; P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); lastSeq=-1; codeDraw(); hello(); draw(); }},
   {k:'test',t:'Xem thử phụ đề',v:function(){ return 'OK'; },act:function(){ sample(); }},
   {k:'exit',t:'Thoát Hóng Sub',v:function(){ return 'OK'; },act:function(){ quit(); }}

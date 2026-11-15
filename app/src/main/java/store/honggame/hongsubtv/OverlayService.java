@@ -328,8 +328,12 @@ public class OverlayService extends Service {
         if (changed) main.post(this::applyStyle);
         String kind = j.optString("kind", "sub");
         // Hóng Sub on the computer says whether the TV reads aloud (off, or read on the computer instead)
-        boolean read = j.has("speak") ? j.optBoolean("speak", false) : prefs.speak();
-        if (j.has("speak") && !read && tts != null) { tts.stop(); ttsPending.set(0); }
+        // "Đọc phụ đề" turned off on the computer (rd:false) always wins
+        boolean pcOff = j.has("rd") && !j.optBoolean("rd", true);
+        boolean read = !pcOff && (j.has("speak") ? j.optBoolean("speak", false) : prefs.speak());
+        // an area translation or a notice never cuts the line being read; only a subtitle or a setting change does
+        boolean stops = pcOff || (j.has("speak") && !read && (kind.equals("sub") || kind.equals("ctl")));
+        if (stops && tts != null) { tts.stop(); ttsPending.set(0); }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // quest and item text is shown, never read aloud
