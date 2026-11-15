@@ -633,6 +633,29 @@ body:not(.desk) .dk-only{display:none!important}
               <p class="hs-note" style="margin-top:6px">Đổi cỡ chữ hay chỗ hiện thì TV đổi theo ngay ở câu kế tiếp.</p>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
+            <div class="dk-card dk-only" id="dkLg">
+              <h2>TV LG: phụ đề nằm trên hình game</h2>
+              <p class="hs-note" id="dkLgState">Hóng Sub cài app lên TV LG giúp anh. App hiện hình PS5 từ cổng HDMI và phụ đề nằm ngay trên hình.</p>
+              <ol class="dk-steps" id="dkLgSteps">
+                <li>Trên TV LG mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                <li>Gõ IP của TV và mã <b>Passphrase</b> (6 chữ hiện trong app Developer Mode) vào đây rồi bấm Cài.</li>
+              </ol>
+              <div class="dk-set">
+                <label class="lab" for="dkLgIp">IP của TV LG</label>
+                <div class="hs-row"><input class="hs-in" id="dkLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" style="flex:1"><button class="hs-btn" type="button" id="dkLgFind">Tìm TV LG</button></div>
+                <div class="hs-row" id="dkLgList" style="margin-top:6px"></div>
+              </div>
+              <div class="dk-set">
+                <label class="lab" for="dkLgPass">Passphrase trên TV</label>
+                <div class="hs-row"><input class="hs-in" id="dkLgPass" placeholder="6 chữ, VD: A1B2C3" maxlength="8" autocomplete="off" style="flex:1;text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="dkLgGo">Cài app lên TV</button></div>
+              </div>
+              <div class="hs-row" id="dkLgDone" hidden style="margin-top:10px"><button class="hs-btn" type="button" id="dkLgOpen">Mở Hóng Sub trên TV</button></div>
+              <label class="hs-sw dk-sw" id="dkLgAutoRow" hidden>Mở Hóng Sub trên TV LG khi mở phần mềm <input type="checkbox" id="dkLgAuto" checked></label>
+              <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở app Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+              <div class="hs-msg" id="dkLgMsg" hidden></div>
+            </div>
             <div class="dk-card dk-only">
               <h2>Kết nối lần đầu</h2>
               <ol class="dk-steps">

@@ -136,7 +136,10 @@ var P={
   en:load('en',false),
   read:load('read',true)              /* read aloud when the computer asks for it */
 };
-if(!/^[A-Z0-9]{6}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); }
+/* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
+function launchCode(){ try{ var s=window.PalmSystem&&window.PalmSystem.launchParams; var j=s?(typeof s==='string'?JSON.parse(s):s):null; var c=j&&j.code?String(j.code).toUpperCase():''; return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }catch(e){ return ''; } }
+var lc=launchCode(); if(lc){ P.code=lc; save('code',lc); }
+if(!/^[A-Z0-9]{4,8}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); }
 
 /* ---------- picture from the console: webOS lets an app show an HDMI input inside the page ---------- */
 var video=$('tvin'), srcOk=false;
@@ -313,6 +316,7 @@ $('bClose').onclick=function(){ panel(false); };
 /* the settings button on top of the game shows up when the pointer moves */
 var gearT=0;
 document.addEventListener('mousemove',function(){ if($('home').className!=='off'||panelOn) return; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },4000); });
+document.addEventListener('webOSRelaunch',function(){ var c=launchCode(); if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
 document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); if(P.src) setSource(P.src); } else sayStop(); });
 
 function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }

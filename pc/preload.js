@@ -103,6 +103,14 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   openUrl: (u) => ipcRenderer.invoke('open-url', u),
   overlayReset: () => ipcRenderer.invoke('overlay-reset'),
   overlaySize: (pct, h) => ipcRenderer.invoke('overlay-size', pct, h),
+  lg: {
+    find: () => ipcRenderer.invoke('lg-find'),
+    state: () => ipcRenderer.invoke('lg-state'),
+    install: (ip, pass, code) => ipcRenderer.invoke('lg-install', ip, pass, code),
+    launch: (code) => ipcRenderer.invoke('lg-launch', code),
+    auto: (on) => ipcRenderer.invoke('lg-auto', on),
+    onProgress: (cb) => ipcRenderer.on('lg-progress', (e, t) => cb(t))
+  },
   ps: {
     state: () => ipcRenderer.invoke('ps-state'),
     login: () => ipcRenderer.invoke('ps-login'),

@@ -31,6 +31,8 @@
       "package.json",
       "!**/*.map",
       "ps.js",
+      "lg.js",
+      "vendor/**",
       "!node_modules/**"
     ],
     "directories": {

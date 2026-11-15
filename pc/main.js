@@ -12,6 +12,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const psModule = require('./ps');
+const lgModule = require('./lg');
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
 const ROOT = __dirname;
@@ -716,6 +717,7 @@ async function runSelftest() {
       return JSON.stringify(o); })()`);
     log('relay test', rt);
   } catch (e) { log('relay test failed', String(e)); }
+  try { log('lg test', JSON.stringify(lgModule.selfTest())); } catch (e) { log('lg test failed', String(e)); }
   if (process.env.HS_TEST_AIV === '1') {
     try {
       const t0 = Date.now(); const st = await aivInstall(); log('aiv install', JSON.stringify({ installed: st.installed, err: st.err, ms: Date.now() - t0, mb: Math.round(st.total / 1048576) }));
@@ -747,6 +749,7 @@ app.whenReady().then(async () => {
   serveFiles();
   setupCapture();
   setupIpc();
+  try { lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
   if (!SELFTEST) { setTimeout(updateTick, 15000); setInterval(updateTick, 30 * 60 * 1000); }
