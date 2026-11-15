@@ -1616,13 +1616,13 @@ function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/
 var TVK={android:'Android TV',lg:'TV LG',web:'trình duyệt TV'};
 if(load('tv_android',null)===null&&load('tvtype',null)===null) save('tv_android',load('tv',''));
 S.tvType=load('tvtype','android'); if(!TVK[S.tvType]) S.tvType='android';
-S.tvSeen=0;
+S.tvSeen=0; S.tvLanSeen=0;
 $('hsTv').value=load('tv_'+S.tvType,load('tv',''));
-$('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value); save('tv_'+S.tvType,this.value); S.tvSeen=0; S.tvHello=-1; tvState();});
+$('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',this.value); save('tv_'+S.tvType,this.value); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; tvState();});
 function tvCodeFor(k){ return k===S.tvType?tvCode():String(load('tv_'+k,'')||''); }
 function tvTypeSet(k){
   if(!TVK[k]) return;
-  if(k!==S.tvType){ save('tv_'+S.tvType,tvCode()); S.tvType=k; save('tvtype',k); $('hsTv').value=load('tv_'+k,''); save('tv',$('hsTv').value); S.tvSeen=0; S.tvHello=-1; S.tvOk=null; }
+  if(k!==S.tvType){ save('tv_'+S.tvType,tvCode()); S.tvType=k; save('tvtype',k); $('hsTv').value=load('tv_'+k,''); save('tv',$('hsTv').value); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; S.tvOk=null; }
   tvTypeUi(); tvState();
 }
 function tvTypeUi(){
@@ -1633,7 +1633,7 @@ function tvTypeUi(){
 }
 /* what the TV is doing right now, in one line, with the one thing to do next */
 function tvStatus(){
-  var k=S.tvType, c=tvCode(), ip=tvIp(), seen=Date.now()-S.tvSeen<65000;
+  var k=S.tvType, c=tvCode(), ip=tvIp(), last=Math.max(S.tvSeen,S.tvLanSeen||0), seen=Date.now()-last<65000, lately=last&&Date.now()-last<180000;
   if(k==='android'){
     if(ip){
       if(S.tvOk) return {ok:true,t:'Đã nối TV '+(S.tvName?S.tvName+' ':'')+'('+ip+') qua mạng nhà.'};
@@ -1645,11 +1645,14 @@ function tvStatus(){
   }
   if(k==='lg'){
     if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG ở dưới (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
-    if(seen) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+').'};
+    if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
+    if(seen) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối qua internet.'+(window.hsLgOpen&&D.ps&&D.ps.fwFix?' Muốn nối thẳng qua mạng nhà (nhanh, ít mất kết nối): cho phép Hóng Sub qua tường lửa rồi mở lại app trên TV.':''),
+      a:window.hsLgOpen&&D.ps&&D.ps.fwFix?'Cho phép qua tường lửa':'',f:function(){ tvMsg('','Windows sẽ hỏi quyền, bấm Có...'); D.ps.fwFix().then(function(r){ if(r&&r.ok){ tvMsg('ok','Đã cho phép. Đang mở lại Hóng Sub trên TV...'); if(window.hsLgOpen) window.hsLgOpen(); } else tvMsg('err',r&&r.err==='canceled'?'Chưa cho phép vì đã bấm Không.':'Chưa sửa được tường lửa: '+((r&&r.err)||'')); }); }};
+    if(lately) return {t:'Đang kết nối lại với TV LG...'};
     return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').',a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
   }
   if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/lg, gõ mã đang hiện trên TV vào ô Mã TV.'};
-  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:{bad:true,t:'TV chưa mở trang honggame.store/lg với mã '+c+'.'};
+  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/lg với mã '+c+'.'};
 }
 function tvState(){
   var box=$('hsTvState'); if(!box) return;
@@ -1667,12 +1670,17 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
    Windows app: straight over the home network when the TV's IP is known (Hóng Sub TV listens on port 8765).
    Otherwise, and on the web page: through honggame.store with the TV code. */
 function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(el.value||'').trim():''; }
-function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; return o; }
+function tvBody(o){ o.size=+$('hsTvSize').value||0; o.pos=$('hsTvPos').value; o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
 function tvSend(o){
   o=tvBody(o); var ip=tvIp();
+  /* TV LG with the app: straight over the home network (the TV asks this computer), and through honggame.store as a backup */
+  if(S.tvType==='lg'&&D&&D.lg&&D.lg.push&&tvCode().length>=4){
+    D.lg.push(tvCode(),o);
+    return tvRelay(o).catch(function(e){ if(Date.now()-S.tvLanSeen<15000) return {ok:true}; throw e; });
+  }
   if(ip) return D.tv.send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); if(tvCode().length>=4) return tvRelay(o); throw new Error((r&&r.err)||'TV không trả lời'); });
   return tvRelay(o);
 }
@@ -1719,6 +1727,7 @@ S.tvHello=-1; S.tvBoot='';
 function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên máy tính.'); }
 function tvListen(){
   var ip=tvIp(), c=tvCode();
+  if(S.tvType==='lg'&&D&&D.lg&&D.lg.seen&&c.length>=4) D.lg.seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
   if(ip){
     D.tv.ping(ip).then(function(r){
       if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; tvLan(true);

@@ -109,6 +109,9 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     install: (ip, pass, code) => ipcRenderer.invoke('lg-install', ip, pass, code),
     launch: (code) => ipcRenderer.invoke('lg-launch', code),
     auto: (on) => ipcRenderer.invoke('lg-auto', on),
+    push: (code, msg) => ipcRenderer.invoke('lg-push', code, msg),
+    seen: (code) => ipcRenderer.invoke('lg-seen', code),
+    addr: () => ipcRenderer.invoke('lg-addr'),
     onProgress: (cb) => ipcRenderer.on('lg-progress', (e, t) => cb(t))
   },
   ps: {

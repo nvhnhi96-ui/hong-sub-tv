@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const dgram = require('dgram');
+const os = require('os');
 let ssh2 = null;
 const sshLib = () => (ssh2 = ssh2 || require('./vendor/ssh2.js'));   /* loaded only when a TV LG is used */
 
@@ -91,7 +92,54 @@ function setup({ ipcMain, app, net, getWin, log }) {
     });
   }
 
-  const launchCmd = (code) => LUNA + " -n 1 'luna://com.webos.applicationManager/launch' '" + JSON.stringify({ id: APP_ID, params: code ? { code } : {} }) + "'";
+  /* ---------- straight over the home network: the TV app asks this computer for the next line (long poll) ----------
+     Much steadier than going through honggame.store, which stays as the backup. */
+  const LAN_PORT = 8767;
+  let lanPort = 0;
+  const boxes = new Map();            // code -> { seq, msg, waiters: [] }
+  const seen = new Map();             // code -> time the TV last said it is open
+  const box = (code) => { if (!boxes.has(code)) boxes.set(code, { seq: 0, msg: null, waiters: [] }); return boxes.get(code); };
+  function reply(res, code, obj) {
+    res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(obj));
+  }
+  function answer(res, b) { reply(res, 200, Object.assign({}, b.msg || {}, { seq: b.seq })); }
+  const server = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://x'), code = String(u.searchParams.get('code') || '').toUpperCase();
+    if (req.method === 'OPTIONS') { reply(res, 204, {}); return; }
+    if (u.pathname === '/ping') { reply(res, 200, { app: 'hongsub-pc', ok: true }); return; }
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) { reply(res, 400, { ok: false }); return; }
+    if (u.pathname === '/alive') { seen.set(code, Date.now()); reply(res, 200, { ok: true }); return; }
+    if (u.pathname === '/sub') {
+      seen.set(code, Date.now());
+      const b = box(code), since = parseInt(u.searchParams.get('since') || '-1', 10);
+      if (since < 0 || b.seq !== since) { answer(res, b); return; }
+      const w = { res, t: setTimeout(() => { b.waiters = b.waiters.filter(x => x !== w); answer(res, b); }, 15000) };
+      b.waiters.push(w);
+      req.on('close', () => { clearTimeout(w.t); b.waiters = b.waiters.filter(x => x !== w); });
+      return;
+    }
+    reply(res, 404, { ok: false });
+  });
+  server.on('error', (e) => { if (log) log('lg lan: ' + e.message); if (e.code === 'EADDRINUSE' && lanPort === LAN_PORT) { lanPort = LAN_PORT + 1; server.listen(lanPort, '0.0.0.0'); } });
+  lanPort = LAN_PORT; try { server.listen(lanPort, '0.0.0.0'); } catch (e) { /* ignore */ }
+  function push(code, msg) {
+    code = String(code || '').toUpperCase(); if (!/^[A-Z0-9]{4,8}$/.test(code)) return false;
+    const b = box(code); b.seq++; b.msg = msg;
+    const ws = b.waiters; b.waiters = [];
+    ws.forEach((w) => { clearTimeout(w.t); try { answer(w.res, b); } catch (e) { /* ignore */ } });
+    return true;
+  }
+  /* this computer's address on the same network as the TV */
+  function myAddr(tvIp) {
+    const all = [];
+    Object.values(os.networkInterfaces()).forEach((l) => (l || []).forEach((a) => { if (a.family === 'IPv4' && !a.internal) all.push(a.address); }));
+    const pre = String(tvIp || '').split('.').slice(0, 3).join('.') + '.';
+    const ip = all.filter((a) => a.startsWith(pre))[0] || all.filter((a) => /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))/.test(a))[0] || all[0] || '';
+    return ip && lanPort ? ip + ':' + lanPort : '';
+  }
+
+  const launchCmd = (code) => { const pc = myAddr(cfg().ip); return LUNA + " -n 1 'luna://com.webos.applicationManager/launch' '" + JSON.stringify({ id: APP_ID, params: code ? Object.assign({ code }, pc ? { pc } : {}) : {} }) + "'"; };
 
   async function install(ip, pass, code) {
     ip = String(ip || '').trim(); pass = String(pass || '').trim().toUpperCase();
@@ -143,12 +191,15 @@ function setup({ ipcMain, app, net, getWin, log }) {
     finally { if (c) try { c.end(); } catch (e) { /* ignore */ } }
   }
 
+  ipcMain.handle('lg-push', (e, code, msg) => push(code, msg));
+  ipcMain.handle('lg-seen', (e, code) => seen.get(String(code || '').toUpperCase()) || 0);
+  ipcMain.handle('lg-addr', () => myAddr(cfg().ip));
   ipcMain.handle('lg-find', () => find());
   ipcMain.handle('lg-state', () => { const k = cfg(); return { ip: k.ip || '', installed: !!k.key, auto: k.auto !== false, at: k.at || 0 }; });
   ipcMain.handle('lg-install', (e, ip, pass, code) => install(ip, pass, code));
   ipcMain.handle('lg-launch', (e, code) => launch(code));
   ipcMain.handle('lg-auto', (e, on) => { const k = cfg(); k.auto = !!on; saveCfg(k); return true; });
-  return { find, install, launch, cfg };
+  return { find, install, launch, cfg, push, myAddr };
 }
 /* self test: the key the TV hands out is a passphrase-locked RSA key; make sure this build can open one */
 function selfTest() {

@@ -138,8 +138,12 @@ var P={
   read:load('read','auto')            /* auto: when the computer asks for it; on: always; off */
 };
 /* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
-function launchCode(){ try{ var s=window.PalmSystem&&window.PalmSystem.launchParams; var j=s?(typeof s==='string'?JSON.parse(s):s):null; var c=j&&j.code?String(j.code).toUpperCase():''; return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }catch(e){ return ''; } }
+function launchParams(){ try{ var s=window.PalmSystem&&window.PalmSystem.launchParams; return (s?(typeof s==='string'?JSON.parse(s):s):null)||{}; }catch(e){ return {}; } }
+function launchCode(){ var c=String(launchParams().code||'').toUpperCase(); return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }
+function launchPc(){ var a=String(launchParams().pc||''); return /^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(a)?a:''; }
+P.pc=load('pc','');
 var lc=launchCode(); if(lc){ P.code=lc; save('code',lc); }
+var lp=launchPc(); if(lp){ P.pc=lp; save('pc',lp); }
 if(P.read===true) P.read='auto'; else if(P.read===false) P.read='off';
 if(!/^[A-Z0-9]{4,8}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); }
 
@@ -241,7 +245,11 @@ function hello(){ xhr('POST',RELAY+'push',{room:P.code+'T',kind:'hello',vi:'tv'}
 /* every 20 s: still open, so Hóng Sub on the computer can show that the TV is ready */
 function alive(){ if(!document.hidden) xhr('POST',RELAY+'push',{room:P.code+'T',kind:'alive',vi:'tv'},function(){}); }
 setInterval(alive,20000);
+/* the computer also sees the TV through its home-network questions; this covers the quiet minutes */
+setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
+var mids=[];
 function handle(j){
+  if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
   var kind=j.kind||'sub', vi=String(j.vi||'').trim();
   var readIt=P.read==='on'||(P.read==='auto'&&!!j.speak);   /* "auto": the computer decides where lines are read */
   if(P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak) sayStop();
@@ -253,21 +261,44 @@ function handle(j){
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
   if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
 }
+function lanOk(){ return Date.now()-lanAt<20000; }
 function poll(){
   xhr('GET',RELAY+'pull?room='+P.code+'&t='+Date.now(),null,function(j){
-    var wait=450;
+    var wait=lanOk()?3000:450;
     if(j){
       if(!okAt||fails) netState(true); okAt=Date.now(); fails=0;
       var seq=+j.seq||0;
       if(lastSeq<0) lastSeq=seq;                       /* skip what was there before the TV started listening */
       else if(seq!==lastSeq){ lastSeq=seq; handle(j); }
-    } else { if(++fails===3) netState(false); wait=2000; }
+    } else { if(++fails===3&&!lanOk()) netState(false); wait=lanOk()?3000:1500; }
     setTimeout(poll,wait);
   });
 }
-function netState(ok){
+/* ---------- straight from the computer over the home network (installed app only: a web page may not call the home network) ----------
+   The TV asks for the next line and the computer answers as soon as there is one. */
+var lanSeq=-1, lanAt=0, lanFails=0;
+function lanPoll(){
+  if(!packaged||!P.pc){ setTimeout(lanPoll,5000); return; }
+  var x=new XMLHttpRequest(), url='http://'+P.pc+'/sub?code='+P.code+'&since='+lanSeq+'&t='+Date.now();
+  x.open('GET',url,true); x.timeout=20000;
+  x.onload=function(){
+    var j=null; try{ j=JSON.parse(x.responseText); }catch(e){}
+    if(x.status===200&&j){
+      if(!lanOk()) netState(true,true);
+      lanAt=Date.now(); lanFails=0;
+      var seq=+j.seq||0;
+      if(lanSeq<0) lanSeq=seq; else if(seq!==lanSeq){ lanSeq=seq; handle(j); }
+      lanPoll(); return;
+    }
+    lanRetry();
+  };
+  x.onerror=x.ontimeout=lanRetry;
+  x.send(null);
+}
+function lanRetry(){ lanFails++; setTimeout(lanPoll,Math.min(10000,1000*lanFails)); }
+function netState(ok,lan){
   $('hDot').className='dot '+(ok?'ok':'bad'); $('pDot').className='dot '+(ok?'ok':'bad');
-  $('hState').textContent=ok?'Đã sẵn sàng, đang chờ phụ đề từ máy tính':'Chưa kết nối được internet. Kiểm tra mạng của TV.';
+  $('hState').textContent=ok?(lan||lanOk()?'Đã nối với máy tính qua mạng nhà, đang chờ phụ đề':'Đã sẵn sàng, đang chờ phụ đề từ máy tính'):'Chưa kết nối được internet. Kiểm tra mạng của TV.';
   pill(ok?'Hóng Sub đang chờ phụ đề':'Mất kết nối internet',!ok);
 }
 var pillT=0;
@@ -345,11 +376,11 @@ $('bClose').onclick=function(){ panel(false); };
 /* the settings button on top of the game shows up when the pointer moves */
 var gearT=0;
 document.addEventListener('mousemove',function(){ if($('home').className!=='off'||panelOn) return; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },4000); });
-document.addEventListener('webOSRelaunch',function(){ var c=launchCode(); if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
+document.addEventListener('webOSRelaunch',function(){ var c=launchCode(), a=launchPc(); if(a&&a!==P.pc){ P.pc=a; save('pc',a); } if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; lanSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
 document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); if(P.src) setSource(P.src); } else sayStop(); });
 
 function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }
-codeDraw(); applyLook(); hello(); poll();
+codeDraw(); applyLook(); hello(); poll(); lanPoll();
 /* the installed app opens the console's HDMI by itself; the browser waits for a click (TVs only play video after a press) */
 if(packaged&&P.src) setSource(P.src); else { if(!packaged) P.src=0; video.style.display='none'; homeBtns(); }
 setTimeout(function(){ var b=document.querySelector('#homeBtns .btn'); if(b&&!panelOn) try{ b.focus(); }catch(e){} },300);
