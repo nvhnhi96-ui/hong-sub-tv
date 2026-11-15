@@ -94,6 +94,8 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     forget: (id) => ipcRenderer.invoke('ps-forget', id),
     wake: (id) => ipcRenderer.invoke('ps-wake', id),
     connect: (id, o) => ipcRenderer.invoke('ps-connect', id, o),
+    fwCheck: () => ipcRenderer.invoke('ps-fw-check'),
+    fwFix: () => ipcRenderer.invoke('ps-fw-fix'),
     input: (line) => ipcRenderer.send('ps-input', line),
     stop: (sleep) => ipcRenderer.send('ps-stop', sleep),
     onVideo: (cb) => ipcRenderer.on('ps-v', (e, d) => cb(d)),

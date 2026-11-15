@@ -200,11 +200,14 @@ function setup(opts) {
     const h = cfg.hosts[id];
     if (!h) return { ok: false, err: 'not registered' };
     if (!fs.existsSync(helperPath())) return { ok: false, err: 'missing' };
-    if (sp) stop(false);
+    if (sp) { const old = sp; sp = null; try { old.stdin.write('q\n'); } catch (e) { /* ignore */ } setTimeout(() => { try { old.kill(); } catch (e) { /* ignore */ } }, 3000); }
     const res = String((o && o.res) || (h.ps5 ? 1080 : 720)), fps = String((o && o.fps) || 60);
     const p = spawn(helperPath(), ['stream', h.addr, h.ps5 ? '1' : '0', h.regist_key, h.morning, res, fps], { windowsHide: true });
     sp = p; buf = Buffer.alloc(0);
+    let errTail = '';
+    if (log) log('rp: stream ' + h.addr + ' ps5=' + (h.ps5 ? 1 : 0) + ' ' + res + 'p' + fps);
     p.stdout.on('data', (d) => {
+      if (sp !== p) return; // an older session that is closing: ignore what it still sends
       buf = buf.length ? Buffer.concat([buf, d]) : d;
       while (buf.length >= 5) {
         const len = buf.readUInt32LE(1);
@@ -214,15 +217,61 @@ function setup(opts) {
         if (type === 1) send('ps-v', payload);
         else if (type === 2) send('ps-ah', JSON.parse(payload.toString('utf8')));
         else if (type === 3) send('ps-a', payload);
-        else if (type === 9) { let ev = null; try { ev = JSON.parse(payload.toString('utf8')); } catch (e) { /* ignore */ } if (ev) { if (ev.ev === 'log') { if (log && ev.level <= 4) log('rp: ' + ev.msg); } else send('ps-ev', ev); } }
+        else if (type === 9) {
+          let ev = null; try { ev = JSON.parse(payload.toString('utf8')); } catch (e) { /* ignore */ }
+          if (!ev) continue;
+          if (ev.ev === 'log') { if (ev.level <= 4) { if (log) log('rp: ' + ev.msg); send('ps-ev', ev); } continue; }
+          send('ps-ev', ev);
+          // the console ended the session: let the helper exit so the app gets 'closed' instead of waiting forever
+          if (ev.ev === 'quit') setTimeout(() => { if (sp === p) { try { p.stdin.write('q\n'); } catch (e) { /* ignore */ } } }, 300);
+        }
       }
       if (buf.length > 0 && buf.length < 4096) buf = Buffer.from(buf); // detach from big chunk
     });
-    p.stderr.on('data', () => {});
-    p.on('error', (e) => send('ps-ev', { ev: 'quit', reason: -1, text: String(e), str: '' }));
-    p.on('exit', (code) => { if (sp === p) sp = null; send('ps-ev', { ev: 'closed', code }); });
+    p.stderr.on('data', (d) => { errTail = (errTail + d).slice(-600); });
+    p.on('error', (e) => { if (sp === p) send('ps-ev', { ev: 'quit', reason: -1, text: String(e), str: '' }); });
+    p.on('exit', (code) => {
+      if (log) log('rp: exit ' + code + (errTail ? ' ' + errTail.trim() : ''));
+      if (sp !== p) return;
+      sp = null;
+      send('ps-ev', { ev: 'closed', code, err: errTail.trim().slice(-300) });
+    });
     return { ok: true, name: h.name };
   }
+
+  /* ---------- Windows firewall: a "Block" answer to the first-run prompt stops the picture from reaching the app ---------- */
+  function psRun(file) {
+    return new Promise((resolve) => {
+      const pr = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', file], { windowsHide: true });
+      let o = ''; pr.stdout.on('data', d => { o += d; }); pr.stderr.on('data', d => { o += d; });
+      pr.on('error', (e) => resolve('error ' + e)); pr.on('exit', () => resolve(o.trim()));
+      setTimeout(() => { try { pr.kill(); } catch (e) { /* ignore */ } }, 120000);
+    });
+  }
+  const q1 = (s) => "'" + String(s).replace(/'/g, "''") + "'";
+  const fwPrograms = () => [process.execPath, helperPath()];
+  async function fwCheck() {
+    if (process.platform !== 'win32') return { ok: true, allow: true, block: false };
+    const f = path.join(os.tmpdir(), 'hongsub-fw-check.ps1');
+    fs.writeFileSync(f, '\ufeff' + fwPrograms().map(x => '$r=@(Get-NetFirewallApplicationFilter -Program ' + q1(x) + ' -ErrorAction SilentlyContinue | Get-NetFirewallRule -ErrorAction SilentlyContinue | Where-Object { $_.Enabled -eq "True" -and $_.Direction -eq "Inbound" } | ForEach-Object { [string]$_.Action }); "R:" + ($r -join ",")').join('\r\n'), 'utf8');
+    const out = await psRun(f);
+    const lines = out.split(/\r?\n/).filter(l => l.startsWith('R:')).map(l => l.slice(2));
+    if (lines.length < 2) return { ok: false, err: out.slice(0, 200) };
+    return { ok: true, block: lines.some(l => /Block/i.test(l)), allow: lines.every(l => /Allow/i.test(l)), app: lines[0], rp: lines[1] };
+  }
+  async function fwFix() {
+    if (process.platform !== 'win32') return { ok: true };
+    const inner = path.join(os.tmpdir(), 'hongsub-fw-fix.ps1'), outer = path.join(os.tmpdir(), 'hongsub-fw-run.ps1');
+    fs.writeFileSync(inner, '\ufeff$ErrorActionPreference="SilentlyContinue"\r\n' + fwPrograms().map(x =>
+      'Get-NetFirewallApplicationFilter -Program ' + q1(x) + ' | Get-NetFirewallRule | Remove-NetFirewallRule\r\n' +
+      'New-NetFirewallRule -DisplayName "Hong Sub" -Direction Inbound -Action Allow -Program ' + q1(x) + ' -Profile Any | Out-Null').join('\r\n'), 'utf8');
+    fs.writeFileSync(outer, '\ufefftry { Start-Process powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList (\'-NoProfile -ExecutionPolicy Bypass -File "{0}"\' -f ' + q1(inner) + ') -ErrorAction Stop; "OK" } catch { "CANCELED " + $_.Exception.Message }', 'utf8');
+    const out = await psRun(outer);
+    if (/^OK/m.test(out)) { const c = await fwCheck(); return { ok: !c.ok || !c.block, check: c }; }
+    return { ok: false, err: /CANCELED/.test(out) ? 'canceled' : out.slice(0, 200) };
+  }
+  ipcMain.handle('ps-fw-check', () => fwCheck().catch(e => ({ ok: false, err: String(e) })));
+  ipcMain.handle('ps-fw-fix', () => fwFix().catch(e => ({ ok: false, err: String(e) })));
 
   ipcMain.handle('ps-state', () => ({ helper: fs.existsSync(helperPath()), loggedIn: !!cfg.account, onlineId: cfg.onlineId || '', hosts: Object.values(cfg.hosts).map(h => ({ id: h.id, name: h.name, ps5: h.ps5, addr: h.addr })) }));
   ipcMain.handle('ps-login', () => login());
