@@ -47,6 +47,14 @@ final class Prefs {
     boolean showEn() { return sp.getBoolean("en", false); }
     void showEn(boolean v) { sp.edit().putBoolean("en", v).apply(); }
 
+    // look of the subtitle, set in Hóng Sub on the computer
+    String color() { return sp.getString("col", "#FFFFFF"); }
+    void color(String v) { sp.edit().putString("col", v).apply(); }
+    int bg() { return sp.getInt("bg", 80); }
+    void bg(int v) { sp.edit().putInt("bg", Math.max(0, Math.min(100, v))).apply(); }
+    int width() { return sp.getInt("wid", 86); }
+    void width(int v) { sp.edit().putInt("wid", Math.max(40, Math.min(100, v))).apply(); }
+
     boolean running() { return sp.getBoolean("running", false); }
     void running(boolean v) { sp.edit().putBoolean("running", v).apply(); }
 }

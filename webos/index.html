@@ -141,6 +141,9 @@ var P={
   size:load('size',30),
   pos:load('pos','bottom'),
   en:load('en',false),
+  col:load('col','#FFFFFF'),          /* look of the subtitle, set in Hóng Sub on the computer */
+  bg:load('bg',78),
+  wid:load('wid',88),
   read:'auto'                         /* reading aloud is decided on the computer */
 };
 /* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
@@ -191,6 +194,9 @@ function scale(){ return Math.max(.5,Math.min(window.innerWidth/1920,window.inne
 function applyLook(){
   var px=P.size*1.6*scale();          /* the same size number as the Android TV app */
   $('vi').style.fontSize=px+'px'; $('en').style.fontSize=Math.max(16,px*.55)+'px';
+  $('vi').style.color=P.col;
+  var bx=document.querySelector('#sub .box'); if(bx) bx.style.background='rgba(8,9,12,'+(P.bg/100)+')';
+  var side=Math.max(0,(100-P.wid)/2); $('sub').style.left=side+'vw'; $('sub').style.right=side+'vw';
   $('sub').className=($('sub').className.indexOf('on')>=0?'on ':'')+(P.pos==='top'?'top':'');
 }
 function showLine(who,vi,en,hold,readIt){
@@ -327,6 +333,9 @@ function handle(j){
   if(size>=18&&size!==P.size){ P.size=size; save('size',size); changed=true; }
   if((pos==='top'||pos==='bottom')&&pos!==P.pos){ P.pos=pos; save('pos',pos); changed=true; }
   if(j.hasOwnProperty('sen')&&!!j.sen!==P.en){ P.en=!!j.sen; save('en',P.en); }
+  if(/^#[0-9A-Fa-f]{6}$/.test(j.col||'')&&j.col!==P.col){ P.col=j.col; save('col',P.col); changed=true; }
+  if(j.hasOwnProperty('bg')&&+j.bg>=0&&+j.bg<=100&&+j.bg!==P.bg){ P.bg=+j.bg; save('bg',P.bg); changed=true; }
+  if(j.hasOwnProperty('wid')&&+j.wid>=40&&+j.wid<=100&&+j.wid!==P.wid){ P.wid=+j.wid; save('wid',P.wid); changed=true; }
   if(j.hasOwnProperty('hdmi')&&packaged){ var hn=+j.hdmi; if(hn>=0&&hn<=4&&hn!==P.src){ P.src=hn; save('src',hn); setSource(hn); } }
   if(changed) applyLook();
   if(kind==='hello'||kind==='ctl') return;

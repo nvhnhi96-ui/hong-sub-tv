@@ -275,8 +275,16 @@ public class OverlayService extends Service {
         viView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
         enView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(14, size * 0.55f));
         int screenW = getResources().getDisplayMetrics().widthPixels;
-        viView.setMaxWidth((int) (screenW * 0.86));
-        enView.setMaxWidth((int) (screenW * 0.86));
+        float w = prefs.width() / 100f;
+        viView.setMaxWidth((int) (screenW * w));
+        enView.setMaxWidth((int) (screenW * w));
+        int col = Color.WHITE;
+        try { col = Color.parseColor(prefs.color()); } catch (Exception ignored) { }
+        viView.setTextColor(col);
+        GradientDrawable bgd = new GradientDrawable();
+        bgd.setColor(Color.argb(Math.round(prefs.bg() * 2.55f), 8, 8, 10));
+        bgd.setCornerRadius(dp(10));
+        box.setBackground(bgd);
         lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
         lp.y = dp(prefs.top() ? 36 : 46);
         try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
@@ -324,6 +332,10 @@ public class OverlayService extends Service {
         boolean changed = false;
         if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
         if (j.has("sen") && j.optBoolean("sen", false) != prefs.showEn()) { prefs.showEn(j.optBoolean("sen", false)); }   // English line: set on the computer
+        String col = j.optString("col", "");
+        if (col.matches("#[0-9A-Fa-f]{6}") && !col.equalsIgnoreCase(prefs.color())) { prefs.color(col); changed = true; }
+        if (j.has("bg")) { int b = j.optInt("bg", -1); if (b >= 0 && b <= 100 && b != prefs.bg()) { prefs.bg(b); changed = true; } }
+        if (j.has("wid")) { int w = j.optInt("wid", 0); if (w >= 40 && w <= 100 && w != prefs.width()) { prefs.width(w); changed = true; } }
         if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
         if (changed) main.post(this::applyStyle);
