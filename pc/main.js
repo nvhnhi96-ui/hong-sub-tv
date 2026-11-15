@@ -201,6 +201,33 @@ function fullShow(d) {
   if (!fullWin.webContents.isLoading()) fullWin.webContents.send('full', fullData);
   if (!fullWin.isVisible()) fullWin.showInactive();
 }
+/* ---------- new versions ---------- */
+async function checkUpdate() {
+  try {
+    const r = await net.fetch(UPDATE_API + '?t=' + Date.now(), { headers: { 'User-Agent': 'HongSub', 'Cache-Control': 'no-cache' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const latest = String(j.tag_name || '').replace(/^v/, '');
+    const cur = app.getVersion();
+    const n = (v) => v.split('.').map(x => parseInt(x, 10) || 0);
+    const a = n(latest), c = n(cur);
+    let newer = false;
+    for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== (c[i] || 0)) { newer = (a[i] || 0) > (c[i] || 0); break; } }
+    const asset = (j.assets || []).find(x => x.name === 'hong-sub-pc.exe');
+    return { version: latest, current: cur, newer: newer && !!asset, url: asset ? asset.browser_download_url : '', size: asset ? asset.size : 0 };
+  } catch (e) { return null; }
+}
+async function updateTick() {
+  const u = await checkUpdate();
+  if (!u || !u.newer) return;
+  if (win && !win.isDestroyed()) win.webContents.send('update-available', u);
+  if (cfg.updTold !== u.version && Notification.isSupported()) {
+    cfg.updTold = u.version; saveCfg();
+    const nt = new Notification({ title: 'Có bản Hóng Sub mới ' + u.version, body: 'Mở Hóng Sub và bấm "Cập nhật" để lên bản mới, mã và cài đặt vẫn giữ nguyên.' });
+    nt.on('click', () => { if (win) { win.show(); win.focus(); } });
+    nt.show();
+  }
+}
 function sendOverlayState() {
   const st = { hidden: !!cfg.overlayHidden, move: moveMode, zonesHidden: !!cfg.zonesHidden };
   if (win && !win.isDestroyed()) win.webContents.send('overlay-state', st);
@@ -556,20 +583,38 @@ function setupIpc() {
     return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
   ipcMain.on('voice-settings', () => shell.openExternal('ms-settings:speech'));
-  ipcMain.handle('update', async () => {
+  ipcMain.handle('update', () => checkUpdate());
+  /* one click: download the new installer, run it quietly, Hóng Sub closes and opens again on the new version */
+  let updBusy = false;
+  ipcMain.handle('update-install', async () => {
+    if (updBusy) return { ok: false, err: 'busy' };
+    const u = await checkUpdate();
+    if (!u || !u.newer || !u.url) return { ok: false, err: 'none' };
+    updBusy = true;
     try {
-      const r = await net.fetch(UPDATE_API, { headers: { 'User-Agent': 'HongSub' } });
-      if (!r.ok) return null;
-      const j = await r.json();
-      const latest = String(j.tag_name || '').replace(/^v/, '');
-      const cur = app.getVersion();
-      const n = (v) => v.split('.').map(x => parseInt(x, 10) || 0);
-      const a = n(latest), c = n(cur);
-      let newer = false;
-      for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== (c[i] || 0)) { newer = (a[i] || 0) > (c[i] || 0); break; } }
-      const hasPc = (j.assets || []).some(x => x.name === 'hong-sub-pc.exe');
-      return { version: latest, newer: newer && hasPc };
-    } catch (e) { return null; }
+      const file = path.join(os.tmpdir(), 'HongSub-' + u.version + '.exe');
+      const r = await net.fetch(u.url, { headers: { 'User-Agent': 'HongSub' } });
+      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      const total = +r.headers.get('content-length') || u.size || 0;
+      const out = fs.createWriteStream(file);
+      const reader = r.body.getReader();
+      let got = 0, last = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        got += value.length;
+        if (!out.write(Buffer.from(value))) await new Promise((ok) => out.once('drain', ok));
+        if (Date.now() - last > 300 && win && !win.isDestroyed()) { last = Date.now(); win.webContents.send('update-progress', total ? got / total : 0); }
+      }
+      await new Promise((ok, bad) => out.end((e) => (e ? bad(e) : ok())));
+      if (total && got < total * 0.98) throw new Error('tải chưa đủ');
+      spawn(file, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
+      setTimeout(() => { quitting = true; app.quit(); }, 800);
+      return { ok: true };
+    } catch (e) {
+      updBusy = false;
+      return { ok: false, err: String(e.message || e) };
+    }
   });
   ipcMain.handle('app-version', () => app.getVersion());
   ipcMain.handle('hotkeys-get', () => ({ keys: keys(), state: registerKeys() }));
@@ -689,6 +734,7 @@ app.whenReady().then(async () => {
   setupIpc();
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
+  if (!SELFTEST) { setTimeout(updateTick, 15000); setInterval(updateTick, 30 * 60 * 1000); }
   if (!SELFTEST) { createTray(); createMain(); if (cfg.aivOn !== false && aivPy()) setTimeout(aivStart, 2500); }
   registerKeys();
   ttsStart();

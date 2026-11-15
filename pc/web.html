@@ -189,6 +189,15 @@ body.desk .hs-dk.hs-off{display:none!important}
 .hs-rpsteps b{color:var(--ink)}
 .hs-psacc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
 .hs-pslist{display:grid;gap:8px;margin-top:12px}
+.hs-pssteps{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:2px;counter-reset:st}
+.hs-pssteps li{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.hs-pssteps li:first-child{border-top:0}
+.hs-pssteps li i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;background:var(--sunk);color:var(--muted);border:1px solid var(--line2)}
+.hs-pssteps li.ok i{background:#3FD08A;border-color:#3FD08A;color:#04210f}
+.hs-pssteps li.now i{background:var(--brand);border-color:var(--brand);color:#000}
+.hs-pssteps li.bad i{background:#FF6B6B;border-color:#FF6B6B;color:#fff}
+.hs-pssteps li small{display:block;color:var(--muted);font-size:12.5px;line-height:1.4}
+.hs-pssteps li .hs-btn{padding:6px 10px;font-size:13px}
 .hs-ps{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .hs-ps .r{display:flex;align-items:center;gap:8px}
 .hs-ps .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -294,6 +303,8 @@ body.desk .hs-dk.hs-off{display:none!important}
     <aside class="hs-side">
       <section class="hs-sec hs-dk" id="hsPsSec">
         <div class="t"><b>PS5 / PS4</b></div>
+        <ol class="hs-pssteps" id="hsPsSteps"></ol>
+        <div class="hs-row" style="margin:8px 0 12px"><button class="hs-btn pri" id="hsPsAutoGo" type="button">Kết nối tự động</button></div>
         <div class="hs-psacc" id="hsPsAcc"></div>
         <div id="hsPsList" class="hs-pslist"></div>
         <div class="hs-row" style="margin-top:10px">
@@ -2337,6 +2348,8 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'&&!this.checked){ stopSpeak(); }});});
 $('hsRead').value=load('read','local');
 $('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
+$('hsPsWatch').checked=load('psWatch',null)===null?!!(load('tvip','')||load('tv','')):load('psWatch',false);
+$('hsPsWatch').addEventListener('change',function(){ save('psWatch',this.checked); });
 $('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
 $('hsFsAuto').checked=load('fsauto',true); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
@@ -2505,7 +2518,7 @@ function psList(){
 function psFind(ip){
   psMsg('', ip?'Đang tìm máy ở '+ip+'...':'Đang tìm máy trong mạng...');
   return D.ps.discover(ip||null).then(function(list){
-    PS.hosts=list||[]; psList();
+    PS.hosts=Array.isArray(list)?list:[]; psList();
     psMsg(PS.hosts.length?'':'warn', PS.hosts.length?'':'Chưa thấy máy. Kiểm tra PS5 đã bật Chơi từ xa và cùng mạng, hoặc bấm Nhập IP máy.');
     return PS.hosts;
   });
@@ -2520,8 +2533,14 @@ async function psPlay(h){
   }
   var q=($('hsPsQ').value||'1080/60').split('/');
   psMsg('','Đang kết nối '+h.name+'...');
-  var r=await D.ps.connect(h.id,{res:+q[0],fps:+q[1]});
-  if(!r||!r.ok){ psMsg('err','Không kết nối được: '+((r&&r.err)||'')); tvNotice('Không kết nối được '+h.name+'.'); return; }
+  var r=null;
+  for(var tries=0;tries<3;tries++){
+    r=await D.ps.connect(h.id,{res:+q[0],fps:+q[1]});
+    if(r&&r.ok) break;
+    log('kết nối PS lần '+(tries+1)+' lỗi: '+((r&&r.err)||''));
+    if(tries<2){ psMsg('','Kết nối chưa được, thử lại lần '+(tries+2)+'...'); await D.ps.wake(h.id); await sleepMs(3000); }
+  }
+  if(!r||!r.ok){ PS.err=psErrText((r&&r.err)||''); psMsg('err','Không kết nối được '+h.name+': '+PS.err); tvNotice('Không kết nối được '+h.name+'.'); return; }
   PS.host=h; psStartView(); tvNotice('Đã kết nối '+h.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.');
 }
 /* --- picture --- */
@@ -2564,7 +2583,7 @@ function psDecoder(codec){
     output:function(f){
       if(PS.cvs.width!==f.displayWidth||PS.cvs.height!==f.displayHeight){ PS.cvs.width=f.displayWidth; PS.cvs.height=f.displayHeight; }
       PS.ctx.drawImage(f,0,0); f.close();
-      if(++PS.frames===1){ psMsg('ok','Đã vào máy. Chúc chơi vui!'); if(load('regionSet',false)&&(keys().length||groqKeys().length||orKeys().length)&&!S.running) startRun(); }
+      if(++PS.frames===1){ psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; if(!S.running&&!D.selftest) startRun(); }
     },
     error:function(){ PS.dec=null; PS.waitKey=true; psIdr(); }
   });
@@ -2655,13 +2674,57 @@ function psInit(){
   $('hsPsFind').onclick=function(){psFind();};
   $('hsPsIpBtn').onclick=function(){ $('hsPsIpBox').hidden=false; $('hsPsIp').focus(); };
   $('hsPsIpGo').onclick=function(){ var ip=$('hsPsIp').value.trim(); if(ip) psFind(ip); };
-  $('hsPsGo').onclick=function(){ $('hsPsSec').scrollIntoView({behavior:'smooth',block:'start'}); var reg=PS.hosts.filter(function(h){return h.registered&&h.state!=='offline';})[0]; if(reg) psPlay(reg); else if(!PS.acc||!PS.acc.loggedIn) psLogin(); else psFind(); };
+  $('hsPsGo').onclick=function(){ $('hsPsSec').scrollIntoView({behavior:'smooth',block:'start'}); psAutoRun(); };
   $('hsPsFull').onclick=function(){ $('hsStage').requestFullscreen().then(function(){ if(PS.cvs) PS.cvs.focus(); }).catch(function(){}); };
   $('hsPsEnd').onclick=function(){ D.ps.stop(false); };
   tvNotice('Hóng Sub trên máy tính đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
   later(tvListen,3000);
+  $('hsPsAutoGo').onclick=function(){ psAutoRun(); };
+  setInterval(psSteps,1000); psSteps();
   if(D.selftest) window.hsPsTest=psSelfTest;
+}
+/* plain words for the usual connection errors */
+function psErrText(e){
+  e=String(e||'');
+  if(/login|psn|token|401|403/i.test(e)) return 'cần đăng nhập PSN lại';
+  if(/regist|not registered|pair/i.test(e)) return 'cần ghép máy lại (mã 8 số)';
+  if(/busy|in use|another|session/i.test(e)) return 'máy đang có người khác Chơi từ xa, hãy thoát ở thiết bị kia';
+  if(/timeout|unreach|refused|offline|ETIMEDOUT|EHOSTUNREACH/i.test(e)) return 'không tới được máy, kiểm tra máy đã bật và cùng mạng với máy tính';
+  if(/missing|helper/i.test(e)) return 'thiếu thành phần kết nối, hãy cài lại Hóng Sub bản mới';
+  return e||'lỗi chưa rõ';
+}
+/* the whole way from opening Hóng Sub to Vietnamese on the TV, one step at a time */
+var PSST={running:false};
+function psSteps(){
+  var L=$('hsPsSteps'); if(!L||!D||!D.ps) return;
+  var acc=PS.acc||{}, reg=(Array.isArray(PS.hosts)?PS.hosts:[]).filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
+  var tvOn=!!(S.tvOk||(!tvIp()&&tvCode().length>=4)), tvSet=!!(tvIp()||tvCode().length>=4);
+  var st=[
+    {t:'Đăng nhập PSN',ok:!!acc.loggedIn,d:acc.loggedIn?(acc.onlineId||'đã đăng nhập'):'chỉ cần làm một lần',a:'Đăng nhập',f:psLogin},
+    {t:'Ghép máy PS5/PS4',ok:reg.length>0,d:reg.length?reg.map(function(h){return h.name;}).join(', '):'bấm Tìm máy rồi Ghép máy, nhập mã 8 số trên PS5',a:'Tìm máy',f:function(){psFind();}},
+    {t:'Bật máy và vào Chơi từ xa',ok:live,d:live?('đang nhận hình '+PS.host.name):(PS.err?('lỗi: '+PS.err):(reg.length?(reg[0].state==='ready'?'máy đang bật':reg[0].state==='offline'?'chưa thấy máy trong mạng':'máy đang nghỉ, Hóng Sub sẽ bật'):'')),a:'Kết nối',f:function(){ psAutoRun(); },bad:!!PS.err&&!live},
+    {t:'Dịch phụ đề',ok:!!S.running,d:S.running?'đang dịch':'tự bật khi có hình',a:'Bắt đầu',f:function(){ if(S.stream) startRun(); }},
+    {t:'Hiện lên TV',ok:tvOn,d:tvOn?(tvIp()?('TV '+(S.tvName||'')+' '+tvIp()):'qua mã TV '+tvCode()):(tvSet?'TV chưa trả lời, mở app Hóng Sub TV':'chưa nối TV (không bắt buộc)'),a:'Tìm TV',f:function(){ if(window.hsGo) hsGo('ketnoi'); tvFindUi(false); },bad:tvSet&&!tvOn}
+  ];
+  var cur=-1; st.forEach(function(x,i){ if(cur<0&&!x.ok&&i<4) cur=i; });
+  var html=st.map(function(x,i){ var cls=x.ok?'ok':x.bad?'bad':i===cur?'now':'';
+    return '<li class="'+cls+'"><i>'+(x.ok?'✓':x.bad?'!':(i+1))+'</i><div>'+x.t+'<small>'+esc(x.d)+'</small></div>'+(!x.ok&&(i===cur||x.bad)?'<button class="hs-btn" type="button" data-s="'+i+'">'+x.a+'</button>':'<span></span>')+'</li>'; }).join('');
+  if(L.dataset.h!==html){ L.dataset.h=html; L.innerHTML=html; L.querySelectorAll('[data-s]').forEach(function(b){ b.onclick=function(){ st[+b.dataset.s].f(); }; }); }
+  var go=$('hsPsAutoGo'); go.disabled=PSST.running||live; go.textContent=PSST.running?'Đang kết nối...':live?'Đã kết nối':'Kết nối tự động';
+}
+async function psAutoRun(){
+  if(PSST.running) return; PSST.running=true; PS.err='';
+  try{
+    if(!PS.acc||!PS.acc.loggedIn){ await psRefresh(); if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Bước 1: đăng nhập PSN trước (chỉ một lần).'); psLogin(); return; } }
+    var list=await psFind(); var reg=(list||[]).filter(function(h){return h.registered;});
+    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 2: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên PS5 (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với máy tính, hoặc bấm Nhập IP.'); return; }
+    var h=reg.filter(function(x){return x.state==='ready';})[0]||reg.filter(function(x){return x.state!=='offline';})[0]||reg[0];
+    if(h.state==='offline'){ psMsg('','Đang thử bật '+h.name+' ở '+h.addr+'...'); h.state='standby'; }
+    tvNotice((h.state==='ready'?'Đang kết nối ':'Đang bật ')+h.name+'...');
+    await psPlay(h);
+  }catch(e){ PS.err=psErrText(e.message); psMsg('err','Kết nối lỗi: '+PS.err); }
+  finally{ PSST.running=false; psSteps(); }
 }
 /* find the paired PS5/PS4 and turn it on (from rest mode) when Hóng Sub opens or the TV app opens */
 async function psWakeUp(why){
@@ -2673,9 +2736,8 @@ async function psWakeUp(why){
   if(!h){ tvNotice('Không thấy '+reg[0].name+' trong mạng. Hãy bật máy PS bằng tay cầm.'); return; }
   if(S.stream&&PS.stream){ tvNotice('Đang chơi '+h.name+' trong Hóng Sub.'); return; }
   if(!$('hsPsAutoWake')||$('hsPsAutoWake').checked){
-    tvNotice(h.state==='ready'?('Đang kết nối '+h.name+'...'):('Đang bật '+h.name+'...'));
-    if(load('psAuto',true)&&!S.stream) psPlay(h);
-    else if(h.state!=='ready') D.ps.wake(h.id);
+    if(load('psAuto',true)&&!S.stream) psAutoRun();
+    else if(h.state!=='ready'){ tvNotice('Đang bật '+h.name+'...'); D.ps.wake(h.id); }
   }
 }
 /* self test: encode a few frames with WebCodecs and push them through the same picture path */

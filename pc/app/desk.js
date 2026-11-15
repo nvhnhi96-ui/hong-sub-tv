@@ -275,10 +275,11 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     $('dkBellN').hidden=!n; $('dkBellN').textContent=n>9?'9+':n;
     $('dkNotiList').innerHTML=list.length?list.map(function(x){
       return '<div class="it'+(x.read?'':' new')+'"><i></i><b>'+esc(x.title)+'</b><p>'+esc(x.body||'')+'</p>'+
-        (x.go?'<button class="dk-link" type="button" data-go2="'+esc(x.go)+'">'+esc(x.btn||'Mở')+'</button>':x.url?'<button class="dk-link" type="button" data-url2="'+esc(x.url)+'">'+esc(x.btn||'Mở')+'</button>':'')+
+        (x.upd?'<button class="dk-link" type="button" data-upd="1">'+esc(x.btn||'Cập nhật')+'</button>':x.go?'<button class="dk-link" type="button" data-go2="'+esc(x.go)+'">'+esc(x.btn||'Mở')+'</button>':x.url?'<button class="dk-link" type="button" data-url2="'+esc(x.url)+'">'+esc(x.btn||'Mở')+'</button>':'')+
         '<small>'+when(x.t)+'</small></div>';
     }).join(''):'<p class="dk-empty" style="padding:10px 12px">Chưa có thông báo nào.</p>';
     $('dkNotiList').querySelectorAll('[data-go2]').forEach(function(b){ b.onclick=function(){ $('dkNoti').hidden=true; window.hsGo(b.dataset.go2); }; });
+    $('dkNotiList').querySelectorAll('[data-upd]').forEach(function(b){ b.onclick=function(){ $('dkNoti').hidden=true; if(window.hsUpdateNow) window.hsUpdateNow(); }; });
     $('dkNotiList').querySelectorAll('[data-url2]').forEach(function(b){ b.onclick=function(){ D.openUrl(b.dataset.url2); }; });
   }
   function toast(x){
@@ -297,7 +298,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   draw();
   function check(){
     /* a newer Hóng Sub */
-    D.update().then(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Tải về rồi cài đè lên bản cũ, mã và cài đặt vẫn giữ nguyên.',url:'https://honggame.store/hongsubpc',btn:'Tải bản mới'}); }).catch(function(){});
+    D.update().then(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); }).catch(function(){});
     /* games added to the list */
     fetch(GAMES+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var names=(Array.isArray(j)?j:(j.games||[])).map(function(g){return g.name||g.title||'';}).filter(Boolean);
@@ -313,5 +314,32 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
     }).catch(function(){});
   }
-  setTimeout(check,4000); setInterval(check,3*3600e3);
+  if(D.onUpdate) D.onUpdate(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); });
+  setTimeout(check,4000); setInterval(check,30*60e3);
+})();
+
+/* ---------- new version: green button in the top bar, one click to update ---------- */
+(function(){
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDesktop;
+  var btn=$('dkUpdBtn'), info=null, busy=false;
+  function show(u){
+    if(!u||!u.newer) return; info=u;
+    if(!busy){ btn.hidden=false; btn.textContent='Cập nhật lên '+u.version; }
+    var b=$('hsUpd'); if(b){ b.innerHTML='Có bản Hóng Sub mới <b>'+u.version+'</b>. Bấm nút xanh <b>Cập nhật</b> ở trên cùng: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.'; b.style.display='block'; }
+  }
+  window.hsUpdateNow=function(){
+    if(busy||!info) return; busy=true; btn.disabled=true; btn.textContent='Đang tải bản mới...';
+    A.status('busy','Đang tải Hóng Sub '+info.version+'...');
+    D.updateInstall().then(function(r){
+      if(r&&r.ok){ btn.textContent='Đang cài, Hóng Sub sẽ mở lại...'; A.status('busy','Đang cài bản mới, Hóng Sub sẽ tự mở lại.'); return; }
+      busy=false; btn.disabled=false; btn.textContent='Cập nhật lên '+info.version;
+      A.status('warn','Chưa tự cập nhật được ('+((r&&r.err)||'lỗi')+'). Đang mở trang tải về.');
+      D.openUrl('https://honggame.store/hongsubpc');
+    });
+  };
+  btn.addEventListener('click',window.hsUpdateNow);
+  if(D.onUpdateProgress) D.onUpdateProgress(function(p){ if(busy) btn.textContent='Đang tải bản mới '+Math.round(p*100)+'%'; });
+  if(D.onUpdate) D.onUpdate(show);
+  D.update().then(show).catch(function(){});
+  setInterval(function(){ D.update().then(show).catch(function(){}); },15*60e3);
 })();
