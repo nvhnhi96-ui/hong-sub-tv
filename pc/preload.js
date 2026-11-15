@@ -4,18 +4,43 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-let aiId = 0, aiQueue = [], aiPlaying = false, aiRate = 1, aiPitch = 1;
-function aiNext() {
-  if (aiPlaying || !aiQueue.length) return;
-  const m = aiQueue.shift(); aiPlaying = true;
-  audio = new Audio('data:audio/wav;base64,' + m.wav);
-  /* each character can have its own pitch: play a little faster/slower without keeping the pitch */
-  audio.preservesPitch = aiPitch === 1; audio.playbackRate = aiRate * aiPitch;
-  const done = () => { aiPlaying = false; audio = null; aiNext(); };
-  audio.onended = done; audio.onerror = done;
-  audio.play().catch(done);
+/* Read-aloud lines play one after another: a new subtitle waits for the one being read instead of cutting it off.
+   If reading falls behind, waiting lines are read a little faster and only the oldest waiting line is dropped. */
+const lines = []; let cur = null;
+function stopAll() {
+  seq++; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } audio = null; }
+  if (cur && cur.ai) ipcRenderer.send('aiv-stop');
+  cur = null; lines.length = 0;
 }
-ipcRenderer.on('aiv-audio', (e, m) => { if (m.type !== 'audio' || m.id !== aiId) return; aiQueue.push(m); aiNext(); });
+function finish(id) { if (cur && cur.id === id) { cur = null; audio = null; startNext(); } }
+function playPart() {
+  if (!cur || cur.playing) return;
+  const p = cur.parts.shift();
+  if (!p) { if (cur.ended) finish(cur.id); return; }
+  cur.playing = true; const my = cur.id, c = cur;
+  audio = new Audio('data:audio/wav;base64,' + p.wav);
+  if (c.ai) { audio.preservesPitch = c.pitch === 1; audio.playbackRate = c.rate * c.pitch; }
+  else if (c.pitch !== 1 || c.boost !== 1) { audio.preservesPitch = c.pitch === 1; audio.playbackRate = c.pitch * c.boost; }
+  const done = () => { if (!cur || cur.id !== my) return; cur.playing = false; audio = null; if (p.last) finish(my); else playPart(); };
+  audio.onended = done; audio.onerror = done; audio.play().catch(done);
+}
+function startNext() {
+  if (cur || !lines.length) return;
+  const L = lines.shift(), my = ++seq;
+  cur = { id: my, ai: L.ai, parts: [], playing: false, ended: false, rate: L.rate * L.boost, pitch: L.pitch, boost: L.boost };
+  if (L.ai) { ipcRenderer.send('aiv-speak', { id: my, text: L.text, voice: L.voice }); return; }
+  ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
+    if (!cur || cur.id !== my) return;
+    if (!res || !res.wav) { finish(my); return; }
+    cur.parts.push({ wav: res.wav, last: true }); playPart();
+  }).catch(() => finish(my));
+}
+ipcRenderer.on('aiv-audio', (e, m) => {
+  if (!cur || m.id !== cur.id) return;
+  if (m.type === 'error') { cur.ended = true; if (!cur.playing) playPart(); return; }
+  if (m.type !== 'audio') return;
+  cur.parts.push({ wav: m.wav, last: !!m.last }); if (m.last) cur.ended = true; playPart();
+});
 
 contextBridge.exposeInMainWorld('hsDesktop', {
   selftest,
@@ -47,21 +72,16 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   zonesReset: () => ipcRenderer.invoke('zones-reset'),
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
-  speak: async (text, voice, rate, pitch) => {
-    const my = ++seq;
-    if (audio) { audio.pause(); audio = null; }
-    aiQueue = []; aiPlaying = false; if (aiId) { ipcRenderer.send('aiv-stop'); aiId = 0; }
-    if (!text) return;
-    if (String(voice || '').startsWith('ai:')) {             /* AI voice: sentences arrive one by one and play in order */
-      aiId = my; aiRate = rate || 1; aiPitch = pitch || 1; aiPlaying = false;
-      ipcRenderer.send('aiv-speak', { id: my, text, voice: String(voice).slice(3) });
-      return;
+  /* queue=true for subtitles (wait for the line being read), false for samples and tests (cut in right away) */
+  speak: async (text, voice, rate, pitch, queue) => {
+    if (!text) { stopAll(); return; }
+    const v = String(voice || ''), L = { text, ai: v.startsWith('ai:'), voice: v.startsWith('ai:') ? v.slice(3) : v, rate: rate || 1, pitch: pitch || 1, boost: 1 };
+    if (!queue) stopAll();
+    else {
+      if (lines.length >= 2) lines.splice(0, lines.length - 1);      /* far behind: drop the oldest waiting line */
+      if (cur || lines.length) L.boost = lines.length ? 1.25 : 1.12;   /* behind: read the waiting line a bit faster */
     }
-    const res = await ipcRenderer.invoke('speak', text, voice, rate);
-    if (my !== seq || !res || !res.wav) return;
-    audio = new Audio('data:audio/wav;base64,' + res.wav);
-    if (pitch && pitch !== 1) { audio.preservesPitch = false; audio.playbackRate = pitch; }
-    audio.play().catch(() => {});
+    lines.push(L); startNext();
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
   aiv: {

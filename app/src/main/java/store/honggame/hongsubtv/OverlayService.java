@@ -17,6 +17,8 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import java.util.concurrent.atomic.AtomicInteger;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -57,6 +59,10 @@ public class OverlayService extends Service {
     private Thread poller;
     private TextToSpeech tts;
     private boolean ttsReady;
+    /* lines waiting to be read: a new line waits for the one being read, unless two are already waiting */
+    private final AtomicInteger ttsPending = new AtomicInteger();
+    private int ttsSeq;
+    private void ttsDone() { if (ttsPending.decrementAndGet() < 0) ttsPending.set(0); }
     private LanServer lan;
     private final Runnable hideRunnable = () -> { if (box != null) box.setVisibility(View.GONE); };
 
@@ -79,6 +85,12 @@ public class OverlayService extends Service {
             if (status == TextToSpeech.SUCCESS) {
                 int r = tts.setLanguage(new Locale("vi", "VN"));
                 ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String id) { }
+                    @Override public void onDone(String id) { ttsDone(); }
+                    @Override public void onError(String id) { ttsDone(); }
+                    @Override public void onStop(String id, boolean interrupted) { ttsDone(); }
+                });
             }
         });
         startPolling();
@@ -215,8 +227,11 @@ public class OverlayService extends Service {
             box.setVisibility(View.VISIBLE);
             main.removeCallbacks(hideRunnable);
             main.postDelayed(hideRunnable, holdMs);
-            if (speakIt && prefs.speak() && ttsReady) {
-                tts.speak(vi, TextToSpeech.QUEUE_FLUSH, null, "line");
+            if (speakIt && ttsReady) {
+                boolean behind = ttsPending.get() >= 3;
+                if (behind) ttsPending.set(0);
+                ttsPending.incrementAndGet();
+                tts.speak(vi, behind ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null, "line" + (++ttsSeq));
             }
         });
     }
@@ -233,14 +248,17 @@ public class OverlayService extends Service {
         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
         if (changed) main.post(this::applyStyle);
         String kind = j.optString("kind", "sub");
-        if (kind.equals("hello")) { /* nothing to show */ }
+        // Hóng Sub on the computer says whether the TV reads aloud (off, or read on the computer instead)
+        boolean read = j.has("speak") ? j.optBoolean("speak", false) : prefs.speak();
+        if (j.has("speak") && !read && tts != null) { tts.stop(); ttsPending.set(0); }
+        if (kind.equals("hello") || kind.equals("ctl")) { /* nothing to show */ }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
             if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
         }
         else if (!vi.isEmpty()) {
             long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
-            showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, true);
+            showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, read);
         }
     }
 

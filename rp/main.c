@@ -4,7 +4,7 @@
 //   hongsub-rp regist <host> <ps5 0|1> <psn_account_id_base64> <pin>
 //       prints one JSON line: {"ok":true,"regist_key":"<b64>","morning":"<b64>","nickname":"...","mac":"..."}
 //
-//   hongsub-rp stream <host> <ps5 0|1> <regist_key_b64> <morning_b64> <res 360|540|720|1080> <fps 30|60>
+//   hongsub-rp stream <host> <ps5 0|1> <regist_key_b64> <morning_b64> <res 360|540|720|1080> <fps 30|60> [bitrate kbps]
 //       stdout: binary packets  [u8 type][u32 length LE][payload]
 //         1 = video sample (H.264 Annex B), payload: [u8 flags bit0=recovered][i32 frames_lost LE][data]
 //         2 = audio header JSON  3 = audio packet (Opus)  9 = JSON event
@@ -265,6 +265,7 @@ static int cmd_stream(int argc, char **argv)
 	ChiakiVideoResolutionPreset rp = res >= 1080 ? CHIAKI_VIDEO_RESOLUTION_PRESET_1080p : res >= 720 ? CHIAKI_VIDEO_RESOLUTION_PRESET_720p : res >= 540 ? CHIAKI_VIDEO_RESOLUTION_PRESET_540p : CHIAKI_VIDEO_RESOLUTION_PRESET_360p;
 	chiaki_connect_video_profile_preset(&ci.video_profile, rp, fps >= 60 ? CHIAKI_VIDEO_FPS_PRESET_60 : CHIAKI_VIDEO_FPS_PRESET_30);
 	ci.video_profile.codec = CHIAKI_CODEC_H264; // decoded by the app with WebCodecs
+	if(argc >= 9) { int br = atoi(argv[8]); if(br >= 2000 && br <= 60000) ci.video_profile.bitrate = br; } // kbps: sharper picture on a good home network
 	ci.video_profile_auto_downgrade = true;
 	ci.enable_keyboard = false;
 	ci.enable_dualsense = false;

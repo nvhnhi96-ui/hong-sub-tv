@@ -286,6 +286,7 @@ body:not(.desk) .dk-only{display:none!important}
               <div class="dk-quick">
                 <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
                 <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
               </div>
@@ -371,7 +372,7 @@ body:not(.desk) .dk-only{display:none!important}
               <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
               <div class="dk-set">
                 <label class="lab" for="hsPsQ">Chất lượng hình</label>
-                <select class="hs-in" id="hsPsQ"><option value="1080/60">1080p, 60 hình/giây (PS5)</option><option value="720/60">720p, 60 hình/giây</option><option value="540/30">540p, 30 hình/giây (mạng yếu)</option></select>
+                <select class="hs-in" id="hsPsQ"><option value="1080/60/30000">1080p, 60 hình/giây, nét cao (30 Mbps, nên cắm dây mạng)</option><option value="1080/60/15000">1080p, 60 hình/giây, thường (15 Mbps)</option><option value="720/60/10000">720p, 60 hình/giây</option><option value="540/30/6000">540p, 30 hình/giây (mạng yếu)</option></select>
               </div>
             </div>
           </div>
@@ -534,6 +535,11 @@ body:not(.desk) .dk-only{display:none!important}
             <h2>Đọc to phụ đề</h2>
             <label class="hs-sw dk-sw">Đọc to phụ đề tiếng Việt <input type="checkbox" id="hsSpeak" checked></label>
             <div class="dk-set">
+              <label class="lab" for="hsSpeakWhere">Đọc ở</label>
+              <select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng của TV)</option><option value="both">Cả máy tính và TV</option></select>
+              <p class="hs-note">Khi đã nối TV: chọn đọc trên máy tính, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.</p>
+            </div>
+            <div class="dk-set">
               <label class="lab" for="hsVoice">Giọng đọc</label>
               <div class="hs-row" style="flex-wrap:nowrap"><select class="hs-in" id="hsVoice" style="flex:1;min-width:0"></select><button class="hs-btn" id="hsVoiceTest" type="button">Nghe thử</button></div>
               <p class="hs-note">"Tự chọn" dùng giọng nam hoặc nữ theo nhân vật đang nói. Chọn riêng giọng từng nhân vật ở trang Nhân vật.</p>
@@ -561,6 +567,7 @@ body:not(.desk) .dk-only{display:none!important}
             <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
+            <label class="hs-sw dk-sw">Đè chữ Việt lên phụ đề gốc trên hình <input type="checkbox" id="hsCover" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
             <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">

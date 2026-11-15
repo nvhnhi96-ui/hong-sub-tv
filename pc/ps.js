@@ -202,10 +202,11 @@ function setup(opts) {
     if (!fs.existsSync(helperPath())) return { ok: false, err: 'missing' };
     if (sp) { const old = sp; sp = null; try { old.stdin.write('q\n'); } catch (e) { /* ignore */ } setTimeout(() => { try { old.kill(); } catch (e) { /* ignore */ } }, 3000); }
     const res = String((o && o.res) || (h.ps5 ? 1080 : 720)), fps = String((o && o.fps) || 60);
-    const p = spawn(helperPath(), ['stream', h.addr, h.ps5 ? '1' : '0', h.regist_key, h.morning, res, fps], { windowsHide: true });
+    const br = String((o && o.br) || '');
+    const p = spawn(helperPath(), ['stream', h.addr, h.ps5 ? '1' : '0', h.regist_key, h.morning, res, fps].concat(br ? [br] : []), { windowsHide: true });
     sp = p; buf = Buffer.alloc(0);
     let errTail = '';
-    if (log) log('rp: stream ' + h.addr + ' ps5=' + (h.ps5 ? 1 : 0) + ' ' + res + 'p' + fps);
+    if (log) log('rp: stream ' + h.addr + ' ps5=' + (h.ps5 ? 1 : 0) + ' ' + res + 'p' + fps + (br ? ' ' + br + 'kbps' : ''));
     p.stdout.on('data', (d) => {
       if (sp !== p) return; // an older session that is closing: ignore what it still sends
       buf = buf.length ? Buffer.concat([buf, d]) : d;

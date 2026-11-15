@@ -257,7 +257,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     o.addEventListener('change',pull); o.addEventListener('hs-speak',pull); pull();
   }
   function chip(){ var on=$('hsSpeak').checked; $('dkSpeakChip').setAttribute('aria-pressed',on?'true':'false'); $('dkSpeakTx').textContent='Đọc phụ đề: '+(on?'bật':'tắt'); }
-  mirror('dkQSpeak','hsSpeak',chip); mirror('dkQOvl','dkOvl'); mirror('dkQCast','hsCastAuto'); mirror('dkQFs','hsFsAuto');
+  mirror('dkQSpeak','hsSpeak',chip); mirror('dkQOvl','dkOvl'); mirror('dkQCast','hsCastAuto'); mirror('dkQCover','hsCover'); mirror('dkQFs','hsFsAuto');
   $('dkSpeakChip').addEventListener('click',function(){ A.setSpeak(!$('hsSpeak').checked); chip(); });
   $('hsSpeak').addEventListener('hs-speak',chip); $('hsSpeak').addEventListener('change',chip); chip();
   $('dkNow').addEventListener('click',function(){ A.now(); });

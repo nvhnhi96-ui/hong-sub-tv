@@ -18,7 +18,7 @@ shutil.copy(root / 'desk.js', root / 'app' / 'desk.js')
 # every element the engine looks up must exist in the desktop layout
 ids = set(re.findall(r"\$\('([A-Za-z0-9_]+)'\)", engine)) | set(re.findall(r"getElementById\('([A-Za-z0-9_]+)'\)", engine))
 have = set(re.findall(r'id="([^"]+)"', page))
-missing = sorted(i for i in ids if i not in have and i not in ('vi', 'en', 'hsPsIn', 'hsPsOut', 'hsPsPass', 'hsPsPassGo', 'hsCastClear'))
+missing = sorted(i for i in ids if i not in have and i not in ('vi', 'en', 'hsPsIn', 'hsPsOut', 'hsPsPass', 'hsPsPassGo', 'hsCastClear', 'hsCoverBox'))
 if missing:
     raise SystemExit('desktop layout is missing ids: ' + ', '.join(missing))
 ocr = root / 'app' / 'ocr'
