@@ -309,7 +309,7 @@ function hello(){ xhr('POST',RELAY+'push',{room:P.code+'T',kind:'hello',vi:'tv'}
 function alive(){ if(!document.hidden) xhr('POST',RELAY+'push',{room:P.code+'T',kind:'alive',vi:'tv'},function(){}); }
 setInterval(alive,20000);
 /* the computer also sees the TV through its home-network questions; this covers the quiet minutes */
-setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
+setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code+'&ver='+VERSION,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
 /* newer senders list every message after the last one seen; older ones only send the latest */
 function takeAll(j,after){
   if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(it); }); return; }
@@ -364,7 +364,7 @@ function ipAsk(){
 ipAsk(); setTimeout(function(){ if(!myIp){ var el=$('ip'); if(el) el.textContent='mở Hóng Sub trên máy tính để thấy IP'; } },6000);
 function lanPoll(){
   if(!packaged||!P.pc){ setTimeout(lanPoll,5000); return; }
-  var x=new XMLHttpRequest(), url='http://'+P.pc+'/sub?code='+P.code+'&since='+lanSeq+'&t='+Date.now();
+  var x=new XMLHttpRequest(), url='http://'+P.pc+'/sub?code='+P.code+'&ver='+VERSION+'&since='+lanSeq+'&t='+Date.now();
   x.open('GET',url,true); x.timeout=20000;
   x.onload=function(){
     var j=null; try{ j=JSON.parse(x.responseText); }catch(e){}

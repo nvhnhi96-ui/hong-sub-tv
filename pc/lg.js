@@ -99,6 +99,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
   let lanPort = 0;
   const boxes = new Map();            // code -> { seq, msg, waiters: [] }
   const seen = new Map();             // code -> time the TV last said it is open
+  const vers = new Map();             // code -> build of the TV app
   const box = (code) => { if (!boxes.has(code)) boxes.set(code, { seq: 0, msg: null, items: [], waiters: [] }); return boxes.get(code); };
   function reply(res, code, obj) {
     res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Cache-Control': 'no-store' });
@@ -112,6 +113,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
     if (req.method === 'OPTIONS') { reply(res, 204, {}); return; }
     if (u.pathname === '/ping') { reply(res, 200, { app: 'hongsub-pc', ok: true }); return; }
     if (!/^[A-Z0-9]{4,8}$/.test(code)) { reply(res, 400, { ok: false }); return; }
+    const ver = String(u.searchParams.get('ver') || '').slice(0, 20); if (ver) vers.set(code, ver);   /* which build of the TV app is running */
     if (u.pathname === '/alive') { seen.set(code, Date.now()); reply(res, 200, { ok: true }); return; }
     if (u.pathname === '/tts') { ttsServe(res, u.searchParams.get('q')); return; }
     if (u.pathname === '/sub') {
@@ -168,14 +170,17 @@ function setup({ ipcMain, app, net, getWin, log }) {
 
   const launchCmd = (code) => { const pc = myAddr(cfg().ip); return LUNA + " -n 1 'luna://com.webos.applicationManager/launch' '" + JSON.stringify({ id: APP_ID, params: code ? Object.assign({ code }, pc ? { pc } : {}) : {} }) + "'"; };
 
-  async function install(ip, pass, code) {
+  /* saved: update the app with the key kept from the first install (no passphrase, no Key Server needed) */
+  async function install(ip, pass, code, saved) {
+    if (saved) { const k = cfg(); ip = k.ip; pass = k.pass; if (!k.key) return { ok: false, err: 'no-tv' }; }
     ip = String(ip || '').trim(); pass = String(pass || '').trim().toUpperCase();
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return { ok: false, err: 'Nhập địa chỉ IP của TV LG (ví dụ 192.168.1.20).' };
     let c = null;
     try {
       progress('Đang lấy khóa từ TV...');
       let key;
-      try { key = await getKey(ip); } catch (e) { return { ok: false, err: 'Không lấy được khóa từ TV. Trên TV mở app Developer Mode, kiểm tra Dev Mode Status đang bật và bật Key Server, rồi thử lại.' }; }
+      if (saved) key = cfg().key;
+      else try { key = await getKey(ip); } catch (e) { return { ok: false, err: 'Không lấy được khóa từ TV. Trên TV mở app Developer Mode, kiểm tra Dev Mode Status đang bật và bật Key Server, rồi thử lại.' }; }
       progress('Đang kết nối với TV...');
       try { c = await connect(ip, key, pass); } catch (e) {
         const m = String(e && e.message || e);
@@ -219,6 +224,8 @@ function setup({ ipcMain, app, net, getWin, log }) {
   }
 
   ipcMain.handle('lg-push', (e, code, msg) => push(code, msg));
+  ipcMain.handle('lg-ver', (e, code) => vers.get(String(code || '').toUpperCase()) || '');
+  ipcMain.handle('lg-update', (e, code) => install('', '', code, true));
   ipcMain.handle('lg-seen', (e, code) => seen.get(String(code || '').toUpperCase()) || 0);
   ipcMain.handle('lg-addr', () => myAddr(cfg().ip));
   ipcMain.handle('lg-find', () => find());

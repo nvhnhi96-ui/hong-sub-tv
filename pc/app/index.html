@@ -2261,6 +2261,13 @@ function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp===
 function tvListen(){
   var ip=tvIp(), c=tvCode();
   if(S.tvType==='lg'&&D&&D.lg&&D.lg.seen&&c.length>=4) D.lg.seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
+  /* the TV LG runs an older Hóng Sub app: update it with the key kept from the first install, once per start */
+  if(S.tvType==='lg'&&D&&D.lg&&D.lg.ver&&D.lg.update&&c.length>=4&&!S.lgUpd&&Date.now()-(S.tvLanSeen||0)<20000&&S.appVer)
+    D.lg.ver(c).then(function(v){
+      if(S.lgUpd||v===S.appVer) return;
+      S.lgUpd=true; log('app trên TV LG là bản '+(v||'cũ')+', đang cập nhật lên '+S.appVer); status('busy','Đang cập nhật app Hóng Sub trên TV LG...');
+      D.lg.update(c).then(function(r){ log(r&&r.ok?'đã cập nhật app trên TV LG':'cập nhật app TV LG chưa được: '+((r&&r.err)||'')); status(S.running?'run':'idle',r&&r.ok?'Đã cập nhật app trên TV LG':'Chưa cập nhật được app trên TV LG, vào Kết nối TV bấm Cài lại'); });
+    }).catch(function(){});
   if(ip){
     D.tv.ping(ip).then(function(r){
       if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; tvLan(true);
@@ -2274,6 +2281,7 @@ function tvListen(){
   }).catch(function(){});
   later(tvListen,4000);
 }
+if(D&&D.version) D.version().then(function(v){ S.appVer=String(v||''); }).catch(function(){});
 if(D&&D.tv){
   $('hsTvIp').value=load('tvip','');
   $('hsTvFind').addEventListener('click',function(){ tvFindUi(false); });
@@ -2313,6 +2321,31 @@ function similar(a,b){a=norm(a);b=norm(b); if(!a||!b) return false; if(a===b) re
   var bg=function(s){ var o={}; for(var i=0;i<s.length-1;i++){ var k=s.substr(i,2); o[k]=(o[k]||0)+1; } return o; }, P2=bg(a2), Q2=bg(b2), h2=0;
   for(var k in P2) if(Q2[k]) h2+=Math.min(P2[k],Q2[k]);
   return 2*h2/(a2.length+b2.length-2)>.86;}
+/* how alike two lines are, by letter pairs (spaces ignored): 1 = the same */
+function dice(a,b){
+  a=norm(a).replace(/ /g,''); b=norm(b).replace(/ /g,''); if(!a||!b) return 0; if(a===b) return 1;
+  if(a.length<2||b.length<2) return 0;
+  var o={}, h=0, i, k; for(i=0;i<a.length-1;i++){ k=a.substr(i,2); o[k]=(o[k]||0)+1; }
+  for(i=0;i<b.length-1;i++){ k=b.substr(i,2); if(o[k]){ o[k]--; h++; } }
+  return 2*h/(a.length+b.length-2);
+}
+/* the reader saw the line already on screen again: misread letters ("Euang, the SacredDiyiny"),
+   or only part of it while it fades in or out ("The Scriptu"). A longer line that adds words is a new line. */
+function sameLine(a,b){
+  if(!a||!b) return false;
+  if(similar(a,b)||dice(a,b)>=0.72) return true;
+  var A=norm(a).split(' ').filter(function(w){return w.length>1;}), B=norm(b).split(' ').filter(function(w){return w.length>1;});
+  if(!A.length||A.length>B.length) return false;
+  var Bs=B.join(' '), hit=A.filter(function(w){ return Bs.indexOf(w)>=0; }).length;
+  return norm(a).replace(/ /g,'').length>=6&&hit/A.length>=0.7;
+}
+/* Vietnamese without tone marks, as the reader returns the console's own menus when the PS5 is set to Vietnamese */
+var VI_SYL=' cua ban va cac khong duoc nhung cho mot nay tren voi hoac dung bat dau tuy chinh thiet bi du lieu tro choi giao dien thong bao man hinh am thanh hoat dong be nho cai dat moi trong ung tiet kiem dien tin lenh giong noi phat song chuong trinh da co meo de dang su tiep tong cong danh hieu ';
+function viPlain(s){
+  var w=norm(s).split(' ').filter(function(x){return x.length>1;}); if(w.length<3) return false;
+  var n=w.filter(function(x){ return VI_SYL.indexOf(' '+x+' ')>=0; }).length;
+  return n/w.length>=0.45;
+}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function show(res){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
@@ -2675,14 +2708,16 @@ function takeResult(res,seq,raw){
   res=splitSpeaker(res,raw);
   if(!res||!res.en||!res.vi){ coverBack(); return; }
   if(similar(res.en,S.lastEn)){ coverBack(); return; }
+  var rawT=raw||res.en;
+  if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return; }
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return; } /* an older line finished late: keep it in history only */
-  S.shownSeq=seq; S.lastEn=res.en; show(res);
+  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.lastTm=!!res._tm; show(res);
 }
 /* ---- translating one line of text (from the on-device reader) ---- */
 S.q=[]; S.qActive=0; S.ocrBusy=false; S.ocrMask=null; S.cand=null; S.forceOcr=false;
 var QMAX=3, ocv=document.createElement('canvas'), ocx2=ocv.getContext('2d');
 function countFree(){ if(S.use.d!==today()) S.use={d:today(),k:{}}; S.use.k.free=(S.use.k.free||0)+1; save('use',S.use); keyStats(); }
-S.busyTexts=[]; S.trCache={}; S.trCacheN=[];
+S.busyTexts=[]; S.trCache={}; S.trCacheN=[]; S.emptyTx={};
 /* ---------- shared translation store: every line already translated for a game, by anyone using Hóng Sub ----------
    When the game is chosen, its lines are fetched from honggame.store. A line that is already there shows at once,
    without asking the AI (and without using the player's quota). New translations are added for the next player. */
@@ -2721,10 +2756,10 @@ async function tmLoad(name){
 function tmFind(text){
   if(!S.tm.n) return null;
   var k=trKey(text), e=S.tm.map[k];
-  if(!e&&k.length>=12){
-    var b=Math.round(k.length/6);
-    for(var d=-1;d<=1&&!e;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>5000) continue;
-      for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(c&&similar(c.en,text)){ e=c; break; } } }
+  if(!e&&k.length>=10){
+    var b=Math.round(k.length/6), best=0, need=k.length>=18?0.78:0.86;
+    for(var d=-2;d<=2;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>6000) continue;
+      for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(!c) continue; var sc=dice(c.en,text); if(sc>best){ best=sc; if(sc>=need) e=c; } } }
   }
   if(!e) return null;
   S.tm.hits++;
@@ -2794,7 +2829,8 @@ function tmUi(){
 
 function trKey(t){ return norm(t).replace(/ /g,''); }
 function enqueue(text){
-  if(S.busyTexts.some(function(x){return similar(x,text);})||S.q.some(function(j){return similar(j.text,text);})){ S.saved++; return; }
+  if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
+  var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
   S.q.push({seq:++S.seq,text:text});
   if(S.q.length>4) S.q.splice(0,S.q.length-4);           /* far behind: keep the newest lines */
   pump();
@@ -2815,6 +2851,7 @@ async function translateText(j){
     else if((res=tmFind(j.text))){ log('có sẵn trong kho dịch chung (0ms)'); tmUi(); }
     else{
       res=await askText(textPrompt(j.text),j.text);
+      if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
@@ -2885,7 +2922,7 @@ async function sendImage(seq,probe){
     var res=await ask(subPrompt(),jpeg(.82),SCHEMA_SUB,SHAPE_SUB);
     S.perf.t=Math.round(performance.now()-t1); S.perf.o=0;
     log('dịch ảnh ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(probe){ if(res&&res.vi){ S.imgEmpty=0; } else { S.imgEmpty=(S.imgEmpty||0)+1; S.imgNext=Date.now()+Math.min(60000,5000*Math.pow(2,S.imgEmpty)); } }
+    if(probe){ if(res&&res.vi){ S.imgEmpty=0; } else { S.imgEmpty=(S.imgEmpty||0)+1; S.imgNext=Date.now()+Math.min(240000,15000*Math.pow(2,S.imgEmpty)); } }
     takeResult(res,seq,null); runStatus(); perfTag();
   }catch(e){
     log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
@@ -2912,12 +2949,18 @@ async function ocrStep(m,force){
     S.cand=null;
     var nowI=Date.now();
     if(++OCR.miss>=3&&!noKey&&m.ink>MW*MH*0.02&&!S.inflight&&nowI>=(S.imgNext||0)&&(!S.imgMask||maskDiff(m,S.imgMask)>0.2)){
-      OCR.miss=0; S.imgMask=m; S.imgNext=nowI+4000; log('bộ đọc chữ không thấy chữ, gửi ảnh cho AI'); sendImage(0,true);
+      OCR.miss=0; S.imgMask=m; S.imgNext=nowI+15000*Math.pow(2,Math.min(4,S.imgEmpty||0)); log('bộ đọc chữ không thấy chữ, gửi ảnh cho AI'); sendImage(0,true);
     }
     return;
   }
-  OCR.miss=0; S.imgEmpty=0; S.imgNext=0;
+  ocrTake(txt,force);
+}
+/* a line the reader found in the subtitle area: new, complete, worth translating? */
+function ocrTake(txt,force){
+  OCR.miss=0;
   if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
+  if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; return; }   /* the line on screen, read again */
+  if(viPlain(txt)){ S.cand=null; S.lastOcr=txt; return; }                          /* the console's own menus in Vietnamese */
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*2;
@@ -3677,7 +3720,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
