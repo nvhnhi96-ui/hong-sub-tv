@@ -76,6 +76,10 @@ html,body{margin:0;background:#ECEEF1}
 .hs-zrow select{width:100%!important;padding:6px 8px!important;font-size:13.5px}
 .hs-zrow .hs-btn{padding:6px 10px;font-size:13px}
 .hs-zon{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600}
+.hs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.hs-chip{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--line);background:var(--sunk);color:inherit;font:inherit;font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer}
+.hs-chip small{font-weight:500;color:var(--muted);font-size:11.5px}
+.hs-chip:hover,.hs-chip:focus-visible{border-color:var(--brand)}
 .hs-zout{flex-basis:100%;font-size:13.5px;background:var(--sunk);border-radius:6px;padding:6px 8px;line-height:1.45}
 @keyframes hsScan{50%{border-color:rgba(255,196,0,.4)}}
 .hs-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#fff}
@@ -1184,8 +1188,9 @@ function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>
 async function zTranslate(z,text){
   var k=zKey(text);
   if(S.zcache[k]) return {vi:S.zcache[k],via:'nhớ'};
+  var shared=S.tm.zmap[trKey(text)]; if(shared){ zCache(k,shared); return {vi:shared,via:'kho chung'}; }
   var r=await askText(zPrompt(z,text),text,{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}',true);
-  var vi=(r&&r.vi||'').trim(); if(vi) zCache(k,vi);
+  var vi=(r&&r.vi||'').trim(); if(vi){ zCache(k,vi); tmAdd('z',text,vi,'','',S.via); }
   return {vi:vi,via:S.via};
 }
 /* the extra areas are checked about once a second, after the subtitle (which always goes first) */
@@ -2211,6 +2216,115 @@ S.q=[]; S.qActive=0; S.ocrBusy=false; S.ocrMask=null; S.cand=null; S.forceOcr=fa
 var QMAX=3, ocv=document.createElement('canvas'), ocx2=ocv.getContext('2d');
 function countFree(){ if(S.use.d!==today()) S.use={d:today(),k:{}}; S.use.k.free=(S.use.k.free||0)+1; save('use',S.use); keyStats(); }
 S.busyTexts=[]; S.trCache={}; S.trCacheN=[];
+/* ---------- shared translation store: every line already translated for a game, by anyone using Hóng Sub ----------
+   When the game is chosen, its lines are fetched from honggame.store. A line that is already there shows at once,
+   without asking the AI (and without using the player's quota). New translations are added for the next player. */
+var TMAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/tm/';
+S.tm={g:'',name:'',map:{},zmap:{},bk:{},n:0,total:0,loading:false,hits:0,out:[],outT:0,err:''};
+S.played=load('played',{});
+function tmGame(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim().slice(0,80); }
+function tmShare(){ var c=$('hsTmShare'); return !c||c.checked; }
+function tmPutLocal(kind,en,vi,who,gd){
+  var k=trKey(en); if(k.length<2||!vi) return;
+  if(kind==='z'){ S.tm.zmap[k]=vi; return; }
+  if(!S.tm.map[k]){ S.tm.n++; var b=Math.round(k.length/6); (S.tm.bk[b]=S.tm.bk[b]||[]).push(k); }
+  S.tm.map[k]={en:en,vi:vi,who:who||'',gd:gd||''};
+}
+async function tmLoad(name){
+  var g=tmGame(name); if(g===S.tm.g&&(S.tm.loading||S.tm.n||S.tm.total===0&&S.tm.g)) return;
+  S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
+  tmUi(); if(g.length<2) return;
+  var my=S.tm; my.loading=true; tmUi();
+  try{
+    var since=0;
+    for(var page=0;page<12;page++){
+      var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(g)+'&since='+since,{cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var d=await r.json(); if(S.tm!==my) return;   /* the game was changed meanwhile */
+      if(d.total!=null) my.total=d.total;
+      (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); });
+      since=d.last||since; tmUi();
+      if(!d.more) break;
+    }
+    log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name);
+  }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
+  finally{ my.loading=false; if(S.tm===my) tmUi(); }
+}
+/* a line read now that is in the store: the same words, or almost (the reader missed a letter) */
+function tmFind(text){
+  if(!S.tm.n) return null;
+  var k=trKey(text), e=S.tm.map[k];
+  if(!e&&k.length>=12){
+    var b=Math.round(k.length/6);
+    for(var d=-1;d<=1&&!e;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>800) continue;
+      for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(c&&similar(c.en,text)){ e=c; break; } } }
+  }
+  if(!e) return null;
+  S.tm.hits++;
+  return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true};
+}
+function tmAdd(kind,en,vi,who,gd,via){
+  if(!S.tm.g||S.tm.g.length<2||!en||!vi) return;
+  tmPutLocal(kind,en,vi,who,gd);
+  if(!tmShare()) return;
+  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:via==='free'?1:2}});
+  if(S.tm.out.length>200) S.tm.out.splice(0,S.tm.out.length-200);
+  clearTimeout(S.tm.outT); S.tm.outT=setTimeout(tmFlush,S.tm.out.length>=20?500:6000);
+}
+async function tmFlush(){
+  var q=S.tm.out; if(!q.length) return;
+  var g=q[0].g, name=q[0].name, batch=q.filter(function(x){return x.g===g;}).slice(0,25);
+  try{
+    var r=await fetch(TMAPI+'add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:name,items:batch.map(function(x){return x.it;})})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    S.tm.out=S.tm.out.filter(function(x){ return batch.indexOf(x)<0; });
+    if(S.tm.out.length) S.tm.outT=setTimeout(tmFlush,1500);
+  }catch(e){ S.tm.outT=setTimeout(tmFlush,60000); }
+}
+window.addEventListener('pagehide',function(){ try{ var q=S.tm.out; if(!q.length||!navigator.sendBeacon) return; var g=q[0].g; navigator.sendBeacon(TMAPI+'add',new Blob([JSON.stringify({game:q[0].name,items:q.filter(function(x){return x.g===g;}).slice(0,25).map(function(x){return x.it;})})],{type:'application/json'})); }catch(e){} });
+/* games played on this device */
+function tmPlayed(){
+  var g=tmGame($('hsGame').value); if(g.length<2) return;
+  var p=S.played[g]||(S.played[g]={n:$('hsGame').value.trim(),c:0,t:0}); p.n=$('hsGame').value.trim(); p.c++; p.t=Date.now();
+  clearTimeout(S.playedT); S.playedT=setTimeout(function(){ save('played',S.played); tmPlayedUi(); },3000);
+}
+function tmPickGame(name){
+  var sel=$('hsPreset'), idx=-1;
+  PRESETS.forEach(function(p,i){ if(tmGame(p.name)===tmGame(name)) idx=i; });
+  if(idx>=0&&sel){ sel.value=String(idx); sel.dispatchEvent(new Event('change')); }
+  else{ $('hsGame').value=name; $('hsGame').dispatchEvent(new Event('change')); }
+  tmLoad(name);
+}
+function tmChips(box,list,label){
+  if(!box) return;
+  box.innerHTML=list.map(function(x,i){ return '<button type="button" class="hs-chip" data-i="'+i+'">'+esc(x.n)+'<small>'+esc(label(x))+'</small></button>'; }).join('');
+  box.querySelectorAll('button').forEach(function(b){ b.addEventListener('click',function(){ tmPickGame(list[+b.dataset.i].n); }); });
+}
+function tmPlayedUi(){
+  var list=Object.keys(S.played).map(function(k){return S.played[k];}).sort(function(a,b){return b.t-a.t;}).slice(0,12);
+  var box=$('hsPlayed'); if(!box) return;
+  if(!list.length){ box.innerHTML='<p class="hs-note">Chưa có. Game bạn dịch sẽ hiện ở đây để chọn lại nhanh.</p>'; return; }
+  tmChips(box,list,function(x){ return x.c>=1000?Math.round(x.c/100)/10+'k câu':x.c+' câu'; });
+}
+async function tmGamesUi(){
+  var box=$('hsTmGames'); if(!box) return;
+  try{ var r=await fetch(TMAPI+'games',{cache:'no-store'}); var d=await r.json();
+    var list=(d||[]).filter(function(x){return x.n>=20;}).slice(0,24).map(function(x){ return {n:x.name||x.g,c:x.n}; });
+    if(!list.length){ box.innerHTML='<p class="hs-note">Kho đang được góp dần, chưa có game nào nhiều câu.</p>'; return; }
+    tmChips(box,list,function(x){ return x.c>=1000?Math.round(x.c/100)/10+'k câu':x.c+' câu'; });
+  }catch(e){ box.innerHTML='<p class="hs-note">Chưa tải được danh sách. Kiểm tra mạng.</p>'; }
+}
+function tmUi(){
+  var el=$('hsTmState'); if(!el) return;
+  var T=S.tm, txt;
+  if(!T.g) txt='Chọn game để dùng kho dịch chung.';
+  else if(T.loading&&!T.n) txt='Đang tải câu dịch sẵn của '+T.name+'...';
+  else if(T.err&&!T.n) txt='Chưa tải được kho dịch chung ('+T.err+'). Vẫn dịch bình thường.';
+  else if(T.n) txt=T.name+': có sẵn '+T.n.toLocaleString('vi-VN')+' câu đã dịch. Câu nào có sẵn hiện ngay, không tốn lượt mã'+(T.hits?' (đã dùng '+T.hits+' câu)':'')+'.';
+  else txt=T.name+': chưa có câu nào. Bạn chơi trước, những câu bạn dịch sẽ giúp người chơi sau dịch nhanh hơn.';
+  el.textContent=txt;
+}
+
 function trKey(t){ return norm(t).replace(/ /g,''); }
 function enqueue(text){
   if(S.busyTexts.some(function(x){return similar(x,text);})||S.q.some(function(j){return similar(j.text,text);})){ S.saved++; return; }
@@ -2231,10 +2345,13 @@ async function translateText(j){
   try{
     var res=S.trCache[ck]?JSON.parse(JSON.stringify(S.trCache[ck])):null;
     if(res){ S.via=S.via||'gemini'; log('dịch lại câu đã có (0ms)'); }
+    else if((res=tmFind(j.text))){ log('có sẵn trong kho dịch chung (0ms)'); tmUi(); }
     else{
       res=await askText(textPrompt(j.text),j.text);
-      if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()]; }
+      if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
+        tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
+    if(res&&res.vi) tmPlayed();
     S.perf.t=Math.round(performance.now()-t1);
     if(S.via==='free') countFree();
     rememberSents(j.text);
@@ -2604,17 +2721,19 @@ function presetList(){
 function notesFor(n){var g=GAMES[gameKey(n)]; if(g&&g.notes) return g.notes; var p=presetOf(n); return p?p.notes:'';}
 function gameList(){ $('hsGameList').innerHTML=Object.keys(GAMES).map(function(k){return '<option value="'+esc(GAMES[k].name)+'"></option>';}).join(''); }
 $('hsGame').value=load('hsGame',''); $('hsNotes').value=load('hsNotes',''); gameList(); presetList(); styleLoad(); castUi();
+(function(){ var c=$('hsTmShare'); if(c){ var v=load('tmShare',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('tmShare',this.checked); }); }
+  tmLoad($('hsGame').value); tmPlayedUi(); tmGamesUi(); })();
 (async function(){ try{ var r=await fetch(PRESET_URL+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}); if(!r.ok) return; var d=await r.json();
   if(d&&d.games&&d.games.length){ PRESETS=d.games; presetList(); } }catch(e){} })();
 $('hsPreset').addEventListener('change',function(){
   if(this.value==='') return; var p=PRESETS[+this.value]; if(!p) return;
   $('hsGame').value=p.name; save('hsGame',p.name);
   $('hsNotes').value=notesFor(p.name); save('hsNotes',$('hsNotes').value); S.hist=[];
-  if(p.style&&!STY[castKey()]){ STY[castKey()]=p.style; save('styles',STY); } styleLoad(); castUi();
+  if(p.style&&!STY[castKey()]){ STY[castKey()]=p.style; save('styles',STY); } styleLoad(); castUi(); tmLoad(p.name);
   notesMsg('ok','Đã điền sẵn ghi chú cho '+p.name+'. Bấm Bắt đầu là dịch theo đúng nhân vật, xưng hô của game.');
 });
 $('hsGame').addEventListener('change',function(){
-  save('hsGame',this.value);
+  save('hsGame',this.value); tmLoad(this.value);
   $('hsNotes').value=notesFor(this.value); save('hsNotes',$('hsNotes').value); S.hist=[];
   var p=presetOf(this.value); $('hsPreset').value=p?String(PRESETS.indexOf(p)):'';
 });
@@ -3088,7 +3207,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
