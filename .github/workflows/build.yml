@@ -65,10 +65,18 @@ jobs:
           npx --yes -p @webos-tools/cli ares-package webos -o out
           cp out/*.ipk hong-sub-lg.ipk
           ls -la hong-sub-lg.ipk
+      - name: Build the Samsung (Tizen) app from the LG one
+        run: |
+          V=1.0.${{ github.run_number }}
+          python3 tizen/build.py "$V"
+          (cd tizen/app && zip -qr ../../hong-sub-samsung.wgt .)
+          ls -la hong-sub-samsung.wgt
       - uses: actions/upload-artifact@v4
         with:
           name: webos
-          path: hong-sub-lg.ipk
+          path: |
+            hong-sub-lg.ipk
+            hong-sub-samsung.wgt
 
   rp-helper:
     runs-on: windows-latest
@@ -256,9 +264,11 @@ jobs:
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
             - hong-sub-android.apk: điện thoại Android, dùng kèm app PS Remote Play.
             - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
+            - hong-sub-samsung.wgt: TV Samsung (Tizen), cài bằng Tizen Studio với chứng chỉ Samsung.
           files: |
             out/hong-sub-pc.exe
             out/hong-sub-tv.apk
             out/hong-sub-android.apk
             out/hong-sub-lg.ipk
+            out/hong-sub-samsung.wgt
           make_latest: true

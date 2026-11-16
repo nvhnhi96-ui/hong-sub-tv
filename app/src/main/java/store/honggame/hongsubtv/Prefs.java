@@ -50,6 +50,8 @@ final class Prefs {
     // look of the subtitle, set in Hóng Sub on the computer
     String color() { return sp.getString("col", "#FFFFFF"); }
     void color(String v) { sp.edit().putString("col", v).apply(); }
+    String font() { return sp.getString("font", "bevn"); }
+    void font(String v) { sp.edit().putString("font", v).apply(); }
     int bg() { return sp.getInt("bg", 80); }
     void bg(int v) { sp.edit().putInt("bg", Math.max(0, Math.min(100, v))).apply(); }
     int width() { return sp.getInt("wid", 86); }

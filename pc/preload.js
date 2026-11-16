@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   onRpExit: (cb) => ipcRenderer.on('rp-exit', () => cb()),
   use: (id) => ipcRenderer.invoke('use', id),
   sub: (p) => ipcRenderer.send('sub', p),
+  subPlace: (r) => ipcRenderer.send('sub-place', r),
   overlay: (cmd) => ipcRenderer.send('overlay', cmd),
   onOverlay: (cb) => ipcRenderer.on('overlay-state', (e, s) => cb(s)),
   onHotkey: (cb) => ipcRenderer.on('hotkey', (e, k) => cb(k)),

@@ -139,3 +139,16 @@ add_action('rest_api_init', function () {
     register_rest_route('hgs-sub/v1', '/tm/import', array('methods' => 'POST', 'callback' => 'hgs_tm_import',
         'permission_callback' => function () { return current_user_can('manage_options'); }));
 });
+
+// Hong Sub: duong dan ngan de go tren TV (Downloader tren Android TV, trinh duyet TV)
+add_action('template_redirect', function () {
+    $p = trim(strtolower(parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '', PHP_URL_PATH)), '/');
+    $rel = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/download/';
+    $go = array(
+        'tv'      => $rel . 'hong-sub-tv.apk',
+        'tvapp'   => $rel . 'hong-sub-tv.apk',
+        'samsung' => $rel . 'hong-sub-samsung.wgt',
+        'tvweb'   => home_url('/lg'),
+    );
+    if (isset($go[$p])) { wp_redirect($go[$p], 302); exit; }
+}, 0);

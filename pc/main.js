@@ -153,8 +153,23 @@ function rectAsk() {
   rectStart(); if (!rectProc || rectBusy) return;
   rectBusy = true; try { rectProc.stdin.write(m[1] + '\n'); } catch (e) { rectBusy = false; }
 }
+/* "Đè chữ Việt lên phụ đề gốc": the subtitle bar sits exactly over the game's own subtitle area */
+let subPlace = null;
+function applyPlace() {
+  if (!overlay || overlay.isDestroyed() || moveMode) return;
+  if (subPlace) {
+    const b = capBase();
+    overlay.setBounds({ x: Math.round(b.x + subPlace.x * b.width), y: Math.round(b.y + subPlace.y * b.height),
+      width: Math.max(120, Math.round(subPlace.w * b.width)), height: Math.max(40, Math.round(subPlace.h * b.height)) });
+    overlay.webContents.send('sub', { cover: true });
+  } else {
+    overlay.setBounds(overlayBounds());
+    overlay.webContents.send('sub', { cover: false });
+  }
+}
 /* windows the user did not place by hand follow the game window */
 function zonesFollow() {
+  applyPlace();
   for (const z of zoneWins.values()) {
     if (z.win.isDestroyed() || (cfg.zoneWins || {})[z.data.id]) continue;
     z.quiet = true; z.win.setBounds(zoneDefault(z.data)); setTimeout(() => { z.quiet = false; }, 300);
@@ -242,7 +257,7 @@ function fullShow(d) {
   fullData = d && d.items && d.items.length ? d : null;
   if (!fullData) { if (fullWin && !fullWin.isDestroyed()) { fullWin.webContents.send('full', null); fullWin.hide(); } return; }
   if (!fullWin || fullWin.isDestroyed()) fullMake();
-  const b = screen.getPrimaryDisplay().bounds; fullWin.setBounds(b);
+  const b = capBase(); fullWin.setBounds({ x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) });   /* the game picture: a whole screen or the PS Remote Play window */
   if (!fullWin.webContents.isLoading()) fullWin.webContents.send('full', fullData);
   if (!fullWin.isVisible()) fullWin.showInactive();
 }
@@ -304,7 +319,7 @@ function setMove(on) {
   } else {
     overlay.setIgnoreMouseEvents(true); overlay.setFocusable(false);
     for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(true); z.win.setFocusable(false); }
-    cfg.overlay = overlay.getBounds(); saveCfg();
+    if (!subPlace) { cfg.overlay = overlay.getBounds(); saveCfg(); } else applyPlace();   /* over the game's subtitle: its place comes from the subtitle area */
     if (!cfg.overlayHidden) overlay.showInactive();
   }
 }
@@ -622,6 +637,10 @@ function setupIpc() {
   ipcMain.handle('zones-panel', (e, on) => { cfg.zonesHidden = !on; saveCfg(); zonesVisible(); return true; });
   ipcMain.on('sub', (e, payload) => { if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload); });
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
+  ipcMain.on('sub-place', (e, r) => {
+    const ok = r && [r.x, r.y, r.w, r.h].every((v) => typeof v === 'number' && v >= 0 && v <= 1.01) && r.w > 0.02 && r.h > 0.02;
+    subPlace = ok ? { x: r.x, y: r.y, w: r.w, h: r.h } : null; applyPlace();
+  });
   ipcMain.handle('voices', async () => {
     const list = [];
     const pp = piperPaths(); if (pp.exe && pp.model) list.push({ name: VOICE_NAME, lang: 'vi-VN', id: 'hs:piper' });

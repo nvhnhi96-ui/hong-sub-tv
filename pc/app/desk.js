@@ -81,16 +81,19 @@ $('dkFree').checked=S.allowFree;
 $('dkFree').addEventListener('change',function(){ A.setFree(this.checked); });
 
 /* ---------- subtitle look ---------- */
-var ST=A.load('ovStyle',{color:'#FFFFFF',bg:74,width:80});
+var ST=A.load('ovStyle',{color:'#FFFFFF',bg:74,width:80,font:'bevn'}); if(!ST.font||!A.fonts[ST.font]) ST.font='bevn';
+(function(){ var sel=$('dkFont'); if(!sel) return;
+  sel.innerHTML=Object.keys(A.fonts).map(function(k){ return '<option value="'+k+'">'+A.fonts[k].n+'</option>'; }).join('');
+  sel.value=ST.font; sel.addEventListener('change',function(){ ST.font=sel.value; applyStyle(); }); })();
 function applyStyle(push){
   document.querySelectorAll('#dkColor button').forEach(function(b){ b.classList.toggle('on',b.dataset.c.toLowerCase()===ST.color.toLowerCase()); });
   $('dkBg').value=ST.bg; $('dkBgV').textContent=ST.bg+'%'; $('dkWidth').value=ST.width; $('dkWidthV').textContent=ST.width+'%';
   var prev=$('dkPrev').firstElementChild; prev.style.background='rgba(8,8,10,'+(ST.bg/100)+')';
-  $('dkPrevVi').style.color=ST.color; $('dkPrevVi').style.fontSize=Math.min(26,Math.round((+$('hsSize').value)*.75))+'px';
+  $('dkPrevVi').style.color=ST.color; A.fontLoad(ST.font); $('dkPrevVi').style.fontFamily=A.fonts[ST.font].css; $('hsVi').style.fontFamily=ST.font==='bevn'?'':A.fonts[ST.font].css; $('dkPrevVi').style.fontSize=Math.min(26,Math.round((+$('hsSize').value)*.75))+'px';
   $('dkPrevEn').style.display=$('hsShowEn').checked?'':'none';
   $('hsVi').style.color=ST.color==='#FFFFFF'?'':ST.color;
-  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100}});
   A.save('ovStyle',ST);
+  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100,family:A.fonts[ST.font].css,fontUrl:A.fontUrl(ST.font)}});
 }
 document.querySelectorAll('#dkColor button').forEach(function(b){ b.addEventListener('click',function(){ ST.color=b.dataset.c; applyStyle(); }); });
 $('dkBg').addEventListener('input',function(){ ST.bg=+this.value; applyStyle(); });
@@ -419,4 +422,25 @@ D.lg.state().then(function(st){
   /* when the computer app opens, open Hóng Sub on the TV too (TV must be on) */
   if(st.installed&&st.auto!==false&&!D.selftest&&A.tvType()==='lg') setTimeout(function(){ D.lg.launch(code()).then(function(){ if(A.tvState) A.tvState(); }); },6000);
 });
+})();
+
+/* ---------- how to put the TV app on each kind of TV ---------- */
+(function(){
+  var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDeskApi, m=$('hsTvGuide'); if(!m) return;
+  function tab(g){
+    m.querySelectorAll('.hs-tabs [data-g]').forEach(function(b){ b.setAttribute('aria-selected',b.dataset.g===g?'true':'false'); });
+    m.querySelectorAll('.hs-gd').forEach(function(d){ d.hidden=d.dataset.g!==g; });
+  }
+  function open(g){
+    var t=g||(A&&A.tvType&&A.tvType())||'android'; tab(t==='samsung'||t==='lg'||t==='web'?t:'android');
+    m.classList.add('open'); var x=$('hsTvGuideX'); if(x) x.focus();
+    if(D&&D.lg&&D.lg.addr) D.lg.addr().then(function(a){ var el=$('hsTvGuidePcIp'); if(el&&a) el.textContent=String(a).split(':')[0]; }).catch(function(){});
+  }
+  function close(){ m.classList.remove('open'); }
+  m.querySelectorAll('.hs-tabs [data-g]').forEach(function(b){ b.addEventListener('click',function(){ tab(b.dataset.g); }); });
+  $('hsTvGuideX').addEventListener('click',close);
+  m.addEventListener('click',function(e){ if(e.target===m) close(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&m.classList.contains('open')) close(); });
+  document.querySelectorAll('[data-tvguide]').forEach(function(b){ b.addEventListener('click',function(){ open(b.dataset.tvguide); }); });
+  window.hsTvGuide=open;
 })();

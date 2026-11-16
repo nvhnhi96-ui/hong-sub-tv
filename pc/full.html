@@ -13,15 +13,16 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
   window.hsDesktop.onFull(function(d){
     root.innerHTML='';
     if(!d||!d.items) return;
+    if(d.fontUrl&&!document.querySelector('link[href="'+d.fontUrl+'"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=d.fontUrl; document.head.appendChild(l); }
     var W=window.innerWidth, H=window.innerHeight;
     d.items.forEach(function(it){
       var el=document.createElement('div'); el.className='b';
-      var L=it.x*W, w=it.w*W; el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.minWidth=w+'px'; el.style.maxWidth=Math.max(w,Math.min(W-L,w*1.7+60))+'px'; el.style.minHeight=(it.h*H)+'px';
-      var f=Math.max(11,Math.round(it.lh*H*0.62)); el.style.fontSize=f+'px';
+      var L=it.x*W, w=Math.max(24,it.w*W); el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.minHeight=(it.h*H)+'px'; if(d.font) el.style.fontFamily=d.font;
+      var f=Math.max(10,Math.round(it.lh*H*0.7)); el.style.fontSize=f+'px';
       el.innerHTML=esc(it.vi).replace(/\n/g,'<br>');
       root.appendChild(el);
       /* Vietnamese is often longer: shrink until it fits about the space of the English */
-      var maxH=it.h*H*1.25+8; while(f>11&&el.scrollHeight>maxH){ f--; el.style.fontSize=f+'px'; }
+      var maxH=it.h*H*1.15+6; while(f>9&&(el.scrollHeight>maxH||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; }
     });
   });
 })();

@@ -226,6 +226,8 @@ public class OverlayService extends Service {
         final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(0.06, j.optDouble("w", 0.3)), h = Math.max(0.04, j.optDouble("h", 0.15));
         final int hold = j.optInt("hold", 0);
         final String zs = j.optString("zs", "m");
+        final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
+        final Typeface face = faceFor(j.optString("font", prefs.font()));
         main.post(() -> {
             if (zoneLayer == null) return;
             Runnable old = zoneOff.remove(id);
@@ -253,8 +255,13 @@ public class OverlayService extends Service {
             fl.topMargin = (int) (y * H);
             tv.setLayoutParams(fl);
             tv.setText(vi);
+            GradientDrawable zb = new GradientDrawable();
+            zb.setColor(Color.argb(Math.round(zbg * 2.55f), 8, 9, 12));
+            zb.setCornerRadius(dp(5));
+            tv.setBackground(zb);
+            tv.setTypeface(face);
             // as big as the area allows, smaller for long text
-            float cap = (zs.equals("s") ? 26 : zs.equals("l") ? 44 : 34) * (H / 1080f);
+            float cap = (zs.equals("xs") ? 20 : zs.equals("s") ? 26 : zs.equals("l") ? 44 : zs.equals("xl") ? 56 : 34) * (H / 1080f);
             int lines = vi.split("\n").length;
             float fit = Math.max(12f, Math.min(cap, bh / (float) lines * 0.62f));
             if (Build.VERSION.SDK_INT >= 26) {
@@ -269,6 +276,17 @@ public class OverlayService extends Service {
         });
     }
 
+    /** The typeface picked on the computer, as close as Android TV's own fonts allow. */
+    private static Typeface faceFor(String k) {
+        String fam = "sans-serif";
+        if ("notoserif".equals(k)) fam = "serif";
+        else if ("oswald".equals(k)) fam = "sans-serif-condensed";
+        else if ("quicksand".equals(k) || "nunito".equals(k)) fam = "sans-serif-medium";
+        return Typeface.create(fam, Typeface.BOLD);
+    }
+
+    private double[] cov = null;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
+
     private void applyStyle() {
         if (box == null) return;
         int size = prefs.textSize();
@@ -281,12 +299,29 @@ public class OverlayService extends Service {
         int col = Color.WHITE;
         try { col = Color.parseColor(prefs.color()); } catch (Exception ignored) { }
         viView.setTextColor(col);
+        viView.setTypeface(faceFor(prefs.font()));
         GradientDrawable bgd = new GradientDrawable();
         bgd.setColor(Color.argb(Math.round(prefs.bg() * 2.55f), 8, 8, 10));
         bgd.setCornerRadius(dp(10));
         box.setBackground(bgd);
-        lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
-        lp.y = dp(prefs.top() ? 36 : 46);
+        if (cov != null) {
+            // "Đè chữ Việt lên đúng chỗ phụ đề gốc": the box takes the original subtitle's place on the picture
+            DisplayMetrics dm = new DisplayMetrics();
+            wm.getDefaultDisplay().getRealMetrics(dm);
+            lp.gravity = Gravity.TOP | Gravity.LEFT;
+            lp.x = (int) (cov[0] * dm.widthPixels); lp.y = (int) (cov[1] * dm.heightPixels);
+            lp.width = (int) (cov[2] * dm.widthPixels); lp.height = Math.max(dp(30), (int) (cov[3] * dm.heightPixels));
+            viView.setMaxWidth(lp.width);
+            GradientDrawable cb = new GradientDrawable();
+            cb.setColor(Color.argb(Math.max(225, Math.round(prefs.bg() * 2.55f)), 8, 8, 10));
+            cb.setCornerRadius(dp(4));
+            box.setBackground(cb);
+            box.setGravity(Gravity.CENTER);
+        } else {
+            lp.width = WindowManager.LayoutParams.WRAP_CONTENT; lp.height = WindowManager.LayoutParams.WRAP_CONTENT; lp.x = 0; box.setGravity(Gravity.CENTER_HORIZONTAL);
+            lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
+            lp.y = dp(prefs.top() ? 36 : 46);
+        }
         try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
     }
 
@@ -332,6 +367,14 @@ public class OverlayService extends Service {
         boolean changed = false;
         if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
         if (j.has("sen") && j.optBoolean("sen", false) != prefs.showEn()) { prefs.showEn(j.optBoolean("sen", false)); }   // English line: set on the computer
+        if (j.has("cov")) {
+            JSONObject c = j.optJSONObject("cov");
+            double[] nc = c != null && c.optDouble("w", 0) > 0.02 && c.optDouble("h", 0) > 0.02
+                    ? new double[]{c.optDouble("x", 0), c.optDouble("y", 0), c.optDouble("w", 0), c.optDouble("h", 0)} : null;
+            if (!java.util.Arrays.equals(nc, cov)) { cov = nc; changed = true; }
+        }
+        String fk = j.optString("font", "");
+        if (fk.matches("[a-z]{2,12}") && !fk.equals(prefs.font())) { prefs.font(fk); changed = true; }
         String col = j.optString("col", "");
         if (col.matches("#[0-9A-Fa-f]{6}") && !col.equalsIgnoreCase(prefs.color())) { prefs.color(col); changed = true; }
         if (j.has("bg")) { int b = j.optInt("bg", -1); if (b >= 0 && b <= 100 && b != prefs.bg()) { prefs.bg(b); changed = true; } }
@@ -349,7 +392,8 @@ public class OverlayService extends Service {
         if (stops && tts != null) { tts.stop(); ttsPending.set(0); }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("zone")) {
-            zoneShow(j, vi);   // quest and item text is shown, never read aloud
+            zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
+            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, null, "zone" + (++ttsSeq)); }
         }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud

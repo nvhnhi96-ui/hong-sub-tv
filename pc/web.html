@@ -788,6 +788,22 @@ function log(t){ var d=new Date(); LOG.push(('0'+d.getHours()).slice(-2)+':'+('0
 window.addEventListener('error',function(e){ log('lỗi trang: '+(e.message||'')+' '+(e.lineno||'')); });
 
 var S0={wait:load('wait',900),hold:load('hold',10),allowFree:load('allowFree',true)};
+/* ---------- typefaces for the Vietnamese text (all with full Vietnamese letters) ---------- */
+var FONTS={
+  bevn:{n:'Be Vietnam Pro',g:'Be+Vietnam+Pro',css:'"Be Vietnam Pro",system-ui,sans-serif'},
+  roboto:{n:'Roboto',g:'Roboto',css:'"Roboto",system-ui,sans-serif'},
+  nunito:{n:'Nunito (tròn, mềm)',g:'Nunito',css:'"Nunito",system-ui,sans-serif'},
+  montserrat:{n:'Montserrat (rộng, mạnh)',g:'Montserrat',css:'"Montserrat",system-ui,sans-serif'},
+  lexend:{n:'Lexend (dễ đọc)',g:'Lexend',css:'"Lexend",system-ui,sans-serif'},
+  quicksand:{n:'Quicksand (mảnh, nhẹ)',g:'Quicksand',css:'"Quicksand",system-ui,sans-serif'},
+  oswald:{n:'Oswald (cao, hẹp)',g:'Oswald',css:'"Oswald","Arial Narrow",sans-serif'},
+  notoserif:{n:'Noto Serif (có chân)',g:'Noto+Serif',css:'"Noto Serif",Georgia,serif'},
+  arial:{n:'Arial (chữ hệ thống)',g:'',css:'Arial,"Helvetica Neue",sans-serif'}
+};
+function fontUrl(k){ var f=FONTS[k]; return f&&f.g?'https://fonts.googleapis.com/css2?family='+f.g+':wght@500;600;700&display=swap':''; }
+function fontLoad(k){ var u=fontUrl(k); if(!u||document.querySelector('link[data-hsfont="'+k+'"]')) return; var l=document.createElement('link'); l.rel='stylesheet'; l.href=u; l.setAttribute('data-hsfont',k); document.head.appendChild(l); }
+function subFontKey(){ var k=(load('ovStyle',{})||{}).font; return FONTS[k]?k:'bevn'; }
+function subFont(){ var k=subFontKey(); fontLoad(k); return FONTS[k].css; }
 var S={
   stream:null, demo:null, running:false, busy:false, timer:null,
   region:load('region',{x:.1,y:.74,w:.8,h:.22}),
@@ -909,7 +925,8 @@ async function pick(manual){
     await D.use(ch.id);
   }
   try{
-    var st=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:10,max:15}},audio:false});
+    /* full resolution of the game picture, up to 4K, so small text stays sharp for the reader */
+    var st=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:3840,max:3840},height:{ideal:2160,max:2160},frameRate:{ideal:10,max:15}},audio:false});
     setStream(st,null); return true;
   }catch(e){status('warn','Chưa chọn màn hình'); return false;}
 }
@@ -943,7 +960,7 @@ async function pickCam(){
       dev=devs.length===1?devs[0]:await camChoose(devs,guess[0]);
     }
     if(!dev) return;
-    var st=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:dev.deviceId},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false});
+    var st=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:dev.deviceId},width:{ideal:3840},height:{ideal:2160},frameRate:{ideal:30}},audio:false});
     save('cam',dev.deviceId); log('capture card: '+dev.label);
     S.offlineDemo=false; setStream(st,null);
   }catch(e){
@@ -1043,14 +1060,14 @@ ov.addEventListener('pointerup',function(){
 
 /* ---------- extra translation areas: quests, items, menus in other parts of the screen ---------- */
 var ZKINDS={quest:{n:'Nhiệm vụ',d:'quest / objective text'},item:{n:'Vật phẩm',d:'item name and description'},map:{n:'Bản đồ, chỉ dẫn',d:'map labels, tutorial and hint text'},menu:{n:'Menu',d:'menu and settings text'},other:{n:'Vùng khác',d:'on-screen game text'}};
-var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0','#E8E36A'], ZMAX=8, ZSIZE={s:14,m:17,l:21};
+var ZCOL=['#3FB6FF','#4BE08A','#FF8FD8','#FFB067','#B79BFF','#FF6B6B','#3DE0D0','#E8E36A'], ZMAX=8, ZSIZE={xs:12,s:14,m:17,l:21,xl:26}, ZCAP={xs:16,s:20,m:28,l:36,xl:46};
 S.zones=load('zones',[]); S.zcache=load('zcache',{}); S.zBusy=false; S.zLast=0; var zcv=document.createElement('canvas');
 function zName(z){ return z.name||('Vùng '+(S.zones.indexOf(z)+1)); }
 function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
 var zV2=load('zonesV2',false);
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1094,8 +1111,9 @@ function zShow(){
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
     var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
     tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
+    tx.style.background='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')'; tx.style.fontFamily=subFont();
     if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
-      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap={s:20,m:28,l:36}[z.size]||28;
+      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap=ZCAP[z.size]||28;
       var fs=Math.max(10,Math.min(cap,bh/lines*0.62)); tx.style.fontSize=fs+'px';
       for(var k=0;k<12&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)&&fs>9;k++){ fs*=0.9; tx.style.fontSize=fs+'px'; }
     } else tx.style.fontSize='16px';
@@ -1115,9 +1133,11 @@ function zList(){
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
       '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
       (D?'<label><span>Chữ Việt hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên chữ gốc trên màn hình game')+opt('app',z.show,'Chỉ trên hình trong Hóng Sub')+'</select></label>':'')+
-      '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+'</select></label>'+
+      '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('xs',z.size,'Rất nhỏ')+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+opt('xl',z.size,'Rất lớn')+'</select></label>'+
+      '<label><span>Độ đậm nền sau chữ: <b class="zbgv">'+(z.bg==null?90:+z.bg)+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+(z.bg==null?90:+z.bg)+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
       '<label title="0 giây: chữ Việt ở lại đến khi chữ gốc đổi hay mất"><span>Số giây hiện (0 = đến khi chữ gốc đổi)</span><input class="hs-in" type="number" inputmode="numeric" min="0" max="600" step="1" data-f="hold" value="'+(+z.hold||0)+'" aria-label="Số giây chữ Việt hiện trên vùng"></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="tv"'+(z.tv!==false?' checked':'')+'> Hiện trên TV</label>'+
+      '<label class="hs-zon" title="Đọc theo nút Đọc phụ đề và chỗ đọc (máy tính hay TV)"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to chữ dịch</label>'+
       '</div><div class="hs-row"><button class="hs-btn" type="button" data-a="draw">Vẽ lại khung</button><button class="hs-btn" type="button" data-a="now">Dịch vùng này</button><button class="hs-btn" type="button" data-a="del">Xóa</button></div>'+
       (z.vi?'<div class="hs-zout">'+esc(z.vi).replace(/\n/g,'<br>')+'</div>':'')+'</div>';
   }).join('')||'<p class="hs-note">Chưa có vùng nào. Bấm <b>Thêm vùng</b> rồi kéo khung quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ.</p>';
@@ -1128,10 +1148,11 @@ function zList(){
     row.querySelectorAll('select,input').forEach(function(el){ el.addEventListener('change',function(){
       var v=el.type==='checkbox'?el.checked:el.value; if(el.dataset.f==='name') v=String(v).trim();
       if(el.dataset.f==='hold'){ v=Math.max(0,Math.min(600,Math.round(+v)||0)); el.value=v; if(z.hide&&z.vi){ z.hide=false; } }
+      if(el.dataset.f==='bg') v=Math.max(0,Math.min(100,+v||0));
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on') z.lastText='';
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='hold') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='hold'||el.dataset.f==='bg') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
     row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
     row.querySelector('[data-a=del]').addEventListener('click',function(){ zDelete(z); });
@@ -1239,7 +1260,7 @@ async function zoneTick(force,only){
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
         var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Leave out controller hints (L1, R2, R3, ✕ ○ △ □, "Press ... to ...", "Back / Select"). Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
         var v=zViClean(r&&r.vi); if(!v) continue;
-        z.vi=v; z.hide=false; zShow(); zList(); zPush(); zHold(z); zTv(z); continue;
+        z.vi=v; z.hide=false; z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(v.replace(/\n/g,'. ')); continue;
       }
       if(!text){                                             /* only hints or nothing readable left */
         if(!force){ z.miss=(z.miss||0)+1; if(z.miss>=2&&(z.vi||z.lastText)) zGone(z); }
@@ -1257,7 +1278,7 @@ async function zoneTick(force,only){
       var vt=zViClean(t.vi);
       if(!vt){ zShow(); continue; }
       z.vi=vt; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+vt.replace(/\n/g,' / ').slice(0,120));
-      zShow(); zList(); zPush(); zHold(z); zTv(z);
+      z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(vt.replace(/\n/g,'. '));   /* read aloud only if this area asks for it */
     }
   }catch(e){ log('vùng dịch lỗi: '+(e.cool?'mã hết lượt':e.message)); }
   finally{ S.zBusy=false; }
@@ -1276,7 +1297,7 @@ var ZT={};
 function zTv(z){
   if(z.tv===false&&z.vi) return;
   if(!(tvIp()||tvCode().length>=4)) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',speak:false};
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc')}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 function zHold(z){
@@ -1286,7 +1307,7 @@ function zHold(z){
 /* the Windows app shows these translations in a small floating panel too */
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),c:zCol(z),size:ZSIZE[z.size]||17,x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),c:zCol(z),size:ZSIZE[z.size]||17,bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -1711,8 +1732,8 @@ function tvTypeUi(){
   var box=$('hsTvType'); if(!box) return;
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.setAttribute('aria-checked',b.getAttribute('data-k')===S.tvType?'true':'false'); });
   [].forEach.call(document.querySelectorAll('.tvp'),function(x){ x.classList.toggle('on',x.getAttribute('data-k')===S.tvType); });
-  [].forEach.call(document.querySelectorAll('.tvlg-only'),function(x){ x.hidden=S.tvType!=='lg'; });
-  var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(D&&D.tv?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':'Mã TV (đang hiện trên trình duyệt TV)';
+  [].forEach.call(document.querySelectorAll('.tvlg-only'),function(x){ x.hidden=!lanTv(); });
+  var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(D&&D.tv?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':S.tvType==='samsung'?'Mã TV (đang hiện trên TV Samsung)':'Mã TV (đang hiện trên trình duyệt TV)';
 }
 /* what the TV is doing right now, in one line, with the one thing to do next */
 function tvStatus(){
@@ -1734,8 +1755,15 @@ function tvStatus(){
     if(lately) return {t:'Đang kết nối lại với TV LG...'};
     return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').',a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
   }
-  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/lg, gõ mã đang hiện trên TV vào ô Mã TV.'};
-  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/lg với mã '+c+'.'};
+  if(k==='samsung'){
+    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:'Cài app Hóng Sub lên TV Samsung ở dưới (làm một lần), rồi gõ mã đang hiện trên TV.'};
+    if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
+    if(seen) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối qua internet.'};
+    if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
+    return {bad:true,t:'TV Samsung chưa mở Hóng Sub (mã '+c+').',a:window.hsTzOpen?'Mở trên TV':'',f:window.hsTzOpen};
+  }
+  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/tvweb, gõ mã đang hiện trên TV vào ô Mã TV.'};
+  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/tvweb với mã '+c+'.'};
 }
 function tvState(){
   var box=$('hsTvState'); if(!box) return;
@@ -1754,15 +1782,16 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
    Otherwise, and on the web page: through honggame.store with the TV code. */
 function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(el.value||'').trim():''; }
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
-function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {size:Math.max(18,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(40,Math.min(100,+st.width||80))}; }
-function tvBody(o){ var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(S.tvType==='lg'&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(18,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(40,Math.min(100,+st.width||80))}; }
+function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
+function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(S.tvType==='lg'&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
 function tvSend(o){
   o=tvBody(o); var ip=tvIp();
   /* TV LG with the app: straight over the home network (the TV asks this computer), and through honggame.store as a backup */
-  if(S.tvType==='lg'&&D&&D.lg&&D.lg.push&&tvCode().length>=4){
+  if(lanTv()&&D&&D.lg&&D.lg.push&&tvCode().length>=4){
     D.lg.push(tvCode(),o);
     return tvRelay(o).catch(function(e){ if(Date.now()-S.tvLanSeen<15000) return {ok:true}; throw e; });
   }
@@ -1812,7 +1841,7 @@ S.tvHello=-1; S.tvBoot='';
 function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên máy tính.'); }
 function tvListen(){
   var ip=tvIp(), c=tvCode();
-  if(S.tvType==='lg'&&D&&D.lg&&D.lg.seen&&c.length>=4) D.lg.seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
+  if(lanTv()&&D&&D.lg&&D.lg.seen&&c.length>=4) D.lg.seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
   /* the TV LG runs an older Hóng Sub app: update it with the key kept from the first install, once per start */
   if(S.tvType==='lg'&&D&&D.lg&&D.lg.ver&&D.lg.update&&c.length>=4&&!S.lgUpd&&Date.now()-(S.tvLanSeen||0)<20000&&S.appVer)
     D.lg.ver(c).then(function(v){
@@ -1834,6 +1863,7 @@ function tvListen(){
   later(tvListen,4000);
 }
 if(D&&D.version) D.version().then(function(v){ S.appVer=String(v||''); }).catch(function(){});
+if(D&&D.lg&&D.lg.addr) (function la(){ D.lg.addr().then(function(a){ if(a) S.lanPc=a; }).catch(function(){}); setTimeout(la,60000); })();   /* where TVs on the home network reach this computer */
 if(D&&D.tv){
   $('hsTvIp').value=load('tvip','');
   $('hsTvFind').addEventListener('click',function(){ tvFindUi(false); });
@@ -1905,8 +1935,9 @@ function viPlain(s){
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function show(res){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
+  vi=lineSplit(vi,lineMatch()?(res._nl||1):1);                /* as many lines as the original subtitle */
   var ch=who?castMeet(who,res.gender,res.age):null;
-  var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi);
+  var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi).replace(/\n/g,'<br>');
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=html;
   $('hsEn').textContent=$('hsShowEn').checked?en:'';
   S.hist.unshift({en:en,vi:vi,who:who}); S.hist=S.hist.slice(0,40);
@@ -1922,6 +1953,14 @@ function show(res){
 }
 /* the Vietnamese line drawn over the original subtitle, right on the game picture */
 function coverOn(){ var c=$('hsCover'); return !!(c&&c.checked); }
+/* the floating subtitle on Windows goes over the game's own subtitle too (not when the PS5 plays inside Hóng Sub: the picture there is covered already) */
+function placeSync(){
+  if(!D||!D.subPlace) return;
+  var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;
+  var r=coverOn()&&S.region&&S.stream&&!inApp?{x:S.region.x,y:S.region.y,w:S.region.w,h:S.region.h}:null, k=JSON.stringify(r);
+  if(k!==S.placeK){ S.placeK=k; D.subPlace(r); }
+}
+setInterval(placeSync,1500);
 function coverEl(){ var c=document.getElementById('hsCoverBox'); if(!c){ c=document.createElement('div'); c.id='hsCoverBox'; c.className='hs-cover'; c.hidden=true; c.innerHTML='<div></div>'; $('hsStage').appendChild(c); } return c; }
 function coverShow(html){
   var c=coverEl();
@@ -2217,6 +2256,7 @@ function ocrText(o){
     .map(function(l){ var t=l.text; if((t.match(/[A-Za-z,.]-(?=[A-Za-z])/g)||[]).length>=2) t=t.replace(/([A-Za-z,.])-(?=[A-Za-z])/g,'$1 ').replace(/(^|\s)-(?=[A-Za-z])/g,'$1');   /* small text: gaps read as "-" */
       return t.replace(/([.!?,;])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); });
   /* lines of one subtitle are joined; a new speaker ("NAME: ...") starts a new line */
+  S.ocrLines=ls.length;
   return ls.reduce(function(a,l){ return a?(a+(/^[A-Z][\w .'-]{0,24}:\s/.test(l)?'\n':' ')+l):l; },'');
 }
 /* rolling 2-line subtitles: the old sentence stays on top when a new one appears; only translate the new part */
@@ -2230,15 +2270,32 @@ function freshPart(text){
   return fresh.length===parts.length?text:fresh.join(' ');
 }
 function rememberSents(text){ var now=Date.now(); splitSents(text).forEach(function(p){ S.sents.push({s:p,t:now}); }); }
-function textPrompt(t){
+function textPrompt(t,nl){
   return 'You translate video game subtitles from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
     '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the '+LN()+' dialogue/subtitle text in "en" (in the original language). Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not in the text.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender: "male", "female", or "" if you cannot tell (use the speaker name, the game and the notes). In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
-    '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+context();
+    '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
+    (nl>1?'6. The original subtitle is shown on '+nl+' lines. Write "vi" on exactly '+nl+' lines too, separated by \\n, breaking where the original breaks.\n':'')+context();
 }
+/* the Vietnamese on as many lines as the original subtitle, broken between words, lines about the same length */
+function lineSplit(vi,n){
+  vi=String(vi||'').trim(); if(!vi||n<=1) return vi.replace(/\s*\n\s*/g,' ');
+  var have=vi.split(/\n/).map(function(s){return s.trim();}).filter(Boolean);
+  if(have.length===n) return have.join('\n');
+  var words=vi.replace(/\s*\n\s*/g,' ').split(' '); if(words.length<n) return words.join(' ');
+  var total=words.join(' ').length, out=[], cur='', left=n;
+  words.forEach(function(w,i){
+    var target=(total-out.join(' ').length)/left, next=cur?cur+' '+w:w, wordsLeft=words.length-i;
+    if(cur&&left>1&&(next.length>target*1.08||wordsLeft<left)&&(Math.abs(cur.length-target)<=Math.abs(next.length-target)||wordsLeft<left)){ out.push(cur); cur=w; left--; }
+    else cur=next;
+  });
+  out.push(cur);
+  return out.join('\n');
+}
+function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
 function runStatus(){
   status('run',(S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
@@ -2387,7 +2444,7 @@ function trKey(t){ return norm(t).replace(/ /g,''); }
 function enqueue(text){
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
-  S.q.push({seq:++S.seq,text:text});
+  S.q.push({seq:++S.seq,text:text,nl:Math.max(1,Math.min(4,S.ocrLines||1))});
   if(S.q.length>4) S.q.splice(0,S.q.length-4);           /* far behind: keep the newest lines */
   pump();
 }
@@ -2406,7 +2463,7 @@ async function translateText(j){
     if(res){ S.via=S.via||'gemini'; log('dịch lại câu đã có (0ms)'); }
     else if((res=tmFind(j.text))){ log('có sẵn trong kho dịch chung (0ms)'); tmUi(); }
     else{
-      res=await askText(textPrompt(j.text),j.text);
+      res=await askText(textPrompt(j.text,j.nl),j.text);
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
@@ -2416,6 +2473,7 @@ async function translateText(j){
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
+    if(res) res._nl=j.nl||1;
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -2616,13 +2674,13 @@ function fsDraw(){
   var b=videoBox(), html='';
   S.fs.items.forEach(function(it){
     if(!it.vi) return;
-    var L=b.l+it.x*b.w, W=it.w*b.w, room=b.l+b.w-L;
-    html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;min-width:'+W+'px;max-width:'+Math.max(W,Math.min(room,W*1.7+60))+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.62))+'px">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
+    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w);
+    html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.7))+'px;font-family:'+subFont().replace(/"/g,"'")+'">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
   });
   fsLayer.innerHTML=html; fsLayer.hidden=!S.fs.on||!html;
   /* shrink text that does not fit its box */
-  [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.25+8; while(f>10&&el.scrollHeight>h){ f--; el.style.fontSize=f+'px'; } });
-  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};})}:null);
+  [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
+  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
@@ -2642,18 +2700,49 @@ function fsWatch(){
   if(!S.fs.sig) S.fs.sig=g;
   S.fs.timer=later(fsWatch,350);
 }
+/* the whole screen read in parts: once as a whole, then four overlapping quarters enlarged, so small menu and quest text is not missed */
+function fsOk(text,conf){
+  var s=zBtnLine(String(text||'').replace(/\s+/g,' ').trim());
+  if(!s||conf<0.5||viPlain(s)) return '';
+  var letters=(s.match(/[A-Za-z]/g)||[]).length; if(letters<3) return '';
+  return langOk(s,3,s.split(' ').length<=2?0.5:0.4)?s:'';
+}
+async function fsRead(sx,sy,sw,sh,maxW){
+  var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
+  var g=fsv.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(video,sx,sy,sw,sh,0,0,fsv.width,fsv.height);
+  var o=await HsOcr.read(fsv,{blocks:true}), vw=video.videoWidth, vh=video.videoHeight, out=[];
+  (o.blocks||[]).forEach(function(b){
+    var lines=String(b.text||'').split('\n').map(function(l){ return fsOk(l,b.conf); }).filter(Boolean);
+    if(!lines.length) return;
+    out.push({x:(sx+b.x/o.W*sw)/vw,y:(sy+b.y/o.H*sh)/vh,w:(b.w/o.W*sw)/vw,h:(b.h/o.H*sh)/vh,lh:(b.lh/o.H*sh)/vh,en:lines.join('\n'),conf:b.conf});
+  });
+  return out;
+}
+function fsOverlap(a,b){
+  var x=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)), y=Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
+  return x*y/Math.max(1e-6,Math.min(a.w*a.h,b.w*b.h));
+}
 async function fsBlocks(){
-  var vw=video.videoWidth, vh=video.videoHeight, sc=Math.min(1,1600/vw);
-  fsv.width=Math.round(vw*sc); fsv.height=Math.round(vh*sc); fsv.getContext('2d').drawImage(video,0,0,fsv.width,fsv.height);
-  if(ocrOn()){
-    var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<2000) await new Promise(function(r){later(r,40);});
-    S.ocrBusy=true;
-    try{ var o=await HsOcr.read(fsv,{blocks:true}); }
-    finally{ S.ocrBusy=false; }
-    return o.blocks.filter(function(b){ return b.conf>=0.55&&langOk(b.text,3,0.55); })
-      .map(function(b){ return {x:b.x/o.W,y:b.y/o.H,w:b.w/o.W,h:b.h/o.H,lh:b.lh/o.H,en:b.text}; });
-  }
-  return null;   /* no reader on this machine: the AI reads the picture */
+  var vw=video.videoWidth, vh=video.videoHeight;
+  if(!ocrOn()) return null;   /* no reader on this machine: the AI reads the picture */
+  var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<2000) await new Promise(function(r){later(r,40);});
+  S.ocrBusy=true; var all=[];
+  try{
+    all=all.concat(await fsRead(0,0,vw,vh,1600));
+    var ox=vw*0.06, oy=vh*0.06, hw=vw/2, hh=vh/2;
+    for(var r=0;r<2;r++) for(var c=0;c<2;c++){
+      var sx=Math.max(0,c*hw-ox), sy=Math.max(0,r*hh-oy);
+      all=all.concat(await fsRead(sx,sy,Math.min(vw-sx,hw+2*ox),Math.min(vh-sy,hh+2*oy),1400));
+    }
+  } finally{ S.ocrBusy=false; }
+  /* the same text found twice (whole screen and a quarter, or two quarters): keep the fuller reading */
+  all.sort(function(a,b){ return b.en.length-a.en.length; });
+  var keep=[];
+  all.forEach(function(b){
+    var dup=keep.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); });
+    if(!dup) keep.push(b);
+  });
+  return keep.sort(function(a,b){ return a.y-b.y||a.x-b.x; });
 }
 function fsPrompt(list){
   return 'You translate '+LN()+' text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
@@ -2745,7 +2834,8 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
     if(val==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){});
   }); });
 })();
-(function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
+(function(){ var l=$('hsLines'); if(l){ var lv=load('lines',null); if(lv!==null) l.checked=lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
+(function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});
 $('hsRead').value=load('read','local');
 $('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
@@ -3276,7 +3366,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setStream:function(st){ setStream(st,null); },fsBlocks:function(){ return fsBlocks(); },fonts:FONTS,fontLoad:function(k){ fontLoad(k); },fontCss:function(){ return subFont(); },fontUrl:function(k){ return fontUrl(k); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },

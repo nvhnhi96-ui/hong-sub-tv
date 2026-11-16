@@ -129,6 +129,12 @@ body:not(.desk) .dk-only{display:none!important}
 .dk-set .hs-note{margin-top:2px}
 .dk-sw{margin-top:12px}
 .dk-colors{display:flex;gap:8px;flex-wrap:wrap}
+.hs-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.hs-tabs button{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line2);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;cursor:pointer}
+.hs-tabs button[aria-selected="true"]{background:var(--brand);border-color:var(--brand);color:#111}
+.hs-gd{margin-top:12px}
+.hs-steps{margin:10px 0 0;padding-left:22px;display:grid;gap:8px;line-height:1.5}
+.hs-code{font-weight:700;background:var(--sunk);border:1px solid var(--line2);border-radius:6px;padding:1px 7px;white-space:nowrap}
 .dk-colors button{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);cursor:pointer;padding:0}
 .dk-colors button.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--panel) inset}
 .dk-prev{border-radius:10px;height:120px;display:flex;align-items:flex-end;justify-content:center;padding:12px;margin-top:10px;overflow:hidden;background-image:linear-gradient(160deg,#4B3A5C 0%,#9A5A4E 55%,#2B1F2E 100%)}
@@ -404,12 +410,13 @@ body:not(.desk) .dk-only{display:none!important}
               <div class="tvk" id="hsTvType" role="radiogroup" aria-label="Loại TV">
                 <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
+                <button type="button" role="radio" aria-checked="false" data-k="samsung"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV Samsung</b><small>Tizen, có app Hóng Sub</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="web"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV khác</b><small>dùng trình duyệt trên TV</small></button>
               </div>
               <div class="tvs" id="hsTvState"><i></i><span id="hsTvStateT">Chưa nối TV</span><button class="hs-btn" type="button" id="hsTvStateB" hidden></button></div>
 
               <div class="tvp" data-k="android">
-                <p class="hs-note">Trên TV cài app <b>Hóng Sub TV</b> rồi bấm "Bật phụ đề". <button class="dk-link" type="button" data-url="https://honggame.store/hongsubtv">Tải app TV</button></p>
+                <p class="hs-note">Trên TV cài app <b>Hóng Sub TV</b> rồi bấm "Bật phụ đề". <button class="dk-link" type="button" data-tvguide="android">Cách tải app lên TV</button></p>
                 <div class="dk-set dk-only">
                   <label class="lab" for="hsTvIp">Nối qua mạng nhà (nhanh nhất)</label>
                   <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
@@ -444,6 +451,11 @@ body:not(.desk) .dk-only{display:none!important}
                 </details>
                 <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
                 <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
+              </div>
+
+              <div class="tvp" data-k="samsung">
+                <p class="hs-note">App Hóng Sub cho TV Samsung hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Mở app trên TV rồi gõ <b>mã đang hiện trên TV</b> vào ô Mã TV ở dưới.</p>
+                <p class="hs-note" style="margin-top:6px">Chưa có app trên TV? <button class="dk-link" type="button" data-tvguide="samsung">Cách cài lên TV Samsung</button></p>
               </div>
 
               <div class="tvp" data-k="web">
@@ -674,7 +686,8 @@ body:not(.desk) .dk-only{display:none!important}
             <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
-            <label class="hs-sw dk-sw">Đè chữ Việt lên phụ đề gốc trên hình <input type="checkbox" id="hsCover" checked></label>
+            <label class="hs-sw dk-sw">Đè chữ Việt lên đúng chỗ phụ đề gốc (trên hình, phụ đề nổi và TV) <input type="checkbox" id="hsCover" checked></label>
+            <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng) <input type="checkbox" id="hsLines" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
             <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
@@ -688,7 +701,21 @@ body:not(.desk) .dk-only{display:none!important}
                 <button type="button" data-c="#FFE066" style="background:#FFE066" aria-label="Vàng"></button>
                 <button type="button" data-c="#9BE7FF" style="background:#9BE7FF" aria-label="Xanh nhạt"></button>
                 <button type="button" data-c="#B8F2A6" style="background:#B8F2A6" aria-label="Xanh lá nhạt"></button>
+                <button type="button" data-c="#FFF4B0" style="background:#FFF4B0" aria-label="Vàng nhạt" title="Vàng nhạt"></button>
+                <button type="button" data-c="#FFC400" style="background:#FFC400" aria-label="Vàng đậm" title="Vàng đậm"></button>
+                <button type="button" data-c="#FFB067" style="background:#FFB067" aria-label="Cam" title="Cam"></button>
+                <button type="button" data-c="#FF8FD8" style="background:#FF8FD8" aria-label="Hồng" title="Hồng"></button>
+                <button type="button" data-c="#FF7A7A" style="background:#FF7A7A" aria-label="Đỏ nhạt" title="Đỏ nhạt"></button>
+                <button type="button" data-c="#C9A7FF" style="background:#C9A7FF" aria-label="Tím nhạt" title="Tím nhạt"></button>
+                <button type="button" data-c="#5BD6FF" style="background:#5BD6FF" aria-label="Xanh dương" title="Xanh dương"></button>
+                <button type="button" data-c="#3DE0D0" style="background:#3DE0D0" aria-label="Xanh ngọc" title="Xanh ngọc"></button>
+                <button type="button" data-c="#7CFC9A" style="background:#7CFC9A" aria-label="Xanh lá" title="Xanh lá"></button>
+                <button type="button" data-c="#D9D9D9" style="background:#D9D9D9" aria-label="Xám nhạt" title="Xám nhạt"></button>
               </div>
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkFont">Kiểu chữ</label></div>
+              <select class="hs-in" id="dkFont"></select>
             </div>
             <div class="dk-set">
               <div class="lab"><label for="dkBg">Độ đậm nền sau chữ</label><output id="dkBgV">74%</output></div>
@@ -801,6 +828,53 @@ body:not(.desk) .dk-only{display:none!important}
       <p class="hs-note" style="margin-top:6px">Chọn cửa sổ PS Remote Play (hoặc game trên máy tính). Nếu chưa thấy, mở PS Remote Play trước rồi bấm Tải lại.</p>
       <div class="hs-row" style="margin-top:8px"><button class="hs-btn" id="hsSrcRe" type="button">Tải lại</button></div>
       <div class="hs-src" id="hsSrcList"></div>
+    </div>
+  </div>
+  <div class="hs-modal" id="hsTvGuide" role="dialog" aria-modal="true" aria-labelledby="hsTvGuideT">
+    <div class="box" style="max-width:760px">
+      <div class="t"><b id="hsTvGuideT">Cài Hóng Sub lên TV</b><button class="hs-btn" id="hsTvGuideX" type="button">Đóng</button></div>
+      <div class="hs-tabs" role="tablist" style="margin-top:10px">
+        <button type="button" role="tab" data-g="android">Android TV, Google TV</button>
+        <button type="button" role="tab" data-g="lg">TV LG</button>
+        <button type="button" role="tab" data-g="samsung">TV Samsung</button>
+        <button type="button" role="tab" data-g="web">TV khác</button>
+      </div>
+      <div class="hs-gd" data-g="android">
+        <p class="hs-note">Sony, TCL, Xiaomi, Casper, FPT Play Box và các TV, box chạy Android TV hay Google TV.</p>
+        <ol class="hs-steps">
+          <li>Trên TV mở <b>CH Play</b>, tìm và cài app <b>Downloader</b> (biểu tượng cam, của AFTVnews).</li>
+          <li>Mở Downloader, chọn ô gõ địa chỉ rồi gõ đúng: <span class="hs-code">honggame.store/tv</span> và bấm <b>Go</b>.</li>
+          <li>Đợi tải xong, bấm <b>Cài đặt</b>. Nếu TV hỏi, bật <b>Cho phép cài app từ Downloader</b> rồi bấm Cài đặt lại.</li>
+          <li>Mở app <b>Hóng Sub TV</b>, bấm <b>Cho phép hiện trên app khác</b>, rồi bấm <b>Bật phụ đề</b>.</li>
+          <li>Trên máy tính: <b>Kết nối PS và TV</b> → chọn <b>Android TV</b> → gõ <b>IP</b> hoặc <b>mã</b> đang hiện trên TV.</li>
+        </ol>
+      </div>
+      <div class="hs-gd" data-g="lg" hidden>
+        <p class="hs-note">Máy tính tự cài app lên TV LG qua mạng nhà, chỉ cần bật chế độ nhà phát triển trên TV một lần.</p>
+        <ol class="hs-steps">
+          <li>Trên TV mở <b>LG Content Store</b>, cài app <b>Developer Mode</b>.</li>
+          <li>Mở Developer Mode, đăng nhập tài khoản LG Developer (tạo miễn phí tại webostv.developer.lge.com), bật <b>Dev Mode Status</b> rồi để TV khởi động lại.</li>
+          <li>Mở lại Developer Mode, bật <b>Key Server</b>. Ghi lại <b>Passphrase</b> đang hiện (6 chữ).</li>
+          <li>Trên máy tính: <b>Kết nối PS và TV</b> → <b>TV LG</b> → <b>Tìm TV</b> → gõ Passphrase → <b>Cài lên TV</b>. Từ lần sau máy tính tự mở và tự cập nhật app trên TV.</li>
+        </ol>
+      </div>
+      <div class="hs-gd" data-g="samsung" hidden>
+        <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> gắn với từng TV, nên cần cài bằng Tizen Studio trên máy tính (làm một lần; mang TV hoặc nhờ cửa hàng Hóng Game cài giúp).</p>
+        <ol class="hs-steps">
+          <li>Trên TV mở <b>Ứng dụng (Apps)</b>, bấm lần lượt <b>1 2 3 4 5</b> trên remote, bật <b>Developer mode</b>, ô <b>Host PC IP</b> gõ IP máy tính: <span class="hs-code" id="hsTvGuidePcIp">IP máy tính</span>. Tắt TV rồi bật lại.</li>
+          <li>Trên máy tính cài <b>Tizen Studio</b> (có Samsung TV Extension và Samsung Certificate Extension), vào <b>Device Manager</b> thêm TV theo IP.</li>
+          <li>Vào <b>Certificate Manager</b>, tạo chứng chỉ <b>Samsung</b> (đăng nhập tài khoản Samsung), chọn TV vừa kết nối.</li>
+          <li>Tải app: <span class="hs-code">honggame.store/samsung</span>, rồi trong Tizen Studio bấm cài file <b>hong-sub-samsung.wgt</b> lên TV.</li>
+          <li>Trên TV mở <b>Hóng Sub</b> trong Ứng dụng. Trên máy tính chọn <b>TV Samsung</b> và gõ mã đang hiện trên TV.</li>
+        </ol>
+      </div>
+      <div class="hs-gd" data-g="web" hidden>
+        <p class="hs-note">TV nào có trình duyệt cũng hiện được phụ đề (không có hình game phía sau).</p>
+        <ol class="hs-steps">
+          <li>Mở trình duyệt trên TV, gõ: <span class="hs-code">honggame.store/tvweb</span></li>
+          <li>Trên máy tính chọn <b>Trình duyệt TV</b> và gõ mã đang hiện trên TV.</li>
+        </ol>
+      </div>
     </div>
   </div>
   <div class="hs-modal" id="hsModal" role="dialog" aria-modal="true" aria-labelledby="hsModalT">
