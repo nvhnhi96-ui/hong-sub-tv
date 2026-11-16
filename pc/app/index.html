@@ -3874,17 +3874,22 @@ function psAccUi(){
   var a=$('hsPsAcc');
   if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
   a.innerHTML=PS.acc.loggedIn?('<span>PSN: <b>'+esc(PS.acc.onlineId||'đã đăng nhập')+'</b></span><button class="hs-btn" type="button" id="hsPsOut" style="padding:4px 10px">Đổi tài khoản</button>')
-    :'<button class="hs-btn pri" type="button" id="hsPsIn">Đăng nhập PSN</button><button class="hs-btn" type="button" data-ps="browser">Đăng nhập bằng trình duyệt</button><span class="hs-note">cần để ghép máy lần đầu</span>';
+    :'<button class="hs-btn pri" type="button" id="hsPsIn">Đăng nhập PSN</button><button class="hs-btn" type="button" data-ps="browser" title="Khi cửa sổ đăng nhập không dùng được: đăng nhập trong trình duyệt rồi chép địa chỉ trang">Dán địa chỉ đăng nhập</button><span class="hs-note">cần để ghép máy lần đầu</span>';
   if($('hsPsIn')) $('hsPsIn').onclick=psLogin;
   var bb=a.querySelector('[data-ps=browser]'); if(bb) bb.onclick=psLoginBrowser;
   if($('hsPsOut')) $('hsPsOut').onclick=function(){ D.ps.logout().then(function(){ return psLogin(); }); };
 }
 function psLogin(){
-  psMsg('','Đang mở trang đăng nhập của Sony...');
+  var m=$('hsPsMsg'); m.hidden=false; m.className='hs-msg';
+  m.innerHTML='<b>Đã mở cửa sổ đăng nhập của Sony.</b> Đăng nhập tài khoản PSN trong cửa sổ đó (nhập mã xác minh nếu Sony hỏi). Đăng nhập xong cửa sổ tự đóng, không cần chép gì.'+
+    '<div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
+  m.querySelector('[data-ps=cancel]').onclick=function(){ D.ps.loginCancel(); };
   return D.ps.login().then(function(r){
     if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
-    else if(r&&r.err==='closed'){ psMsg('','Không đăng nhập được trong cửa sổ đó? Sony hay chặn đăng nhập trong ứng dụng. Bấm "Đăng nhập bằng trình duyệt".'); }
-    else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Bấm "Đăng nhập bằng trình duyệt" để đăng nhập bằng Chrome hoặc Edge.');
+    else if(r&&r.err==='blocked'){ psMsg('warn','Sony chặn đăng nhập trong cửa sổ của Hóng Sub. Hóng Sub chuyển sang đăng nhập bằng trình duyệt...'); setTimeout(psLoginBrowser,1200); }
+    else if(r&&(r.err==='closed'||r.err==='again')){ psMsg('','Đã đóng cửa sổ đăng nhập. Bấm Đăng nhập PSN để thử lại.'); }
+    else if(r&&r.err==='timeout') psMsg('warn','Lâu quá chưa đăng nhập xong nên Hóng Sub đã đóng cửa sổ. Bấm Đăng nhập PSN để thử lại.');
+    else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Bấm Đăng nhập PSN để thử lại, hoặc bấm "Dán địa chỉ đăng nhập".');
     return psRefresh();
   });
 }
@@ -3898,7 +3903,7 @@ function psLoginBrowser(){
   function done(r){
     if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
     else if(r&&(r.err==='closed'||r.err==='again')){ if(r.err==='closed') psMsg('',''); }
-    else if(r&&r.err==='timeout') psMsg('warn','Chưa nhận được địa chỉ trang sau khi đăng nhập. Bấm lại "Đăng nhập bằng trình duyệt".');
+    else if(r&&r.err==='timeout') psMsg('warn','Chưa nhận được địa chỉ trang sau khi đăng nhập. Bấm lại "Dán địa chỉ đăng nhập".');
     else if(r&&r.err==='url') psMsg('err','Địa chỉ dán vào chưa đúng. Cần địa chỉ có chữ "remoteplay/redirect?code=".');
     else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Thử lại.');
     psRefresh();

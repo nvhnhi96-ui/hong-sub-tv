@@ -9,6 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const http = require('http');
+const netMod = require('net');
 
 const CLIENT_ID = 'ba495a24-818c-472b-b12d-ff231c1b5745';
 const CLIENT_SECRET = 'mvaiZkRsAsI1IBkY';
@@ -77,14 +79,74 @@ function setup(opts) {
       watch = w;
     });
   }
-  function login() {
+  /* Sign in inside a real Edge / Chrome window (its own small profile): Sony's robot check trusts a real browser,
+     and Hóng Sub reads the address of that window, so the sign-in finishes by itself with nothing to copy. */
+  function findBrowser() {
+    const roots = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean);
+    const list = [];
+    roots.forEach((r) => list.push(path.join(r, 'Microsoft', 'Edge', 'Application', 'msedge.exe')));
+    roots.forEach((r) => list.push(path.join(r, 'Google', 'Chrome', 'Application', 'chrome.exe')));
+    return list.find((f) => { try { return fs.existsSync(f); } catch (e) { return false; } }) || '';
+  }
+  function freePort() {
+    return new Promise((res) => { const sv = netMod.createServer(); sv.on('error', () => res(0)); sv.listen(0, '127.0.0.1', () => { const p = sv.address().port; sv.close(() => res(p)); }); });
+  }
+  function tabs(port) {
+    return new Promise((res) => {
+      const rq = http.get({ host: '127.0.0.1', port, path: '/json/list', timeout: 1500 }, (r) => { let d = ''; r.on('data', (c) => { d += c; }); r.on('end', () => { try { res(JSON.parse(d)); } catch (e) { res(null); } }); });
+      rq.on('error', () => res(null)); rq.on('timeout', () => { rq.destroy(); res(null); });
+    });
+  }
+  let real = null;
+  async function loginReal() {
+    const exe = findBrowser(); if (!exe) return { ok: false, err: 'nobrowser' };
+    const port = await freePort(); if (!port) return { ok: false, err: 'nobrowser' };
+    if (real) real.stop({ ok: false, err: 'again' });
+    const prof = path.join(userData, 'psn-browser');
+    return new Promise((resolve) => {
+      let done = false, seen = false, n = 0;
+      const t0 = Date.now();
+      const p = spawn(exe, ['--user-data-dir=' + prof, '--remote-debugging-port=' + port, '--no-first-run', '--no-default-browser-check',
+        '--disable-features=Translate', '--window-size=540,800', '--app=' + loginUrl()], { stdio: 'ignore', windowsHide: false });
+      const kill = () => { try { p.kill(); } catch (e) { /* ignore */ } };
+      const stop = (res) => { if (done) return; done = true; clearInterval(t); real = null; kill(); resolve(res); };
+      const t = setInterval(async () => {
+        n++;
+        const list = await tabs(port);
+        if (done) return;
+        if (list) {
+          seen = true;
+          for (const tb of list) {
+            const code = codeFrom(tb && tb.url);
+            if (code) {
+              done = true; clearInterval(t); real = null; kill();
+              exchange(code).then(resolve, (err) => resolve({ ok: false, err: String(err.message || err) }));
+              return;
+            }
+          }
+        } else if (!seen && Date.now() - t0 > 20000) stop({ ok: false, err: 'nobrowser' });
+        if (n > 1800) stop({ ok: false, err: 'timeout' });
+      }, 500);
+      p.on('error', () => stop({ ok: false, err: 'nobrowser' }));
+      p.on('exit', () => setTimeout(() => { if (!done) stop({ ok: false, err: seen ? 'closed' : 'nobrowser' }); }, 1500));
+      real = { stop };
+    });
+  }
+  async function login() {
+    const r = await loginReal();
+    if (r && r.err === 'nobrowser') return loginApp();
+    return r;
+  }
+  /* Only when there is no Edge or Chrome: sign in in a window of Hóng Sub itself (Sony sometimes refuses it) */
+  function loginApp() {
     return new Promise((resolve) => {
       const parent = getWin();
       const w = new BrowserWindow({ width: 520, height: 760, parent, modal: false, title: 'Đăng nhập PlayStation Network', autoHideMenuBar: true,
         webPreferences: { partition: 'persist:psn', contextIsolation: true, nodeIntegration: false } });
       w.setMenu(null);
-      let done = false;
-      const finish = (res) => { if (done) return; done = true; try { w.close(); } catch (e) { /* ignore */ } resolve(res); };
+      w.on('page-title-updated', (e) => e.preventDefault());
+      let done = false, probe = null;
+      const finish = (res) => { if (done) return; done = true; clearInterval(probe); try { w.close(); } catch (e) { /* ignore */ } resolve(res); };
       const check = (e, url) => {
         const code = codeFrom(url);
         if (!code) return;
@@ -96,7 +158,22 @@ function setup(opts) {
       w.webContents.on('did-navigate', (e, url) => check(null, url));
       w.on('closed', () => finish({ ok: false, err: 'closed' }));
       w.webContents.on('did-fail-load', (e, code, desc, url) => { if (!codeFrom(url)) log && log('psn login page failed: ' + code + ' ' + desc); });
+      /* Sony's "Can't connect to the server": its robot check refused this window, so say so instead of leaving it there */
+      probe = setInterval(() => {
+        if (done || w.isDestroyed()) return;
+        w.webContents.executeJavaScript('document.body?document.body.innerText.slice(0,4000):""', true).then((txt) => {
+          if (/can.t connect to the server|không thể kết nối với máy chủ/i.test(String(txt || ''))) finish({ ok: false, err: 'blocked' });
+        }).catch(() => {});
+      }, 1500);
       const ua = w.webContents.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ HongSub\/\S+/, '').replace(/ hong-sub-pc\/\S+/, '');
+      /* look like the Chrome the address claims to be (brand hints included) */
+      try {
+        const ver = (/Chrome\/(\d+)/.exec(ua) || [])[1] || '130';
+        w.webContents.debugger.attach('1.3');
+        w.webContents.debugger.sendCommand('Network.setUserAgentOverride', { userAgent: ua, userAgentMetadata: {
+          brands: [{ brand: 'Google Chrome', version: ver }, { brand: 'Chromium', version: ver }, { brand: 'Not_A Brand', version: '24' }],
+          fullVersion: ver + '.0.0.0', platform: 'Windows', platformVersion: '10.0.0', architecture: 'x86', model: '', mobile: false } }).catch(() => {});
+      } catch (e) { /* ignore */ }
       w.loadURL(loginUrl(), { userAgent: ua });
     });
   }
@@ -277,7 +354,7 @@ function setup(opts) {
   ipcMain.handle('ps-state', () => ({ helper: fs.existsSync(helperPath()), loggedIn: !!cfg.account, onlineId: cfg.onlineId || '', hosts: Object.values(cfg.hosts).map(h => ({ id: h.id, name: h.name, ps5: h.ps5, addr: h.addr })) }));
   ipcMain.handle('ps-login', () => login());
   ipcMain.handle('ps-login-browser', () => loginBrowser());
-  ipcMain.handle('ps-login-cancel', () => { if (watch) { clearInterval(watch.t); watch.done({ ok: false, err: 'closed' }); watch = null; } return true; });
+  ipcMain.handle('ps-login-cancel', () => { if (watch) { clearInterval(watch.t); watch.done({ ok: false, err: 'closed' }); watch = null; } if (real) real.stop({ ok: false, err: 'closed' }); return true; });
   ipcMain.handle('ps-login-url', (e, url) => { const c = codeFrom(url); return c ? exchange(c).catch(err => ({ ok: false, err: String(err.message || err) })) : { ok: false, err: 'url' }; });
   ipcMain.handle('ps-logout', () => { delete cfg.account; delete cfg.onlineId; saveCfg(); return true; });
   ipcMain.handle('ps-discover', (e, ip) => discover(ip));
