@@ -42,6 +42,7 @@ body:not(.desk) .dk-only{display:none!important}
 .tvs span{flex:1;line-height:1.4}
 .tvs .hs-btn{padding:6px 12px;font-size:13px}
 .tvp{display:none}.tvp.on{display:block}
+.dk-engines{flex-wrap:wrap;gap:8px;margin-top:6px}.dk-engines .dk-chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#1a1200}.dk-engines .dk-chip small{font-weight:500;opacity:.8;font-size:12px}
 .dk-vnotes{margin:6px 0 0;padding-left:20px;display:grid;gap:6px;font-size:14px;color:var(--muted);max-height:260px;overflow:auto}
 .tvd{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--sunk)}
 .tvd summary{cursor:pointer;font-weight:700;font-size:14px}
@@ -651,8 +652,16 @@ body:not(.desk) .dk-only{display:none!important}
               <select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng của TV)</option><option value="both">Cả máy tính và TV</option></select>
               <p class="hs-note">Khi đã nối TV: chọn đọc trên máy tính, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.</p>
             </div>
+            <div class="dk-set" id="hsTvVoiceRow" hidden>
+              <label class="lab" for="hsTvVoice">Giọng đọc trên TV</label>
+              <select class="hs-in" id="hsTvVoice"></select>
+              <p class="hs-note" id="hsTvVoiceNote">Giọng của máy tính được làm trên máy tính rồi phát ra loa TV, nên TV đọc đúng giọng bạn chọn (cả giọng AI). Cần TV và máy tính chung mạng nhà.</p>
+            </div>
             <div class="dk-set">
-              <label class="lab" for="hsVoice">Giọng đọc</label>
+              <div class="lab">Bộ đọc</div>
+              <div class="hs-row dk-engines" id="hsEngine" role="group" aria-label="Bộ đọc"></div>
+              <p class="hs-note" id="hsEngineNote" hidden></p>
+              <label class="lab" for="hsVoice" style="margin-top:12px">Giọng đọc</label>
               <div class="hs-row" style="flex-wrap:nowrap"><select class="hs-in" id="hsVoice" style="flex:1;min-width:0"></select><button class="hs-btn" id="hsVoiceTest" type="button">Nghe thử</button></div>
               <p class="hs-note">"Tự chọn" dùng giọng nam hoặc nữ theo nhân vật đang nói. Chọn riêng giọng từng nhân vật ở trang Nhân vật.</p>
               <p class="hs-note">Các bộ đọc có trong danh sách: <b>Giọng AI</b> tải về máy (25 giọng, đọc không cần mạng), <b>Google</b> (giọng nữ, cần mạng, không cần mã), giọng có sẵn của Hóng Sub và của Windows. Mất mạng thì Hóng Sub tự đọc bằng giọng có sẵn trên máy.</p>

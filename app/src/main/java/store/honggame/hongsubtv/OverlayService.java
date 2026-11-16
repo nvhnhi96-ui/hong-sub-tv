@@ -19,6 +19,12 @@ import android.provider.Settings;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import java.util.concurrent.atomic.AtomicInteger;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.media.PlaybackParams;
+import android.util.Base64;
+import java.io.File;
+import java.io.FileOutputStream;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -72,6 +78,49 @@ public class OverlayService extends Service {
     private boolean ttsReady;
     /* lines waiting to be read: a new line waits for the one being read, unless two are already waiting */
     private final AtomicInteger ttsPending = new AtomicInteger();
+
+    /* lines read by the voice chosen on the computer: the computer makes the sound and sends it, the TV plays it */
+    private final ArrayDeque<Object[]> clips = new ArrayDeque<>();   // {File, Float rate}
+    private MediaPlayer clipPlayer = null;
+    private int clipSeq = 0;
+
+    private void clipAdd(String b64, String mime, float rate) {
+        try {
+            byte[] data = Base64.decode(b64, Base64.DEFAULT);
+            if (data.length < 200) return;
+            File f = new File(getCacheDir(), "clip" + (++clipSeq % 8) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
+            try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
+            main.post(() -> {
+                if (clips.size() >= 2) clips.pollFirst();   // far behind: drop the oldest waiting line
+                clips.add(new Object[]{f, clipPlayer != null || !clips.isEmpty() ? rate * 1.12f : rate});
+                if (clipPlayer == null) clipNext();
+            });
+        } catch (Exception ignored) { }
+    }
+
+    private void clipNext() {
+        Object[] it = clips.pollFirst();
+        if (it == null) return;
+        try {
+            MediaPlayer mp = new MediaPlayer();
+            mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setDataSource(((File) it[0]).getAbsolutePath());
+            mp.setOnCompletionListener(x -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); });
+            mp.setOnErrorListener((x, a, b) -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); return true; });
+            mp.prepare();
+            float r = (Float) it[1];
+            if (Math.abs(r - 1f) > 0.01f) { try { mp.setPlaybackParams(new PlaybackParams().setSpeed(r)); } catch (Exception ignored) { } }
+            clipPlayer = mp;
+            mp.start();
+        } catch (Exception e) { clipPlayer = null; main.post(this::clipNext); }
+    }
+
+    private void clipStop() {
+        main.post(() -> {
+            clips.clear();
+            if (clipPlayer != null) { try { clipPlayer.stop(); } catch (Exception ignored) { } try { clipPlayer.release(); } catch (Exception ignored) { } clipPlayer = null; }
+        });
+    }
     private int ttsSeq;
     private void ttsDone() { if (ttsPending.decrementAndGet() < 0) ttsPending.set(0); }
     private LanServer lan;
@@ -131,6 +180,7 @@ public class OverlayService extends Service {
     public void onDestroy() {
         polling = false;
         main.removeCallbacks(updLook);
+        clipStop();
         if (lan != null) lan.stop();
         if (poller != null) poller.interrupt();
         main.removeCallbacksAndMessages(null);
@@ -398,6 +448,11 @@ public class OverlayService extends Service {
         // an area translation or a notice never cuts the line being read; only a subtitle or a setting change does
         boolean stops = pcOff || (j.has("speak") && !read && (kind.equals("sub") || kind.equals("ctl")));
         if (stops && tts != null) { tts.stop(); ttsPending.set(0); }
+        if (pcOff) clipStop();
+        if (kind.equals("say")) {   // only the sound of a line, in the voice chosen on the computer
+            if (!pcOff) clipAdd(j.optString("aud", ""), j.optString("mime", "audio/wav"), (float) Math.max(0.5, Math.min(2.5, j.optDouble("rate", 1))));
+            return;
+        }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer

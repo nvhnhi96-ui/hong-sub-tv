@@ -14,6 +14,7 @@ const { pathToFileURL } = require('url');
 const psModule = require('./ps');
 const lgModule = require('./lg');
 const onlineTts = require('./onlinetts');
+let lgApi = null;   /* the home-network server for the TV apps (lg.js) */
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
 const ROOT = __dirname;
@@ -490,6 +491,7 @@ function piperSpeak(text, rate) {
 
 /* ---------- AI voices (VieNeu-TTS v3 Turbo pack, downloaded once) ---------- */
 const AIV_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/download/voices-1/hong-sub-voices.zip';
+const aivClips = new Map();
 const aiv = { proc: null, ready: false, voices: [], err: '', busy: '', got: 0, total: 0, buf: '', startMs: 0 };
 function aivDir() { return path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'HongSub', 'voices'); }   /* short ASCII path: Python and long model paths */
 function aivPy() { const d = aivDir(); const py = path.join(d, 'python', 'python.exe'); return fs.existsSync(py) && fs.existsSync(path.join(d, 'hs_voice.py')) ? py : ''; }
@@ -512,6 +514,7 @@ function aivStart() {
       let m; try { m = JSON.parse(line); } catch (e) { continue; }
       if (aiv.tap) aiv.tap(m);
       if (m.type === 'ready') { aiv.ready = true; aiv.voices = m.voices || []; aiv.startMs = Date.now() - t0; aivNotify(); }
+      else if ((m.type === 'audio' || m.type === 'error') && aivClips.has(m.id)) aivClips.get(m.id)(m);   /* a clip for the TV */
       else if (m.type === 'audio' || m.type === 'error') aivSend('aiv-audio', m);
       else if (m.type === 'fatal') { aiv.err = m.err || 'lỗi'; aivNotify(); }
     }
@@ -521,6 +524,40 @@ function aivStart() {
   proc.on('error', (e) => { aiv.err = String(e.message || e); aivNotify(); });
   aivNotify();
   return true;
+}
+/* one AI voice clip: the AI voice sends a long line in pieces (each a WAV file); join them into one WAV */
+let aivClipSeq = 0;
+function aivClip(text, voice) {
+  if (!aiv.proc) aivStart();
+  if (!aiv.proc || !aiv.ready) return Promise.resolve(null);
+  const id = 'clip' + (++aivClipSeq), parts = [];
+  return new Promise((done) => {
+    const t = setTimeout(() => { aivClips.delete(id); done(parts.length ? wavJoin(parts) : null); }, 45000);
+    aivClips.set(id, (m) => {
+      if (m.type === 'error') { clearTimeout(t); aivClips.delete(id); done(parts.length ? wavJoin(parts) : null); return; }
+      parts.push(Buffer.from(m.wav, 'base64'));
+      if (m.last) { clearTimeout(t); aivClips.delete(id); done(wavJoin(parts)); }
+    });
+    try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id, text, voice: voice || '' }) + '\n'); } catch (x) { clearTimeout(t); aivClips.delete(id); done(null); }
+  });
+}
+function wavJoin(bufs) {
+  const pcm = []; let fmt = null;
+  for (const b of bufs) {
+    let o = 12;
+    while (o + 8 <= b.length) {
+      const id = b.toString('ascii', o, o + 4), n = b.readUInt32LE(o + 4);
+      if (id === 'fmt ' && !fmt) fmt = b.subarray(o + 8, o + 8 + n);
+      if (id === 'data') { pcm.push(b.subarray(o + 8, Math.min(b.length, o + 8 + n))); break; }
+      o += 8 + n + (n & 1);
+    }
+  }
+  if (!fmt || !pcm.length) return bufs[0] || null;
+  const data = Buffer.concat(pcm), head = Buffer.alloc(20);
+  head.write('RIFF', 0, 'ascii'); head.writeUInt32LE(4 + 8 + fmt.length + 8 + data.length, 4); head.write('WAVE', 8, 'ascii');
+  head.write('fmt ', 12, 'ascii'); head.writeUInt32LE(fmt.length, 16);
+  const dh = Buffer.alloc(8); dh.write('data', 0, 'ascii'); dh.writeUInt32LE(data.length, 4);
+  return Buffer.concat([head, fmt, dh, data]);
 }
 function aivStop() { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"quit"}\n'); } catch (e) { /* ignore */ } const p = aiv.proc; setTimeout(() => { try { p.kill(); } catch (e) { /* ignore */ } }, 1500); aiv.proc = null; aiv.ready = false; } }
 async function aivInstall() {
@@ -672,6 +709,25 @@ function setupIpc() {
     return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
   ipcMain.on('voice-settings', () => shell.openExternal('ms-settings:speech'));
+  /* the whole line as one sound file, read by a voice of this computer, so the TV can play the same voice.
+     Read at normal speed: the speed is applied where it is played. */
+  ipcMain.handle('voice-clip', async (e, text, voice) => {
+    text = String(text || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 600); voice = String(voice || '');
+    if (!text) return { ok: false };
+    try {
+      let buf = null, mime = 'audio/wav';
+      if (voice.startsWith('ai:')) buf = await aivClip(text, voice.slice(3));
+      else if (voice.startsWith('gg:')) { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; }
+      else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+      if (!buf) { const r = await piperSpeak(text, 1); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+      if (!buf) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+      if (!buf || buf.length < 200) return { ok: false };
+      const id = lgApi && lgApi.clipPut ? lgApi.clipPut(buf, mime) : '';
+      return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length };
+    } catch (err) { return { ok: false, err: String(err && err.message || err) }; }
+  });
+  /* Android TV: the clip goes to the TV in the message itself (the TV may not reach this computer through Windows Firewall) */
+  ipcMain.handle('tv-say', (e, ip, msg) => tvHttp(ip, '/sub', msg));
   ipcMain.handle('update', () => checkUpdate());
   /* what changed: the change notes between this version and the newest one (or the latest changes up to this version) */
   ipcMain.handle('update-notes', async (e, from, to) => {
@@ -783,6 +839,8 @@ async function runSelftest() {
   const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
+  if (pw.wav && pw2.wav) { const j = wavJoin([Buffer.from(pw.wav, 'base64'), Buffer.from(pw2.wav, 'base64')]); log('wav join', j ? j.length + ' bytes (' + Math.round(pw.wav.length * 0.75) + '+' + Math.round(pw2.wav.length * 0.75) + ')' : 'ERR'); if (j) fs.writeFileSync(path.join(out, 'voice-join.wav'), j); }
+  try { const id = lgApi && lgApi.clipPut(Buffer.from(pw.wav || '', 'base64'), 'audio/wav'); const r = await net.fetch('http://127.0.0.1:8767/voice?id=' + id); log('clip serve', r.status, (await r.arrayBuffer()).byteLength); } catch (e) { log('clip serve ERR', String(e)); }
   for (const v of onlineTts.GG_VOICES) {   /* the online voice from a real Windows machine */
     const t0 = Date.now();
     try {
@@ -853,7 +911,7 @@ app.whenReady().then(async () => {
   serveFiles();
   setupCapture();
   setupIpc();
-  try { lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
+  try { lgApi = lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
   if (!SELFTEST) { setTimeout(updateTick, 15000); setInterval(updateTick, 30 * 60 * 1000); }

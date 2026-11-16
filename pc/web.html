@@ -1343,7 +1343,7 @@ var ZT={};
 function zTv(z){
   if(z.tv===false&&z.vi) return;
   if(!(tvIp()||tvCode().length>=4)) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc')}; z.fresh=false;
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 function zHold(z){
@@ -1830,7 +1830,7 @@ function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(e
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
 function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(18,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(40,Math.min(100,+st.width||80))}; }
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
-function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(S.tvType==='lg'&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'; o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(S.tvType==='lg'&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
@@ -2040,7 +2040,12 @@ function loadVoices(){
     var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
     sel.innerHTML=optAuto()+dv.map(function(v){return '<option value="'+esc(v.id||('win:'+v.name))+'">'+esc(v.name)+'</option>';}).join('');
     sel.value=[].some.call(sel.options,function(o){return o.value===want;})?want:'auto';
-    $('hsVoiceTipD').hidden=dv.length>0||dVoices===null; castUi(); return;
+    $('hsVoiceTipD').hidden=dv.length>0||dVoices===null; castUi();
+    var tv=$('hsTvVoice');
+    if(tv){ var tw=load('tvVoice','same');
+      tv.innerHTML='<option value="same">Giống giọng trên máy tính</option>'+dv.map(function(v){return '<option value="'+esc(v.id||('win:'+v.name))+'">Giọng máy tính: '+esc(v.name)+'</option>';}).join('')+'<option value="tv">Giọng có sẵn của TV</option>';
+      tv.value=[].some.call(tv.options,function(o){return o.value===tw;})?tw:'same'; tvVoiceUi(); }
+    engineUi(); return;
   }
   voices=('speechSynthesis' in window)?speechSynthesis.getVoices():[];
   var vi=voices.filter(function(v){return /^vi/i.test(v.lang);});
@@ -2051,7 +2056,7 @@ function loadVoices(){
 /* AI voices of the Windows app (downloaded voice pack): many Vietnamese voices, one per character */
 var winVoices=null, AIV={ready:false,list:[],off:load('aivOff',false)};
 function aiMerge(st){
-  AIV.ready=!!(st&&st.ready); AIV.list=AIV.ready?(st.voices||[]):[];
+  AIV.ready=!!(st&&st.ready); AIV.list=AIV.ready?(st.voices||[]):[]; if(st&&st.hasOwnProperty('fast')) AIV.fast=!!st.fast; AIV.installed=!!(st&&st.installed);
   if(winVoices===null) return;
   dVoices=winVoices.concat(AIV.list.map(function(v){ return {id:'ai:'+v.id,lang:'vi-VN',ai:true,g:v.gender,region:v.region,name:'AI · '+v.id+' ('+(v.gender==='male'?'nam':'nữ')+(v.region?', '+v.region:'')+')'}; }));
   loadVoices();
@@ -2059,7 +2064,37 @@ function aiMerge(st){
 if(D){ loadVoices(); D.voices().then(function(v){winVoices=v||[]; dVoices=winVoices.slice(); aiMerge(AIV.ready?{ready:true,voices:AIV.list}:null); loadVoices();}).catch(function(){winVoices=[]; dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();});
   if(D.aiv){ D.aiv.onState(aiMerge); D.aiv.state().then(aiMerge).catch(function(){}); } }
 else{ loadVoices(); if('speechSynthesis' in window) speechSynthesis.onvoiceschanged=loadVoices; }
-$('hsVoice').addEventListener('change',function(){save('voice',this.value); castUi(); sample();});
+$('hsVoice').addEventListener('change',function(){save('voice',this.value); castUi(); engineUi(); sample();});
+if($('hsTvVoice')) $('hsTvVoice').addEventListener('change',function(){ save('tvVoice',this.value); tvVoiceUi(); });
+if($('hsSpeakWhere')) $('hsSpeakWhere').addEventListener('change',function(){ tvVoiceUi(); });
+/* "Bộ đọc": one tap picks the reading engine; the list below then holds its voices */
+function engines(){ return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
+function engineNow(){
+  var v=$('hsVoice').value||'auto';
+  if(v==='auto'||/^ai:/.test(v)) return AIV.ready&&!AIV.off?(AIV.fast?'aifast':'ai'):(v==='auto'?'auto':'ai');
+  if(v==='hs:piper') return 'piper'; if(/^gg:/.test(v)) return 'gg'; if(/^win:/.test(v)) return 'win'; return '';
+}
+function engineUi(){
+  var box=$('hsEngine'); if(!box||!D) return;
+  var now=engineNow();
+  box.innerHTML=engines().map(function(e){ return '<button type="button" class="dk-chip" data-e="'+e.k+'" aria-pressed="'+(e.k===now)+'">'+esc(e.n)+(e.s?' <small>'+esc(e.s)+'</small>':'')+'</button>'; }).join('');
+}
+function engineSet(k){
+  var sel=$('hsVoice'), note=$('hsEngineNote'), dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);}), pick='';
+  if(note) note.hidden=true;
+  var say=function(m){ if(note){ note.textContent=m; note.hidden=false; } };
+  if(k==='ai'||k==='aifast'){
+    if(!AIV.ready){ say(AIV.installed?'Bộ giọng AI đang khởi động, đợi vài giây rồi bấm lại.':'Chưa có bộ giọng AI trên máy. Bấm "Tải bộ giọng AI" ở khung Giọng AI bên dưới (tải một lần).'); var c=$('dkAiCard'); if(c&&!AIV.installed) c.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+    AIV.off=false; save('aivOff',false); var on=$('dkAiOn'); if(on) on.checked=true;
+    var want=k==='aifast'; if(!!AIV.fast!==want&&D.aiv&&D.aiv.fast){ AIV.fast=want; D.aiv.fast(want); var f=$('dkAiFast'); if(f) f.checked=want; }
+    pick='auto';
+  } else if(k==='piper') pick=(dv.filter(function(v){return v.id==='hs:piper';})[0]||{}).id||'';
+  else if(k==='gg') pick=(dv.filter(function(v){return /^gg:/.test(v.id||'');})[0]||{}).id||'';
+  else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ say('Windows chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng nói của Windows" ở dưới, thêm giọng Tiếng Việt (Microsoft An), rồi mở lại Hóng Sub.'); return; } }
+  if(!pick){ say('Bộ đọc này chưa sẵn sàng trên máy.'); return; }
+  sel.value=pick; sel.dispatchEvent(new Event('change'));
+}
+if($('hsEngine')) $('hsEngine').addEventListener('click',function(e){ var b=e.target.closest('[data-e]'); if(b) engineSet(b.getAttribute('data-e')); });
 
 /* --- characters met in this game: gender, voice and name colour per character --- */
 var CAST_COLORS=['#FFC400','#7CC4FF','#FF8FA3','#8BE28B','#C9A7FF','#FFB067','#5EE6D0','#F28BFF'];
@@ -2227,13 +2262,46 @@ $('hsVoiceTest').addEventListener('click',sample);
 function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
 function speakWhere(){ var w=$('hsSpeakWhere'); return (w&&w.value)||'pc'; }
 function speak(t,res){
-  if(!$('hsSpeak').checked||!t||speakWhere()==='tv') return;
-  var mode=voiceMode(), who=(res&&res.speaker)||'', g=((res&&res.gender)||'').toLowerCase();
+  if(!$('hsSpeak').checked||!t) return;
+  var where=speakWhere(), mode=voiceMode(), who=(res&&res.speaker)||'', g=((res&&res.gender)||'').toLowerCase();
   if(mode==='ai') mode='auto';
   var ch=castOf(who);
   if(ch){ if(ch.g) g=ch.g; if(ch.v&&mode==='auto') mode=ch.v; }
-  devSpeak(t,mode,g,who,null,true);
+  var clipTv=where!=='pc'&&tvClipOn();
+  if(where==='tv'&&!clipTv) return;            /* the TV reads it with its own voice (said in the subtitle message) */
+  if(!clipTv){ devSpeak(t,mode,g,who,null,true); return; }
+  /* the TV plays the voice of this computer: the line is made here once, sent over the home network */
+  var rate=parseFloat($('hsRate').value)||1, ce=castOf(who), pitch=ce&&castAutoOn()?(ce.p||1):1;
+  var pcVoice=devPick(mode,g,castAutoOn()?who:''), sel=tvVoiceSel(), tvV=sel==='same'?pcVoice:sel, same=tvV===pcVoice;
+  if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true);
+  S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
+    return D.voiceClip(t,tvV).then(function(c){
+      if(!c||!c.ok){ if(where==='both'&&same) devSpeak(t,mode,g,who,null,true); return; }
+      if(where==='both'&&same) D.playClip(c,rate,pitch,true);
+      tvSay(c,rate,same?pitch:1);
+    });
+  }).catch(function(){});
 }
+/* the voice on the TV: the voice of this computer (made here, sent over the home network) or the TV's own voice */
+function tvVoiceSel(){ var s=$('hsTvVoice'); return (s&&s.value)||load('tvVoice','same'); }
+function tvLanOk(){ return S.tvType==='android'?!!(tvIp()&&S.tvOk):!!(lanTv()&&S.tvLanSeen&&Date.now()-S.tvLanSeen<25000&&tvCode().length>=4); }
+function tvClipOn(){ return !!(D&&D.voiceClip&&$('hsSpeak').checked&&speakWhere()!=='pc'&&tvVoiceSel()!=='tv'&&tvLanOk()&&((S.tvType==='android'&&D.tv&&D.tv.say)||(lanTv()&&D.lg&&D.lg.push))); }
+function tvSay(c,rate,pitch){
+  var o={kind:'say',rate:+Math.max(0.5,Math.min(2.5,rate*pitch)).toFixed(2),rd:true,mid:Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
+  if(S.tvType==='android'){ o.aud=c.b64; o.mime=c.mime; D.tv.say(tvIp(),o).catch(function(){}); }
+  else if(c.id){ o.clip=c.id; D.lg.push(tvCode(),o); }
+}
+function tvVoiceUi(){
+  var row=$('hsTvVoiceRow'); if(!row) return;
+  var where=speakWhere(); row.hidden=!(D&&D.voiceClip)||where==='pc';
+  var n=$('hsTvVoiceNote'); if(!n||row.hidden) return;
+  var sel=tvVoiceSel();
+  n.className='hs-note'+(sel!=='tv'&&!tvLanOk()?' warn':'');
+  n.textContent=sel==='tv'?'TV đọc bằng giọng có sẵn của TV.':
+    tvLanOk()?'TV đang phát giọng của máy tính qua mạng nhà: TV đọc đúng giọng bạn chọn, cả giọng AI.':
+    'TV chưa nối với máy tính qua mạng nhà (TV dùng mã), nên lúc này TV đọc bằng giọng của TV. Nối TV bằng IP (cùng mạng wifi/modem) để TV phát giọng của máy tính.';
+}
+setInterval(tvVoiceUi,3000);
 
 /* ---------- đọc chữ ngay trên máy (PaddleOCR chạy trong trình duyệt) ---------- */
 var OCR={fails:0,loading:false,miss:0};
@@ -3412,7 +3480,7 @@ if(D){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setStream:function(st){ setStream(st,null); },fsBlocks:function(){ return fsBlocks(); },fonts:FONTS,fontLoad:function(k){ fontLoad(k); },fontCss:function(){ return subFont(); },fontUrl:function(k){ return fontUrl(k); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={S:S,save:save,load:load,log:log,show:function(r){ show(r); },logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setStream:function(st){ setStream(st,null); },fsBlocks:function(){ return fsBlocks(); },fonts:FONTS,fontLoad:function(k){ fontLoad(k); },fontCss:function(){ return subFont(); },fontUrl:function(k){ return fontUrl(k); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },

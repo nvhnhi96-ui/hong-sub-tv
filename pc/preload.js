@@ -28,6 +28,7 @@ function startNext() {
   if (cur || !lines.length) return;
   const L = lines.shift(), my = ++seq;
   cur = { id: my, ai: L.ai, parts: [], playing: false, ended: false, rate: L.rate * L.boost, pitch: L.pitch, boost: L.boost };
+  if (L.pre) { cur.parts.push({ wav: L.pre.b64, mime: L.pre.mime, rateApply: true, last: true }); cur.ended = true; playPart(); return; }   /* a clip made already (also sent to the TV) */
   if (L.ai) { ipcRenderer.send('aiv-speak', { id: my, text: L.text, voice: L.voice }); return; }
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
     if (!cur || cur.id !== my) return;
@@ -65,7 +66,8 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     find: () => ipcRenderer.invoke('tv-find'),
     ping: (ip) => ipcRenderer.invoke('tv-ping', ip),
     send: (ip, msg) => ipcRenderer.invoke('tv-send', ip, msg),
-    relay: (msg) => ipcRenderer.invoke('tv-relay', msg)
+    relay: (msg) => ipcRenderer.invoke('tv-relay', msg),
+    say: (ip, msg) => ipcRenderer.invoke('tv-say', ip, msg)
   },
   onFull: (cb) => ipcRenderer.on('full', (e, d) => cb(d)),
   onZone: (cb) => ipcRenderer.on('zone', (e, d) => cb(d)),
@@ -85,6 +87,15 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     lines.push(L); startNext();
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
+  voiceClip: (text, voice) => ipcRenderer.invoke('voice-clip', text, voice),
+  /* play a clip made by voiceClip here too (same queue as the subtitles read aloud) */
+  playClip: (clip, rate, pitch, queue) => {
+    if (!clip || !clip.b64) return;
+    const L = { text: '', ai: false, pre: { b64: clip.b64, mime: clip.mime }, rate: rate || 1, pitch: pitch || 1, boost: 1 };
+    if (!queue) stopAll();
+    else { if (lines.length >= 2) lines.splice(0, lines.length - 1); if (cur || lines.length) L.boost = lines.length ? 1.25 : 1.12; }
+    lines.push(L); startNext();
+  },
   aiv: {
     state: () => ipcRenderer.invoke('aiv-state'),
     install: () => ipcRenderer.invoke('aiv-install'),

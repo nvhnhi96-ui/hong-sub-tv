@@ -112,6 +112,12 @@ function setup({ ipcMain, app, net, getWin, log }) {
     const u = new URL(req.url, 'http://x'), code = String(u.searchParams.get('code') || '').toUpperCase();
     if (req.method === 'OPTIONS') { reply(res, 204, {}); return; }
     if (u.pathname === '/ping') { reply(res, 200, { app: 'hongsub-pc', ok: true }); return; }
+    if (u.pathname === '/voice') {   /* a line read by the voice of this computer, for the TV to play */
+      const c = clips.get(String(u.searchParams.get('id') || ''));
+      if (!c) { reply(res, 404, { ok: false }); return; }
+      res.writeHead(200, { 'Content-Type': c.mime, 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=600', 'Content-Length': c.buf.length });
+      res.end(c.buf); return;
+    }
     if (!/^[A-Z0-9]{4,8}$/.test(code)) { reply(res, 400, { ok: false }); return; }
     const ver = String(u.searchParams.get('ver') || '').slice(0, 20); if (ver) vers.set(code, ver);   /* which build of the TV app is running */
     if (u.pathname === '/alive') { seen.set(code, Date.now()); reply(res, 200, { ok: true }); return; }
@@ -130,6 +136,14 @@ function setup({ ipcMain, app, net, getWin, log }) {
   /* the Vietnamese voice for the TV, as plain bytes: the TV plays it through Web Audio,
      because an <audio> element on webOS takes the sound away from the game on HDMI */
   const ttsCache = new Map();
+  /* voice clips made on this computer (same voice as on the computer), kept for a few minutes */
+  const clips = new Map(); let clipSeq = 0;
+  function clipPut(buf, mime) {
+    const id = (++clipSeq).toString(36) + Math.random().toString(36).slice(2, 7);
+    clips.set(id, { buf, mime: mime || 'audio/wav', at: Date.now() });
+    for (const [k, v] of clips) { if (clips.size <= 40 && Date.now() - v.at < 10 * 60 * 1000) break; clips.delete(k); }
+    return id;
+  }
   function ttsGoogle(q) {
     return new Promise((resolve) => {
       const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=' + encodeURIComponent(q);
@@ -233,7 +247,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
   ipcMain.handle('lg-install', (e, ip, pass, code) => install(ip, pass, code));
   ipcMain.handle('lg-launch', (e, code) => launch(code));
   ipcMain.handle('lg-auto', (e, on) => { const k = cfg(); k.auto = !!on; saveCfg(k); return true; });
-  return { find, install, launch, cfg, push, myAddr };
+  return { find, install, launch, cfg, push, myAddr, clipPut };
 }
 /* self test: the key the TV hands out is a passphrase-locked RSA key; make sure this build can open one */
 function selfTest() {

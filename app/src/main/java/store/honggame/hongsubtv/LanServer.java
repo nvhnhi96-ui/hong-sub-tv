@@ -148,7 +148,7 @@ final class LanServer {
                     try { len = Integer.parseInt(line.substring(k + 1).trim()); } catch (Exception ignored) { }
                 }
             }
-            byte[] body = new byte[Math.max(0, Math.min(len, 65536))];
+            byte[] body = new byte[Math.max(0, Math.min(len, 4 * 1024 * 1024))];   // a voice clip from the computer can be a few hundred KB
             int got = 0;
             while (got < body.length) { int n = in.read(body, got, body.length - got); if (n < 0) break; got += n; }
             int code = 200; String out;

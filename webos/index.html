@@ -294,7 +294,7 @@ function ttsLoad(it){
   var c=ac(); if(!c){ it.done=true; return; }
   var x=new XMLHttpRequest(), fin=function(buf){ if(it.done) return; it.buf=buf||null; it.done=true; if(aq[0]===it) playNext(); };
   try{
-    x.open('GET',ttsUrl(it.t),true); x.responseType='arraybuffer'; x.timeout=9000;
+    x.open('GET',it.url||ttsUrl(it.t),true); x.responseType='arraybuffer'; x.timeout=9000;
     x.onload=function(){
       if(x.status!==200||!x.response||x.response.byteLength<200){ fin(null); return; }
       try{ c.decodeAudioData(x.response,function(b){ fin(b); },function(){ fin(null); }); }catch(e){ fin(null); }
@@ -308,7 +308,7 @@ function playNext(){
   var it=aq.shift(), c=ac();
   if(!it.buf||!c){ playNext(); return; }
   var s=c.createBufferSource(), cur={src:s};
-  s.buffer=it.buf; if(it.fast&&s.playbackRate) s.playbackRate.value=1.12;
+  s.buffer=it.buf; if(s.playbackRate){ var pr=(it.rate||1)*(it.fast?1.12:1); if(pr!==1) s.playbackRate.value=pr; }
   s.connect(c.destination);
   audio=cur;
   s.onended=function(){ if(audio===cur){ audio=null; playNext(); } };
@@ -326,6 +326,14 @@ function say(t){
   if(aq.length>=6) aq.length=0;                       /* far behind: drop what is waiting */
   chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
   playNext();
+}
+/* a line read by the voice chosen on the computer: the computer made the sound, the TV plays it */
+function sayClip(id,rate){
+  if(!P.pc||!id) return;
+  var behind=!!audio||aq.length>0;
+  if(aq.length>=3) aq.length=0;                       /* far behind: drop what is waiting */
+  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:behind,done:false,buf:null};
+  aq.push(it); ttsLoad(it); playNext();
 }
 function sayStop(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
@@ -377,6 +385,7 @@ function handle(j){
   if(j.hasOwnProperty('wid')&&+j.wid>=40&&+j.wid<=100&&+j.wid!==P.wid){ P.wid=+j.wid; save('wid',P.wid); changed=true; }
   if(j.hasOwnProperty('hdmi')&&packaged){ var hn=+j.hdmi; if(hn>=0&&hn<=4&&hn!==P.src){ P.src=hn; save('src',hn); setSource(hn); } }
   if(changed) applyLook();
+  if(kind==='say'){ if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
   if(kind==='hello'||kind==='ctl') return;
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
   if(kind==='zone'){ zoneShow(j,vi); if(vi&&!pcOff&&j.speak) say(vi.replace(/\n/g,'. ')); return; }   /* read aloud only when the area asks for it on the computer */
