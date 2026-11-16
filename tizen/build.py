@@ -24,7 +24,9 @@ if not re.search(r"var VERSION='[^']*';", t):
     sys.exit('tizen build: VERSION line not found')
 t = re.sub(r"var VERSION='[^']*';", "var VERSION='%s';" % ver, t, count=1)
 # Samsung's own scripts (the IP of the TV); missing in a browser, harmless
-rep('<script>\n', '<script src="$WEBAPIS/webapis/webapis.js"></script>\n<script>\n', 1)
+rep('<script>\n', '<script src="$WEBAPIS/webapis/webapis.js"></script>\n<script src="preset.js"></script>\n<script>\n', 1)
+# preset.js: written by Hóng Sub on the computer when it installs the app, so the TV already knows its code and the computer
+rep("function launchParams(){ try{ var s=window.PalmSystem", "function launchParams(){ try{ if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem")
 rep("var packaged=location.protocol==='file:';", "var packaged=typeof tizen!=='undefined';   /* installed on a Samsung TV */")
 # keys: Back on a Samsung remote is 10009
 rep("if(k===461||k===27||k===8){ if($('home').className==='off'&&P.src)", "if(k===461||k===10009||k===27||k===8){ if($('home').className==='off'&&P.src)")
@@ -63,6 +65,7 @@ if OUT.exists():
     shutil.rmtree(OUT)
 (OUT / 'fonts').mkdir(parents=True)
 (OUT / 'index.html').write_text(t, encoding='utf-8')
+(OUT / 'preset.js').write_text('window.HS_PRESET=null;   /* {code, pc}: filled in by Hóng Sub on the computer when it installs the app */\n', encoding='utf-8')
 for f in (SRC / 'fonts').iterdir():
     shutil.copy(f, OUT / 'fonts' / f.name)
 shutil.copy(SRC / 'largeIcon.png', OUT / 'icon.png')

@@ -14,6 +14,7 @@ const { pathToFileURL } = require('url');
 const psModule = require('./ps');
 const lgModule = require('./lg');
 const onlineTts = require('./onlinetts');
+const tizenModule = require('./tizen');
 let lgApi = null;   /* the home-network server for the TV apps (lg.js) */
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
@@ -912,6 +913,7 @@ app.whenReady().then(async () => {
   setupCapture();
   setupIpc();
   try { lgApi = lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
+  try { tizenModule.setup({ ipcMain, net, getWin: () => win, cfgDir: app.getPath('userData'), lanAddr: async () => (lgApi && lgApi.myAddr ? lgApi.myAddr('') : '') }); } catch (e) { console.error('samsung', e); }
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
   if (!SELFTEST) { setTimeout(updateTick, 15000); setInterval(updateTick, 30 * 60 * 1000); }

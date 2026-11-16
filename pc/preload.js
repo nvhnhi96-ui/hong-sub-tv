@@ -116,6 +116,14 @@ contextBridge.exposeInMainWorld('hsDesktop', {
   openUrl: (u) => ipcRenderer.invoke('open-url', u),
   overlayReset: () => ipcRenderer.invoke('overlay-reset'),
   overlaySize: (pct, h) => ipcRenderer.invoke('overlay-size', pct, h),
+  samsung: {
+    state: () => ipcRenderer.invoke('tz-state'),
+    find: () => ipcRenderer.invoke('tz-find'),
+    info: (ip) => ipcRenderer.invoke('tz-info', ip),
+    install: (ip, profile, code) => ipcRenderer.invoke('tz-install', ip, profile, code),
+    launch: () => ipcRenderer.invoke('tz-launch'),
+    onProgress: (cb) => ipcRenderer.on('tz-progress', (e, t) => cb(t))
+  },
   lg: {
     find: () => ipcRenderer.invoke('lg-find'),
     state: () => ipcRenderer.invoke('lg-state'),

@@ -34,6 +34,7 @@
       "ps.js",
       "lg.js",
       "onlinetts.js",
+      "tizen.js",
       "vendor/**",
       "!node_modules/**"
     ],

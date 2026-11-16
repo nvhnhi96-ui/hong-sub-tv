@@ -227,17 +227,9 @@ setInterval(rail,1000); rail();
 D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').textContent='Đang dùng bản '+v+'. Hóng Sub tự xem bản mới 15 phút một lần và báo bằng nút xanh ở trên cùng; bấm Kiểm tra cập nhật để xem ngay.'; });
 /* Phiên bản: check now, update in one click, and see what changed */
 (function(){
-  var btn=$('dkVerCheck'), go=$('dkVerGo'), res=$('dkVerRes'), box=$('dkVerNotesBox'), ul=$('dkVerNotes'), cur='', last=null;
+  var btn=$('dkVerCheck'), go=$('dkVerGo'), res=$('dkVerRes'), cur='', last=null;
   if(!btn) return;
   function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-  function notes(from,to,title){
-    if(!D.updateNotes) return;
-    D.updateNotes(from,to).then(function(r){
-      if(!r||!r.ok||!r.notes||!r.notes.length){ box.hidden=true; return; }
-      $('dkVerNotesT').textContent=title;
-      ul.innerHTML=r.notes.map(function(n){ return '<li>'+esc(n)+'</li>'; }).join(''); box.hidden=false;
-    }).catch(function(){ box.hidden=true; });
-  }
   function check(){
     btn.disabled=true; btn.textContent='Đang kiểm tra...'; res.hidden=false; res.textContent='Đang xem có bản mới không...'; go.hidden=true;
     Promise.all([D.version(),D.update()]).then(function(a){
@@ -246,10 +238,8 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       if(u.newer){
         res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật lên '+esc(u.version)+'</b>: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.';
         go.hidden=false; go.textContent='Cập nhật lên '+u.version;
-        notes(cur,u.version,'Có gì mới từ bản '+cur+' đến '+u.version);
       } else {
         res.textContent='Đang dùng bản mới nhất ('+cur+').';
-        notes(cur,'','Thay đổi gần đây');
       }
     }).catch(function(){ res.textContent='Chưa kiểm tra được. Thử lại sau ít phút.'; })
       .then(function(){ btn.disabled=false; btn.textContent='Kiểm tra cập nhật'; });
@@ -458,8 +448,87 @@ D.lg.state().then(function(st){
 });
 })();
 
+/* ---------- TV Samsung: Hóng Sub signs and installs its app with the person's Samsung certificate (Tizen Studio) ---------- */
+(function(){
+'use strict';
+var D=window.hsDeskApi, A=window.hsApi; if(!D||!D.samsung||!document.getElementById('dkTzGo')) return;
+var $=function(id){return document.getElementById(id);};
+var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false, st=null;
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function msg(cls,t){ var m=$('dkTzMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function line(id,ok,t){ var el=$(id); el.className='tzst'+(ok===true?' ok':ok===false?' bad':''); el.textContent=t?(ok===true?'✓ ':ok===false?'✗ ':'')+t:''; }
+function code(){
+  var v=String(A.tvCodeFor('samsung')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(v.length<4){
+    v=''; for(var i=0;i<6;i++) v+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length));
+    if(A.tvType()==='samsung'){ var el=$('hsTv'); el.value=v; el.dispatchEvent(new Event('change',{bubbles:true})); } else A.save('tv_samsung',v);
+  }
+  return v;
+}
+function openOnTv(){
+  msg('','Đang mở Hóng Sub trên TV...');
+  return D.samsung.launch().then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được. '+((r&&r.err)||'')); if(A.tvState) A.tvState(); });
+}
+function tvCheck(){
+  var ip=$('dkTzIp').value.trim();
+  if(!ip){ line('dkTzS1',null,'Gõ IP của TV hoặc bấm Tìm TV Samsung ở dưới để kiểm tra bước này.'); return Promise.resolve(); }
+  line('dkTzS1',null,'Đang hỏi TV '+ip+'...');
+  return D.samsung.info(ip).then(function(i){
+    var pcs=(st&&st.pcIps)||[];
+    if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
+    else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
+    else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
+    else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
+  });
+}
+function draw(s){
+  st=s||st||{}; var pcs=st.pcIps||[];
+  $('dkTzPcIp').textContent=pcs[0]||'IP máy tính';
+  line('dkTzS2',!!st.tools,st.tools?'Đã thấy Tizen Studio ở '+st.root+'.':'Chưa thấy Tizen Studio trên máy này. Cài xong bấm Kiểm tra lại.');
+  var pr=st.profiles||[], sel=$('dkTzProf'), keep=sel.value||st.profile||st.active;
+  sel.innerHTML=pr.length?pr.map(function(x){ return '<option value="'+esc(x.name)+'">'+esc(x.name)+(x.samsung?' (Samsung)':' (không phải Samsung)')+'</option>'; }).join(''):'<option value="">Chưa có chứng chỉ</option>';
+  if(keep&&pr.some(function(x){return x.name===keep;})) sel.value=keep;
+  var sam=pr.filter(function(x){return x.samsung;});
+  line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Làm bước 3 rồi bấm Kiểm tra lại.');
+  if(st.ip&&!$('dkTzIp').value) $('dkTzIp').value=st.ip;
+  $('dkTzDone').hidden=!st.installed;
+  if(st.installed){ window.hsTzOpen=openOnTv; $('dkTzSum').textContent='Cài lại / cập nhật app trên TV Samsung'; $('dkTzGo').textContent='Cài lại'; $('dkTz').open=false; }
+  if(A.tvState) A.tvState();
+}
+function refresh(){ return D.samsung.state().then(draw).then(tvCheck); }
+D.samsung.onProgress(function(t){ msg('',t); });
+$('dkTzCheck').onclick=function(){ msg('',''); refresh(); };
+$('dkTzIp').addEventListener('change',tvCheck);
+$('dkTzFind').onclick=function(){
+  var b=this; b.disabled=true; b.textContent='Đang tìm...'; $('dkTzList').innerHTML='';
+  D.samsung.find().then(function(list){
+    b.disabled=false; b.textContent='Tìm TV Samsung';
+    if(!list||!list.length){ msg('warn','Chưa thấy TV Samsung nào. Kiểm tra TV đang bật và cùng mạng, hoặc xem IP trên TV (Cài đặt › Chung › Mạng › Trạng thái mạng) rồi gõ vào.'); return; }
+    msg('',''); if(list.length===1){ $('dkTzIp').value=list[0].ip; tvCheck(); }
+    $('dkTzList').innerHTML=list.map(function(x){ return '<button class="hs-btn" type="button" data-ip="'+esc(x.ip)+'">'+esc(x.name)+' · '+esc(x.ip)+'</button>'; }).join('');
+    [].forEach.call($('dkTzList').querySelectorAll('[data-ip]'),function(el){ el.onclick=function(){ $('dkTzIp').value=el.getAttribute('data-ip'); tvCheck(); }; });
+  });
+};
+$('dkTzGo').onclick=function(){
+  if(busy) return;
+  var ip=$('dkTzIp').value.trim();
+  if(!ip){ msg('warn','Gõ IP của TV Samsung, hoặc bấm Tìm TV Samsung.'); return; }
+  busy=true; this.disabled=true;
+  if(A.tvType()!=='samsung') A.setTvType('samsung');
+  var b=this, c=code();
+  D.samsung.install(ip,$('dkTzProf').value,c).then(function(r){
+    busy=false; b.disabled=false;
+    if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở ô bên dưới là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
+    else msg('err',(r&&r.err)||'Chưa cài được.');
+  });
+};
+$('dkTzOpen').onclick=function(){ openOnTv(); };
+refresh();
+})();
+
 /* ---------- how to put the TV app on each kind of TV ---------- */
 (function(){
+  var tzGo=document.getElementById('hsTvGuideTz'); if(tzGo) tzGo.addEventListener('click',function(){ var A2=window.hsApi; document.getElementById('hsTvGuide').classList.remove('open'); if(A2&&A2.setTvType) A2.setTvType('samsung'); var b=document.querySelector('[data-p=ketnoi]'); if(b) b.click(); setTimeout(function(){ var d=document.getElementById('dkTz'); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } },150); });
   var $=function(id){return document.getElementById(id);}, A=window.hsApi, D=window.hsDeskApi, m=$('hsTvGuide'); if(!m) return;
   function tab(g){
     m.querySelectorAll('.hs-tabs [data-g]').forEach(function(b){ b.setAttribute('aria-selected',b.dataset.g===g?'true':'false'); });
