@@ -28,8 +28,8 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     if(!on){ its.innerHTML=''; return; }
     var H=window.innerHeight, bg='rgba(8,9,12,'+(d.bg!=null?d.bg:.9)+')';
     its.innerHTML=d.items.map(function(it){
-      var f=+d.px>0?(+d.px*screen.height/1080):Math.max(6,it.lh*H*0.78);
-      return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;width:'+(it.w*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
+      var f=+d.px>0?(+d.px*screen.height/1080):Math.max(6,it.lh*H*0.92);
+      return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
     }).join('');
     if(d.font) its.style.fontFamily=d.font;
     [].forEach.call(its.children,function(el){ var f=parseFloat(el.style.fontSize); for(var k=0;k<20&&el.scrollWidth>el.clientWidth+1&&f>5;k++){ f*=0.92; el.style.fontSize=f+'px'; } });

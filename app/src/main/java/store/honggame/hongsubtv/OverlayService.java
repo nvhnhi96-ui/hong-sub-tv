@@ -308,6 +308,8 @@ public class OverlayService extends Service {
         final int zpx = Math.max(0, Math.min(80, j.optInt("zpx", 0)));
         final String zal = j.optString("zal", "l");
         final boolean zfit = j.optBoolean("zfit", false);
+        final boolean zgrow = j.optInt("zgrow", 0) == 1;
+        final double zmaxw = j.optDouble("zmaxw", 0);
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
         final Typeface face = faceFor(j.optString("font", prefs.font()));
         main.post(() -> {
@@ -332,7 +334,10 @@ public class OverlayService extends Service {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
             int W = dm.widthPixels, H = dm.heightPixels, bw = (int) (w * W), bh = (int) (h * H);
-            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(bw, zpx > 0 ? FrameLayout.LayoutParams.WRAP_CONTENT : bh);
+            // at least the original's size, wider for bigger letters (up to the area's right edge)
+            final int maxW = zgrow ? Math.max(bw, (int) (Math.max(w, zmaxw) * W)) : bw;
+            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(zgrow ? FrameLayout.LayoutParams.WRAP_CONTENT : bw, zpx > 0 ? FrameLayout.LayoutParams.WRAP_CONTENT : bh);
+            tv.setMinWidth(zgrow ? bw : 0); tv.setMaxWidth(maxW);
             fl.leftMargin = (int) (x * W);
             fl.topMargin = (int) (y * H);
             tv.setLayoutParams(fl);
@@ -352,7 +357,7 @@ public class OverlayService extends Service {
                 if (zfit) {   // same lines as the original paragraph: smaller letters instead of an extra line
                     float widest = 0;
                     for (String line : vi.split("\n")) widest = Math.max(widest, tv.getPaint().measureText(line));
-                    int avail = bw - tv.getPaddingLeft() - tv.getPaddingRight();
+                    int avail = maxW - tv.getPaddingLeft() - tv.getPaddingRight();
                     if (widest > avail && avail > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(6f, tv.getTextSize() * avail / widest * 0.96f));
                 }
                 final TextView v2 = tv;
@@ -468,16 +473,28 @@ public class OverlayService extends Service {
             box.setPadding(dp(6), dp(2), dp(6), dp(2));
             try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
         }
-        if (!lm) return;
+        if (!lm) { coverHeight(); return; }
         int avail = (cov != null ? lp.width : (lp.width > 0 ? lp.width : getResources().getDisplayMetrics().widthPixels)) - box.getPaddingLeft() - box.getPaddingRight() - dp(4);
         if (avail <= 0) return;
         float widest = 0;
         for (String line : viView.getText().toString().split("\n")) widest = Math.max(widest, viView.getPaint().measureText(line));
         if (widest > avail) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), viView.getTextSize() * avail / widest * 0.96f));
-        if (cov != null) {   // over the original line: no taller than the box either
-            int lines = Math.max(1, viView.getText().toString().split("\n").length);
-            float maxPx = (lp.height - box.getPaddingTop() - box.getPaddingBottom()) / (lines * 1.2f);
-            if (maxPx > 0 && viView.getTextSize() > maxPx) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), maxPx));
+        coverHeight();
+    }
+
+    /* over the original subtitle: the box is at least as tall as the Vietnamese lines (never cuts the letters), centred on the original */
+    private void coverHeight() {
+        if (cov == null || box == null) return;
+        viView.setIncludeFontPadding(false);
+        DisplayMetrics dm = new DisplayMetrics();
+        wm.getDefaultDisplay().getRealMetrics(dm);
+        int lines = Math.max(1, viView.getText().toString().split("\n").length);
+        int need = (int) (lines * viView.getLineHeight() * 1.08f) + box.getPaddingTop() + box.getPaddingBottom() + (enView.getVisibility() == View.VISIBLE ? (int) (enView.getLineHeight() * 1.3f) : 0);
+        int want = Math.max((int) (cov[3] * dm.heightPixels * prefs.boxH() / 100f), need);
+        if (want != lp.height) {
+            lp.height = Math.max(dp(26), want);
+            lp.y = Math.max(0, Math.min(dm.heightPixels - lp.height, (int) ((cov[1] + cov[3] / 2) * dm.heightPixels) - lp.height / 2));
+            try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
         }
     }
 
@@ -491,10 +508,10 @@ public class OverlayService extends Service {
             }
             sb.append(vi);
             viView.setText(sb);
-            fitLines();
             boolean en1 = prefs.showEn() && en != null && !en.isEmpty();
             enView.setText(en1 ? en : "");
             enView.setVisibility(en1 ? View.VISIBLE : View.GONE);
+            fitLines();
             box.setVisibility(View.VISIBLE);
             main.removeCallbacks(hideRunnable);
             main.postDelayed(hideRunnable, holdMs);

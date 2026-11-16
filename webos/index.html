@@ -302,6 +302,7 @@ function zoneShow(j,vi){
   z.el.style.fontFamily=fontCss(/^[a-z]{2,12}$/.test(j.font||'')?j.font:P.font);
   var bh=Math.max(.04,+j.h||.15)*H, px=+j.zpx||0;
   z.el.style.whiteSpace=j.zfit?'pre':'';   /* same lines as the original paragraph */
+  if(j.zgrow){ z.el.style.width='auto'; z.el.style.minWidth=Math.max(.02,+j.w||.1)*W+'px'; z.el.style.maxWidth=Math.max(+j.w||.1,+j.zmaxw||0)*W+'px'; } else { z.el.style.minWidth=''; z.el.style.maxWidth=''; }   /* at least the original's size, wider for bigger letters */
   if(px>0){   /* the size chosen on the computer (on a 1080-line screen); the box grows down if the text needs it */
     z.el.style.height='auto'; z.el.style.minHeight=bh+'px'; z.el.style.overflow='visible'; z.el.style.fontSize=(px*scale())+'px';
   } else {    /* as big as the area allows, smaller for long text */
