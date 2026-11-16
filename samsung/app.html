@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><!-- Google's Vietnamese voice refuses requests that name another site -->
+<title>Hóng Sub TV</title>
+<!-- Hóng Sub for LG TVs (webOS). The same file runs as the installed app (.ipk) and as a page in the TV's web browser
+     (honggame.store/lg). Plain ES5 and XMLHttpRequest so it also runs on older TVs (webOS 3, Chromium 38). -->
+<style>
+@font-face{font-family:'HS';font-weight:500;src:url(fonts/be-vietnam-pro-vietnamese-500-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HS';font-weight:500;src:url(fonts/be-vietnam-pro-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'HS';font-weight:700;src:url(fonts/be-vietnam-pro-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HS';font-weight:700;src:url(fonts/be-vietnam-pro-latin-700-normal.woff2) format('woff2')}
+/* typefaces the computer can pick for the Vietnamese text */
+@font-face{font-family:'HSF-roboto';font-weight:700;src:url(fonts/roboto-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-roboto';font-weight:700;src:url(fonts/roboto-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-nunito';font-weight:700;src:url(fonts/nunito-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-nunito';font-weight:700;src:url(fonts/nunito-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-montserrat';font-weight:700;src:url(fonts/montserrat-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-montserrat';font-weight:700;src:url(fonts/montserrat-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-lexend';font-weight:700;src:url(fonts/lexend-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-lexend';font-weight:700;src:url(fonts/lexend-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-quicksand';font-weight:700;src:url(fonts/quicksand-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-quicksand';font-weight:700;src:url(fonts/quicksand-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-oswald';font-weight:700;src:url(fonts/oswald-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-oswald';font-weight:700;src:url(fonts/oswald-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'HSF-notoserif';font-weight:700;src:url(fonts/noto-serif-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:'HSF-notoserif';font-weight:700;src:url(fonts/noto-serif-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0E1014;color:#F4F5F7;font-family:'HS','Be Vietnam Pro',Arial,sans-serif;-webkit-font-smoothing:antialiased;cursor:default}
+*{box-sizing:border-box}
+#tvin{position:fixed;left:0;top:0;width:100%;height:100%;background:#000;object-fit:contain}
+
+/* the welcome screen, shown until there is a picture from the game console */
+#home{position:fixed;left:0;top:0;width:100%;height:100%;padding:7.5vh 8vw;background:#0E1014;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column}
+#home.off{display:none}
+.brand{font-weight:700;font-size:3.2vh;letter-spacing:-.01em}
+.brand b{background:#FFC400;color:#0E1014;border-radius:.4em;padding:.05em .32em;margin-left:.12em}
+.brand small{font-weight:500;color:#8A93A3;font-size:.62em;margin-left:.8em}
+.homeMain{-webkit-flex:1;flex:1;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center}
+.codeWrap .lab{font-size:2.6vh;color:#8A93A3;margin:0 0 1.6vh}
+.ipl{margin-top:1.6vh!important;font-size:2.4vh!important;letter-spacing:.02em!important;text-transform:none!important}.ipl b{color:#fff;font-weight:700;letter-spacing:.04em}
+.code{display:-webkit-flex;display:flex}
+.code span{display:block;width:8.6vh;height:11vh;line-height:11vh;margin-right:1.4vh;border-radius:1.6vh;background:#FFC400;color:#0E1014;font-weight:700;font-size:7.4vh;text-align:center}
+.steps{margin:5vh 0 0;padding:0;list-style:none;font-size:2.7vh;line-height:1.5;color:#C9CED8;max-width:60vw}
+.steps li{margin:0 0 1.2vh}
+.steps b{color:#F4F5F7}
+.homeFoot{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;font-size:2.2vh;color:#8A93A3}
+.dot{width:1.3vh;height:1.3vh;border-radius:50%;background:#8A93A3;margin-right:1vh}
+.dot.ok{background:#3FD08A}
+.dot.bad{background:#FF6B5E}
+.homeFoot .sp{-webkit-flex:1;flex:1}
+.btns{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:4.5vh 0 0}
+.btn{font:inherit;font-size:2.6vh;font-weight:700;color:#F4F5F7;background:#232833;border:3px solid #232833;border-radius:1.2vh;padding:1.5vh 2.6vh;margin:0 1.4vh 1.4vh 0;cursor:pointer;outline:none}
+.btn.pri{background:#FFC400;border-color:#FFC400;color:#0E1014}
+.btn.on{border-color:#3FD08A}
+.btn:focus,.btn:hover,.btn.f{border-color:#FFFFFF;-webkit-transform:scale(1.04);transform:scale(1.04)}
+.btn.pri:focus,.btn.pri:hover,.btn.pri.f{border-color:#FFFFFF}
+#gear{position:fixed;right:3vw;top:4vh;font-size:2.4vh;opacity:0;-webkit-transition:opacity .25s;transition:opacity .25s;margin:0}
+#gear.on{opacity:1}
+.key{display:inline-block;border:2px solid #3A404C;border-radius:.5em;padding:0 .45em;margin:0 .3em;color:#F4F5F7;font-weight:700}
+
+/* subtitles */
+#sub{position:fixed;left:6vw;right:6vw;bottom:7vh;text-align:center;pointer-events:none;opacity:0;-webkit-transition:opacity .18s;transition:opacity .18s}
+#sub.top{bottom:auto;top:6vh}
+#sub.on{opacity:1}
+body.pan #sub{right:40vw}
+/* over the game's own subtitle: the box takes its place and size */
+#sub.cov{bottom:auto;text-align:center}
+#sub.cov .box{display:-webkit-box;display:flex;-webkit-box-orient:vertical;flex-direction:column;-webkit-box-pack:center;justify-content:center;box-sizing:border-box;width:100%;height:100%;border-radius:.3em;padding:.15em .5em;overflow:hidden}
+#sub .box{display:inline-block;max-width:100%;padding:.3em .7em .36em;border-radius:.4em;background:rgba(8,9,12,.78)}
+#vi{font-weight:700;line-height:1.32;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+#vi .who{color:#FFC400;margin-right:.3em}
+#en{font-weight:500;color:#C9CED8;margin-top:.2em;line-height:1.3}
+
+/* translations of the extra areas (quests, items...), at the same place as on the computer */
+.zb{position:fixed;z-index:3;box-sizing:border-box;background:rgba(8,9,12,.92);color:#fff;border-radius:.6vh;padding:.4vh .8vh;overflow:hidden;white-space:pre-line;word-wrap:break-word;font-weight:700;line-height:1.28;text-shadow:0 1px 2px #000;-webkit-transition:opacity .2s;transition:opacity .2s}
+
+/* status line on top of the game: shown for a few seconds when something changes or a key is pressed */
+#pill{position:fixed;left:3vw;top:4vh;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:1vh 1.8vh;border-radius:100px;background:rgba(14,16,20,.86);font-size:2.1vh;opacity:0;-webkit-transition:opacity .25s;transition:opacity .25s}
+#pill.on{opacity:1}
+#pill .k{color:#FFC400;font-weight:700;margin-left:.5em;letter-spacing:.08em}
+
+/* settings */
+#panel{position:fixed;top:0;right:0;width:37vw;min-width:560px;height:100%;background:#171A21;border-left:1px solid #262B35;padding:5vh 2.6vw;-webkit-transform:translateX(102%);transform:translateX(102%);-webkit-transition:-webkit-transform .2s;transition:transform .2s;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column}
+#panel.on{-webkit-transform:none;transform:none}
+#panel h2{margin:0 0 3vh;font-size:3.2vh;font-weight:700}
+.row{width:100%;font:inherit;color:inherit;background:none;text-align:left;cursor:pointer;outline:none;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;min-height:7.4vh;padding:0 2vh;margin:0 -2vh .6vh;border-radius:1.2vh;font-size:2.5vh;border:2px solid transparent}
+.row .v{margin-left:auto;color:#C9CED8;font-weight:700;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center}
+.row .v:before,.row .v:after{content:'';width:0;height:0;border:.7vh solid transparent;margin:0 1.2vh;opacity:0}
+.row .v:before{border-right-color:#FFC400;border-left:0}
+.row .v:after{border-left-color:#FFC400;border-right:0}
+.row.f{background:#232833;border-color:#FFC400}
+.arw{display:inline-block;width:5vh;text-align:center;color:#FFC400;font-size:2.6vh;line-height:5vh;border-radius:1vh;background:#2B313D;margin-left:1vh}
+.arw:hover{background:#3A4252}
+.row .v:before,.row .v:after{display:none}
+.row.f .v{color:#F4F5F7}
+.row.act .v{color:#FFC400}
+#panel .note{margin-top:auto;font-size:2vh;line-height:1.5;color:#8A93A3}
+#panel .note b{color:#C9CED8}
+html.see,html.see body{background:transparent!important}
+</style>
+</head>
+<body>
+<video id="tvin" autoplay></video>
+
+<section id="home">
+  <div class="brand">Hóng<b>Sub</b><small>phụ đề tiếng Việt trên TV</small></div>
+  <div class="homeMain">
+    <div class="codeWrap">
+      <p class="lab">Mã TV</p>
+      <div class="code" id="code"></div>
+      <p class="lab ipl">IP của TV: <b id="ip">đang tìm...</b></p>
+      <ol class="steps">
+        <li>Trên máy tính, mở <b>Hóng Sub</b> và vào <b>Kết nối TV</b>.</li>
+        <li>Gõ mã ở trên vào ô <b>Mã TV</b> rồi bấm <b>Gửi thử</b>.</li>
+        <li>Không cần bấm gì thêm: phụ đề tự hiện trên TV. Cỡ chữ, chỗ hiện, cổng HDMI đều chỉnh trên máy tính.</li>
+      </ol>
+      <div class="btns" id="homeBtns">
+        <button class="btn" type="button" data-hdmi="1">HDMI 1</button>
+        <button class="btn" type="button" data-hdmi="2">HDMI 2</button>
+        <button class="btn" type="button" data-hdmi="3">HDMI 3</button>
+        <button class="btn" type="button" data-hdmi="4">HDMI 4</button>
+        <button class="btn" type="button" id="bFull">Toàn màn hình</button>
+        <button class="btn" type="button" id="bSet">Cài đặt</button>
+      </div>
+    </div>
+  </div>
+  <div class="homeFoot"><span class="dot" id="hDot"></span><span id="hState">Đang kết nối...</span><span class="sp"></span><span>Dùng con trỏ của điều khiển hoặc phím mũi tên để chọn</span></div>
+</section>
+
+<div id="zl"></div>
+<div id="sub"><div class="box"><div id="vi"></div><div id="en"></div></div></div>
+<button class="btn" type="button" id="gear">Cài đặt</button>
+<div id="pill"><span class="dot" id="pDot"></span><span id="pText">Hóng Sub</span><span class="k" id="pCode"></span></div>
+
+<aside id="panel" aria-label="Cài đặt">
+  <h2>Cài đặt Hóng Sub</h2>
+  <div id="rows"></div>
+  <p class="note" id="note"></p>
+  <button class="btn pri" type="button" id="bClose" style="margin:2vh 0 0;align-self:flex-start">Đóng</button>
+</aside>
+
+<script src="$WEBAPIS/webapis/webapis.js"></script>
+<script src="preset.js"></script>
+<script>
+(function(){
+'use strict';
+var VERSION='1.0.94';
+var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
+var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+var $=function(id){ return document.getElementById(id); };
+var webos=/web0s|webos/i.test(navigator.userAgent);
+var packaged=typeof tizen!=='undefined';   /* installed on a Samsung TV */
+
+/* ---------- settings kept on the TV ---------- */
+function load(k,d){ try{ var v=localStorage.getItem('hs.'+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem('hs.'+k,JSON.stringify(v)); }catch(e){} }
+var P={
+  code:load('code',''),
+  src:load('src',webos?1:0),        /* HDMI port of the console, 0 = no picture (subtitles only) */
+  size:load('size',30),
+  pos:load('pos','bottom'),
+  en:load('en',false),
+  col:load('col','#FFFFFF'),
+  font:load('font','bevn'),          /* look of the subtitle, set in Hóng Sub on the computer */
+  bg:load('bg',78),
+  wid:load('wid',88),
+  read:'auto'                         /* reading aloud is decided on the computer */
+};
+/* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
+function launchParams(){ try{ if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem&&window.PalmSystem.launchParams; return (s?(typeof s==='string'?JSON.parse(s):s):null)||{}; }catch(e){ return {}; } }
+function launchCode(){ var c=String(launchParams().code||'').toUpperCase(); return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }
+function launchPc(){ var a=String(launchParams().pc||''); return /^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(a)?a:''; }
+P.pc=load('pc','');
+var lc=launchCode(); if(lc){ P.code=lc; save('code',lc); }
+var lp=launchPc(); if(lp){ P.pc=lp; save('pc',lp); }
+if(P.read===true) P.read='auto'; else if(P.read===false) P.read='off';
+if(!/^[A-Z0-9]{4,8}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); }
+
+/* ---------- picture from the console: webOS lets an app show an HDMI input inside the page ---------- */
+var video=$('tvin'), srcOk=false;
+function setSource(n){
+  srcOk=false;
+  while(video.firstChild) video.removeChild(video.firstChild);
+  if(!n){ video.style.display='none'; homeShow(); return; }
+  video.style.display='block';
+  var s=document.createElement('source');
+  s.setAttribute('type','service/webos-external'); s.setAttribute('src','ext://hdmi:'+n);
+  s.addEventListener('error',function(){ srcFail(n); });
+  video.appendChild(s); gameSound();
+  try{ video.load(); var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){}
+  /* in a web browser (not the installed app) the TV may not allow HDMI inside the page */
+  setTimeout(function(){ if(P.src===n&&!srcOk&&(!webos||!packaged)) srcFail(n); },webos?5000:1500);
+  homeBtns();
+}
+function srcFail(n){
+  if(P.src!==n) return; srcOk=false; video.style.display='none'; homeShow();
+  $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV không mở được hình HDMI. Phụ đề vẫn hiện ở đây; muốn có cả hình game thì cài app Hóng Sub cho LG.';
+}
+function homeBtns(){ [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.className='btn'+(+b.getAttribute('data-hdmi')===P.src?' on':''); }); }
+function gameSound(){
+  try{ video.muted=false; video.volume=1; }catch(e){}
+  try{ var at=video.audioTracks; if(at&&at.length){ var any=false; for(var i=0;i<at.length;i++) if(at[i].enabled) any=true; if(!any) at[0].enabled=true; } }catch(e){}
+}
+video.addEventListener('playing',function(){ srcOk=true; homeHide(); gameSound(); });
+video.addEventListener('volumechange',function(){ if(video.muted) gameSound(); });
+video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); gameSound(); });
+function homeShow(){ $('home').className=''; }
+function homeHide(){ $('home').className='off'; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },6000); }
+
+/* ---------- subtitles ---------- */
+var hideT=0;
+function esc(s){ return String(s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function scale(){ return Math.max(.5,Math.min(window.innerWidth/1920,window.innerHeight/1080)); }
+var FONTCSS={bevn:"'HS',sans-serif",arial:"Arial,'HS',sans-serif",notoserif:"'HSF-notoserif',Georgia,serif",oswald:"'HSF-oswald','HS',sans-serif"};
+/* "Đè chữ Việt lên đúng chỗ phụ đề gốc" on the computer: the subtitle box sits over the original one on the HDMI picture */
+var cov=null;
+function coverPlace(){
+  var s=$('sub'), bx=document.querySelector('#sub .box');
+  if(!cov){ s.style.top=''; s.style.height=''; s.className=s.className.replace(/\s*cov/g,''); applyLook(); return; }
+  var W=window.innerWidth, H=window.innerHeight;
+  /* on the original subtitle's line, as wide as "Độ rộng khung phụ đề" says (centred on the original), with the chosen background */
+  var bw=Math.max(P.wid/100*W,120), cx=(cov.x+cov.w/2)*W, left=Math.max(0,Math.min(W-bw,cx-bw/2));
+  s.style.left=left+'px'; s.style.right='auto'; s.style.width=bw+'px'; s.style.top=cov.y*H+'px'; s.style.height=Math.max(cov.h*H,30)+'px';
+  if(s.className.indexOf('cov')<0) s.className+=' cov';
+  if(bx) bx.style.background='rgba(8,9,12,'+(P.bg/100)+')';
+  var px=P.size*1.6*scale(), v=$('vi'); v.style.fontSize=px+'px';
+  for(var i=0;i<20&&bx&&(bx.scrollHeight>bx.clientHeight+1)&&px>12;i++){ px*=.92; v.style.fontSize=px+'px'; }
+}
+function fontCss(k){ return FONTCSS[k]||("'HSF-"+k+"','HS',sans-serif"); }
+function applyLook(){
+  var px=P.size*1.6*scale();          /* the same size number as the Android TV app */
+  $('vi').style.fontSize=px+'px'; $('en').style.fontSize=Math.max(16,px*.55)+'px';
+  $('vi').style.color=P.col; $('vi').style.fontFamily=fontCss(P.font); $('en').style.fontFamily=fontCss(P.font);
+  var bx=document.querySelector('#sub .box'); if(bx) bx.style.background='rgba(8,9,12,'+(P.bg/100)+')';
+  var side=Math.max(0,(100-P.wid)/2); if(!cov){ $('sub').style.left=side+'vw'; $('sub').style.right=side+'vw'; $('sub').style.width=''; }
+  $('sub').className=($('sub').className.indexOf('on')>=0?'on ':'')+(P.pos==='top'?'top':'')+(cov?' cov':'');
+}
+function showLine(who,vi,en,hold,readIt){
+  if(readIt===undefined) readIt=false;
+  $('vi').innerHTML=(who?'<span class="who">'+esc(who)+':</span>':'')+esc(vi).replace(/\n/g,'<br>');
+  $('en').innerHTML=P.en&&en?esc(en):''; $('en').style.display=P.en&&en?'block':'none';
+  $('sub').className='on'+(P.pos==='top'?' top':'')+(cov?' cov':''); coverPlace();
+  clearTimeout(hideT); hideT=setTimeout(function(){ $('sub').className=(P.pos==='top'?'top':'')+(cov?' cov':''); },hold);
+  if(readIt) say(vi);
+}
+
+/* ---------- translations of the extra areas ---------- */
+var zones={};
+function zoneOff(id){ var z=zones[id]; if(!z) return; clearTimeout(z.t); if(z.el.parentNode) z.el.parentNode.removeChild(z.el); delete zones[id]; }
+function zoneShow(j,vi){
+  var id=String(j.zid||''); if(!id) return;
+  if(!vi){ zoneOff(id); return; }
+  var z=zones[id]; if(!z){ z=zones[id]={el:document.createElement('div'),t:0}; z.el.className='zb'; $('zl').appendChild(z.el); }
+  var W=window.innerWidth, H=window.innerHeight;
+  z.el.style.left=(+j.x||0)*W+'px'; z.el.style.top=(+j.y||0)*H+'px'; z.el.style.width=Math.max(.06,+j.w||.3)*W+'px'; z.el.style.height=Math.max(.04,+j.h||.15)*H+'px';
+  z.el.textContent=vi;
+  if(j.hasOwnProperty('zbg')) z.el.style.background='rgba(8,9,12,'+Math.max(0,Math.min(100,+j.zbg))/100+')';
+  z.el.style.fontFamily=fontCss(/^[a-z]{2,12}$/.test(j.font||'')?j.font:P.font);
+  /* as big as the area allows, smaller for long text */
+  var bh=Math.max(.04,+j.h||.15)*H, lines=vi.split('\n').length, cap=({xs:20,s:26,m:34,l:44,xl:56}[j.zs]||34)*scale();
+  var fs=Math.max(12,Math.min(cap,bh/lines*.62)); z.el.style.fontSize=fs+'px';
+  for(var k=0;k<22&&(z.el.scrollHeight>z.el.clientHeight+1||z.el.scrollWidth>z.el.clientWidth+1)&&fs>9;k++){ fs*=.9; z.el.style.fontSize=fs+'px'; }
+  clearTimeout(z.t);
+  var hold=+j.hold||0;
+  z.t=setTimeout(function(){ zoneOff(id); },hold>0?hold*1000:300000);   /* "until it changes": still gone after 5 minutes without news */
+}
+
+/* ---------- reading aloud, one line after another ----------
+   The TV's own Vietnamese voice when it has one; most LG TVs do not, so then Google's Vietnamese voice is fetched
+   (from Hóng Sub on the computer over the home network, else through honggame.store) and played with Web Audio.
+   Never an <audio> element: on webOS it takes the TV's media player away from the HDMI picture and the game goes silent. */
+var viVoice=null, aq=[], audio=null, actx=null;
+function pickVoice(){ try{ var v=window.speechSynthesis.getVoices(); for(var i=0;i<v.length;i++) if(/^vi/i.test(v[i].lang)){ viVoice=v[i]; return; } }catch(e){} }
+if(window.speechSynthesis){ pickVoice(); try{ window.speechSynthesis.onvoiceschanged=pickVoice; }catch(e){} }
+function chunks(t){
+  var out=[], s=String(t).replace(/\s+/g,' ').trim();
+  while(s.length>180){
+    var cut=-1, seps=['. ','! ','? ','… ','; ',', ',' '];
+    for(var i=0;i<seps.length&&cut<0;i++){ var k=s.lastIndexOf(seps[i],180); if(k>40) cut=k+1; }
+    if(cut<0) cut=180;
+    out.push(s.slice(0,cut).trim()); s=s.slice(cut).trim();
+  }
+  if(s) out.push(s);
+  return out;
+}
+function ac(){
+  if(!actx){ var C=window.AudioContext||window.webkitAudioContext; if(C){ try{ actx=new C(); }catch(e){ actx=null; } } }
+  if(actx&&actx.state==='suspended'&&actx.resume){ try{ actx.resume(); }catch(e){} }
+  return actx;
+}
+function ttsUrl(t){
+  var q=encodeURIComponent(t);
+  return lanOk()&&P.pc?'http://'+P.pc+'/tts?code='+P.code+'&q='+q:RELAY+'tts?q='+q;
+}
+/* fetched as soon as it is queued, so the next line is ready when the one before ends */
+function ttsLoad(it){
+  var c=ac(); if(!c){ it.done=true; return; }
+  var x=new XMLHttpRequest(), fin=function(buf){ if(it.done) return; it.buf=buf||null; it.done=true; if(aq[0]===it) playNext(); };
+  try{
+    x.open('GET',it.url||ttsUrl(it.t),true); x.responseType='arraybuffer'; x.timeout=9000;
+    x.onload=function(){
+      if(x.status!==200||!x.response||x.response.byteLength<200){ fin(null); return; }
+      try{ c.decodeAudioData(x.response,function(b){ fin(b); },function(){ fin(null); }); }catch(e){ fin(null); }
+    };
+    x.onerror=function(){ fin(null); }; x.ontimeout=function(){ fin(null); };
+    x.send();
+  }catch(e){ fin(null); }
+}
+function playNext(){
+  if(audio||!aq.length||!aq[0].done) return;
+  var it=aq.shift(), c=ac();
+  if(!it.buf||!c){ playNext(); return; }
+  var s=c.createBufferSource(), cur={src:s};
+  s.buffer=it.buf; if(s.playbackRate){ var pr=(it.rate||1)*(it.fast?1.12:1); if(pr!==1) s.playbackRate.value=pr; }
+  /* volume set on the computer: above 100% the voice is amplified, with a limiter so it does not crackle */
+  var g=(P.vol||150)/100, out=c.destination;
+  if(g!==1&&c.createGain){ try{ var gn=c.createGain(); gn.gain.value=g; var lim=c.createDynamicsCompressor?c.createDynamicsCompressor():null;
+    if(lim){ lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.002; lim.release.value=0.1; gn.connect(lim); lim.connect(c.destination); } else gn.connect(c.destination);
+    out=gn; }catch(e){ out=c.destination; } }
+  s.connect(out);
+  audio=cur;
+  s.onended=function(){ if(audio===cur){ audio=null; playNext(); } };
+  try{ s.start(0); }catch(e){ audio=null; playNext(); }
+}
+function say(t){
+  if(!t) return;
+  if(window.speechSynthesis&&viVoice){
+    var ss=window.speechSynthesis;
+    if(ss.pending) ss.cancel();                       /* two lines already waiting: start fresh */
+    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=ss.speaking?1.15:1.05; u.volume=Math.min(1,(P.vol||150)/100);
+    ss.speak(u); return;
+  }
+  var behind=!!audio||aq.length>0;
+  if(aq.length>=6) aq.length=0;                       /* far behind: drop what is waiting */
+  chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
+  playNext();
+}
+/* a line read by the voice chosen on the computer: the computer made the sound, the TV plays it */
+function sayClip(id,rate){
+  if(!P.pc||!id) return;
+  var behind=!!audio||aq.length>0;
+  if(aq.length>=3) aq.length=0;                       /* far behind: drop what is waiting */
+  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:behind,done:false,buf:null};
+  aq.push(it); ttsLoad(it); playNext();
+}
+function sayStop(){
+  try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
+  aq.length=0;
+  if(audio){ try{ audio.src.stop(0); }catch(e){} audio=null; }
+}
+/* LG: Web Audio is not stopped by the TV when the app goes to the background */
+document.addEventListener('visibilitychange',function(){ if(document.hidden) sayStop(); });
+
+/* ---------- messages from Hóng Sub on the computer, through honggame.store ---------- */
+var lastSeq=-1, okAt=0, fails=0;
+function xhr(method,url,body,cb){
+  var x=new XMLHttpRequest();
+  x.open(method,url,true); x.timeout=6000;
+  if(body) x.setRequestHeader('Content-Type','application/json');
+  x.onload=function(){ var j=null; try{ j=JSON.parse(x.responseText); }catch(e){} cb(x.status===200?j:null); };
+  x.onerror=x.ontimeout=function(){ cb(null); };
+  x.send(body?JSON.stringify(body):null);
+}
+function hello(){ xhr('POST',RELAY+'push',{room:P.code+'T',kind:'hello',vi:'tv'},function(){}); }
+/* every 20 s: still open, so Hóng Sub on the computer can show that the TV is ready */
+function alive(){ if(!document.hidden) xhr('POST',RELAY+'push',{room:P.code+'T',kind:'alive',vi:'tv'},function(){}); }
+setInterval(alive,20000);
+/* the computer also sees the TV through its home-network questions; this covers the quiet minutes */
+setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code+'&ver='+VERSION,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
+/* newer senders list every message after the last one seen; older ones only send the latest */
+function takeAll(j,after){
+  if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(it); }); return; }
+  handle(j);
+}
+var mids=[];
+function handle(j){
+  if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
+  var kind=j.kind||'sub', vi=String(j.vi||'').trim();
+  /* "Đọc phụ đề" turned off on the computer (rd:false) wins over every TV setting, "Luôn đọc" included */
+  var pcOff=j.rd===false;
+  var readIt=!pcOff&&(P.read==='on'||(P.read==='auto'&&!!j.speak));   /* "auto": the computer decides where lines are read */
+  if(pcOff||(kind==='ctl'&&P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak)) sayStop();   /* an area or a notice never cuts the line being read */
+  var size=+j.size||0, pos=j.pos||'', changed=false;
+  if(size>=18&&size!==P.size){ P.size=size; save('size',size); changed=true; }
+  if((pos==='top'||pos==='bottom')&&pos!==P.pos){ P.pos=pos; save('pos',pos); changed=true; }
+  if(j.hasOwnProperty('sen')&&!!j.sen!==P.en){ P.en=!!j.sen; save('en',P.en); }
+  /* the computer tells where its home-network server is: switch to the faster local link */
+  if(packaged&&/^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(j.pc||'')&&j.pc!==P.pc){ P.pc=j.pc; save('pc',P.pc); }
+  if(j.hasOwnProperty('cov')){ var c=j.cov; cov=c&&+c.w>0.02&&+c.h>0.02?{x:+c.x,y:+c.y,w:+c.w,h:+c.h}:null; }
+  if(/^[a-z]{2,12}$/.test(j.font||'')&&j.font!==P.font){ P.font=j.font; save('font',P.font); changed=true; }
+  if(/^#[0-9A-Fa-f]{6}$/.test(j.col||'')&&j.col!==P.col){ P.col=j.col; save('col',P.col); changed=true; }
+  if(j.hasOwnProperty('bg')&&+j.bg>=0&&+j.bg<=100&&+j.bg!==P.bg){ P.bg=+j.bg; save('bg',P.bg); changed=true; }
+  if(j.hasOwnProperty('wid')&&+j.wid>=20&&+j.wid<=100&&+j.wid!==P.wid){ P.wid=+j.wid; save('wid',P.wid); changed=true; }
+  if(j.hasOwnProperty('hdmi')&&packaged){ var hn=+j.hdmi; if(hn>=0&&hn<=4&&hn!==P.src){ P.src=hn; save('src',hn); setSource(hn); } }
+  if(j.hasOwnProperty('vol')&&+j.vol>=30&&+j.vol<=300) P.vol=+j.vol;   /* how loud the voice is, in percent */
+  if(changed){ applyLook(); if(cov) coverPlace(); }
+  if(kind==='say'){ if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
+  if(kind==='hello'||kind==='ctl') return;
+  if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
+  if(kind==='zone'){ zoneShow(j,vi); if(vi&&!pcOff&&j.speak) say(vi.replace(/\n/g,'. ')); return; }   /* read aloud only when the area asks for it on the computer */
+  if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
+}
+function lanOk(){ return Date.now()-lanAt<20000; }
+function poll(){
+  xhr('GET',RELAY+'pull?room='+P.code+(lastSeq>=0?'&since='+lastSeq:'')+'&t='+Date.now(),null,function(j){
+    var wait=lanOk()?3000:450;
+    if(j){
+      if(!okAt||fails) netState(true); okAt=Date.now(); fails=0;
+      var seq=+j.seq||0;
+      if(lastSeq<0) lastSeq=seq;                       /* skip what was there before the TV started listening */
+      else if(seq!==lastSeq){ takeAll(j,lastSeq); lastSeq=seq; }
+    } else { if(++fails===3&&!lanOk()) netState(false); wait=lanOk()?3000:1500; }
+    setTimeout(poll,wait);
+  });
+}
+/* ---------- straight from the computer over the home network (installed app only: a web page may not call the home network) ----------
+   The TV asks for the next line and the computer answers as soon as there is one. */
+var lanSeq=-1, lanAt=0, lanFails=0;
+var myIp='';
+function ipShow(ip){ ip=String(ip||'').replace(/^::ffff:/,''); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)||ip==='127.0.0.1'||ip===myIp) return; myIp=ip; var el=$('ip'); if(el) el.textContent=ip; if(panelOn) draw(); }
+var pbs=[];
+function ipAsk(){
+  if(!window.PalmServiceBridge) return;
+  ['luna://com.palm.connectionmanager/getStatus','luna://com.webos.service.connectionmanager/getStatus'].forEach(function(u){
+    try{ var b=new PalmServiceBridge(); pbs.push(b);
+      b.onservicecallback=function(m){ try{ var j=JSON.parse(m), w=(j.wired&&j.wired.state==='connected'&&j.wired)||(j.wifi&&j.wifi.state==='connected'&&j.wifi); if(w&&w.ipAddress) ipShow(w.ipAddress); }catch(e){} };
+      b.call(u,'{}'); }catch(e){}
+  });
+}
+ipAsk(); setTimeout(function(){ if(!myIp){ var el=$('ip'); if(el) el.textContent='mở Hóng Sub trên máy tính để thấy IP'; } },6000);
+function lanPoll(){
+  if(!packaged||!P.pc){ setTimeout(lanPoll,5000); return; }
+  var x=new XMLHttpRequest(), url='http://'+P.pc+'/sub?code='+P.code+'&ver='+VERSION+'&since='+lanSeq+'&t='+Date.now();
+  x.open('GET',url,true); x.timeout=20000;
+  x.onload=function(){
+    var j=null; try{ j=JSON.parse(x.responseText); }catch(e){}
+    if(x.status===200&&j){
+      if(!lanOk()) netState(true,true);
+      lanAt=Date.now(); lanFails=0; if(j.you) ipShow(j.you);
+      var seq=+j.seq||0;
+      if(lanSeq<0) lanSeq=seq; else if(seq!==lanSeq){ takeAll(j,lanSeq); lanSeq=seq; }
+      lanPoll(); return;
+    }
+    lanRetry();
+  };
+  x.onerror=x.ontimeout=lanRetry;
+  x.send(null);
+}
+function lanRetry(){ lanFails++; setTimeout(lanPoll,Math.min(10000,1000*lanFails)); }
+function netState(ok,lan){
+  $('hDot').className='dot '+(ok?'ok':'bad'); $('pDot').className='dot '+(ok?'ok':'bad');
+  $('hState').textContent=ok?(lan||lanOk()?'Đã nối với máy tính qua mạng nhà, đang chờ phụ đề':'Đã sẵn sàng, đang chờ phụ đề từ máy tính'):'Chưa kết nối được internet. Kiểm tra mạng của TV.';
+  pill(ok?'Hóng Sub đang chờ phụ đề':'Mất kết nối internet',!ok);
+}
+var pillT=0;
+function pill(t,keep){ if($('home').className!=='off'){ $('pill').className=''; return; }   /* the welcome screen already says it */
+  $('pText').textContent=t; $('pCode').textContent='Mã '+P.code; $('pill').className='on'; clearTimeout(pillT); if(!keep) pillT=setTimeout(function(){ $('pill').className=''; },6000); }
+
+/* ---------- settings panel: arrows to move and change, OK to open, Back to close ---------- */
+var panelOn=false, fi=0, newCode=0;
+var ROWS=[
+  {k:'src',t:'Hình từ',v:function(){ return P.src?'HDMI '+P.src:'Không hiện hình'; },ch:function(d){ P.src=(P.src+d+5)%5; save('src',P.src); setSource(P.src); }},
+  {k:'ip',t:'IP của TV',v:function(){ return myIp||'chưa biết'; },act:function(){ ipAsk(); }},
+  {k:'code',t:'Mã TV',v:function(){ return newCode?'Bấm OK lần nữa để đổi':P.code; },act:function(){ if(!newCode){ newCode=1; draw(); return; } newCode=0; P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); lastSeq=-1; codeDraw(); hello(); draw(); }},
+  {k:'test',t:'Xem thử phụ đề',v:function(){ return 'OK'; },act:function(){ sample(); }},
+  {k:'exit',t:'Thoát Hóng Sub',v:function(){ return 'OK'; },act:function(){ quit(); }}
+];
+function sample(){ showLine('KRATOS','Bám sát vào, nhóc. Cây cầu này không trụ được lâu đâu.','Stay close, boy. This bridge will not hold for long.',4000,false); }
+function draw(){
+  $('rows').innerHTML=ROWS.map(function(r,i){ return '<button type="button" class="row'+(i===fi?' f':'')+(r.ch?' pick':' act')+'" data-i="'+i+'"><span>'+r.t+'</span><span class="v">'+(r.ch?'<span class="arw" data-d="-1">◀</span>':'')+'<span style="margin:0 1.2vh">'+esc(r.v())+'</span>'+(r.ch?'<span class="arw" data-d="1">▶</span>':'')+'</span></button>'; }).join('');
+  [].forEach.call($('rows').children,function(el){
+    var i=+el.getAttribute('data-i');
+    el.onmouseover=function(){ if(fi===i) return; fi=i; [].forEach.call($('rows').children,function(x,j){ x.className=x.className.replace(/ f\b/,'')+(j===i?' f':''); }); };   /* the pointer moves the highlight */
+    el.onclick=function(ev){ var r=ROWS[i], d=ev&&ev.target&&ev.target.getAttribute?+ev.target.getAttribute('data-d'):0; fi=i; if(r.act) r.act(); else r.ch(d||1); draw(); focusRow(); };
+  });
+  $('note').innerHTML='Hóng Sub '+VERSION+(packaged?' cho TV Samsung':' trên trình duyệt')+'. Cỡ chữ, chỗ hiện chữ, câu tiếng Anh và giọng đọc chỉnh trên máy tính: <b>Kết nối TV</b>, mã <b>'+P.code+'</b>.'+(packaged||!webos?'':' Trình duyệt của TV có thể không hiện được hình HDMI: cài app Hóng Sub cho LG để có hình game và phụ đề cùng lúc.');
+}
+function focusRow(){ var el=$('rows').children[fi]; if(el&&el.focus) try{ el.focus(); }catch(e){} }
+function panel(on){
+  panelOn=on; newCode=0; $('panel').className=on?'on':''; document.body.className=on?'pan':'';
+  if(on){ draw(); focusRow(); } else { var b=$('home').className==='off'?null:document.querySelector('#homeBtns .btn'); if(b) b.focus(); }
+}
+function quit(){ sayStop(); try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} try{ tizen.application.getCurrentApplication().exit(); }catch(e){ window.close(); } }
+function homeMove(d){
+  var bs=[].slice.call(document.querySelectorAll('#homeBtns .btn')); if(!bs.length) return;
+  var i=bs.indexOf(document.activeElement); i=i<0?0:(i+d+bs.length)%bs.length; bs[i].focus();
+}
+document.addEventListener('keydown',function(e){
+  var k=e.keyCode, onBtn=document.activeElement&&document.activeElement.tagName==='BUTTON';
+  if(!panelOn){
+    if(k===13&&onBtn) return;                                                   /* OK on a button: the button handles it */
+    if(k===13||k===457||k===404){ panel(true); e.preventDefault(); return; }    /* OK, info, green */
+    if($('home').className!=='off'&&(k===37||k===38||k===39||k===40)){ homeMove(k===37||k===38?-1:1); e.preventDefault(); return; }
+    if(k===461||k===10009||k===27||k===8){ if($('home').className==='off'&&P.src){ pill('Bấm Back lần nữa để thoát',false); if(e.timeStamp-(window.__bk||0)<2500) quit(); window.__bk=e.timeStamp; } else quit(); e.preventDefault(); return; }
+    if(k>=49&&k<=52){ P.src=k-48; save('src',P.src); setSource(P.src); pill('Hình từ HDMI '+P.src,false); return; }
+    pill(okAt?'Hóng Sub đang chờ phụ đề':'Đang kết nối...',false); return;
+  }
+  var r=ROWS[fi];
+  if(k===13&&document.activeElement===$('bClose')) return;
+  if(k===13&&onBtn&&document.activeElement.parentNode===$('rows')){ e.preventDefault(); if(r.act) r.act(); else r.ch(1); draw(); focusRow(); return; }
+  if(k===38){ fi=(fi+ROWS.length-1)%ROWS.length; newCode=0; }
+  else if(k===40){ fi=(fi+1)%ROWS.length; newCode=0; }
+  else if(k===37&&r.ch) r.ch(-1);
+  else if(k===39&&r.ch) r.ch(1);
+  else if(k===13){ if(r.act) r.act(); else r.ch(1); }
+  else if(k===461||k===10009||k===27||k===8){ panel(false); }
+  else return;
+  e.preventDefault(); if(panelOn){ draw(); focusRow(); }
+});
+/* Back in the TV's web browser goes to the previous page: keep one step of history so Back closes settings instead */
+if(!packaged&&window.history&&history.pushState){
+  try{ history.pushState({hs:1},''); }catch(e){}
+  window.addEventListener('popstate',function(){ if(panelOn){ panel(false); try{ history.pushState({hs:1},''); }catch(e){} } });   /* settings closed: the next Back leaves the page */
+}
+function fullscreen(){
+  var d=document.documentElement, f=d.requestFullscreen||d.webkitRequestFullscreen||d.webkitRequestFullScreen;
+  if(f) try{ f.call(d); }catch(e){}
+}
+[].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.onclick=function(){ P.src=+b.getAttribute('data-hdmi'); save('src',P.src); fullscreen(); setSource(P.src); pill('Đang mở hình HDMI '+P.src,false); }; });
+$('bFull').onclick=fullscreen;
+$('bSet').onclick=function(){ panel(true); };
+$('gear').onclick=function(){ panel(true); };
+$('bClose').onclick=function(){ panel(false); };
+/* the settings button on top of the game shows up when the pointer moves */
+var gearT=0;
+document.addEventListener('mousemove',function(){ if($('home').className!=='off'||panelOn) return; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },4000); });
+document.addEventListener('webOSRelaunch',function(){ var c=launchCode(), a=launchPc(); if(a&&a!==P.pc){ P.pc=a; save('pc',a); } if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; lanSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
+document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); if(P.src) setSource(P.src); } else sayStop(); });
+
+function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }
+codeDraw(); applyLook(); hello(); poll(); lanPoll();
+/* the installed app opens the console's HDMI by itself; the browser waits for a click (TVs only play video after a press) */
+if(packaged&&P.src) setSource(P.src); else { if(!packaged) P.src=0; video.style.display='none'; homeBtns(); }
+setTimeout(function(){ var b=document.querySelector('#homeBtns .btn'); if(b&&!panelOn) try{ b.focus(); }catch(e){} },300);
+window.addEventListener('resize',applyLook);
+
+/* ---------- Samsung (Tizen) ----------
+   The HDMI picture is drawn by the TV itself in a window under the page: the page turns see-through where the game shows. */
+function setSource(n){
+  srcOk=false;
+  try{ video.style.display='none'; }catch(e){}
+  if(!n||!window.tizen||!tizen.tvwindow){ document.documentElement.className=''; try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} if(!n) homeShow(); else srcFail(n); return; }
+  var fail=function(e){ if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){} };
+  var go=function(src){
+    try{
+      tizen.tvwindow.setSource(src,function(){
+        /* BEHIND: the game picture goes under the page, so the Vietnamese subtitles stay on top (the default, FRONT, covers them) */
+        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; document.documentElement.className='see'; homeHide(); },
+          fail,['0px','0px','100%','100%'],'MAIN','BEHIND');
+      },fail,'MAIN');
+    }catch(e){ fail(e); }
+  };
+  /* the TV wants its own description of the input, taken from its list of connected sources */
+  var once=false, plain={type:'HDMI',number:n}, pick=function(src){ if(once) return; once=true; go(src); };
+  setTimeout(function(){ pick(plain); },1500);
+  try{
+    tizen.systeminfo.getPropertyValue('VIDEOSOURCE',function(vs){
+      var list=(vs&&vs.connected)||[], hit=null;
+      for(var i=0;i<list.length;i++) if(list[i].type==='HDMI'&&+list[i].number===n) hit=list[i];
+      pick(hit||plain);
+    },function(){ pick(plain); });
+  }catch(e){ pick(plain); }
+  homeBtns();
+}
+function gameSound(){}
+function ipAsk(){
+  try{ if(window.webapis&&webapis.network&&webapis.network.getIp){ ipShow(webapis.network.getIp()); return; } }catch(e){}
+  try{ tizen.systeminfo.getPropertyValue('ETHERNET_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
+  try{ tizen.systeminfo.getPropertyValue('WIFI_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
+}
+try{ ['ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','1','2','3','4'].forEach(function(k){ try{ tizen.tvinputdevice.registerKey(k); }catch(e){} }); }catch(e){}
+document.addEventListener('visibilitychange',function(){ if(document.hidden){ try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} } });
+
+/* ---------- staying up to date ----------
+   index.html (the loader) opens the newest Hóng Sub from the internet, so the TV never needs a reinstall.
+   While the app runs it looks for a new version every half hour and switches over when nobody is reading subtitles. */
+(function(){
+  var LIVE='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/tv-live/samsung/', last=Date.now();
+  function vn(v){ var p=String(v||'').split('.'); return (+p[0]||0)*1e8+(+p[1]||0)*1e4+(+p[2]||0); }
+  try{ new MutationObserver(function(){ last=Date.now(); }).observe($('sub'),{childList:true,subtree:true,characterData:true}); }catch(e){}
+  function check(){
+    var x=new XMLHttpRequest();
+    x.onreadystatechange=function(){
+      if(x.readyState!==4||x.status!==200) return;
+      var v=String(x.responseText||'').trim();
+      if(!/^\d+\.\d+\.\d+$/.test(v)||vn(v)<=vn(VERSION)) return;
+      var idle=$('home').className!=='off'||Date.now()-last>20*60e3;
+      if(!idle) return;
+      pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
+      setTimeout(function(){ location.replace('index.html'); },2500);
+    };
+    try{ x.open('GET',LIVE+'version.txt?t='+Date.now(),true); x.send(); }catch(e){}
+  }
+  setTimeout(check,60e3); setInterval(check,30*60e3);
+})();
+window.hsTv={handle:handle,P:P,version:VERSION};
+})();
+</script>
+</body>
+</html>
