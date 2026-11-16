@@ -348,12 +348,12 @@ public class OverlayService extends Service {
                 if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
                 tv.setMinHeight(bh);
                 tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, zpx * (H / 1080f));
-                tv.setHorizontallyScrolling(zfit);
+                tv.setHorizontallyScrolling(false);
                 if (zfit) {   // same lines as the original paragraph: smaller letters instead of an extra line
                     float widest = 0;
                     for (String line : vi.split("\n")) widest = Math.max(widest, tv.getPaint().measureText(line));
                     int avail = bw - tv.getPaddingLeft() - tv.getPaddingRight();
-                    if (widest > avail && avail > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(6f, tv.getTextSize() * avail / widest));
+                    if (widest > avail && avail > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(6f, tv.getTextSize() * avail / widest * 0.96f));
                 }
                 final TextView v2 = tv;
                 Runnable off2 = () -> { zoneLayer.removeView(v2); zoneViews.remove(id); zoneOff.remove(id); };
@@ -452,7 +452,7 @@ public class OverlayService extends Service {
     private void fitLines() {
         int size = prefs.textSize();
         boolean lm = prefs.lines() || (cov != null && covSpot);
-        viView.setHorizontallyScrolling(lm);
+        viView.setHorizontallyScrolling(false);   // never: with centred text it draws the words off screen
         viView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
         if (cov != null && covSpot && covFs > 0) {
             DisplayMetrics dm = new DisplayMetrics();
@@ -473,7 +473,7 @@ public class OverlayService extends Service {
         if (avail <= 0) return;
         float widest = 0;
         for (String line : viView.getText().toString().split("\n")) widest = Math.max(widest, viView.getPaint().measureText(line));
-        if (widest > avail) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), viView.getTextSize() * avail / widest));
+        if (widest > avail) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), viView.getTextSize() * avail / widest * 0.96f));
         if (cov != null) {   // over the original line: no taller than the box either
             int lines = Math.max(1, viView.getText().toString().split("\n").length);
             float maxPx = (lp.height - box.getPaddingTop() - box.getPaddingBottom()) / (lines * 1.2f);
