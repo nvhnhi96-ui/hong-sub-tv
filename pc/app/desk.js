@@ -296,7 +296,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   setInterval(cur,800); cur();
   $('dkBuyZalo').addEventListener('click',function(){
     var msg='Chào shop, mình muốn nhờ nạp tiền OpenRouter để dùng AI dịch thông minh trên Hóng Sub.';
-    try{ navigator.clipboard.writeText(msg); }catch(e){}
+    try{ navigator.clipboard.writeText(msg).catch(function(){}); }catch(e){}
     A.status('idle','Đã chép sẵn tin nhắn, dán (Ctrl+V) vào Zalo của shop.');
     D.openUrl('https://zalo.me/0949099992');
   });

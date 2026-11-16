@@ -13,7 +13,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode runNumber
-        versionName "0.1." + runNumber
+        versionName "1.0." + runNumber
     }
 
     signingConfigs {
@@ -50,7 +50,4 @@ android {
     }
 }
 
-dependencies {
-    // on-device text reading (Latin script), model bundled in the app
-    implementation 'com.google.mlkit:text-recognition:16.0.1'
-}
+// no libraries: the Hóng Sub page (assets/app.html, the same page as the Windows app) does the reading and translating

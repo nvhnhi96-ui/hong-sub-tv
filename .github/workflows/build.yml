@@ -262,7 +262,7 @@ jobs:
             Bản tự động.
             - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
-            - hong-sub-android.apk: điện thoại Android, dùng kèm app PS Remote Play.
+            - hong-sub-android.apk: app Hóng Sub cho điện thoại Android (đủ chức năng như bản Windows), dùng kèm app PS Remote Play.
             - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
             - hong-sub-samsung.wgt: TV Samsung (Tizen), cài bằng Tizen Studio với chứng chỉ Samsung.
           files: |
