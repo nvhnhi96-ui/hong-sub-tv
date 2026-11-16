@@ -42,6 +42,7 @@ body:not(.desk) .dk-only{display:none!important}
 .tvs span{flex:1;line-height:1.4}
 .tvs .hs-btn{padding:6px 12px;font-size:13px}
 .tvp{display:none}.tvp.on{display:block}
+.dk-vnotes{margin:6px 0 0;padding-left:20px;display:grid;gap:6px;font-size:14px;color:var(--muted);max-height:260px;overflow:auto}
 .tvd{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--sunk)}
 .tvd summary{cursor:pointer;font-weight:700;font-size:14px}
 .tvc{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
@@ -411,7 +412,6 @@ body:not(.desk) .dk-only{display:none!important}
                 <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="samsung"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV Samsung</b><small>Tizen, có app Hóng Sub</small></button>
-                <button type="button" role="radio" aria-checked="false" data-k="web"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV khác</b><small>dùng trình duyệt trên TV</small></button>
               </div>
               <div class="tvs" id="hsTvState"><i></i><span id="hsTvStateT">Chưa nối TV</span><button class="hs-btn" type="button" id="hsTvStateB" hidden></button></div>
 
@@ -458,13 +458,6 @@ body:not(.desk) .dk-only{display:none!important}
                 <p class="hs-note" style="margin-top:6px">Chưa có app trên TV? <button class="dk-link" type="button" data-tvguide="samsung">Cách cài lên TV Samsung</button></p>
               </div>
 
-              <div class="tvp" data-k="web">
-                <ol class="dk-steps">
-                  <li>Trên TV mở trình duyệt web, vào <b>honggame.store/lg</b>.</li>
-                  <li>Gõ mã đang hiện trên TV vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>.</li>
-                </ol>
-                <p class="hs-note">Trình duyệt chỉ hiện phụ đề trên nền tối, không hiện được hình game. Muốn phụ đề nằm trên hình game, dùng TV Android hoặc TV LG có app.</p>
-              </div>
 
               <div class="tvc">
                 <div class="dk-set"><label class="lab" for="hsTv" id="hsTvCodeLab">Mã TV</label></div>
@@ -662,6 +655,7 @@ body:not(.desk) .dk-only{display:none!important}
               <label class="lab" for="hsVoice">Giọng đọc</label>
               <div class="hs-row" style="flex-wrap:nowrap"><select class="hs-in" id="hsVoice" style="flex:1;min-width:0"></select><button class="hs-btn" id="hsVoiceTest" type="button">Nghe thử</button></div>
               <p class="hs-note">"Tự chọn" dùng giọng nam hoặc nữ theo nhân vật đang nói. Chọn riêng giọng từng nhân vật ở trang Nhân vật.</p>
+              <p class="hs-note">Các bộ đọc có trong danh sách: <b>Giọng AI</b> tải về máy (25 giọng, đọc không cần mạng), <b>Microsoft Hoài My, Nam Minh</b> (giọng AI của Microsoft, cần mạng, không cần mã), <b>Google</b> (cần mạng), giọng có sẵn của Hóng Sub và của Windows. Mất mạng thì Hóng Sub tự đọc bằng giọng có sẵn trên máy.</p>
             </div>
             <div class="dk-set">
               <div class="lab"><label for="hsRate">Tốc độ đọc</label><output><span id="hsRateV">1.1</span>x</output></div>
@@ -814,7 +808,9 @@ body:not(.desk) .dk-only{display:none!important}
             <div class="dk-card dk-only">
               <h2>Phiên bản</h2>
               <p class="hs-note" id="dkVerNote"></p>
-              <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubpc">Tải bản mới nhất</button></div>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkVerCheck">Kiểm tra cập nhật</button><button class="hs-btn" type="button" id="dkVerGo" hidden>Cập nhật ngay</button><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubpc">Tải bản mới nhất</button></div>
+              <p class="hs-note" id="dkVerRes" role="status" aria-live="polite" hidden></p>
+              <div id="dkVerNotesBox" hidden><div class="lab" style="margin-top:10px" id="dkVerNotesT">Có gì mới</div><ul class="dk-vnotes" id="dkVerNotes"></ul></div>
             </div>
           </div>
         </div>
@@ -837,7 +833,6 @@ body:not(.desk) .dk-only{display:none!important}
         <button type="button" role="tab" data-g="android">Android TV, Google TV</button>
         <button type="button" role="tab" data-g="lg">TV LG</button>
         <button type="button" role="tab" data-g="samsung">TV Samsung</button>
-        <button type="button" role="tab" data-g="web">TV khác</button>
       </div>
       <div class="hs-gd" data-g="android">
         <p class="hs-note">Sony, TCL, Xiaomi, Casper, FPT Play Box và các TV, box chạy Android TV hay Google TV.</p>
@@ -866,13 +861,6 @@ body:not(.desk) .dk-only{display:none!important}
           <li>Vào <b>Certificate Manager</b>, tạo chứng chỉ <b>Samsung</b> (đăng nhập tài khoản Samsung), chọn TV vừa kết nối.</li>
           <li>Tải app: <span class="hs-code">honggame.store/samsung</span>, rồi trong Tizen Studio bấm cài file <b>hong-sub-samsung.wgt</b> lên TV.</li>
           <li>Trên TV mở <b>Hóng Sub</b> trong Ứng dụng. Trên máy tính chọn <b>TV Samsung</b> và gõ mã đang hiện trên TV.</li>
-        </ol>
-      </div>
-      <div class="hs-gd" data-g="web" hidden>
-        <p class="hs-note">TV nào có trình duyệt cũng hiện được phụ đề (không có hình game phía sau).</p>
-        <ol class="hs-steps">
-          <li>Mở trình duyệt trên TV, gõ: <span class="hs-code">honggame.store/tvweb</span></li>
-          <li>Trên máy tính chọn <b>Trình duyệt TV</b> và gõ mã đang hiện trên TV.</li>
         </ol>
       </div>
     </div>

@@ -33,6 +33,7 @@
       "!**/*.map",
       "ps.js",
       "lg.js",
+      "onlinetts.js",
       "vendor/**",
       "!node_modules/**"
     ],

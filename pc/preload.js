@@ -18,8 +18,8 @@ function playPart() {
   const p = cur.parts.shift();
   if (!p) { if (cur.ended) finish(cur.id); return; }
   cur.playing = true; const my = cur.id, c = cur;
-  audio = new Audio('data:audio/wav;base64,' + p.wav);
-  if (c.ai) { audio.preservesPitch = c.pitch === 1; audio.playbackRate = c.rate * c.pitch; }
+  audio = new Audio('data:' + (p.mime || 'audio/wav') + ';base64,' + p.wav);
+  if (c.ai || p.rateApply) { audio.preservesPitch = c.pitch === 1; audio.playbackRate = c.rate * c.pitch; }
   else if (c.pitch !== 1 || c.boost !== 1) { audio.preservesPitch = c.pitch === 1; audio.playbackRate = c.pitch * c.boost; }
   const done = () => { if (!cur || cur.id !== my) return; cur.playing = false; audio = null; if (p.last) finish(my); else playPart(); };
   audio.onended = done; audio.onerror = done; audio.play().catch(done);
@@ -32,7 +32,7 @@ function startNext() {
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
     if (!cur || cur.id !== my) return;
     if (!res || !res.wav) { finish(my); return; }
-    cur.parts.push({ wav: res.wav, last: true }); playPart();
+    cur.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); playPart();
   }).catch(() => finish(my));
 }
 ipcRenderer.on('aiv-audio', (e, m) => {
@@ -94,6 +94,7 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     onState: (cb) => ipcRenderer.on('aiv-state', (e, s) => cb(s))
   },
   update: () => ipcRenderer.invoke('update'),
+  updateNotes: (from, to) => ipcRenderer.invoke('update-notes', from, to),
   version: () => ipcRenderer.invoke('app-version'),
   getJson: (u) => ipcRenderer.invoke('get-json', u),
   hotkeys: () => ipcRenderer.invoke('hotkeys-get'),

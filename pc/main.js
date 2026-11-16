@@ -13,6 +13,7 @@ const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const psModule = require('./ps');
 const lgModule = require('./lg');
+const onlineTts = require('./onlinetts');
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
 const ROOT = __dirname;
@@ -646,18 +647,48 @@ function setupIpc() {
     const pp = piperPaths(); if (pp.exe && pp.model) list.push({ name: VOICE_NAME, lang: 'vi-VN', id: 'hs:piper' });
     const r = await ttsCall({ cmd: 'voices' }, 20000);
     (r.voices || []).forEach(v => list.push({ name: v.name, lang: v.lang, id: 'win:' + v.name }));
+    /* online voices: no key, no download; used while the computer is online */
+    onlineTts.MS_VOICES.concat(onlineTts.GG_VOICES).forEach(v => list.push({ name: v.name, lang: 'vi-VN', id: v.id, g: v.gender, online: true }));
     return list;
   });
+  const onlineFails = {}, onlineOff = {};
   ipcMain.handle('speak', async (e, text, voice, rate) => {
     if (!text) return { stop: true };
     voice = voice || '';
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
+    if ((voice.startsWith('ms:') || voice.startsWith('gg:')) && Date.now() > (onlineOff[voice.slice(0, 3)] || 0)) {
+      try {
+        const mp3 = voice.startsWith('ms:') ? await onlineTts.ms(text, voice.slice(3)) : await onlineTts.gg(text, (u, o) => net.fetch(u, o));
+        onlineFails[voice.slice(0, 3)] = 0;
+        return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: true };
+      } catch (err) {
+        const k = voice.slice(0, 3); onlineFails[k] = (onlineFails[k] || 0) + 1;
+        if (onlineFails[k] >= 3) { onlineOff[k] = Date.now() + 10 * 60 * 1000; onlineFails[k] = 0; }   /* keeps failing: skip it for 10 minutes, no waiting on every line */
+        console.warn('online voice ' + voice + ': ' + (err && err.message));   /* offline or refused: read it with the voice on this computer */
+      }
+    }
     const r = await piperSpeak(text, rate);
     if (r.wav || voice === 'hs:piper') return r;
     return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
   ipcMain.on('voice-settings', () => shell.openExternal('ms-settings:speech'));
   ipcMain.handle('update', () => checkUpdate());
+  /* what changed: the change notes between this version and the newest one (or the latest changes up to this version) */
+  ipcMain.handle('update-notes', async (e, from, to) => {
+    const ok = (v) => /^\d+\.\d+\.\d+$/.test(String(v || ''));
+    const repo = 'https://api.github.com/repos/nvhnhi96-ui/hong-sub-tv';
+    const url = ok(from) && ok(to) && from !== to ? repo + '/compare/v' + from + '...v' + to : ok(from) ? repo + '/commits?per_page=8&sha=v' + from : '';
+    if (!url) return { ok: false };
+    try {
+      const r = await net.fetch(url, { headers: { 'User-Agent': 'HongSub', Accept: 'application/vnd.github+json' } });
+      if (!r.ok) return { ok: false, status: r.status };
+      const j = await r.json();
+      const list = (Array.isArray(j) ? j : (j.commits || []).slice().reverse())
+        .map(c => String((c.commit && c.commit.message) || '').split('\n')[0].trim())
+        .filter(m => m && !/^Merge /.test(m));
+      return { ok: true, notes: list.slice(0, 12) };
+    } catch (err) { return { ok: false }; }
+  });
   /* one click: download the new installer, run it quietly, Hóng Sub closes and opens again on the new version */
   let updBusy = false;
   ipcMain.handle('update-install', async () => {
@@ -752,6 +783,14 @@ async function runSelftest() {
   const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
+  for (const v of onlineTts.MS_VOICES.concat(onlineTts.GG_VOICES)) {   /* online voices from a real Windows machine */
+    const t0 = Date.now();
+    try {
+      const mp3 = v.id.startsWith('ms:') ? await onlineTts.ms('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', v.id.slice(3)) : await onlineTts.gg('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', (u, o) => net.fetch(u, o));
+      log('online voice', v.id, 'mp3 bytes ' + mp3.length + ' in ' + (Date.now() - t0) + 'ms');
+      fs.writeFileSync(path.join(out, 'voice-' + v.id.replace(/[^a-z0-9]/gi, '_') + '.mp3'), mp3);
+    } catch (e) { log('online voice', v.id, 'ERR ' + (e && e.message)); }
+  }
   const rl = { helper: rpHelper() };
   try {
     const ver = await new Promise((res) => { const p = spawn(rpHelper(), ['version'], { windowsHide: true }); let o = ''; p.stdout.on('data', d => { o += d; }); p.on('exit', c => res('exit=' + c + ' ' + o.trim())); p.on('error', e => res('error ' + e)); });

@@ -224,7 +224,40 @@ function rail(){
   $('dkKeyBadge').hidden=!!(k||q||o);
 }
 setInterval(rail,1000); rail();
-D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').textContent='Đang dùng bản '+v+'. Có bản mới Hóng Sub tự báo ở trên cùng.'; });
+D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').textContent='Đang dùng bản '+v+'. Hóng Sub tự xem bản mới 15 phút một lần và báo bằng nút xanh ở trên cùng; bấm Kiểm tra cập nhật để xem ngay.'; });
+/* Phiên bản: check now, update in one click, and see what changed */
+(function(){
+  var btn=$('dkVerCheck'), go=$('dkVerGo'), res=$('dkVerRes'), box=$('dkVerNotesBox'), ul=$('dkVerNotes'), cur='', last=null;
+  if(!btn) return;
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function notes(from,to,title){
+    if(!D.updateNotes) return;
+    D.updateNotes(from,to).then(function(r){
+      if(!r||!r.ok||!r.notes||!r.notes.length){ box.hidden=true; return; }
+      $('dkVerNotesT').textContent=title;
+      ul.innerHTML=r.notes.map(function(n){ return '<li>'+esc(n)+'</li>'; }).join(''); box.hidden=false;
+    }).catch(function(){ box.hidden=true; });
+  }
+  function check(){
+    btn.disabled=true; btn.textContent='Đang kiểm tra...'; res.hidden=false; res.textContent='Đang xem có bản mới không...'; go.hidden=true;
+    Promise.all([D.version(),D.update()]).then(function(a){
+      cur=String(a[0]||''); var u=a[1]; last=u;
+      if(!u||!u.version){ res.textContent='Chưa kiểm tra được (máy đang mất mạng?). Thử lại sau ít phút.'; return; }
+      if(u.newer){
+        res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật lên '+esc(u.version)+'</b>: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.';
+        go.hidden=false; go.textContent='Cập nhật lên '+u.version;
+        notes(cur,u.version,'Có gì mới từ bản '+cur+' đến '+u.version);
+      } else {
+        res.textContent='Đang dùng bản mới nhất ('+cur+').';
+        notes(cur,'','Thay đổi gần đây');
+      }
+    }).catch(function(){ res.textContent='Chưa kiểm tra được. Thử lại sau ít phút.'; })
+      .then(function(){ btn.disabled=false; btn.textContent='Kiểm tra cập nhật'; });
+  }
+  btn.addEventListener('click',check);
+  go.addEventListener('click',function(){ if(window.hsUpdateNow){ go.disabled=true; go.textContent='Đang tải bản mới...'; window.hsUpdateNow(last); } });
+  if(D.onUpdateProgress) D.onUpdateProgress(function(p){ if(go.disabled) go.textContent='Đang tải bản mới '+Math.round(p*100)+'%'; });
+})();
 })();
 
 /* floating panel for the extra areas */
@@ -343,7 +376,8 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     if(!busy){ btn.hidden=false; btn.textContent='Cập nhật lên '+u.version; }
     var b=$('hsUpd'); if(b){ b.innerHTML='Có bản Hóng Sub mới <b>'+u.version+'</b>. Bấm nút xanh <b>Cập nhật</b> ở trên cùng: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.'; b.style.display='block'; }
   }
-  window.hsUpdateNow=function(){
+  window.hsUpdateNow=function(u){
+    if(u&&u.newer) show(u);
     if(busy||!info) return; busy=true; btn.disabled=true; btn.textContent='Đang tải bản mới...';
     A.status('busy','Đang tải Hóng Sub '+info.version+'...');
     D.updateInstall().then(function(r){
@@ -353,7 +387,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       D.openUrl('https://honggame.store/hongsubpc');
     });
   };
-  btn.addEventListener('click',window.hsUpdateNow);
+  btn.addEventListener('click',function(){ window.hsUpdateNow(); });
   if(D.onUpdateProgress) D.onUpdateProgress(function(p){ if(busy) btn.textContent='Đang tải bản mới '+Math.round(p*100)+'%'; });
   if(D.onUpdate) D.onUpdate(show);
   D.update().then(show).catch(function(){});
@@ -432,7 +466,7 @@ D.lg.state().then(function(st){
     m.querySelectorAll('.hs-gd').forEach(function(d){ d.hidden=d.dataset.g!==g; });
   }
   function open(g){
-    var t=g||(A&&A.tvType&&A.tvType())||'android'; tab(t==='samsung'||t==='lg'||t==='web'?t:'android');
+    var t=g||(A&&A.tvType&&A.tvType())||'android'; tab(t==='samsung'||t==='lg'?t:'android');
     m.classList.add('open'); var x=$('hsTvGuideX'); if(x) x.focus();
     if(D&&D.lg&&D.lg.addr) D.lg.addr().then(function(a){ var el=$('hsTvGuidePcIp'); if(el&&a) el.textContent=String(a).split(':')[0]; }).catch(function(){});
   }
