@@ -32,30 +32,33 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0E1014;col
 #tvin{position:fixed;left:0;top:0;width:100%;height:100%;background:#000;object-fit:contain}
 
 /* the welcome screen, shown until there is a picture from the game console */
-#home{position:fixed;left:0;top:0;width:100%;height:100%;padding:7.5vh 8vw;background:#0E1014;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column}
+#home{position:fixed;left:0;top:0;width:100%;height:100%;padding:6vh 5vw;background:#0B0B0D;display:-webkit-flex;display:flex;overflow:hidden}
 #home.off{display:none}
-.brand{font-weight:700;font-size:3.2vh;letter-spacing:-.01em}
-.brand b{background:#FFC400;color:#0E1014;border-radius:.4em;padding:.05em .32em;margin-left:.12em}
-.brand small{font-weight:500;color:#8A93A3;font-size:.62em;margin-left:.8em}
-.homeMain{-webkit-flex:1;flex:1;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center}
-.codeWrap .lab{font-size:2.6vh;color:#8A93A3;margin:0 0 1.6vh}
-.ipl{margin-top:1.6vh!important;font-size:2.4vh!important;letter-spacing:.02em!important;text-transform:none!important}.ipl b{color:#fff;font-weight:700;letter-spacing:.04em}
+.hcol{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column}
+.hl{-webkit-flex:1;flex:1;padding-right:2vw}
+.hr{-webkit-flex:1.2;flex:1.2;padding-left:3vw}
+.hbrand{font-weight:700;font-size:6.2vh;line-height:1.15;color:#fff}
+.hby{font-size:2.6vh;color:#A0A0AC;margin-top:.4vh}
+.hlab{font-size:2.6vh;font-weight:700;color:#FFC400;margin:4.4vh 0 .6vh}
+.hlab+.hlab,.hip+.hlab{margin-top:3.2vh}
 .code{display:-webkit-flex;display:flex}
-.code span{display:block;width:8.6vh;height:11vh;line-height:11vh;margin-right:1.4vh;border-radius:1.6vh;background:#FFC400;color:#0E1014;font-weight:700;font-size:7.4vh;text-align:center}
-.steps{margin:5vh 0 0;padding:0;list-style:none;font-size:2.7vh;line-height:1.5;color:#C9CED8;max-width:60vw}
-.steps li{margin:0 0 1.2vh}
-.steps b{color:#F4F5F7}
-.homeFoot{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;font-size:2.2vh;color:#8A93A3}
-.dot{width:1.3vh;height:1.3vh;border-radius:50%;background:#8A93A3;margin-right:1vh}
-.dot.ok{background:#3FD08A}
-.dot.bad{background:#FF6B5E}
-.homeFoot .sp{-webkit-flex:1;flex:1}
-.btns{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:4.5vh 0 0}
-.btn{font:inherit;font-size:2.6vh;font-weight:700;color:#F4F5F7;background:#232833;border:3px solid #232833;border-radius:1.2vh;padding:1.5vh 2.6vh;margin:0 1.4vh 1.4vh 0;cursor:pointer;outline:none}
-.btn.pri{background:#FFC400;border-color:#FFC400;color:#0E1014}
-.btn.on{border-color:#3FD08A}
-.btn:focus,.btn:hover,.btn.f{border-color:#FFFFFF;-webkit-transform:scale(1.04);transform:scale(1.04)}
-.btn.pri:focus,.btn.pri:hover,.btn.pri.f{border-color:#FFFFFF}
+.code span{display:block;font-weight:700;font-size:11.5vh;line-height:1.05;color:#fff;margin-right:2.1vh}
+.hip{font-weight:700;font-size:7.4vh;line-height:1.1;color:#fff}
+.hmut{font-size:2.8vh;line-height:1.45;color:#A0A0AC;margin:1vh 0 0}
+.hst{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;font-size:3vh;font-weight:700;color:#fff;margin:4vh 0 0}
+.hst .dot{-webkit-flex:none;flex:none}
+.hver{margin-top:2.4vh;font-size:2.6vh}
+.hstep{font-size:3.15vh;font-weight:700;line-height:1.4;color:#fff;margin:0 0 1.5vh}
+.hset{margin:2.4vh 0 1.6vh}
+.hrow{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:0 0 2.2vh}
+.dot{width:1.6vh;height:1.6vh;border-radius:50%;background:#8A93A3;margin-right:1.2vh}
+.dot.ok{background:#3DDC84}
+.dot.bad{background:#FF9F43}
+.btn{font:inherit;font-size:3vh;font-weight:700;color:#fff;background:#202028;border:3px solid #373742;border-radius:1.9vh;padding:1.6vh 3.3vh;margin:0 1.9vh 1.9vh 0;cursor:pointer;outline:none}
+.btn.pri{background:#FFC400;border-color:#FFC400;color:#0B0B0D}
+.btn.on{border-color:#3DDC84}
+.btn:focus,.btn:hover,.btn.f{border-color:#FFFFFF;background:#30303A}
+.btn.pri:focus,.btn.pri:hover,.btn.pri.f{border-color:#FFFFFF;background:#FFD650}
 #gear{position:fixed;right:3vw;top:4vh;font-size:2.4vh;opacity:0;-webkit-transition:opacity .25s;transition:opacity .25s;margin:0}
 #gear.on{opacity:1}
 .key{display:inline-block;border:2px solid #3A404C;border-radius:.5em;padding:0 .45em;margin:0 .3em;color:#F4F5F7;font-weight:700}
@@ -105,28 +108,39 @@ html.see,html.see body{background:transparent!important}
 <video id="tvin" autoplay></video>
 
 <section id="home">
-  <div class="brand">Hóng<b>Sub</b><small>phụ đề tiếng Việt trên TV</small></div>
-  <div class="homeMain">
-    <div class="codeWrap">
-      <p class="lab">Mã TV</p>
-      <div class="code" id="code"></div>
-      <p class="lab ipl">IP của TV: <b id="ip">đang tìm...</b></p>
-      <ol class="steps">
-        <li>Trên máy tính, mở <b>Hóng Sub</b> và vào <b>Kết nối TV</b>.</li>
-        <li>Gõ mã ở trên vào ô <b>Mã TV</b> rồi bấm <b>Gửi thử</b>.</li>
-        <li>Không cần bấm gì thêm: phụ đề tự hiện trên TV. Cỡ chữ, chỗ hiện, cổng HDMI đều chỉnh trên máy tính.</li>
-      </ol>
-      <div class="btns" id="homeBtns">
-        <button class="btn" type="button" data-hdmi="1">HDMI 1</button>
-        <button class="btn" type="button" data-hdmi="2">HDMI 2</button>
-        <button class="btn" type="button" data-hdmi="3">HDMI 3</button>
-        <button class="btn" type="button" data-hdmi="4">HDMI 4</button>
-        <button class="btn" type="button" id="bFull">Toàn màn hình</button>
-        <button class="btn" type="button" id="bSet">Cài đặt</button>
-      </div>
-    </div>
+  <div class="hcol hl">
+    <div class="hbrand">HÓNG SUB TV</div>
+    <div class="hby">by Hóng Game Store · honggame.store</div>
+    <p class="hlab">MÃ TV CỦA BẠN</p>
+    <div class="code" id="code"></div>
+    <p class="hlab">IP MẠNG CỦA TV</p>
+    <div class="hip" id="ip">đang tìm...</div>
+    <p class="hmut">Trên máy tính: Hóng Sub › Kết nối PS và TV › chọn <span class="tvn">TV LG</span> rồi gõ mã TV này. Máy tính và TV dùng chung mạng thì phụ đề hiện nhanh hơn.</p>
+    <p class="hst"><span class="dot" id="hDot"></span><span id="hState">Đang kết nối...</span></p>
+    <p class="hmut hver" id="hVer"></p>
   </div>
-  <div class="homeFoot"><span class="dot" id="hDot"></span><span id="hState">Đang kết nối...</span><span class="sp"></span><span>Dùng con trỏ của điều khiển hoặc phím mũi tên để chọn</span></div>
+  <div class="hcol hr" id="homeBtns">
+    <p class="hstep">1. Chọn cổng HDMI đang cắm PS5</p>
+    <div class="hrow">
+      <button class="btn" type="button" data-hdmi="1">HDMI 1</button>
+      <button class="btn" type="button" data-hdmi="2">HDMI 2</button>
+      <button class="btn" type="button" data-hdmi="3">HDMI 3</button>
+      <button class="btn" type="button" data-hdmi="4">HDMI 4</button>
+    </div>
+    <p class="hstep">2. Trên máy tính: mở Hóng Sub › Kết nối PS và TV › chọn <span class="tvn">TV LG</span>, gõ mã TV bên trái</p>
+    <div class="hrow">
+      <button class="btn pri" type="button" id="bRun">Bật phụ đề</button>
+      <button class="btn" type="button" id="bTest">Thử hiện chữ</button>
+    </div>
+    <p class="hstep">3. Bấm Bật phụ đề: hình PS5 hiện toàn màn hình, phụ đề tiếng Việt hiện đè lên game. Bấm Back để quay lại đây.</p>
+    <p class="hmut hset">Cỡ chữ, chỗ hiện chữ, câu tiếng Anh và giọng đọc chỉnh trên máy tính: Hóng Sub › Kết nối PS và TV. TV đổi theo ngay.</p>
+    <div class="hrow">
+      <button class="btn" type="button" id="bCode">Đổi mã TV</button>
+      <button class="btn" type="button" id="bSet">Cài đặt</button>
+      <button class="btn" type="button" id="bFull">Toàn màn hình</button>
+    </div>
+    <p class="hmut">Cần cài giúp? Gọi hoặc Zalo Hóng Game Store: <span style="white-space:nowrap">0949 099 992</span> · <span style="white-space:nowrap">0367 879 283</span></p>
+  </div>
 </section>
 
 <div id="zl"></div>
@@ -146,7 +160,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.94';
+var VERSION='1.0.95';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -484,7 +498,7 @@ function panel(on){
 }
 function quit(){ sayStop(); try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} try{ tizen.application.getCurrentApplication().exit(); }catch(e){ window.close(); } }
 function homeMove(d){
-  var bs=[].slice.call(document.querySelectorAll('#homeBtns .btn')); if(!bs.length) return;
+  var bs=[].slice.call(document.querySelectorAll('#homeBtns .btn')).filter(function(b){ return b.offsetParent!==null; }); if(!bs.length) return;
   var i=bs.indexOf(document.activeElement); i=i<0?0:(i+d+bs.length)%bs.length; bs[i].focus();
 }
 document.addEventListener('keydown',function(e){
@@ -520,6 +534,17 @@ function fullscreen(){
 }
 [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.onclick=function(){ P.src=+b.getAttribute('data-hdmi'); save('src',P.src); fullscreen(); setSource(P.src); pill('Đang mở hình HDMI '+P.src,false); }; });
 $('bFull').onclick=fullscreen;
+if(packaged) $('bFull').style.display='none';   /* the installed app is already full screen */
+function newTvCode(){ P.code=''; for(var i=0;i<6;i++) P.code+=ALPHA.charAt(Math.floor(Math.random()*ALPHA.length)); save('code',P.code); lastSeq=-1; codeDraw(); hello(); }
+$('bRun').onclick=function(){
+  if(!P.src){ $('hState').textContent='Chọn cổng HDMI đang cắm PS5 ở bước 1 trước.'; var h=document.querySelector('[data-hdmi]'); if(h) h.focus(); return; }
+  fullscreen(); setSource(P.src); pill('Đang mở hình HDMI '+P.src,false);
+};
+$('bTest').onclick=function(){ sample(); };
+$('bCode').onclick=function(){ newTvCode(); $('hState').textContent='Đã đổi mã TV. Gõ mã mới vào Hóng Sub trên máy tính.'; };
+var TVNAME='TV Samsung';
+[].forEach.call(document.querySelectorAll('.tvn'),function(el){ el.textContent=TVNAME; });
+$('hVer').textContent='Bản '+VERSION;
 $('bSet').onclick=function(){ panel(true); };
 $('gear').onclick=function(){ panel(true); };
 $('bClose').onclick=function(){ panel(false); };
@@ -585,7 +610,9 @@ document.addEventListener('visibilitychange',function(){ if(document.hidden){ tr
     x.onreadystatechange=function(){
       if(x.readyState!==4||x.status!==200) return;
       var v=String(x.responseText||'').trim();
-      if(!/^\d+\.\d+\.\d+$/.test(v)||vn(v)<=vn(VERSION)) return;
+      if(!/^\d+\.\d+\.\d+$/.test(v)) return;
+      if(vn(v)<=vn(VERSION)){ $('hVer').textContent='Bản '+VERSION+' · đang dùng bản mới nhất, app tự cập nhật'; return; }
+      $('hVer').textContent='Bản '+VERSION+' · có bản mới '+v+', app tự chuyển sang khi đang rảnh';
       var idle=$('home').className!=='off'||Date.now()-last>20*60e3;
       if(!idle) return;
       pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
@@ -593,7 +620,7 @@ document.addEventListener('visibilitychange',function(){ if(document.hidden){ tr
     };
     try{ x.open('GET',LIVE+'version.txt?t='+Date.now(),true); x.send(); }catch(e){}
   }
-  setTimeout(check,60e3); setInterval(check,30*60e3);
+  setTimeout(check,5000); setInterval(check,30*60e3);
 })();
 window.hsTv={handle:handle,P:P,version:VERSION};
 })();
