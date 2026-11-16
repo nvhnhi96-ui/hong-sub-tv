@@ -267,7 +267,8 @@ jobs:
       - name: Build the Mac app (Apple chip and Intel)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npx electron-builder --mac dir --arm64 --x64 --publish never
+        # the app's file name in plain letters: macOS finds the helper apps by name, and the accent in "Hóng" broke that
+        run: npx electron-builder --mac dir --arm64 --x64 --publish never -c.productName='Hong Sub' -c.mac.extendInfo.CFBundleDisplayName='Hóng Sub'
       - name: Sign for this Mac only and pack the disk images
         run: |
           set -e
@@ -283,18 +284,17 @@ jobs:
           pack dist/mac hong-sub-mac-intel.dmg
           ls -la *.dmg
       - name: Self test on the Mac
-        continue-on-error: true
         env:
           HS_SELFTEST: '1'
           HS_SELFTEST_OUT: ${{ runner.temp }}/selftest
         run: |
           APP=$(ls -d dist/mac-arm64/*.app | head -1)
           BIN=$(ls "$APP"/Contents/MacOS/* | head -1)
-          "$BIN" --selftest & PID=$!
+          "$BIN" --selftest > /tmp/run.txt 2>&1 & PID=$!
           for i in $(seq 1 48); do kill -0 $PID 2>/dev/null || break; sleep 5; done
           kill $PID 2>/dev/null || true
-          cat "$HS_SELFTEST_OUT/log.txt" 2>/dev/null | tail -40 || true
-          grep -E '^picture test' "$HS_SELFTEST_OUT/log.txt" || echo "no picture test line"
+          grep -E '^(state-visible|voices|relay test|lg test)' "$HS_SELFTEST_OUT/log.txt" | cut -c1-200 || true
+          grep -q '^state-visible' "$HS_SELFTEST_OUT/log.txt" || { echo "Mac app did not start"; tail -40 /tmp/run.txt; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: mac
