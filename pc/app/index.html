@@ -1775,8 +1775,9 @@ function tmZone(text){
   var lines=String(text).split('\n').filter(function(l){ return l.trim(); });
   if(lines.length<2) { var f=tmFind(text); return f?f.vi:''; }
   var out=[];
-  for(var i=0;i<lines.length;i++){ var kk=trKey(lines[i]), h=S.tm.zmap[kk]||(S.tm.map[kk]&&S.tm.map[kk].vi); if(!h){ var f2=tmFind(lines[i]); h=f2&&f2.vi; } if(!h) return ''; out.push(h); }
-  return out.join('\n');
+  for(var i=0;i<lines.length;i++){ var kk=trKey(lines[i]), h=S.tm.zmap[kk]||(S.tm.map[kk]&&S.tm.map[kk].vi); if(!h){ var f2=tmFind(lines[i]); h=f2&&f2.vi; } if(!h){ out=null; break; } out.push(h); }
+  if(out) return out.join('\n');
+  var w=tmFind(lines.join(' ')); return w?w.vi:'';   /* one paragraph broken over several lines on screen */
 }
 async function zTranslate(z,text){
   var k=zKey(text);
@@ -2952,11 +2953,11 @@ function lineSplit(vi,n){
 }
 function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
 function runStatus(){
-  status('run',(S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
+  status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
 S.perf={o:0,t:0};
 function perfTag(){
-  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='smart'?orShort(S.orModel):(S.model||'');
+  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='tm'?'Kho dịch chung':S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='smart'?orShort(S.orModel):(S.model||'');
   $('hsModelTag').textContent=via+(on&&S.perf.t?' · đọc chữ '+(S.perf.o/1000).toFixed(2)+'s · dịch '+(S.perf.t/1000).toFixed(2)+'s':'');
 }
 
@@ -3005,24 +3006,57 @@ async function tmLoad(name){
   S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
   tmUi(); if(g.length<2) return;
   var my=S.tm; my.loading=true; tmUi();
+  /* the lines of this game kept on this machine from last time: ready at once, then only new lines are fetched */
+  var kept=null, raw=[];
+  try{ kept=JSON.parse(localStorage.getItem('hst.tmpack')||'null'); }catch(e){ kept=null; }
+  if(kept&&kept.g===g&&Array.isArray(kept.lines)){ raw=kept.lines; raw.forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); }); my.total=Math.max(my.total,kept.total||0); tmUi(); }
+  else kept=null;
   try{
-    var since=0;
+    var since=kept?(kept.last||0):0, got=0;
     for(var page=0;page<12;page++){
       var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(g)+'&since='+since,{cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       var d=await r.json(); if(S.tm!==my) return;   /* the game was changed meanwhile */
       if(d.total!=null) my.total=d.total;
-      (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); });
+      (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); raw.push(l); got++; });
       since=d.last||since; tmUi();
       if(!d.more) break;
     }
-    log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name);
+    log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept?' (lấy thêm '+got+' câu mới)':''));
+    if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
   }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
   finally{ my.loading=false; if(S.tm===my) tmUi(); }
 }
 /* a line read now that is in the store: the same words, or almost (the reader missed a letter) */
+/* a line from the shared store: the whole line, or without the speaker's name in front, or sentence by sentence
+   (the screen often shows two lines of the store together). Every line found here costs no AI call. */
 function tmFind(text){
-  if(!S.tm.n) return null;
+  if(!S.tm.n||!text) return null;
+  var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{4,})$/.exec(String(text).trim());   /* "NAME: line": the name on screen wins */
+  var r=tmFind1(text); if(r){ if(m) r.speaker=m[1]; return tmHit(r); }
+  if(m&&(r=tmFind1(m[2]))){ r.speaker=m[1]; r.en=text; return tmHit(r); }
+  var parts=String(text).replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…。！？])\s+(?=[A-Z"'“(¿¡]|$)/).map(function(s){return s.trim();}).filter(function(s){return s.length>1;});
+  if(parts.length>=2&&parts.length<=6){
+    var vi=[], who='', gd='';
+    for(var i=0;i<parts.length;i++){ var f=tmFind1(parts[i]); if(!f) return null; vi.push(f.vi); who=who||f.speaker; gd=gd||f.gender; }
+    return tmHit({en:text,vi:vi.join(' '),speaker:who,gender:gd,_tm:true});
+  }
+  return null;
+}
+function tmHit(r){ S.tm.hits++; return r; }
+/* the reader may read the same words a little differently each time (stylised fonts, titles): a line this close to one
+   translated in the last 2 minutes is that line again, so it reuses that translation instead of a new AI call */
+S.recent=[];
+function nearRecent(text){
+  var k=trKey(text), need=k.length>=18?0.62:0.8, best=null, bs=0, now=Date.now();
+  for(var i=S.recent.length-1;i>=0;i--){ var r=S.recent[i]; if(now-r.at>120000) break;
+    var rk=trKey(r.raw), ratio=Math.min(k.length,rk.length)/Math.max(k.length,rk.length||1); if(ratio<0.7) continue;
+    var d=dice(text,r.raw); if(d>=need&&d>bs){ bs=d; best=r; } }
+  return best?JSON.parse(JSON.stringify(best.res)):null;
+}
+/* the store of the game is still coming down: wait for it (a few seconds) rather than spend an AI call */
+function tmWait(ms){ return new Promise(function(ok){ var t0=Date.now(); (function w(){ if(!S.tm.loading||Date.now()-t0>ms) ok(true); else setTimeout(w,150); })(); }); }
+function tmFind1(text){
   var k=trKey(text), e=S.tm.map[k];
   if(!e&&k.length>=10){
     var b=Math.round(k.length/6), best=0, need=k.length>=18?0.78:0.86;
@@ -3030,7 +3064,6 @@ function tmFind(text){
       for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(!c) continue; var sc=dice(c.en,text); if(sc>best){ best=sc; if(sc>=need) e=c; } } }
   }
   if(!e) return null;
-  S.tm.hits++;
   return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true};
 }
 function tmAdd(kind,en,vi,who,gd,via){
@@ -3116,14 +3149,17 @@ async function translateText(j){
   try{
     var res=S.trCache[ck]?JSON.parse(JSON.stringify(S.trCache[ck])):null;
     if(res){ S.via=S.via||'gemini'; log('dịch lại câu đã có (0ms)'); }
-    else if((res=tmFind(j.text))){ log('có sẵn trong kho dịch chung (0ms)'); tmUi(); }
+    else if(S.tm.loading&&S.tm.g&&await tmWait(5000)&&(res=tmFind(j.text))){ S.via='tm'; log('có sẵn trong kho dịch chung, không tốn lượt AI'); tmUi(); }
+    else if((res=tmFind(j.text))){ S.via='tm'; log('có sẵn trong kho dịch chung, không tốn lượt AI (0ms)'); tmUi(); }
+    else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
+      log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
       res=await askText(textPrompt(j.text,j.nl),j.text);
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
-    if(res&&res.vi) tmPlayed();
+    if(res&&res.vi){ tmPlayed(); S.recent.push({raw:j.text,res:res,at:Date.now()}); if(S.recent.length>40) S.recent.shift(); }
     S.perf.t=Math.round(performance.now()-t1);
     if(S.via==='free') countFree();
     rememberSents(j.text);
@@ -3418,7 +3454,7 @@ async function fsRun(){
         var b=it.box, n=Math.max(1,(it.en||'').split('\n').length), h=(b[2]-b[0])/1000;
         return {x:b[1]/1000,y:b[0]/1000,w:(b[3]-b[1])/1000,h:h,lh:h/n,en:it.en||'',vi:it.vi}; });
     } else {
-      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(b.en)); if(c!=null) b.vi=c; else need.push(b); });
+      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(b.en)); if(c==null){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });   /* lines in the shared store cost no AI call */
       if(S.fs.on&&my===S.fs.seq&&blocks.some(function(b){return b.vi;})){ S.fs.items=blocks; fsDraw(); }
       if(need.length){
         var vis;
