@@ -5,12 +5,12 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 183
+          "ms": 95
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 93,
-          "ms": 135
+          "c": 92,
+          "ms": 154
         },
         {
           "t": "I told you this place was cursed.",
@@ -20,17 +20,17 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 137
+          "ms": 130
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 119
+          "ms": 120
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 114
+          "ms": 123
         }
       ],
       "asked": [
@@ -96,12 +96,12 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 183
+          "ms": 95
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
-          "c": 93,
-          "ms": 135
+          "c": 92,
+          "ms": 154
         },
         {
           "t": "I told you this place was cursed.",
@@ -111,32 +111,32 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 137
+          "ms": 130
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 119
+          "ms": 120
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 114
+          "ms": 123
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 100
+          "ms": 104
         },
         {
           "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 122
+          "c": 94,
+          "ms": 134
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 140
+          "ms": 126
         }
       ],
       "asked": [
