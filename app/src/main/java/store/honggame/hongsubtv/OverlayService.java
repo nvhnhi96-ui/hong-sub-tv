@@ -302,7 +302,8 @@ public class OverlayService extends Service {
     private void zoneShow(JSONObject j, String vi) {
         final String id = j.optString("zid", "");
         if (id.isEmpty()) return;
-        final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(0.06, j.optDouble("w", 0.3)), h = Math.max(0.04, j.optDouble("h", 0.15));
+        final boolean grow0 = j.optInt("zgrow", 0) == 1;   // a paragraph over its own original: no minimum size, a tight box like on the computer
+        final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(grow0 ? 0.005 : 0.06, j.optDouble("w", 0.3)), h = Math.max(grow0 ? 0.005 : 0.04, j.optDouble("h", 0.15));
         final int hold = j.optInt("hold", 0);
         final String zs = j.optString("zs", "m");
         final int zpx = Math.max(0, Math.min(80, j.optInt("zpx", 0)));
@@ -344,9 +345,11 @@ public class OverlayService extends Service {
             tv.setText(vi);
             GradientDrawable zb = new GradientDrawable();
             zb.setColor(Color.argb(Math.round(zbg * 2.55f), 8, 9, 12));
-            zb.setCornerRadius(dp(5));
+            zb.setCornerRadius(zgrow ? dp(3) : dp(5));
             tv.setBackground(zb);
             tv.setTypeface(face);
+            if (zgrow) { tv.setPadding(dp(3), 0, dp(3), 0); tv.setIncludeFontPadding(false); tv.setLineSpacing(0f, 1.1f); }
+            else { tv.setPadding(dp(8), dp(5), dp(8), dp(5)); tv.setIncludeFontPadding(true); tv.setLineSpacing(0f, 1f); }
             tv.setGravity(("c".equals(zal) ? Gravity.CENTER_HORIZONTAL : "r".equals(zal) ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);   // lined up like the original text
             if (zpx > 0) {
                 // the size chosen on the computer (on a 1080-line screen); the box grows down if the text needs it
