@@ -27,7 +27,7 @@ public class MainActivity extends Activity {
 
     private Prefs prefs;
     private TextView codeView, ipView;
-    private TextView statusView;
+    private TextView statusView, verView;
     private Button permBtn, runBtn, testBtn, codeBtn;
 
     @Override
@@ -44,6 +44,8 @@ public class MainActivity extends Activity {
         if (canOverlay() && !prefs.running()) restartService(null);
         refresh();
         if (!canOverlay()) permBtn.requestFocus(); else runBtn.requestFocus();
+        // a new build: fetch it and install now (the app is open, so Android may show one "Cập nhật" button)
+        Updater.check(this, true, 10 * 60 * 1000L, (t, busy) -> { if (verView != null) verView.setText(t); });
     }
 
     private int dp(float v) {
@@ -132,6 +134,11 @@ public class MainActivity extends Activity {
         statusView = text("", 16, Color.WHITE, true);
         statusView.setPadding(0, dp(22), 0, 0);
         left.addView(statusView);
+
+        // the app keeps itself up to date: this line says which build runs and what the updater is doing
+        verView = text("Bản " + Updater.current(this), 14, MUTED, false);
+        verView.setPadding(0, dp(14), 0, 0);
+        left.addView(verView);
 
         // Right column: steps + controls
         LinearLayout right = new LinearLayout(this);

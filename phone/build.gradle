@@ -20,9 +20,10 @@ android {
         if (System.getenv("HSTV_KEYSTORE_B64")) {
             release {
                 storeFile file(System.getenv("RUNNER_TEMP") + "/hstv.jks")
-                storePassword System.getenv("HSTV_STORE_PASSWORD")
-                keyAlias System.getenv("HSTV_KEY_ALIAS")
-                keyPassword System.getenv("HSTV_KEY_PASSWORD")
+                // only the key file is secret (GitHub Secret HSTV_KEYSTORE_B64); the other three may stay unset
+                storePassword System.getenv("HSTV_STORE_PASSWORD") ?: "hongsubtv"
+                keyAlias System.getenv("HSTV_KEY_ALIAS") ?: "hongsubtv"
+                keyPassword System.getenv("HSTV_KEY_PASSWORD") ?: (System.getenv("HSTV_STORE_PASSWORD") ?: "hongsubtv")
             }
         }
     }

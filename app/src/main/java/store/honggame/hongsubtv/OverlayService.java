@@ -130,6 +130,7 @@ public class OverlayService extends Service {
     @Override
     public void onDestroy() {
         polling = false;
+        main.removeCallbacks(updLook);
         if (lan != null) lan.stop();
         if (poller != null) poller.interrupt();
         main.removeCallbacksAndMessages(null);
@@ -373,6 +374,13 @@ public class OverlayService extends Service {
                     ? new double[]{c.optDouble("x", 0), c.optDouble("y", 0), c.optDouble("w", 0), c.optDouble("h", 0)} : null;
             if (!java.util.Arrays.equals(nc, cov)) { cov = nc; changed = true; }
         }
+        int pb = Updater.build(j.optString("appv", ""));
+        if (pb > pcBuild) {
+            pcBuild = pb;
+            if (pb > Updater.build(Updater.current(this))) {
+                Updater.check(this, false, 30 * 60 * 1000L, (t, busy) -> { if (!busy && t.startsWith("Có bản")) showLine("Hóng Sub", t, "", 8000, false); });
+            }
+        }
         String fk = j.optString("font", "");
         if (fk.matches("[a-z]{2,12}") && !fk.equals(prefs.font())) { prefs.font(fk); changed = true; }
         String col = j.optString("col", "");
@@ -417,7 +425,18 @@ public class OverlayService extends Service {
         } catch (Exception ignored) { }
     }
 
+    /* new builds: a look every 6 hours, and right away when the computer runs a newer Hóng Sub than this TV app */
+    private final Runnable updLook = new Runnable() {
+        @Override public void run() {
+            Updater.check(OverlayService.this, false, 60 * 60 * 1000L, null);
+            main.postDelayed(this, 6 * 60 * 60 * 1000L);
+        }
+    };
+    private int pcBuild = 0;
+
     private void startPolling() {
+        main.removeCallbacks(updLook);
+        main.postDelayed(updLook, 90 * 1000L);
         polling = true;
         poller = new Thread(() -> {
             hello();
