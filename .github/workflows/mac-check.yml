@@ -1,0 +1,48 @@
+name: Mac check
+on:
+  workflow_dispatch:
+jobs:
+  mac:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: pc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: python3 sync_web.py
+      - run: mkdir -p rp voices
+      - name: Run from source (electron) to see start-up errors
+        continue-on-error: true
+        env:
+          HS_SELFTEST: '1'
+          HS_SELFTEST_OUT: ${{ runner.temp }}/st1
+          ELECTRON_ENABLE_LOGGING: '1'
+        run: |
+          (npx electron . --selftest > /tmp/run1.txt 2>&1 & echo $! > /tmp/pid1)
+          for i in $(seq 1 36); do kill -0 $(cat /tmp/pid1) 2>/dev/null || break; sleep 5; done
+          pkill -f "Electron" || true
+          tail -80 /tmp/run1.txt
+          tail -40 "$HS_SELFTEST_OUT/log.txt" 2>/dev/null || echo "no log"
+      - name: Build and run the packed app
+        continue-on-error: true
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          HS_SELFTEST: '1'
+          HS_SELFTEST_OUT: ${{ runner.temp }}/st2
+          ELECTRON_ENABLE_LOGGING: '1'
+        run: |
+          npx electron-builder --mac dir --arm64 --publish never > /tmp/b.txt 2>&1 || tail -30 /tmp/b.txt
+          APP=$(ls -d dist/mac-arm64/*.app | head -1); echo "app: $APP"
+          codesign -dv "$APP" 2>&1 | head -5
+          BIN=$(ls "$APP"/Contents/MacOS/* | head -1)
+          ("$BIN" --selftest > /tmp/run2.txt 2>&1 & echo $! > /tmp/pid2)
+          for i in $(seq 1 36); do kill -0 $(cat /tmp/pid2) 2>/dev/null || break; sleep 5; done
+          kill $(cat /tmp/pid2) 2>/dev/null || true
+          tail -80 /tmp/run2.txt
+          tail -40 "$HS_SELFTEST_OUT/log.txt" 2>/dev/null || echo "no log"
+          ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -5
+          f=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); [ -n "$f" ] && head -c 6000 "$f"
