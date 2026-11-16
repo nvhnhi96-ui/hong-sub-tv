@@ -188,10 +188,31 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
     const pk = await run(t.cli, ['package', '-t', 'wgt', '-s', profile, '-o', outDir, '--', src], 180000);
     const signed = (fs.readdirSync(outDir).filter((f) => /\.wgt$/i.test(f))[0]) || '';
     if (!signed) return { ok: false, err: explain(pk.out) || ('Chưa ký được app: ' + pk.out.trim().slice(-300)) };
+    /* Samsung's tools name the file after the app ("Hóng Sub.wgt"); the accent and the space break the copy on the TV,
+       so the file gets a plain name before it is sent */
+    const WGT = 'HongSub.wgt';
+    if (signed !== WGT) { try { fs.renameSync(path.join(outDir, signed), path.join(outDir, WGT)); } catch (e) { return { ok: false, err: 'Chưa đổi tên được gói app: ' + e.message }; } }
 
+    const bad = (o) => /fail|error/i.test(o) && !/success|completed|installed/i.test(o);
     say('Đang cài lên TV...');
-    const inst = await run(t.cli, ['install', '-n', signed, '-s', serial, '--', outDir], 180000);
-    if (/fail|error/i.test(inst.out) && !/success|completed|installed/i.test(inst.out)) return { ok: false, err: explain(inst.out) || ('TV chưa nhận app: ' + inst.out.trim().slice(-300)) };
+    let inst = await run(t.cli, ['install', '-n', WGT, '-s', serial, '--', outDir], 180000);
+    if (bad(inst.out)) {
+      /* an older Hóng Sub signed with another certificate blocks the new one: remove it, then install again */
+      say('TV chưa nhận, gỡ bản Hóng Sub cũ trên TV rồi cài lại...');
+      await run(t.cli, ['uninstall', '-p', PKG_ID.split('.')[0], '-s', serial], 90000);
+      inst = await run(t.cli, ['install', '-n', WGT, '-s', serial, '--', outDir], 180000);
+    }
+    if (bad(inst.out)) {
+      /* last try straight through sdb, which also says why the TV refused */
+      say('Đang cài lại theo cách khác...');
+      const remote = '/home/owner/share/tmp/sdk_tools/tmp/' + WGT;
+      await run(t.sdb, ['-s', serial, 'shell', 'mkdir', '-p', '/home/owner/share/tmp/sdk_tools/tmp'], 30000);
+      const push = await run(t.sdb, ['-s', serial, 'push', path.join(outDir, WGT), remote], 120000);
+      const vd = await run(t.sdb, ['-s', serial, 'shell', '0', 'vd_appinstall', PKG_ID, remote], 180000);
+      const out = inst.out + '\n' + push.out + '\n' + vd.out;
+      if (!/install completed|result.*success|successfully|100%/i.test(vd.out) || /fail|error|refused/i.test(vd.out))
+        return { ok: false, err: explain(out) || ('TV chưa nhận app. Thông báo của TV: ' + (vd.out.trim() || inst.out.trim()).slice(-300)) };
+    }
 
     say('Đang mở Hóng Sub trên TV...');
     await run(t.cli, ['run', '-p', PKG_ID, '-s', serial], 60000);
