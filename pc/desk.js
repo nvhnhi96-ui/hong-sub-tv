@@ -351,7 +351,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     if(D.aiv) D.aiv.state().then(function(st){ if(st&&!st.ready&&!st.installing) add({id:'aiv-pack-1',title:'Có bộ 25 giọng đọc AI tiếng Việt',body:'Mỗi nhân vật một giọng riêng, đọc tự nhiên, chạy ngay trên máy. Tải một lần khoảng 510 MB.',go:'giong',btn:'Tải bộ giọng'}); }).catch(function(){});
     /* news from the shop: new voices, new features */
     fetch(FEED+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-      (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())&&!(x.pc&&(D.web===true))&&!(x.web&&!(D.web===true))) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
+      (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())&&(window.HSPhone?(x.phone||!(x.pc||x.web)):(!x.phone&&!(x.pc&&(D.web===true))&&!(x.web&&!(D.web===true))))) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
     }).catch(function(){});
   }
   if(D.onUpdate) D.onUpdate(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); });

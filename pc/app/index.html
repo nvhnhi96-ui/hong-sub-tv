@@ -2476,7 +2476,7 @@ if(D&&D.tv){
 /* every TV setting lives here on the computer; the TV app only connects and follows */
 (function(){ var ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); ps.value=load('tvpos','bottom');
   if(en) en.checked=load('tven',false); if(hd) hd.value=String(load('tvhdmi',1));
-  function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên máy tính: kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
+  function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên '+(PH?'điện thoại':'máy tính')+': kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
   var t=0; function send(what){ lookTxt(); clearTimeout(t); t=setTimeout(function(){ lookTxt(); if(!(tvIp()||tvCode().length>=4)) return;
       if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
       else tvSend({vi:'Phụ đề mẫu: cỡ chữ '+$('hsSize').value+(ps.value==='top'?', ở trên':', ở dưới'),en:en&&en.checked?'Sample subtitle':'',who:'Hóng Sub',kind:'notice'}).catch(function(){}); },600); }
@@ -2568,8 +2568,9 @@ function coverShow(html){
   var w=r.w*b.w, h=r.h*b.h;
   c.style.left=(ox+b.l+r.x*b.w)+'px'; c.style.top=(oy+b.t+r.y*b.h)+'px'; c.style.width=w+'px'; c.style.minHeight=h+'px';
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
-  var fs=Math.max(12,Math.min(44,h*0.36)); d.style.fontSize=fs+'px';
-  for(var i=0;i<8&&c.offsetHeight>h*1.6&&fs>12;i++){ fs*=0.88; d.style.fontSize=fs+'px'; }   /* long line: smaller letters, not a taller box */
+  var fs=Math.max(10,Math.min(44,h*0.36)); d.style.fontSize=fs+'px'; c.style.padding=(w<360?'2px 6px':'');
+  for(var i=0;i<10&&c.offsetHeight>h*1.6&&fs>9;i++){ fs*=0.88; d.style.fontSize=fs+'px'; }   /* long line: smaller letters, not a taller box */
+  var top=oy+b.t+r.y*b.h, over=top+c.offsetHeight-st.height; if(over>0) c.style.top=Math.max(0,top-over)+'px';   /* keep it inside the picture (small phone screens) */
   S.coverHtml=html;
 }
 function coverWait(){ if(coverOn()&&S.running) coverShow('<span class="wait">•••</span>'); }   /* new English line: hide it while it is being translated */
@@ -2630,7 +2631,7 @@ function engineNow(){
 }
 function engineUi(){
   var box=$('hsEngine'); if(!box) return;
-  var now=engineNow(), list=D?engines():[{k:'browser',n:'Giọng của trình duyệt',s:webViCount()?webViCount()+' giọng':'máy chưa có'},{k:'gg',n:'Google',s:'online'}];
+  var now=engineNow(), list=D?engines():[{k:'browser',n:PH?'Giọng điện thoại':'Giọng của trình duyệt',s:webViCount()?webViCount()+' giọng':'máy chưa có'},{k:'gg',n:'Google',s:'online'}];
   box.innerHTML=list.map(function(e){ return '<button type="button" class="dk-chip" data-e="'+e.k+'" aria-pressed="'+(e.k===now)+'">'+esc(e.n)+(e.s?' <small>'+esc(e.s)+'</small>':'')+'</button>'; }).join('');
 }
 function webViCount(){ return (voices||[]).filter(function(v){return /^vi/i.test(v.lang);}).length; }
@@ -3792,6 +3793,21 @@ if(PH){
     var mp=e.querySelector('p'); if(mp) mp.textContent='Cách 1: chia sẻ màn hình khi chơi bằng app PS Remote Play trên điện thoại. Cách 2: chơi trên TV, kê điện thoại trên giá cho camera nhìn trọn màn hình TV, bấm Camera chĩa vào TV. Chữ Việt hiện trên TV qua app Hóng Sub TV (vào Kết nối TV, gõ mã TV).'; })();
   (function(){ var h=$('hsHint'); if(!h||!window.MutationObserver) return; var fix=function(){ if(/chuột/.test(h.textContent)) h.textContent=h.textContent.replace(/Kéo chuột/g,'Kéo ngón tay'); }; new MutationObserver(fix).observe(h,{childList:true,characterData:true,subtree:true}); fix(); })();
   $('hsSpeak').addEventListener('change',function(){ phState(S.running); });
+  (function(){   /* phone: drop the browser / Windows-only notes, add phone steps */
+    [].forEach.call(document.querySelectorAll('.hs-web'),function(el){ if(el.closest('.dk-nav')) return; if(!el.classList.contains('hs-note')||/Cửa sổ nổi/.test(el.textContent)) el.style.display='none'; });
+    [].forEach.call(document.querySelectorAll('#p-giong .hs-note'),function(n){ var t=n.textContent;
+      if(/^Khi đã nối TV: chọn đọc trên máy tính/.test(t)) n.textContent='Khi đã nối TV: chọn đọc trên điện thoại, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.';
+      else if(/^Các bộ đọc có trong danh sách/.test(t)) n.innerHTML='Các bộ đọc: <b>Giọng điện thoại</b> (giọng tiếng Việt có sẵn của Android, không cần mạng) và <b>Google</b> (giọng nữ, cần mạng, không cần mã). Điện thoại chưa có giọng Việt: vào Cài đặt Android › Chuyển văn bản thành giọng nói, tải tiếng Việt.'; });
+    var k2=document.getElementById('dkKeys2'); if(k2){ k2.style.display='none'; if(k2.previousElementSibling) k2.previousElementSibling.style.display='none'; }
+    ['hsSpeakWhere','hsTvRead'].forEach(function(id){ var sl=$(id); if(!sl) return; [].forEach.call(sl.options,function(o){ if(o.value==='pc') o.textContent='Điện thoại (giọng của điện thoại)'; else o.textContent=o.textContent.replace(/máy tính/g,'điện thoại'); }); });
+    var kn=document.getElementById('p-ketnoi'), col=kn&&kn.querySelector('.dk-cols>div'); if(!col) return;
+    var c=document.createElement('div'); c.className='dk-card';
+    c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2><p class="hs-note">Có hai cách, chọn cách hợp với bạn:</p>'
+      +'<ol class="dk-steps"><li><b>Chơi trên điện thoại:</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Cài app <b>PS Remote Play</b> trên điện thoại và kết nối PS5. Mở Hóng Sub, bấm <b>Chia sẻ màn hình</b>, rồi mở PS Remote Play. Bấm nút <b>H</b> vàng nổi trên game để khoanh phụ đề và bắt đầu dịch.</li>'
+      +'<li><b>Chơi trên TV:</b> kê điện thoại trên giá sao cho camera thấy trọn màn hình TV. Bấm <b>Camera chĩa vào TV</b>, kéo 4 chấm vàng vào 4 góc TV, khoanh dòng phụ đề rồi bấm Bắt đầu dịch.</li>'
+      +'<li><b>Hiện chữ Việt lên TV:</b> cài app Hóng Sub TV (mục bên dưới), gõ mã đang hiện trên TV vào ô <b>Mã TV</b>. Điện thoại và TV không cần chung mạng.</li></ol>';
+    col.insertBefore(c,col.firstChild);
+  })();
   try{ S.appVer=PH.version()||S.appVer; }catch(e){}
   try{ PH.ready(JSON.stringify({ver:S.appVer||''})); }catch(e){}
 }
