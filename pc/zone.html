@@ -24,7 +24,7 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     if(!cur) return;
     /* as big as the area allows (up to the chosen size), smaller for long text, never spilling out of the area */
     var lines=(tx.textContent||'').split('\n').length, cap=Math.round((cur.size||17)*1.6);
-    var f=Math.max(9,Math.min(cap,Math.floor(tx.clientHeight/lines*0.7))); tx.style.fontSize=f+'px';
+    var f=+cur.px>0?Math.round(+cur.px*screen.height/1080):Math.max(9,Math.min(cap,Math.floor(tx.clientHeight/lines*0.7))); tx.style.fontSize=f+'px';   /* a chosen size, or as big as fits */
     while(f>8&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)){ f--; tx.style.fontSize=f+'px'; }
   }
   D.onZone(function(d){

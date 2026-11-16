@@ -355,7 +355,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <p class="hs-note">Bật cái này thì máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
         <div class="hs-f" style="margin-top:12px">
           <label for="hsPsQ">Chất lượng hình</label>
-          <select class="hs-in" id="hsPsQ"><option value="1080/60/30000">1080p, 60 hình/giây, nét cao (30 Mbps, nên cắm dây mạng)</option><option value="1080/60/15000">1080p, 60 hình/giây, thường (15 Mbps)</option><option value="720/60/10000">720p, 60 hình/giây</option><option value="540/30/6000">540p, 30 hình/giây (mạng yếu)</option></select>
+          <select class="hs-in" id="hsPsQ"><option value="1080/60/15000">1080p, 60 hình/giây (15 Mbps, khuyên dùng)</option><option value="1080/60/30000">1080p, 60 hình/giây, nét cao (30 Mbps, cần cắm dây mạng)</option><option value="720/60/10000">720p, 60 hình/giây</option><option value="540/30/6000">540p, 30 hình/giây (mạng yếu)</option></select>
         </div>
       </section>
 
@@ -855,6 +855,12 @@ var S0={wait:load('wait',900),hold:load('hold',10),allowFree:load('allowFree',tr
 var FONTS={
   bevn:{n:'Be Vietnam Pro',g:'Be+Vietnam+Pro',css:'"Be Vietnam Pro",system-ui,sans-serif'},
   roboto:{n:'Roboto',g:'Roboto',css:'"Roboto",system-ui,sans-serif'},
+  inter:{n:'Inter (gọn, hiện đại)',g:'Inter',css:'"Inter",system-ui,sans-serif'},
+  jakarta:{n:'Plus Jakarta Sans (mềm, sang)',g:'Plus+Jakarta+Sans',css:'"Plus Jakarta Sans",system-ui,sans-serif'},
+  sourcesans:{n:'Source Sans 3 (gọn, dễ đọc)',g:'Source+Sans+3',css:'"Source Sans 3",system-ui,sans-serif'},
+  opensans:{n:'Open Sans (rõ, quen mắt)',g:'Open+Sans',css:'"Open Sans",system-ui,sans-serif'},
+  mulish:{n:'Mulish (thanh, thoáng)',g:'Mulish',css:'"Mulish",system-ui,sans-serif'},
+  barlow:{n:'Barlow Semi Condensed (hẹp, gọn chỗ)',g:'Barlow+Semi+Condensed',css:'"Barlow Semi Condensed","Arial Narrow",sans-serif'},
   nunito:{n:'Nunito (tròn, mềm)',g:'Nunito',css:'"Nunito",system-ui,sans-serif'},
   montserrat:{n:'Montserrat (rộng, mạnh)',g:'Montserrat',css:'"Montserrat",system-ui,sans-serif'},
   lexend:{n:'Lexend (dễ đọc)',g:'Lexend',css:'"Lexend",system-ui,sans-serif'},
@@ -1141,7 +1147,7 @@ function zCol(z){ return ZCOL[S.zones.indexOf(z)%ZCOL.length]; }
 var zV2=load('zonesV2',false);
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,speak:!!z.speak};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1186,7 +1192,10 @@ function zShow(){
     var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
     tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
     tx.style.background='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')'; tx.style.fontFamily=subFont();
-    if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
+    tx.style.bottom=''; tx.style.minHeight=''; tx.style.overflow='';
+    if(!tx.hidden&&z.vi&&+z.px>0&&b.h>0){             /* size chosen: that size (on a 1080-line picture), the box grows down if needed */
+      tx.style.fontSize=(+z.px*b.h/1080)+'px'; tx.style.bottom='auto'; tx.style.minHeight=(z.h*b.h)+'px'; tx.style.overflow='visible';
+    } else if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
       var bh=z.h*b.h, lines=z.vi.split('\n').length, cap=ZCAP[z.size]||28;
       var fs=Math.max(10,Math.min(cap,bh/lines*0.62)); tx.style.fontSize=fs+'px';
       for(var k=0;k<12&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)&&fs>9;k++){ fs*=0.9; tx.style.fontSize=fs+'px'; }
@@ -1196,6 +1205,7 @@ function zShow(){
 }
 window.addEventListener('resize',function(){ if(S.stream) zShow(); });
 video.addEventListener('loadedmetadata',zShow);
+function zpxTxt(v){ v=+v||0; return v>0?v+' (khung tự cao thêm khi cần)':'tự vừa khung'; }
 function zList(){
   var box=$('hsZoneList'); if(!box) return;
   function opt(v,cur,t){ return '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+t+'</option>'; }
@@ -1207,7 +1217,7 @@ function zList(){
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
       '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Tự dịch khi chữ đổi')+opt('key',z.mode,'Chỉ khi bấm phím')+'</select></label>'+
       (D?'<label><span>Chữ Việt hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên chữ gốc trên màn hình game')+opt('app',z.show,'Chỉ trên hình trong Hóng Sub')+'</select></label>':'')+
-      '<label><span>Cỡ chữ</span><select class="hs-in" data-f="size">'+opt('xs',z.size,'Rất nhỏ')+opt('s',z.size,'Nhỏ')+opt('m',z.size,'Vừa')+opt('l',z.size,'Lớn')+opt('xl',z.size,'Rất lớn')+'</select></label>'+
+      '<label title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ: <b class="zpxv">'+zpxTxt(z.px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="2" data-f="px" value="'+(+z.px||0)+'" aria-label="Cỡ chữ của vùng"></label>'+
       '<label><span>Độ đậm nền sau chữ: <b class="zbgv">'+(z.bg==null?90:+z.bg)+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+(z.bg==null?90:+z.bg)+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
       '<label title="0 giây: chữ Việt ở lại đến khi chữ gốc đổi hay mất"><span>Số giây hiện (0 = đến khi chữ gốc đổi)</span><input class="hs-in" type="number" inputmode="numeric" min="0" max="600" step="1" data-f="hold" value="'+(+z.hold||0)+'" aria-label="Số giây chữ Việt hiện trên vùng"></label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="tv"'+(z.tv!==false?' checked':'')+'> Hiện trên TV</label>'+
@@ -1223,10 +1233,12 @@ function zList(){
       var v=el.type==='checkbox'?el.checked:el.value; if(el.dataset.f==='name') v=String(v).trim();
       if(el.dataset.f==='hold'){ v=Math.max(0,Math.min(600,Math.round(+v)||0)); el.value=v; if(z.hide&&z.vi){ z.hide=false; } }
       if(el.dataset.f==='bg') v=Math.max(0,Math.min(100,+v||0));
+      if(el.dataset.f==='px'){ v=Math.round(+v||0); if(v>0&&v<12) v=12; v=Math.min(64,v); }
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on') z.lastText='';
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='hold'||el.dataset.f==='bg') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='hold'||el.dataset.f==='bg') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+    var pxIn=row.querySelector('[data-f=px]'); if(pxIn) pxIn.addEventListener('input',function(){ var v=Math.round(+pxIn.value||0); if(v>0&&v<12) v=12; z.px=v; row.querySelector('.zpxv').textContent=zpxTxt(v); zShow(); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
     row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
     row.querySelector('[data-a=del]').addEventListener('click',function(){ zDelete(z); });
@@ -1373,7 +1385,7 @@ function zTv(z){
   if(z.tv===false&&z.vi) return;
   if(!(tvIp()||tvCode().length>=4)) return;
   var zr=camRect(z); if(!zr) return;   /* camera without the TV corners: no place on the TV yet */
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 function zHold(z){
@@ -1383,8 +1395,8 @@ function zHold(z){
 /* the Windows app shows these translations in a small floating panel too */
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
-  if(PH){ try{ PH.zones(JSON.stringify(S.zones.filter(function(z){return z.on;}).map(function(z){return {id:z.id,vi:z.hide?'':(z.vi||''),size:ZSIZE[z.size]||17,bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x,y:z.y,w:z.w,h:z.h};}))); }catch(e){} }
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),c:zCol(z),size:ZSIZE[z.size]||17,bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(PH){ try{ PH.zones(JSON.stringify(S.zones.filter(function(z){return z.on;}).map(function(z){return {id:z.id,vi:z.hide?'':(z.vi||''),size:+z.px>0?Math.round(+z.px/2):(ZSIZE[z.size]||17),bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x,y:z.y,w:z.w,h:z.h};}))); }catch(e){} }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -2048,8 +2060,9 @@ function coverShow(html){
   var c=coverEl();
   if(!html||!coverAt()||!S.stream||!S.region||(S.fs&&S.fs.on)||!video.videoWidth){ c.hidden=true; return; }
   var b=videoBox(), r=S.region, st=$('hsStage').getBoundingClientRect(), ox=b.r.left-st.left, oy=b.r.top-st.top;
-  var w=r.w*b.w, h=r.h*b.h;
-  c.style.left=(ox+b.l+r.x*b.w)+'px'; c.style.top=(oy+b.t+r.y*b.h)+'px'; c.style.width=w+'px'; c.style.minHeight=h+'px';
+  var lw=+(load('ovStyle',{}).width)||80, w=Math.max(120,Math.min(1,lw/100)*b.w), h=r.h*b.h;   /* as wide as "Độ rộng khung phụ đề", centred on the original */
+  var cx=b.l+(r.x+r.w/2)*b.w, lx=Math.max(b.l,Math.min(b.l+b.w-w,cx-w/2));
+  c.style.left=(ox+lx)+'px'; c.style.top=(oy+b.t+r.y*b.h)+'px'; c.style.width=w+'px'; c.style.minHeight=h+'px';
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
   var lk=load('ovStyle',{}); d.style.fontFamily=subFont(); d.style.color=/^#[0-9A-Fa-f]{6}$/.test(lk.color||'')?lk.color:'#FFFFFF';
   c.style.background='rgba(6,7,9,'+Math.max(stageFs()?.97:.85,(lk.bg==null?74:+lk.bg)/100)+')';   /* the box hides the English line under it */
@@ -2061,6 +2074,7 @@ function coverShow(html){
 function coverWait(){ if(coverAt()&&S.running) coverShow('<span class="wait">•••</span>'); }   /* new English line: hide it while it is being translated */
 function coverHide(){ var c=document.getElementById('hsCoverBox'); if(c) c.hidden=true; S.coverHtml=''; }
 window.addEventListener('resize',function(){ if(S.coverHtml) coverShow(S.coverHtml); });
+['dkWidth','dkBg','hsSize'].forEach(function(id){ var el=$(id); if(el) el.addEventListener('input',function(){ setTimeout(function(){ if(S.coverHtml) coverShow(S.coverHtml); },30); }); });
 document.addEventListener('fullscreenchange',function(){ if(S.coverHtml) setTimeout(function(){ coverShow(S.coverHtml); },250); });
 var voices=[];
 var dVoices=null;
@@ -3430,7 +3444,7 @@ async function psPlay(h,opt){
     for(var i=0;i<20;i++){ await sleepMs(2500); var l=await D.ps.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) D.ps.wake(h.id); }
     if(h.state!=='ready'){ PS.err='máy chưa bật lên được'; psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); status('err','Chưa bật được '+h.name+'. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); tvNotice('Chưa bật được '+h.name+'. Hãy bật máy bằng tay cầm.'); return; }
   }
-  var q=opt?[opt.res,opt.fps,opt.br]:($('hsPsQ').value||'1080/60/30000').split('/');
+  var q=opt?[opt.res,opt.fps,opt.br]:($('hsPsQ').value||'1080/60/15000').split('/');
   log('PS: kết nối '+h.name+' '+h.addr+' '+q[0]+'p '+q[1]+' hình/giây'+(q[2]?' '+Math.round(q[2]/1000)+' Mbps':''));
   psMsg('','Đang kết nối '+h.name+'...');
   var r=null;
@@ -3508,14 +3522,14 @@ function hex2(n){return ('0'+n.toString(16)).slice(-2).toUpperCase();}
 function psStartView(){
   if(!PS.cvs){
     PS.cvs=document.createElement('canvas'); PS.cvs.id='hsGame2'; PS.cvs.width=1280; PS.cvs.height=720; PS.cvs.tabIndex=0;
-    PS.ctx=PS.cvs.getContext('2d');
+    PS.ctx=PS.cvs.getContext('2d',{alpha:false,desynchronized:true});   /* low-latency canvas */
   }
   PS.ctx.fillStyle='#000'; PS.ctx.fillRect(0,0,PS.cvs.width,PS.cvs.height);
   var stage=$('hsStage'); if(PS.cvs.parentNode!==stage) stage.insertBefore(PS.cvs,$('hsOv'));
-  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now();
+  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now(); PS.jank=[]; PS.jankSaid=false;
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
   psWatchStop(); if(!D.selftest){ PS.watch=setInterval(psWatchTick,1000); psWaitDraw(0,'Đang nối với máy'); }
-  PS.stream=PS.cvs.captureStream(30);
+  PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
   if(window.hsGo&&!D.selftest) hsGo('choi');
   S.offlineDemo=false; setStream(PS.stream,null);
   ['hsPsFull','hsPsEnd'].forEach(function(id){$(id).classList.remove('hs-off');});
@@ -3524,6 +3538,7 @@ function psStartView(){
 function psStopView(){
   psWatchStop(); psPadStop();
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
+  if(PS.pend){ try{PS.pend.close();}catch(e){} PS.pend=null; }
   if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; }
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
@@ -3534,15 +3549,29 @@ function psStopView(){
 function psDecoder(codec){
   PS.dec=new VideoDecoder({
     output:function(f){
-      if(PS.cvs.width!==f.displayWidth||PS.cvs.height!==f.displayHeight){ PS.cvs.width=f.displayWidth; PS.cvs.height=f.displayHeight; }
-      PS.ctx.drawImage(f,0,0); f.close();
+      /* show at the screen's own pace: keep only the newest frame and draw it on the next refresh (no bunching, no backlog) */
+      if(PS.pend) PS.pend.close(); PS.pend=f;
+      if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
       if(++PS.frames===1){ psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!D.selftest) startRun(); }
     },
-    error:function(e){ PS.decErr=(PS.decErr||0)+1; log('PS: giải hình lỗi '+((e&&e.message)||e)); if(PS.decErr>=2) PS.sw=true; PS.dec=null; PS.waitKey=true; psIdr(); }
+    error:function(e){ psJank(); PS.decErr=(PS.decErr||0)+1; log('PS: giải hình lỗi '+((e&&e.message)||e)); if(PS.decErr>=2) PS.sw=true; PS.dec=null; PS.waitKey=true; psIdr(); }
   });
   try{ PS.dec.configure({codec:codec,optimizeForLatency:true,hardwareAcceleration:PS.sw?'prefer-software':'no-preference'}); }
   catch(e){ log('PS: không mở được bộ giải '+codec+': '+e.message); try{PS.dec.close();}catch(x){} PS.dec=null; PS.sw=true; return; }
   PS.codec=codec; log('PS: bộ giải hình '+codec+(PS.sw?' (phần mềm)':''));
+}
+function psPaint(){
+  if(PS.raf){ cancelAnimationFrame(PS.raf); PS.raf=0; } clearTimeout(PS.rafT); var f=PS.pend; PS.pend=null; if(!f) return;
+  if(!PS.cvs){ f.close(); return; }
+  if(PS.cvs.width!==f.displayWidth||PS.cvs.height!==f.displayHeight){ PS.cvs.width=f.displayWidth; PS.cvs.height=f.displayHeight; }
+  PS.ctx.drawImage(f,0,0); f.close();
+}
+/* the picture keeps breaking up: the network is too weak for the chosen quality, say what helps (once) */
+function psJank(){
+  var n=Date.now(); PS.jank=(PS.jank||[]).filter(function(t){ return n-t<20000; }); PS.jank.push(n);
+  if(PS.jank.length>=4&&!PS.jankSaid&&PS.frames>60){ PS.jankSaid=true;
+    var t='Mạng chập chờn nên hình bị giật. Chọn Chất lượng hình thấp hơn ở mục Kết nối PS và TV, hoặc cắm dây mạng cho PS5 và máy tính.';
+    log('PS: '+t); psMsg('warn',t); status('err',t); }
 }
 function psIdr(){ var n=Date.now(); if(n-PS.lastIdr>1000){ PS.lastIdr=n; D.ps.input('i'); } }
 function psVideo(payload){
@@ -3561,7 +3590,7 @@ function psVideo(payload){
   if(!PS.dec||PS.dec.state!=='configured'){ psIdr(); return; }
   if(PS.waitKey){ if(!key){ psIdr(); return; } PS.waitKey=false; }
   if(key&&info.sps<0&&PS.hdr){ var full=new Uint8Array(PS.hdr.length+data.length); full.set(PS.hdr,0); full.set(data,PS.hdr.length); data=full; }
-  if(PS.dec.decodeQueueSize>10&&!key){ PS.waitKey=true; psIdr(); return; } /* falling behind: skip to the next key frame instead of showing broken picture */
+  if(PS.dec.decodeQueueSize>30&&!key){ PS.waitKey=true; psJank(); psIdr(); return; } /* falling behind: skip to the next key frame instead of showing broken picture */
   try{ PS.dec.decode(new EncodedVideoChunk({type:key?'key':'delta',timestamp:(PS.ts+=16667),data:data})); }
   catch(e){ PS.waitKey=true; psIdr(); }
 }
@@ -3635,7 +3664,9 @@ function psInit(){
   D.ps.onVideo(psVideo); D.ps.onAudioHeader(psAudioHeader); D.ps.onAudio(psAudio); D.ps.onEvent(psEvent);
   document.addEventListener('keydown',function(e){psKey(e,true);},true);
   document.addEventListener('keyup',function(e){psKey(e,false);},true);
-  var q=load('psq',null); if(q&&[].some.call($('hsPsQ').options,function(o){return o.value===q;})) $('hsPsQ').value=q; $('hsPsQ').addEventListener('change',function(){save('psq',this.value);});
+  var q=load('psq',null); if(q==='1080/60/30000'&&!load('psq15',false)){ q='1080/60/15000'; save('psq',q); }   /* 30 Mbps stutters on most wifi: start from 15 once */
+  save('psq15',true);
+  if(q&&[].some.call($('hsPsQ').options,function(o){return o.value===q;})) $('hsPsQ').value=q; $('hsPsQ').addEventListener('change',function(){save('psq',this.value);});
   $('hsPsFind').onclick=function(){psFind();};
   $('hsPsIpBtn').onclick=function(){ $('hsPsIpBox').hidden=false; $('hsPsIp').focus(); };
   $('hsPsIpGo').onclick=function(){ var ip=$('hsPsIp').value.trim(); if(ip) psFind(ip); };

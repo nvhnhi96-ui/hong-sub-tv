@@ -162,8 +162,11 @@ function applyPlace() {
   if (!overlay || overlay.isDestroyed() || moveMode) return;
   if (subPlace) {
     const b = capBase();
-    overlay.setBounds({ x: Math.round(b.x + subPlace.x * b.width), y: Math.round(b.y + subPlace.y * b.height),
-      width: Math.max(120, Math.round(subPlace.w * b.width)), height: Math.max(40, Math.round(subPlace.h * b.height)) });
+    /* as wide as "Độ rộng khung phụ đề" says (share of the game picture), centred on the original subtitle */
+    const pct = Math.max(30, Math.min(100, +cfg.overlayPct || 80)) / 100;
+    const bw = Math.max(120, Math.round(pct * b.width)), cx = b.x + (subPlace.x + subPlace.w / 2) * b.width;
+    overlay.setBounds({ x: Math.round(Math.max(b.x, Math.min(b.x + b.width - bw, cx - bw / 2))), y: Math.round(b.y + subPlace.y * b.height),
+      width: bw, height: Math.max(40, Math.round(subPlace.h * b.height)) });
     overlay.webContents.send('sub', { cover: true });
   } else {
     overlay.setBounds(overlayBounds());
@@ -794,6 +797,7 @@ function setupIpc() {
   ipcMain.handle('overlay-reset', () => { overlayCmd('reset'); return true; });
   ipcMain.handle('overlay-size', (e, pct, h) => {
     if (!overlay) return false;
+    if (subPlace) { cfg.overlayPct = pct; saveCfg(); applyPlace(); return true; }   /* over the game's subtitle: same width rule there */
     const b = overlay.getBounds(), d = screen.getDisplayMatching(b).workArea;
     const w = Math.round(d.width * Math.max(0.3, Math.min(1, pct / 100))), hh = Math.max(120, Math.min(420, h || b.height));
     const cx = b.x + b.width / 2, nx = Math.round(Math.max(d.x, Math.min(d.x + d.width - w, cx - w / 2)));

@@ -305,6 +305,7 @@ public class OverlayService extends Service {
         final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(0.06, j.optDouble("w", 0.3)), h = Math.max(0.04, j.optDouble("h", 0.15));
         final int hold = j.optInt("hold", 0);
         final String zs = j.optString("zs", "m");
+        final int zpx = Math.max(0, Math.min(80, j.optInt("zpx", 0)));
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
         final Typeface face = faceFor(j.optString("font", prefs.font()));
         main.post(() -> {
@@ -329,7 +330,7 @@ public class OverlayService extends Service {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
             int W = dm.widthPixels, H = dm.heightPixels, bw = (int) (w * W), bh = (int) (h * H);
-            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(bw, bh);
+            FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(bw, zpx > 0 ? FrameLayout.LayoutParams.WRAP_CONTENT : bh);
             fl.leftMargin = (int) (x * W);
             fl.topMargin = (int) (y * H);
             tv.setLayoutParams(fl);
@@ -339,6 +340,18 @@ public class OverlayService extends Service {
             zb.setCornerRadius(dp(5));
             tv.setBackground(zb);
             tv.setTypeface(face);
+            if (zpx > 0) {
+                // the size chosen on the computer (on a 1080-line screen); the box grows down if the text needs it
+                if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
+                tv.setMinHeight(bh);
+                tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, zpx * (H / 1080f));
+                final TextView v2 = tv;
+                Runnable off2 = () -> { zoneLayer.removeView(v2); zoneViews.remove(id); zoneOff.remove(id); };
+                zoneOff.put(id, off2);
+                main.postDelayed(off2, hold > 0 ? hold * 1000L : 300000L);
+                return;
+            }
+            tv.setMinHeight(0);
             // as big as the area allows, smaller for long text
             float cap = (zs.equals("xs") ? 20 : zs.equals("s") ? 26 : zs.equals("l") ? 44 : zs.equals("xl") ? 56 : 34) * (H / 1080f);
             int lines = vi.split("\n").length;
@@ -356,12 +369,21 @@ public class OverlayService extends Service {
     }
 
     /** The typeface picked on the computer, as close as Android TV's own fonts allow. */
-    private static Typeface faceFor(String k) {
-        String fam = "sans-serif";
-        if ("notoserif".equals(k)) fam = "serif";
-        else if ("oswald".equals(k)) fam = "sans-serif-condensed";
-        else if ("quicksand".equals(k) || "nunito".equals(k)) fam = "sans-serif-medium";
-        return Typeface.create(fam, Typeface.BOLD);
+    /* the same letters as on the computer: each font is bundled (latin + Vietnamese), the system font is the fallback */
+    private final java.util.HashMap<String, Typeface> faces = new java.util.HashMap<>();
+    private synchronized Typeface faceFor(String k) {
+        if (k == null || !k.matches("[a-z]{2,12}")) k = "bevn";
+        Typeface t = faces.get(k);
+        if (t != null) return t;
+        try { t = Typeface.createFromAsset(getAssets(), "fonts/" + k + ".ttf"); } catch (Exception e) { t = null; }
+        if (t == null) {
+            String fam = "sans-serif";
+            if ("notoserif".equals(k)) fam = "serif";
+            else if ("oswald".equals(k) || "barlow".equals(k)) fam = "sans-serif-condensed";
+            t = Typeface.create(fam, Typeface.BOLD);
+        }
+        faces.put(k, t);
+        return t;
     }
 
     private double[] cov = null;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
@@ -400,7 +422,9 @@ public class OverlayService extends Service {
             box.setBackground(cb);
             box.setGravity(Gravity.CENTER);
         } else {
-            lp.width = WindowManager.LayoutParams.WRAP_CONTENT; lp.height = WindowManager.LayoutParams.WRAP_CONTENT; lp.x = 0; box.setGravity(Gravity.CENTER_HORIZONTAL);
+            // "Độ rộng khung phụ đề": the box is exactly that share of the screen wide, centred
+            lp.width = Math.max(dp(160), (int) (screenW * w)); lp.height = WindowManager.LayoutParams.WRAP_CONTENT; lp.x = 0; box.setGravity(Gravity.CENTER_HORIZONTAL);
+            viView.setMaxWidth(lp.width); enView.setMaxWidth(lp.width);
             lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
             lp.y = dp(prefs.top() ? 36 : 46);
         }
