@@ -2246,7 +2246,7 @@ var RELAY=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/w
 function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
 /* the kind of TV picked on the Connect page: Android TV (Hóng Sub TV app, home network or code), LG (webOS app, code),
    or any other TV through its web browser (code). Each kind keeps its own code, so switching does not lose it. */
-var TVK={android:'Android TV',lg:'TV LG',web:'trình duyệt TV'};
+var TVK={android:'Android TV',lg:'TV LG',samsung:'TV Samsung',web:'trình duyệt TV'};
 if(load('tv_android',null)===null&&load('tvtype',null)===null) save('tv_android',load('tv',''));
 S.tvType=load('tvtype','android'); if(!TVK[S.tvType]) S.tvType='android';
 S.tvSeen=0; S.tvLanSeen=0;
@@ -2334,7 +2334,7 @@ var tvFails=0;
 function tvPush(vi,en,who,manual){
   if(!tvIp()&&tvCode().length<4){ if(manual) tvMsg('err',S.tvType==='android'?(D?'Bấm "Tìm TV", hoặc nhập IP (hay mã) đang hiện trên app Hóng Sub TV.':'Nhập mã đang hiện trên app Hóng Sub TV trước.'):'Nhập mã đang hiện trên TV vào ô Mã TV trước.'); return; }
   tvSend({vi:vi,en:en||'',who:who||''})
-    .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: '+(S.tvType==='lg'?'trên TV mở app Hóng Sub, kiểm tra mã trên TV đúng là '+tvCode()+'.':S.tvType==='web'?'trên TV mở honggame.store/lg, kiểm tra mã trên TV đúng là '+tvCode()+'.':'trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".')); })
+    .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: '+(lanTv()?'trên TV mở app Hóng Sub, kiểm tra mã trên TV đúng là '+tvCode()+'.':S.tvType==='web'?'trên TV mở honggame.store/lg, kiểm tra mã trên TV đúng là '+tvCode()+'.':'trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".')); })
     .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err',tvIp()?'TV không trả lời. Kiểm tra TV đã mở app Hóng Sub TV, và máy tính với TV dùng chung một mạng.':'Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
 }
 /* connection state shown under the IP box */
