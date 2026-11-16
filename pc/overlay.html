@@ -27,20 +27,22 @@ body.move #mv{display:flex}
   var timer=null, moving=false, has=false, hold=0;
   function hideLater(){ clearTimeout(timer); if(hold>0) timer=setTimeout(function(){ if(!moving) box.classList.remove('on'); }, hold*1000); }
   function style(o){ if(o.color) vi.style.color=o.color; if(o.bg!==undefined) box.style.background='rgba(8,8,10,'+o.bg+')'; if(o.en!==undefined) en.style.display=o.en?'':'none'; if(o.font) vi.style.fontWeight=o.font; if(o.family){ vi.style.fontFamily=o.family; en.style.fontFamily=o.family; } if(o.hgt){ box.dataset.hgt=o.hgt; } if(o.lm!==undefined){ lm=!!o.lm; vi.style.whiteSpace=lm?'nowrap':''; } pad(); fit(); if(o.fontUrl&&!document.querySelector('link[href="'+o.fontUrl+'"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=o.fontUrl; document.head.appendChild(l); } }
-  var base=28, cover=false, lm=true;
+  var base=28, cover=false, lm=true, spotFs=0;
   /* "Độ cao khung nền" off the original subtitle: more or less room above and below the words */
   function pad(){ var k=(+box.dataset.hgt||100)/100; if(cover){ box.style.paddingTop=box.style.paddingBottom=''; return; } box.style.paddingTop=Math.round(10*k)+'px'; box.style.paddingBottom=Math.round(12*k)+'px'; }
   function size(px){ base=px; vi.style.fontSize=px+'px'; en.style.fontSize=Math.max(13,Math.round(px*.52))+'px'; fit(); }
   /* over the original subtitle the box is the subtitle's size: smaller letters rather than spilling out */
   /* same lines as the original (no extra wrapping): letters get smaller until each line fits the box */
-  function fit(){ var f=base; vi.style.fontSize=f+'px'; if(!cover&&!lm) return;
+  function fit(){ var f=spotFs||base; vi.style.fontSize=f+'px'; if(!cover&&!lm) return;   /* over the original text: start from the original letters' size */
     for(var i=0;i<24&&((cover&&box.scrollHeight>box.clientHeight+1)||vi.scrollWidth>vi.clientWidth+1||box.scrollWidth>box.clientWidth+1)&&f>9;i++){ f*=0.92; vi.style.fontSize=f+'px'; en.style.fontSize=Math.max(10,f*.52)+'px'; } }
   try{ document.fonts.addEventListener('loadingdone',function(){ fit(); }); }catch(e){}
   D.onSub(function(p){
     if(p.size) size(p.size);
     if(p.hold!==undefined) hold=+p.hold||0;
     if(p.style) style(p.style);
-    if(p.cover!==undefined){ cover=!!p.cover; document.body.classList.toggle('cover',cover); pad(); fit(); }
+    if(p.cover!==undefined){ cover=!!p.cover; document.body.classList.toggle('cover',cover);
+      spotFs=cover&&p.spot&&p.fs?+p.fs:0; vi.style.textAlign=en.style.textAlign=cover&&p.spot?({l:'left',c:'center',r:'right'}[p.al]||''):''; box.style.alignItems=cover&&p.spot?({l:'flex-start',c:'center',r:'flex-end'}[p.al]||''):'';
+      pad(); fit(); }
     if(p.html!==undefined){ vi.innerHTML=p.html; en.textContent=p.en||''; has=!!p.html; box.classList.toggle('on',has); hideLater(); fit(); }
   });
   D.onOverlay(function(st){

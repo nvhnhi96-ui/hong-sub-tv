@@ -396,7 +396,9 @@ public class OverlayService extends Service {
         return t;
     }
 
-    private double[] cov = null;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
+    private double[] cov = null;
+    // "đè đúng chỗ từng dòng": over the original text itself, its alignment and its letter size (on a 1080-line screen)
+    private boolean covSpot = false; private String covAl = "c"; private int covFs = 0;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
 
     private void applyStyle() {
         if (box == null) return;
@@ -449,9 +451,23 @@ public class OverlayService extends Service {
     /* "same lines as the original": no extra wrapping, the letters get smaller until the longest line fits */
     private void fitLines() {
         int size = prefs.textSize();
-        boolean lm = prefs.lines();
+        boolean lm = prefs.lines() || (cov != null && covSpot);
         viView.setHorizontallyScrolling(lm);
         viView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        if (cov != null && covSpot && covFs > 0) {
+            DisplayMetrics dm = new DisplayMetrics();
+            wm.getDefaultDisplay().getRealMetrics(dm);
+            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, covFs * dm.heightPixels / 1080f);
+            float need = 0;
+            for (String line : viView.getText().toString().split("\\n")) need = Math.max(need, viView.getPaint().measureText(line));
+            int base = (int) (cov[2] * dm.widthPixels), maxW = (int) (prefs.width() / 100f * dm.widthPixels);
+            int bw = Math.max(base, Math.min(maxW, (int) need + box.getPaddingLeft() + box.getPaddingRight() + dp(8)));
+            int x = "l".equals(covAl) ? (int) (cov[0] * dm.widthPixels) : "r".equals(covAl) ? (int) ((cov[0] + cov[2]) * dm.widthPixels) - bw : (int) ((cov[0] + cov[2] / 2) * dm.widthPixels) - bw / 2;
+            lp.width = bw; lp.x = Math.max(0, Math.min(dm.widthPixels - bw, x));
+            box.setGravity(("l".equals(covAl) ? Gravity.LEFT : "r".equals(covAl) ? Gravity.RIGHT : Gravity.CENTER_HORIZONTAL) | Gravity.CENTER_VERTICAL);
+            box.setPadding(dp(6), dp(2), dp(6), dp(2));
+            try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
+        }
         if (!lm) return;
         int avail = (cov != null ? lp.width : (lp.width > 0 ? lp.width : getResources().getDisplayMetrics().widthPixels)) - box.getPaddingLeft() - box.getPaddingRight() - dp(4);
         if (avail <= 0) return;
@@ -515,6 +531,8 @@ public class OverlayService extends Service {
             double[] nc = c != null && c.optDouble("w", 0) > 0.02 && c.optDouble("h", 0) > 0.02
                     ? new double[]{c.optDouble("x", 0), c.optDouble("y", 0), c.optDouble("w", 0), c.optDouble("h", 0)} : null;
             if (!java.util.Arrays.equals(nc, cov)) { cov = nc; changed = true; }
+            boolean sp = nc != null && j.optInt("cspot", 0) == 1; String al = j.optString("cal", "c"); int fs = j.optInt("cfs", 0);
+            if (sp != covSpot || !al.equals(covAl) || fs != covFs) { covSpot = sp; covAl = al; covFs = fs; changed = true; }
         }
         int pb = Updater.build(j.optString("appv", ""));
         if (pb > pcBuild) {

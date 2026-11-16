@@ -242,16 +242,22 @@ var FONTCSS={bevn:"'HS',sans-serif",barlow:"'HSF-barlow','Arial Narrow','HS',san
 var cov=null;
 function coverPlace(){
   var s=$('sub'), bx=document.querySelector('#sub .box');
-  if(!cov){ s.style.top=''; s.style.height=''; s.className=s.className.replace(/\s*cov/g,''); applyLook(); return; }
+  if(!cov){ s.style.top=''; s.style.height=''; s.className=s.className.replace(/\s*cov/g,''); $('vi').style.textAlign=''; $('en').style.textAlign=''; if(bx){ bx.style.alignItems=''; bx.style.padding=''; } applyLook(); return; }
   var W=window.innerWidth, H=window.innerHeight;
   /* on the original subtitle's line, as wide as "Độ rộng khung phụ đề" says (centred on the original), with the chosen background */
   var bw=Math.max(P.wid/100*W,120), cx=(cov.x+cov.w/2)*W, left=Math.max(0,Math.min(W-bw,cx-bw/2));
+  if(cov.spot){   /* "đúng chỗ từng dòng": over the original text itself, wider only if the Vietnamese needs it */
+    var v0=$('vi'); v0.style.whiteSpace='nowrap'; v0.style.fontSize=(cov.fs*scale())+'px';
+    var need=v0.scrollWidth+24, base=cov.w*W; bw=Math.max(base,Math.min(P.wid/100*W,need));
+    left=cov.al==='l'?cov.x*W:cov.al==='r'?(cov.x+cov.w)*W-bw:cx-bw/2; left=Math.max(0,Math.min(W-bw,left));
+  }
   /* "Độ cao khung nền": taller or flatter than the original line, centred on it */
   var bh=Math.max(cov.h*H*P.hgt/100,24), cy=(cov.y+cov.h/2)*H;
   s.style.left=left+'px'; s.style.right='auto'; s.style.width=bw+'px'; s.style.top=Math.max(0,cy-bh/2)+'px'; s.style.height=bh+'px';
   if(s.className.indexOf('cov')<0) s.className+=' cov';
   if(bx) bx.style.background='rgba(8,9,12,'+(P.bg/100)+')';
-  var px=P.size*1.6*scale(), v=$('vi'); v.style.fontSize=px+'px'; v.style.whiteSpace=P.lm?'nowrap':'';   /* same lines as the original: smaller letters, never an extra line */
+  var px=cov.spot&&cov.fs?cov.fs*scale():P.size*1.6*scale(), v=$('vi'); v.style.fontSize=px+'px'; v.style.whiteSpace=P.lm||cov.spot?'nowrap':'';
+  v.style.textAlign=$('en').style.textAlign=cov.spot?({l:'left',c:'center',r:'right'}[cov.al]):''; if(bx){ bx.style.alignItems=cov.spot?({l:'flex-start',c:'center',r:'flex-end'}[cov.al]):''; bx.style.padding=cov.spot?'.05em .3em':''; }   /* same lines as the original: smaller letters, never an extra line */
   for(var i=0;i<24&&bx&&(bx.scrollHeight>bx.clientHeight+1||bx.scrollWidth>bx.clientWidth+1||v.scrollWidth>v.clientWidth+1)&&px>9;i++){ px*=.92; v.style.fontSize=px+'px'; }
 }
 /* a font that arrives late is wider than the stand-in: fit again then */
@@ -431,7 +437,7 @@ function handle(j){
   if(j.hasOwnProperty('sen')&&!!j.sen!==P.en){ P.en=!!j.sen; save('en',P.en); }
   /* the computer tells where its home-network server is: switch to the faster local link */
   if(packaged&&/^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(j.pc||'')&&j.pc!==P.pc){ P.pc=j.pc; save('pc',P.pc); }
-  if(j.hasOwnProperty('cov')){ var c=j.cov; cov=c&&+c.w>0.02&&+c.h>0.02?{x:+c.x,y:+c.y,w:+c.w,h:+c.h}:null; }
+  if(j.hasOwnProperty('cov')){ var c=j.cov; cov=c&&+c.w>0.02&&+c.h>0.02?{x:+c.x,y:+c.y,w:+c.w,h:+c.h,spot:!!j.cspot,al:/^[lcr]$/.test(j.cal||'')?j.cal:'c',fs:+j.cfs||0}:null; }
   if(/^[a-z]{2,12}$/.test(j.font||'')&&j.font!==P.font){ P.font=j.font; save('font',P.font); changed=true; }
   if(/^#[0-9A-Fa-f]{6}$/.test(j.col||'')&&j.col!==P.col){ P.col=j.col; save('col',P.col); changed=true; }
   if(j.hasOwnProperty('bg')&&+j.bg>=0&&+j.bg<=100&&+j.bg!==P.bg){ P.bg=+j.bg; save('bg',P.bg); changed=true; }
