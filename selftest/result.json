@@ -5,32 +5,32 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 105
+          "ms": 140
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 136
+          "ms": 202
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 104
+          "ms": 152
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 129
+          "ms": 178
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 112
+          "ms": 157
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 128
+          "ms": 165
         }
       ],
       "asked": [
@@ -76,6 +76,27 @@
         "name": "Microsoft Mark",
         "lang": "en-US",
         "id": "win:Microsoft Mark"
+      },
+      {
+        "name": "Microsoft Hoài My (nữ, AI online)",
+        "lang": "vi-VN",
+        "id": "ms:vi-VN-HoaiMyNeural",
+        "g": "female",
+        "online": true
+      },
+      {
+        "name": "Microsoft Nam Minh (nam, AI online)",
+        "lang": "vi-VN",
+        "id": "ms:vi-VN-NamMinhNeural",
+        "g": "male",
+        "online": true
+      },
+      {
+        "name": "Google (nữ, online)",
+        "lang": "vi-VN",
+        "id": "gg:vi",
+        "g": "female",
+        "online": true
       }
     ],
     "ocrReady": true,
@@ -89,47 +110,47 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 105
+          "ms": 140
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 136
+          "ms": 202
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 104
+          "ms": 152
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 129
+          "ms": 178
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 112
+          "ms": 157
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 128
+          "ms": 165
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 105
+          "ms": 148
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 148
+          "ms": 204
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 131
+          "ms": 195
         }
       ],
       "asked": [
@@ -144,10 +165,11 @@
         "[VI] Grab the map. We head north at dawn.",
         "[VI] We need to get out of here before sunrise.",
         "[VI] I told you this place was cursed.",
+        "[VI] Grab the map. We head north at dawn.",
         "[VI] We need to get out of here before sunrise."
       ]
     },
-    "saved": 2,
+    "saved": 1,
     "running": true,
     "stream": true,
     "region": {
@@ -156,7 +178,7 @@
       "w": 0.9,
       "h": 0.16
     },
-    "status": "Đang dịch, đã bỏ qua 2 câu trùng",
+    "status": "Đang dịch, đã bỏ qua 1 câu trùng",
     "voices": [
       {
         "name": "Giọng Việt Hóng Sub (có sẵn)",
@@ -177,6 +199,27 @@
         "name": "Microsoft Mark",
         "lang": "en-US",
         "id": "win:Microsoft Mark"
+      },
+      {
+        "name": "Microsoft Hoài My (nữ, AI online)",
+        "lang": "vi-VN",
+        "id": "ms:vi-VN-HoaiMyNeural",
+        "g": "female",
+        "online": true
+      },
+      {
+        "name": "Microsoft Nam Minh (nam, AI online)",
+        "lang": "vi-VN",
+        "id": "ms:vi-VN-NamMinhNeural",
+        "g": "male",
+        "online": true
+      },
+      {
+        "name": "Google (nữ, online)",
+        "lang": "vi-VN",
+        "id": "gg:vi",
+        "g": "female",
+        "online": true
       }
     ],
     "ocrReady": true,
