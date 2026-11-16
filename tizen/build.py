@@ -86,7 +86,9 @@ UPD = r"""
     x.onreadystatechange=function(){
       if(x.readyState!==4||x.status!==200) return;
       var v=String(x.responseText||'').trim();
-      if(!/^\d+\.\d+\.\d+$/.test(v)||vn(v)<=vn(VERSION)) return;
+      if(!/^\d+\.\d+\.\d+$/.test(v)) return;
+      if(vn(v)<=vn(VERSION)){ $('hVer').textContent='Bản '+VERSION+' · đang dùng bản mới nhất, app tự cập nhật'; return; }
+      $('hVer').textContent='Bản '+VERSION+' · có bản mới '+v+', app tự chuyển sang khi đang rảnh';
       var idle=$('home').className!=='off'||Date.now()-last>20*60e3;
       if(!idle) return;
       pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
@@ -94,10 +96,11 @@ UPD = r"""
     };
     try{ x.open('GET',LIVE+'version.txt?t='+Date.now(),true); x.send(); }catch(e){}
   }
-  setTimeout(check,60e3); setInterval(check,30*60e3);
+  setTimeout(check,5000); setInterval(check,30*60e3);
 })();
 """
 rep("window.hsTv={handle:handle,P:P,version:VERSION};", TIZEN + UPD + "window.hsTv={handle:handle,P:P,version:VERSION};")
+rep("var TVNAME='TV LG';", "var TVNAME='TV Samsung';")
 # see-through page while the game shows
 rep("</style>", "html.see,html.see body{background:transparent!important}\n</style>", 1)
 
