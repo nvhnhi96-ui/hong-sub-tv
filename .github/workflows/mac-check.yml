@@ -16,6 +16,7 @@ jobs:
       - run: python3 sync_web.py
       - run: mkdir -p rp voices
       - name: Run from source (electron) to see start-up errors
+        if: false
         continue-on-error: true
         env:
           HS_SELFTEST: '1'
@@ -35,7 +36,9 @@ jobs:
           HS_SELFTEST_OUT: ${{ runner.temp }}/st2
           ELECTRON_ENABLE_LOGGING: '1'
         run: |
-          npx electron-builder --mac dir --arm64 --publish never > /tmp/b.txt 2>&1 || tail -30 /tmp/b.txt
+          npx electron-builder --mac dir --arm64 --publish never -c.productName='Hong Sub' -c.mac.extendInfo.CFBundleDisplayName='Hóng Sub' > /tmp/b.txt 2>&1 || tail -30 /tmp/b.txt
+          ls dist/mac-arm64/*.app/Contents/Frameworks/ | head
+          codesign --force --deep --sign - dist/mac-arm64/*.app
           APP=$(ls -d dist/mac-arm64/*.app | head -1); echo "app: $APP"
           codesign -dv "$APP" 2>&1 | head -5
           BIN=$(ls "$APP"/Contents/MacOS/* | head -1)
@@ -45,4 +48,4 @@ jobs:
           tail -80 /tmp/run2.txt
           tail -40 "$HS_SELFTEST_OUT/log.txt" 2>/dev/null || echo "no log"
           ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | tail -5
-          f=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); [ -n "$f" ] && head -c 6000 "$f"
+          f=$(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -1); if [ -n "$f" ]; then head -c 6000 "$f"; fi; true
