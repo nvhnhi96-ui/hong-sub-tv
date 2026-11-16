@@ -755,6 +755,7 @@ body:not(.desk) .dk-only{display:none!important}
                   <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
                 </div>
                 <div class="dk-set"><label class="lab" for="hsTvRead">Đọc to phụ đề ở</label><select class="hs-in" id="hsTvRead"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng trên TV)</option><option value="both">Cả máy tính và TV</option></select></div>
+                <div class="dk-set" data-tvvolrow><div class="lab"><label for="hsTvVol">Âm lượng giọng đọc trên TV</label><output id="hsTvVolV">150%</output></div><input class="hs-range" id="hsTvVol" type="range" min="50" max="300" step="10" value="150"><p class="hs-note">Trên 100% là to hơn mức bình thường của TV (giọng đọc được khuếch đại). Chỉnh xong TV đọc thử ngay.</p></div>
                 <label class="hs-sw" style="margin-top:10px">Hiện câu gốc tiếng Anh dưới câu Việt <input type="checkbox" id="hsTvEn"></label>
                 <div class="dk-set tvlg-only"><label class="lab" for="hsTvHdmi">Cổng HDMI đang cắm máy PS</label><select class="hs-in" id="hsTvHdmi"><option value="1">HDMI 1</option><option value="2">HDMI 2</option><option value="3">HDMI 3</option><option value="4">HDMI 4</option><option value="0">Không hiện hình, chỉ hiện phụ đề</option></select></div>
                 <p class="hs-note" style="margin-top:6px">Mọi cài đặt chữ trên TV chỉnh ở đây. App trên TV chỉ để kết nối, đổi ở đây là TV đổi theo ngay.</p>
@@ -935,6 +936,8 @@ body:not(.desk) .dk-only{display:none!important}
             <div class="dk-set" id="hsTvVoiceRow" hidden>
               <label class="lab" for="hsTvVoice">Giọng đọc trên TV</label>
               <select class="hs-in" id="hsTvVoice"></select>
+              <div class="lab" style="margin-top:10px"><label for="hsTvVol2">Âm lượng giọng đọc trên TV</label><output id="hsTvVol2V">150%</output></div>
+              <input class="hs-range" id="hsTvVol2" type="range" min="50" max="300" step="10" value="150">
               <p class="hs-note" id="hsTvVoiceNote">Giọng của máy tính được làm trên máy tính rồi phát ra loa TV, nên TV đọc đúng giọng bạn chọn (cả giọng AI). Cần TV và máy tính chung mạng nhà.</p>
             </div>
             <div class="dk-set">
@@ -2348,7 +2351,7 @@ function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(e
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
 function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(18,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(40,Math.min(100,+st.width||80))}; }
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
-function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
@@ -2444,13 +2447,14 @@ if(D&&D.tv){
 /* every TV setting lives here on the computer; the TV app only connects and follows */
 (function(){ var ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); ps.value=load('tvpos','bottom');
   if(en) en.checked=load('tven',false); if(hd) hd.value=String(load('tvhdmi',1));
-  function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên máy tính: cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
+  function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên máy tính: kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
   var t=0; function send(what){ lookTxt(); clearTimeout(t); t=setTimeout(function(){ lookTxt(); if(!(tvIp()||tvCode().length>=4)) return;
       if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
       else tvSend({vi:'Phụ đề mẫu: cỡ chữ '+$('hsSize').value+(ps.value==='top'?', ở trên':', ở dưới'),en:en&&en.checked?'Sample subtitle':'',who:'Hóng Sub',kind:'notice'}).catch(function(){}); },600); }
   /* the subtitle look on the computer is the look on the TV: any change there shows on the TV right away */
   ['hsSize','dkBg','dkWidth'].forEach(function(id){ var el=$(id); if(el) el.addEventListener('input',function(){ send(); }); });
   var dc=$('dkColor'); if(dc) dc.addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('button')) send(); });
+  var df=$('dkFont'); if(df) df.addEventListener('change',function(){ send(); });
   lookTxt();
   ps.addEventListener('change',function(){ save('tvpos',ps.value); send(); });
   if(en) en.addEventListener('change',function(){ save('tven',en.checked); send(); });
@@ -2829,7 +2833,7 @@ function tvVoiceSel(){ var s=$('hsTvVoice'); return (s&&s.value)||load('tvVoice'
 function tvLanOk(){ return S.tvType==='android'?!!(tvIp()&&S.tvOk):!!(lanTv()&&S.tvLanSeen&&Date.now()-S.tvLanSeen<25000&&tvCode().length>=4); }
 function tvClipOn(){ return !!(D&&D.voiceClip&&$('hsSpeak').checked&&speakWhere()!=='pc'&&tvVoiceSel()!=='tv'&&tvLanOk()&&((S.tvType==='android'&&D.tv&&D.tv.say)||(lanTv()&&D.lg&&D.lg.push))); }
 function tvSay(c,rate,pitch){
-  var o={kind:'say',rate:+Math.max(0.5,Math.min(2.5,rate*pitch)).toFixed(2),rd:true,mid:Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
+  var o={kind:'say',vol:tvVol(),rate:+Math.max(0.5,Math.min(2.5,rate*pitch)).toFixed(2),rd:true,mid:Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
   if(S.tvType==='android'){ o.aud=c.b64; o.mime=c.mime; D.tv.say(tvIp(),o).catch(function(){}); }
   else if(c.id){ o.clip=c.id; D.lg.push(tvCode(),o); }
 }
@@ -3525,6 +3529,25 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
     if(val==='tv') stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){});
   }); });
 })();
+/* how loud the TV reads (percent of the TV's normal level; above 100 the TV app amplifies the voice) */
+function tvVol(){ var v=+load('tvVol',150); return Math.max(50,Math.min(300,v||150)); }
+(function(){
+  var els=[['hsTvVol','hsTvVolV'],['hsTvVol2','hsTvVol2V']].filter(function(x){return $(x[0]);}); if(!els.length) return;
+  function draw(v){ els.forEach(function(x){ $(x[0]).value=v; $(x[1]).textContent=v+'%'; }); }
+  draw(tvVol());
+  var tm=0;
+  els.forEach(function(x){
+    $(x[0]).addEventListener('input',function(){ draw(+this.value); });
+    $(x[0]).addEventListener('change',function(){ save('tvVol',+this.value); draw(+this.value);
+      clearTimeout(tm); tm=setTimeout(function(){ if(!(tvIp()||tvCode().length>=4)) return;
+        if(speakWhere()==='pc'){ toastOnce('Đang đọc trên máy tính: chọn "Đọc ở" là TV hoặc cả hai để nghe trên TV.'); return; }
+        var t='Âm lượng giọng đọc trên TV '+tvVol()+' phần trăm.';
+        if(tvClipOn()&&D&&D.voiceClip) D.voiceClip(t,devPick(voiceMode(),'','')).then(function(c){ if(c&&c.ok) tvSay(c,parseFloat($('hsRate').value)||1,1); });
+        else tvSend({vi:t,who:'Hóng Sub'}).catch(function(){});   /* a line the TV reads with its own voice */
+      },300); });
+  });
+})();
+function toastOnce(m){ status('warn',m); }
 (function(){ var l=$('hsLines'); if(l){ var lv=load('lines',null); if(lv!==null) l.checked=lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});

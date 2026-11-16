@@ -84,6 +84,31 @@ public class OverlayService extends Service {
     private MediaPlayer clipPlayer = null;
     private int clipSeq = 0;
 
+    /* how loud the voice is, set on the computer (1 = the TV's normal level). Above 1 the voice is amplified:
+       the TV's voice and the computer's clips share one audio session with a LoudnessEnhancer on it. */
+    private float vol = 1.5f;
+    private int voiceSession = 0;
+    private android.media.audiofx.LoudnessEnhancer louder = null;
+    private int session() {
+        if (voiceSession == 0) {
+            try { voiceSession = ((android.media.AudioManager) getSystemService(AUDIO_SERVICE)).generateAudioSessionId(); } catch (Exception e) { voiceSession = 0; }
+            if (voiceSession > 0) { try { louder = new android.media.audiofx.LoudnessEnhancer(voiceSession); } catch (Exception e) { louder = null; } setVol(vol); }
+        }
+        return voiceSession;
+    }
+    private void setVol(float v) {
+        vol = v;
+        if (louder != null) {
+            try { int mb = v > 1f ? (int) (2000 * Math.log10(v)) : 0; louder.setTargetGain(mb); louder.setEnabled(mb > 0); } catch (Exception ignored) { }
+        }
+    }
+    private android.os.Bundle ttsParams() {
+        android.os.Bundle b = new android.os.Bundle();
+        b.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, Math.min(1f, vol));
+        int s = session(); if (s > 0) b.putInt(TextToSpeech.Engine.KEY_PARAM_SESSION_ID, s);
+        return b;
+    }
+
     private void clipAdd(String b64, String mime, float rate) {
         try {
             byte[] data = Base64.decode(b64, Base64.DEFAULT);
@@ -103,7 +128,9 @@ public class OverlayService extends Service {
         if (it == null) return;
         try {
             MediaPlayer mp = new MediaPlayer();
-            mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            mp.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            int s = session(); if (s > 0) mp.setAudioSessionId(s);
+            mp.setVolume(Math.min(1f, vol), Math.min(1f, vol));
             mp.setDataSource(((File) it[0]).getAbsolutePath());
             mp.setOnCompletionListener(x -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); });
             mp.setOnErrorListener((x, a, b) -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); return true; });
@@ -181,6 +208,7 @@ public class OverlayService extends Service {
         polling = false;
         main.removeCallbacks(updLook);
         clipStop();
+        if (louder != null) { try { louder.release(); } catch (Exception ignored) { } louder = null; }
         if (lan != null) lan.stop();
         if (poller != null) poller.interrupt();
         main.removeCallbacksAndMessages(null);
@@ -360,11 +388,14 @@ public class OverlayService extends Service {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
             lp.gravity = Gravity.TOP | Gravity.LEFT;
-            lp.x = (int) (cov[0] * dm.widthPixels); lp.y = (int) (cov[1] * dm.heightPixels);
-            lp.width = (int) (cov[2] * dm.widthPixels); lp.height = Math.max(dp(30), (int) (cov[3] * dm.heightPixels));
+            // as wide as "Độ rộng khung phụ đề" says, centred on the original subtitle, with the chosen background
+            int bw = Math.max(dp(120), (int) (prefs.width() / 100f * dm.widthPixels));
+            int cx = (int) ((cov[0] + cov[2] / 2) * dm.widthPixels);
+            lp.x = Math.max(0, Math.min(dm.widthPixels - bw, cx - bw / 2)); lp.y = (int) (cov[1] * dm.heightPixels);
+            lp.width = bw; lp.height = Math.max(dp(30), (int) (cov[3] * dm.heightPixels));
             viView.setMaxWidth(lp.width);
             GradientDrawable cb = new GradientDrawable();
-            cb.setColor(Color.argb(Math.max(225, Math.round(prefs.bg() * 2.55f)), 8, 8, 10));
+            cb.setColor(Color.argb(Math.round(prefs.bg() * 2.55f), 8, 8, 10));
             cb.setCornerRadius(dp(4));
             box.setBackground(cb);
             box.setGravity(Gravity.CENTER);
@@ -396,7 +427,7 @@ public class OverlayService extends Service {
                 boolean behind = ttsPending.get() >= 3;
                 if (behind) ttsPending.set(0);
                 ttsPending.incrementAndGet();
-                tts.speak(vi, behind ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null, "line" + (++ttsSeq));
+                tts.speak(vi, behind ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, ttsParams(), "line" + (++ttsSeq));
             }
         });
     }
@@ -436,7 +467,8 @@ public class OverlayService extends Service {
         String col = j.optString("col", "");
         if (col.matches("#[0-9A-Fa-f]{6}") && !col.equalsIgnoreCase(prefs.color())) { prefs.color(col); changed = true; }
         if (j.has("bg")) { int b = j.optInt("bg", -1); if (b >= 0 && b <= 100 && b != prefs.bg()) { prefs.bg(b); changed = true; } }
-        if (j.has("wid")) { int w = j.optInt("wid", 0); if (w >= 40 && w <= 100 && w != prefs.width()) { prefs.width(w); changed = true; } }
+        if (j.has("vol")) { int v = j.optInt("vol", 150); if (v >= 30 && v <= 300) setVol(v / 100f); }
+        if (j.has("wid")) { int w = j.optInt("wid", 0); if (w >= 20 && w <= 100 && w != prefs.width()) { prefs.width(w); changed = true; } }
         if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
         if (changed) main.post(this::applyStyle);
@@ -456,7 +488,7 @@ public class OverlayService extends Service {
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
-            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, null, "zone" + (++ttsSeq)); }
+            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, ttsParams(), "zone" + (++ttsSeq)); }
         }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud
