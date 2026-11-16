@@ -5,32 +5,32 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 76
-        },
-        {
-          "t": "Stay close. The bridge will not hold for long.",
-          "c": 89,
-          "ms": 116
-        },
-        {
-          "t": "I told you this place was cursed.",
-          "c": 89,
-          "ms": 92
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 111
-        },
-        {
-          "t": "We need to get out of here before sunrise.",
-          "c": 96,
-          "ms": 88
+          "ms": 255
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 94
+          "ms": 167
+        },
+        {
+          "t": "I told you this place was cursed.",
+          "c": 89,
+          "ms": 149
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 177
+        },
+        {
+          "t": "We need to get out of here before sunrise.",
+          "c": 96,
+          "ms": 164
+        },
+        {
+          "t": "Stay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 154
         }
       ],
       "asked": [
@@ -96,47 +96,47 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 76
-        },
-        {
-          "t": "Stay close. The bridge will not hold for long.",
-          "c": 89,
-          "ms": 116
-        },
-        {
-          "t": "I told you this place was cursed.",
-          "c": 89,
-          "ms": 92
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 111
-        },
-        {
-          "t": "We need to get out of here before sunrise.",
-          "c": 96,
-          "ms": 88
+          "ms": 255
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 94
+          "ms": 167
         },
         {
           "t": "I told you this place was cursed.",
-          "c": 93,
-          "ms": 81
+          "c": 89,
+          "ms": 149
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 116
+          "ms": 177
+        },
+        {
+          "t": "We need to get out of here before sunrise.",
+          "c": 96,
+          "ms": 164
+        },
+        {
+          "t": "Stay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 154
+        },
+        {
+          "t": "I told you this place was cursed.",
+          "c": 93,
+          "ms": 147
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 167
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 99
+          "ms": 160
         }
       ],
       "asked": [
@@ -151,10 +151,11 @@
         "[VI] Grab the map. We head north at dawn.",
         "[VI] We need to get out of here before sunrise.",
         "[VI] I told you this place was cursed.",
+        "[VI] Grab the map. We head north at dawn.",
         "[VI] We need to get out of here before sunrise."
       ]
     },
-    "saved": 2,
+    "saved": 1,
     "running": true,
     "stream": true,
     "region": {
@@ -163,7 +164,7 @@
       "w": 0.9,
       "h": 0.16
     },
-    "status": "Đang dịch, đã bỏ qua 2 câu trùng",
+    "status": "Đang dịch, đã bỏ qua 1 câu trùng",
     "voices": [
       {
         "name": "Giọng Việt Hóng Sub (có sẵn)",
