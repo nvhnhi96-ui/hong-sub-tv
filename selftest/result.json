@@ -5,32 +5,32 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 140
+          "ms": 118
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 202
+          "ms": 203
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 152
+          "ms": 146
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 178
+          "ms": 173
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 157
+          "ms": 156
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 165
+          "ms": 152
         }
       ],
       "asked": [
@@ -78,20 +78,6 @@
         "id": "win:Microsoft Mark"
       },
       {
-        "name": "Microsoft Hoài My (nữ, AI online)",
-        "lang": "vi-VN",
-        "id": "ms:vi-VN-HoaiMyNeural",
-        "g": "female",
-        "online": true
-      },
-      {
-        "name": "Microsoft Nam Minh (nam, AI online)",
-        "lang": "vi-VN",
-        "id": "ms:vi-VN-NamMinhNeural",
-        "g": "male",
-        "online": true
-      },
-      {
         "name": "Google (nữ, online)",
         "lang": "vi-VN",
         "id": "gg:vi",
@@ -110,47 +96,47 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 140
+          "ms": 118
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 202
+          "ms": 203
         },
         {
           "t": "I told you this place was cursed.",
           "c": 89,
-          "ms": 152
+          "ms": 146
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 178
+          "ms": 173
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 157
+          "ms": 156
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 165
+          "ms": 152
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 148
+          "ms": 144
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 204
+          "ms": 190
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 195
+          "ms": 175
         }
       ],
       "asked": [
@@ -199,20 +185,6 @@
         "name": "Microsoft Mark",
         "lang": "en-US",
         "id": "win:Microsoft Mark"
-      },
-      {
-        "name": "Microsoft Hoài My (nữ, AI online)",
-        "lang": "vi-VN",
-        "id": "ms:vi-VN-HoaiMyNeural",
-        "g": "female",
-        "online": true
-      },
-      {
-        "name": "Microsoft Nam Minh (nam, AI online)",
-        "lang": "vi-VN",
-        "id": "ms:vi-VN-NamMinhNeural",
-        "g": "male",
-        "online": true
       },
       {
         "name": "Google (nữ, online)",
