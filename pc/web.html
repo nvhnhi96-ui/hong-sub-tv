@@ -842,6 +842,7 @@ window.HsOcr={init:init, read:read, setLang:setLang, lang:function(){return recL
 'use strict';
 var $=function(id){return document.getElementById(id);};
 var D=window.hsDesktop||null;
+var MAC=!!(D&&D.platform==='darwin');   /* the Mac app: Sony's PS Remote Play, the Mac's own voices */
 if(D) document.body.classList.add('desk');
 var LS='hongsub.v1.';
 function load(k,d){try{var v=localStorage.getItem(LS+k);return v===null?d:JSON.parse(v);}catch(e){return d;}}
@@ -2121,7 +2122,7 @@ $('hsVoice').addEventListener('change',function(){save('voice',this.value); cast
 if($('hsTvVoice')) $('hsTvVoice').addEventListener('change',function(){ save('tvVoice',this.value); tvVoiceUi(); });
 if($('hsSpeakWhere')) $('hsSpeakWhere').addEventListener('change',function(){ tvVoiceUi(); });
 /* "Bộ đọc": one tap picks the reading engine; the list below then holds its voices */
-function engines(){ return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
+function engines(){ if(MAC) return [{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng của Mac',s:'Linh'}]; return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
 function engineNow(){
   var v=$('hsVoice').value||'auto';
   if(!D) return /^gg:/.test(v)?'gg':'browser';
@@ -2149,7 +2150,7 @@ function engineSet(k){
     pick='auto';
   } else if(k==='piper') pick=(dv.filter(function(v){return v.id==='hs:piper';})[0]||{}).id||'';
   else if(k==='gg') pick=(dv.filter(function(v){return /^gg:/.test(v.id||'');})[0]||{}).id||'';
-  else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ say('Windows chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng nói của Windows" ở dưới, thêm giọng Tiếng Việt (Microsoft An), rồi mở lại Hóng Sub.'); return; } }
+  else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ say(MAC?'Mac chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng đọc của Mac" ở dưới, tải giọng Linh (Tiếng Việt), rồi mở lại Hóng Sub.':'Windows chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng nói của Windows" ở dưới, thêm giọng Tiếng Việt (Microsoft An), rồi mở lại Hóng Sub.'); return; } }
   if(!pick){ say('Bộ đọc này chưa sẵn sàng trên máy.'); return; }
   sel.value=pick; sel.dispatchEvent(new Event('change'));
 }
@@ -3095,7 +3096,7 @@ $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',fu
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
 $('hsReport').addEventListener('click',function(){
-  var ver=(D&&S.appVer)?('Phần mềm Windows '+S.appVer):('Trang web');
+  var ver=(D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần mềm Windows ')+S.appVer):('Trang web');
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
     'Game: '+$('hsGame').value, 'Mã Gemini: '+keys().length+' mã, mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),

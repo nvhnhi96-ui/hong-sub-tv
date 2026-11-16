@@ -2,6 +2,7 @@
    The translating engine (shared with the web page) runs before this file and exposes window.hsApi. */
 /* On the web page there is no Windows app behind the page: a stand-in answers for it, and the parts only the
    app can do are hidden by the .dk-only class. */
+var UPDTXT=(window.hsDesktop&&window.hsDesktop.platform==='darwin')?'Hóng Sub tải bản mới và mở ra, bạn kéo Hóng Sub vào Applications (chọn Thay thế)':'Hóng Sub tự tải, tự cài và mở lại';
 window.hsDeskApi=window.hsDesktop||{
   web:true,
   openUrl:function(u){ window.open(u,'_blank','noopener'); },
@@ -238,7 +239,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       cur=String(a[0]||''); var u=a[1]; last=u;
       if(!u||!u.version){ res.textContent='Chưa kiểm tra được (máy đang mất mạng?). Thử lại sau ít phút.'; return; }
       if(u.newer){
-        res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật lên '+esc(u.version)+'</b>: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.';
+        res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật lên '+esc(u.version)+'</b>: '+UPDTXT+', mã và cài đặt vẫn giữ nguyên.';
         go.hidden=false; go.textContent='Cập nhật lên '+u.version;
       } else {
         res.textContent='Đang dùng bản mới nhất ('+cur+').';
@@ -339,7 +340,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   draw();
   function check(){
     /* a newer Hóng Sub */
-    D.update().then(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); }).catch(function(){});
+    D.update().then(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: '+UPDTXT+', mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); }).catch(function(){});
     /* games added to the list */
     fetch(GAMES+'?t='+Math.floor(Date.now()/36e5),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
       var names=(Array.isArray(j)?j:(j.games||[])).map(function(g){return g.name||g.title||'';}).filter(Boolean);
@@ -355,7 +356,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       (j.items||[]).slice(0,10).reverse().forEach(function(x){ if(x&&x.id&&x.title&&(!x.until||Date.parse(x.until)>Date.now())&&(window.HSPhone?(x.phone||!(x.pc||x.web)):(!x.phone&&!(x.pc&&(D.web===true))&&!(x.web&&!(D.web===true))))) add({id:'feed-'+x.id,title:x.title,body:x.body||'',url:x.url||'',go:x.go||'',btn:x.btn||'',t:x.date?Date.parse(x.date):0}); });
     }).catch(function(){});
   }
-  if(D.onUpdate) D.onUpdate(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); });
+  if(D.onUpdate) D.onUpdate(function(u){ if(u&&u.newer) add({id:'upd-'+u.version,title:'Có bản Hóng Sub mới '+u.version,body:'Bấm Cập nhật: '+UPDTXT+', mã và cài đặt vẫn giữ nguyên.',upd:true,btn:'Cập nhật ngay'}); });
   setTimeout(check,4000); setInterval(check,30*60e3);
 })();
 
@@ -366,7 +367,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   function show(u){
     if(!u||!u.newer) return; info=u;
     if(!busy){ btn.hidden=false; btn.textContent='Cập nhật lên '+u.version; }
-    var b=$('hsUpd'); if(b){ b.innerHTML='Có bản Hóng Sub mới <b>'+u.version+'</b>. Bấm nút xanh <b>Cập nhật</b> ở trên cùng: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.'; b.style.display='block'; }
+    var b=$('hsUpd'); if(b){ b.innerHTML='Có bản Hóng Sub mới <b>'+u.version+'</b>. Bấm nút xanh <b>Cập nhật</b> ở trên cùng: '+UPDTXT+', mã và cài đặt vẫn giữ nguyên.'; b.style.display='block'; }
   }
   window.hsUpdateNow=function(u){
     if(u&&u.newer) show(u);
@@ -566,3 +567,40 @@ refresh();
   document.querySelectorAll('[data-tvguide]').forEach(function(b){ b.addEventListener('click',function(){ open(b.dataset.tvguide); }); });
   window.hsTvGuide=open;
 })();
+
+/* ---------- Mac ---------- */
+(function(){
+  var D=window.hsDeskApi; if(!D||D.platform!=='darwin') return;
+  document.documentElement.classList.add('hs-mac');
+  var $=function(id){return document.getElementById(id);};
+  /* PS5 on a Mac: Sony's PS Remote Play for Mac, Hóng Sub reads its window */
+  var kn=$('p-ketnoi'), col=kn&&kn.querySelector('.dk-cols>div');
+  if(col){
+    var c=document.createElement('div'); c.className='dk-card';
+    c.innerHTML='<h2>PS5 / PS4 trên Mac</h2><ol class="dk-steps">'+
+      '<li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>.</li>'+
+      '<li>Cài app <button class="dk-link" type="button" data-macurl="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">PS Remote Play cho Mac</button> của Sony, đăng nhập và kết nối PS5.</li>'+
+      '<li>Về <b>Màn hình chơi</b>, bấm <b>App PS Remote Play của Sony</b>: Hóng Sub tự tìm cửa sổ đó và đọc phụ đề.</li>'+
+      '<li>Lần đầu Mac hỏi quyền <b>Ghi màn hình</b>: bật cho Hóng Sub, rồi tắt hẳn Hóng Sub (Cmd+Q) và mở lại.</li></ol>'+
+      '<div class="hs-macnote" id="hsMacScr" hidden></div>';
+    col.insertBefore(c,col.firstChild);
+    c.querySelectorAll('[data-macurl]').forEach(function(b){ b.addEventListener('click',function(){ D.openUrl(b.dataset.macurl); }); });
+  }
+  /* the screen-recording permission: without it the Mac gives Hóng Sub a black picture */
+  var emp=$('hsEmpty'), warn=document.createElement('div'); warn.className='hs-macnote'; warn.hidden=true;
+  warn.innerHTML='<b>Mac chưa cho Hóng Sub ghi màn hình.</b> Bấm nút dưới, bật <b>Hóng Sub</b> trong danh sách, rồi tắt hẳn Hóng Sub (Cmd+Q) và mở lại.<div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button">Mở quyền Ghi màn hình</button></div>';
+  warn.querySelector('button').addEventListener('click',function(){ D.mac.openScreen(); });
+  if(emp&&emp.firstElementChild) emp.firstElementChild.appendChild(warn);
+  function scr(){ D.mac.screen().then(function(st){
+    var ok=st==='granted'; warn.hidden=ok;
+    var n=document.getElementById('hs'+'MacScr'); if(n){ n.hidden=false; n.innerHTML=ok?'Quyền Ghi màn hình: đã bật.':'Quyền Ghi màn hình: <b>chưa bật</b>. <button class="dk-link" type="button">Mở cài đặt</button>'; var b=n.querySelector('button'); if(b) b.onclick=function(){ D.mac.openScreen(); }; }
+  }).catch(function(){}); }
+  scr(); setInterval(scr,5000);
+  /* words that differ on a Mac */
+  var tip=$('hsVoiceTipD'); if(tip){ var p=tip.querySelector('p'); if(p) p.innerHTML='Mac chưa có giọng tiếng Việt. Bấm nút dưới: <b>Nội dung được đọc › Giọng hệ thống › Quản lý giọng</b>, tìm <b>Tiếng Việt</b>, tải giọng <b>Linh</b>, rồi mở lại Hóng Sub.'; var b2=tip.querySelector('button'); if(b2) b2.textContent='Mở cài đặt giọng đọc của Mac'; }
+  var vs=$('hsVoiceSet'); if(vs) vs.textContent='Mở cài đặt giọng đọc của Mac';
+  document.querySelectorAll('#p-giong .hs-note').forEach(function(n){ if(/^Các bộ đọc có trong danh sách/.test(n.textContent)) n.innerHTML='Các bộ đọc: <b>Google</b> (giọng nữ, cần mạng, không cần mã) và <b>giọng của Mac</b> (giọng Linh tiếng Việt, đọc không cần mạng). Mất mạng thì Hóng Sub tự đọc bằng giọng của Mac.'; else if(/Microsoft An|của Windows/.test(n.textContent)) n.textContent='Muốn đọc không cần mạng: tải giọng Linh (Tiếng Việt) trong cài đặt giọng đọc của Mac rồi mở lại Hóng Sub.'; });
+  document.querySelectorAll('.dk-steps li, #p-ketnoi .hs-note').forEach(function(li){ if(/C:\\tizen-studio|Windows 64-bit/.test(li.innerHTML)) li.innerHTML=li.innerHTML.replace(/bản Windows 64-bit vào C:\\tizen-studio|\(Windows 64-bit\) vào C:\\tizen-studio|Windows 64-bit/g,'bản macOS vào thư mục tizen-studio trong Home'); });
+  var sn=document.querySelector('#dkSrcSony small'); if(sn&&/Windows/.test(sn.textContent)) sn.textContent=sn.textContent.replace(/Windows/g,'Mac');
+})();
+

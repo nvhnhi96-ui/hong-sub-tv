@@ -246,9 +246,65 @@ jobs:
           name: windows
           path: pc/dist/hong-sub-pc.exe
 
+  mac:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: pc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Add the on-device text reader
+        run: python3 sync_web.py
+      - name: Set version
+        run: |
+          npm pkg set version=1.0.${{ github.run_number }}
+          mkdir -p rp voices
+      - name: Build the Mac app (Apple chip and Intel)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --mac dir --arm64 --x64 --publish never
+      - name: Sign for this Mac only and pack the disk images
+        run: |
+          set -e
+          ls dist
+          pack() {
+            APP=$(ls -d "$1"/*.app | head -1)
+            codesign --force --deep --sign - "$APP"
+            codesign --verify --deep "$APP"
+            rm -rf stage && mkdir stage && cp -R "$APP" stage/ && ln -s /Applications stage/Applications
+            hdiutil create -volname "Hóng Sub" -srcfolder stage -ov -format UDZO "$2"
+          }
+          pack dist/mac-arm64 hong-sub-mac-apple.dmg
+          pack dist/mac hong-sub-mac-intel.dmg
+          ls -la *.dmg
+      - name: Self test on the Mac
+        continue-on-error: true
+        env:
+          HS_SELFTEST: '1'
+          HS_SELFTEST_OUT: ${{ runner.temp }}/selftest
+        run: |
+          APP=$(ls -d dist/mac-arm64/*.app | head -1)
+          BIN=$(ls "$APP"/Contents/MacOS/* | head -1)
+          "$BIN" --selftest & PID=$!
+          for i in $(seq 1 48); do kill -0 $PID 2>/dev/null || break; sleep 5; done
+          kill $PID 2>/dev/null || true
+          cat "$HS_SELFTEST_OUT/log.txt" 2>/dev/null | tail -40 || true
+          grep -E '^picture test' "$HS_SELFTEST_OUT/log.txt" || echo "no picture test line"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: |
+            pc/hong-sub-mac-apple.dmg
+            pc/hong-sub-mac-intel.dmg
+
   release:
-    needs: [ android, windows, webos ]
-    if: needs.android.result == 'success' && needs.windows.result == 'success' && needs.webos.result == 'success'
+    needs: [ android, windows, webos, mac ]
+    if: always() && needs.android.result == 'success' && needs.windows.result == 'success' && needs.webos.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -270,6 +326,7 @@ jobs:
             - hong-sub-android-play.aab: cùng app đó, gói để nộp lên Google Play.
             - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
             - hong-sub-samsung.wgt: TV Samsung (Tizen), cài bằng Tizen Studio với chứng chỉ Samsung.
+            - hong-sub-mac-apple.dmg / hong-sub-mac-intel.dmg: phần mềm cho máy Mac (chip Apple M1 trở lên / chip Intel), dùng với app PS Remote Play của Sony.
           files: |
             out/hong-sub-pc.exe
             out/hong-sub-tv.apk
@@ -277,6 +334,8 @@ jobs:
             out/hong-sub-android-play.aab
             out/hong-sub-lg.ipk
             out/hong-sub-samsung.wgt
+            out/hong-sub-mac-apple.dmg
+            out/hong-sub-mac-intel.dmg
           make_latest: true
 
       # Samsung TVs open the newest app page from the tv-live branch (the installed app is only a fallback),

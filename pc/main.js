@@ -4,8 +4,9 @@
 // global hotkeys, Windows voices, tray icon and keeps running while minimised.
 const {
   app, BrowserWindow, protocol, net, session, desktopCapturer, ipcMain, globalShortcut,
-  Tray, Menu, screen, shell, nativeImage, Notification
+  Tray, Menu, screen, shell, nativeImage, Notification, systemPreferences
 } = require('electron');
+const IS_MAC = process.platform === 'darwin';
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -72,7 +73,7 @@ function createMain() {
       additionalArguments: SELFTEST ? ['--hs-selftest'] : []
     }
   });
-  win.setMenu(null);
+  if (!IS_MAC) win.setMenu(null);
   win.loadURL('app://hongsub/app/index.html');
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); shell.openExternal(url); } });
@@ -82,7 +83,7 @@ function createMain() {
     if (quitting || SELFTEST) return;
     e.preventDefault(); win.hide();
     if (!cfg.trayTold && Notification.isSupported()) {
-      new Notification({ title: 'Hóng Sub vẫn đang chạy', body: 'Bấm biểu tượng chữ H ở góc phải thanh tác vụ để mở lại, hoặc chọn Thoát để tắt hẳn.' }).show();
+      new Notification({ title: 'Hóng Sub vẫn đang chạy', body: IS_MAC ? 'Bấm biểu tượng Hóng Sub trên Dock hoặc chữ H trên thanh menu để mở lại; Cmd+Q để tắt hẳn.' : 'Bấm biểu tượng chữ H ở góc phải thanh tác vụ để mở lại, hoặc chọn Thoát để tắt hẳn.' }).show();
       cfg.trayTold = true; saveCfg();
     }
   });
@@ -279,7 +280,8 @@ async function checkUpdate() {
     const a = n(latest), c = n(cur);
     let newer = false;
     for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== (c[i] || 0)) { newer = (a[i] || 0) > (c[i] || 0); break; } }
-    const asset = (j.assets || []).find(x => x.name === 'hong-sub-pc.exe');
+    const want = IS_MAC ? 'hong-sub-mac-' + (process.arch === 'arm64' ? 'apple' : 'intel') + '.dmg' : 'hong-sub-pc.exe';
+    const asset = (j.assets || []).find(x => x.name === want);
     return { version: latest, current: cur, newer: newer && !!asset, url: asset ? asset.browser_download_url : '', size: asset ? asset.size : 0 };
   } catch (e) { return null; }
 }
@@ -344,7 +346,9 @@ function buildTrayMenu() {
   ]));
 }
 function createTray() {
-  tray = new Tray(nativeImage.createFromPath(path.join(ROOT, 'assets', 'tray.png')));
+  let ti = nativeImage.createFromPath(path.join(ROOT, 'assets', 'tray.png'));
+  if (IS_MAC) ti = ti.resize({ width: 18, height: 18 });   /* menu bar size */
+  tray = new Tray(ti);
   tray.setToolTip('Hóng Sub · dịch phụ đề game');
   tray.on('click', showMain);
   buildTrayMenu();
@@ -368,6 +372,10 @@ function registerKeys() {
 }
 /* Sony's own PS Remote Play app, if it is installed */
 function sonyRp() {
+  if (IS_MAC) {
+    for (const f of ['/Applications/PS Remote Play.app', path.join(os.homedir(), 'Applications', 'PS Remote Play.app')]) if (fs.existsSync(f)) return f;
+    return '';
+  }
   const bases = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')].filter(Boolean);
   for (const b of bases) { const f = path.join(b, 'Sony', 'PS Remote Play', 'RemotePlay.exe'); if (fs.existsSync(f)) return f; }
   return '';
@@ -412,7 +420,42 @@ function ttsStart() {
   });
   tts.on('exit', () => { tts = null; for (const w of ttsWait.values()) w({ err: 'tts exited' }); ttsWait.clear(); });
 }
+/* Mac: the system's own voices through the "say" command (Vietnamese: Linh) */
+function macTts(msg, timeout) {
+  return new Promise((done) => {
+    if (msg.cmd === 'voices') {
+      let out = '';
+      const p = spawn('say', ['-v', '?']);
+      p.stdout.on('data', (d) => { out += d; });
+      p.on('error', () => done({ voices: [] }));
+      p.on('close', () => {
+        const voices = out.split('\n').map((l) => /^(.+?)\s{2,}([a-z]{2}[_-][A-Z]{2})\s/.exec(l)).filter(Boolean)
+          .filter((m) => /^vi/i.test(m[2])).map((m) => ({ name: m[1].trim(), lang: m[2].replace('_', '-') }));
+        done({ voices });
+      });
+      return;
+    }
+    if (msg.cmd === 'speak') {
+      const txt = path.join(os.tmpdir(), 'hs-say-' + process.pid + '-' + msg.id + '.txt'), wav = txt.replace(/\.txt$/, '.wav');
+      try { fs.writeFileSync(txt, Buffer.from(String(msg.text || ''), 'base64').toString('utf8')); } catch (e) { done({ err: 'file' }); return; }
+      const args = ['-f', txt, '-o', wav, '--data-format=LEI16@22050', '-r', String(Math.round(175 * (+msg.rate || 1)))];
+      if (msg.voice) args.unshift('-v', msg.voice); else args.unshift('-v', 'Linh');
+      const p = spawn('say', args);
+      const t = setTimeout(() => { try { p.kill(); } catch (e) { /* ignore */ } }, timeout || 20000);
+      p.on('error', () => { clearTimeout(t); done({ err: 'say' }); });
+      p.on('close', () => {
+        clearTimeout(t);
+        let b = null; try { b = fs.readFileSync(wav); } catch (e) { /* none */ }
+        try { fs.unlinkSync(txt); fs.unlinkSync(wav); } catch (e) { /* ignore */ }
+        done(b && b.length > 200 ? { wav: b.toString('base64') } : { err: 'no voice' });
+      });
+      return;
+    }
+    done({ err: 'cmd' });
+  });
+}
 function ttsCall(msg, timeout) {
+  if (IS_MAC) { msg.id = ++ttsSeq; return macTts(msg, timeout); }
   ttsStart();
   if (!tts) return Promise.resolve({ err: 'no tts' });
   const id = ++ttsSeq; msg.id = id;
@@ -712,7 +755,10 @@ function setupIpc() {
     if (r.wav || voice === 'hs:piper') return r;
     return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
-  ipcMain.on('voice-settings', () => shell.openExternal('ms-settings:speech'));
+  ipcMain.on('voice-settings', () => shell.openExternal(IS_MAC ? 'x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent' : 'ms-settings:speech'));
+  /* Mac: reading another app's window needs the "Screen Recording" permission */
+  ipcMain.handle('mac-screen', () => { try { return systemPreferences.getMediaAccessStatus('screen'); } catch (e) { return 'unknown'; } });
+  ipcMain.on('mac-screen-open', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'));
   /* the whole line as one sound file, read by a voice of this computer, so the TV can play the same voice.
      Read at normal speed: the speed is applied where it is played. */
   ipcMain.handle('voice-clip', async (e, text, voice) => {
@@ -763,7 +809,7 @@ function setupIpc() {
     if (!u || !u.newer || !u.url) return { ok: false, err: 'none' };
     updBusy = true;
     try {
-      const file = path.join(os.tmpdir(), 'HongSub-' + u.version + '.exe');
+      const file = IS_MAC ? path.join(app.getPath('downloads'), 'Hong-Sub-' + u.version + '.dmg') : path.join(os.tmpdir(), 'HongSub-' + u.version + '.exe');
       const r = await net.fetch(u.url, { headers: { 'User-Agent': 'HongSub' } });
       if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
       const total = +r.headers.get('content-length') || u.size || 0;
@@ -779,6 +825,12 @@ function setupIpc() {
       }
       await new Promise((ok, bad) => out.end((e) => (e ? bad(e) : ok())));
       if (total && got < total * 0.98) throw new Error('tải chưa đủ');
+      if (IS_MAC) {
+        /* Mac: open the new disk image (Finder shows it), the person drags Hóng Sub into Applications to replace the old one */
+        await shell.openPath(file);
+        setTimeout(() => { quitting = true; app.quit(); }, 2500);
+        return { ok: true, mac: true };
+      }
       spawn(file, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
       setTimeout(() => { quitting = true; app.quit(); }, 800);
       return { ok: true };
@@ -934,6 +986,10 @@ app.whenReady().then(async () => {
   if (SELFTEST) runSelftest().catch(e => { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), 'FATAL ' + e.stack + '\n'); } catch (x) { /* ignore */ } app.exit(1); });
 });
 app.on('second-instance', showMain);
+app.on('activate', () => { if (!SELFTEST) showMain(); });
+if (IS_MAC) app.whenReady().then(() => {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu', label: 'Hóng Sub' }, { role: 'editMenu', label: 'Sửa' }, { role: 'windowMenu', label: 'Cửa sổ' }]));
+});
 app.on('before-quit', () => { quitting = true; });
 app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper, rectProc]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

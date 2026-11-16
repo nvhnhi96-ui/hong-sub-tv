@@ -64,7 +64,20 @@
         "from": "voices",
         "to": "voices"
       }
-    ]
+    ],
+    "mac": {
+      "target": "dir",
+      "icon": "assets/icon.png",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSCameraUsageDescription": "Hóng Sub dùng capture card (camera) để nhận hình game từ máy PS.",
+        "NSMicrophoneUsageDescription": "Hóng Sub nhận tiếng game từ capture card.",
+        "LSMinimumSystemVersion": "11.0"
+      }
+    }
   },
   "dependencies": {
     "onnxruntime-web": "1.31.1"

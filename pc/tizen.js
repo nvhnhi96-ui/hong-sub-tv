@@ -18,14 +18,16 @@ const WGT_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/down
 function roots(extra) {
   const home = os.homedir(), list = [];
   if (extra) list.push(extra);
-  ['C:', 'D:', 'E:'].forEach((d) => list.push(d + '\\tizen-studio'));
+  if (process.platform === 'win32') ['C:', 'D:', 'E:'].forEach((d) => list.push(d + '\\tizen-studio'));
+  else list.push('/Applications/tizen-studio');
   list.push(path.join(home, 'tizen-studio'));
   if (process.env.LOCALAPPDATA) list.push(path.join(process.env.LOCALAPPDATA, 'tizen-studio'));
   return list;
 }
 function tools(extra) {
   for (const r of roots(extra)) {
-    const sdb = path.join(r, 'tools', 'sdb.exe'), cli = path.join(r, 'tools', 'ide', 'bin', 'tizen.bat');
+    const win = process.platform === 'win32';   /* Mac and Linux: the same tools without .exe / .bat */
+    const sdb = path.join(r, 'tools', win ? 'sdb.exe' : 'sdb'), cli = path.join(r, 'tools', 'ide', 'bin', win ? 'tizen.bat' : 'tizen');
     if (fs.existsSync(sdb) && fs.existsSync(cli)) return { root: r, sdb, cli, data: r + '-data' };
   }
   return null;
@@ -153,7 +155,7 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
     profile = profile || pr.active || (pr.list[0] || {}).name || '';
     if (!profile) return { ok: false, err: 'Chưa có chứng chỉ Samsung. Làm bước 3 (Certificate Manager) rồi bấm Kiểm tra lại.' };
     /* a short path with plain letters: Samsung's tools stumble on accented user names */
-    const work = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'HongSub', 'samsung'); const src = path.join(work, 'app'), outDir = path.join(work, 'out');
+    const work = process.platform === 'win32' ? path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'HongSub', 'samsung') : path.join(os.tmpdir(), 'HongSub', 'samsung'); const src = path.join(work, 'app'), outDir = path.join(work, 'out');
     try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) { /* ignore */ }
     fs.mkdirSync(outDir, { recursive: true });
 
@@ -171,7 +173,7 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       fs.writeFileSync(wgt, Buffer.from(await r.arrayBuffer()));
     } catch (e) { return { ok: false, err: 'Chưa tải được app (' + e.message + '). Kiểm tra mạng rồi thử lại.' }; }
-    const ex = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Add-Type -A System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::ExtractToDirectory('" + wgt.replace(/'/g, "''") + "','" + src.replace(/'/g, "''") + "')"], 60000);
+    const ex = process.platform !== 'win32' ? await run('/usr/bin/unzip', ['-q', '-o', wgt, '-d', src], 60000) : await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "Add-Type -A System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::ExtractToDirectory('" + wgt.replace(/'/g, "''") + "','" + src.replace(/'/g, "''") + "')"], 60000);
     if (!fs.existsSync(path.join(src, 'config.xml'))) return { ok: false, err: 'Không mở được gói app: ' + ex.out.slice(-200) };
     ['author-signature.xml', 'signature1.xml'].forEach((f) => { try { fs.unlinkSync(path.join(src, f)); } catch (e) { /* ignore */ } });
     /* the TV app starts already paired: same code as here, and the address of this computer on the home network */

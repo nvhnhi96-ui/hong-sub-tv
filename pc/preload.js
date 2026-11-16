@@ -43,7 +43,7 @@ ipcRenderer.on('aiv-audio', (e, m) => {
   cur.parts.push({ wav: m.wav, last: !!m.last }); if (m.last) cur.ended = true; playPart();
 });
 
-contextBridge.exposeInMainWorld('hsDesktop', {
+const api = {
   selftest,
   sources: () => ipcRenderer.invoke('sources'),
   windows: () => ipcRenderer.invoke('windows'),
@@ -159,4 +159,16 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     onAudio: (cb) => ipcRenderer.on('ps-a', (e, d) => cb(d)),
     onEvent: (cb) => ipcRenderer.on('ps-ev', (e, d) => cb(d))
   }
-});
+};
+/* Mac: the PS5 is played in Sony's PS Remote Play app (Hóng Sub reads its window); the built-in player and the
+   downloadable AI voices are Windows only. The Mac asks once for the screen-recording permission. */
+api.platform = process.platform;
+if (process.platform === 'darwin') {
+  delete api.ps; delete api.aiv;
+  api.mac = {
+    screen: () => ipcRenderer.invoke('mac-screen'),
+    openScreen: () => ipcRenderer.send('mac-screen-open'),
+    openVoices: () => ipcRenderer.send('voice-settings')
+  };
+}
+contextBridge.exposeInMainWorld('hsDesktop', api);
