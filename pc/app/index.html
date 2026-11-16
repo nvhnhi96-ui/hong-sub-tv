@@ -286,6 +286,7 @@ body:not(.desk) .dk-only{display:none!important}
 .tvs span{flex:1;line-height:1.4}
 .tvs .hs-btn{padding:6px 12px;font-size:13px}
 .tvp{display:none}.tvp.on{display:block}
+.dk-pcinfo{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0 12px}.dk-pcinfo b{color:var(--ink)}
 .tzst{font-size:13px;margin-top:6px;color:var(--muted)}.tzst.ok{color:#3DDC84}.tzst.bad{color:#FF9F43}.tzst:empty{display:none}
 .dk-tzsub{margin:6px 0 0;padding-left:18px;display:grid;gap:6px;list-style:disc}
 .dk-engines{flex-wrap:wrap;gap:8px;margin-top:6px}.dk-engines .dk-chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#1a1200}.dk-engines .dk-chip small{font-weight:500;opacity:.8;font-size:12px}
@@ -655,6 +656,7 @@ body:not(.desk) .dk-only{display:none!important}
           <div>
             <div class="dk-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
+              <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden></p>
               <div class="tvk" id="hsTvType" role="radiogroup" aria-label="Loại TV">
                 <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
@@ -1002,7 +1004,7 @@ body:not(.desk) .dk-only{display:none!important}
               <div class="lab"><label for="dkBg">Độ đậm nền sau chữ</label><output id="dkBgV">74%</output></div>
               <input class="hs-range" id="dkBg" type="range" min="0" max="100" step="2" value="74">
             </div>
-            <div class="dk-set dk-only">
+            <div class="dk-set">
               <div class="lab"><label for="dkWidth">Độ rộng khung phụ đề</label><output id="dkWidthV">80%</output></div>
               <input class="hs-range" id="dkWidth" type="range" min="40" max="100" step="5" value="80">
             </div>
@@ -1120,6 +1122,7 @@ body:not(.desk) .dk-only{display:none!important}
         <button type="button" role="tab" data-g="lg">TV LG</button>
         <button type="button" role="tab" data-g="samsung">TV Samsung</button>
       </div>
+      <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden style="margin-top:10px"></p>
       <div class="hs-gd" data-g="android">
         <p class="hs-note">Sony, TCL, Xiaomi, Casper, FPT Play Box và các TV, box chạy Android TV hay Google TV.</p>
         <ol class="hs-steps">
@@ -1127,7 +1130,7 @@ body:not(.desk) .dk-only{display:none!important}
           <li>Mở Downloader, chọn ô gõ địa chỉ rồi gõ đúng: <span class="hs-code">honggame.store/tv</span> và bấm <b>Go</b>.</li>
           <li>Đợi tải xong, bấm <b>Cài đặt</b>. Nếu TV hỏi, bật <b>Cho phép cài app từ Downloader</b> rồi bấm Cài đặt lại.</li>
           <li>Mở app <b>Hóng Sub TV</b>, bấm <b>Cho phép hiện trên app khác</b>, rồi bấm <b>Bật phụ đề</b>.</li>
-          <li>Trên máy tính: <b>Kết nối PS và TV</b> → chọn <b>Android TV</b> → gõ <b>IP</b> hoặc <b>mã</b> đang hiện trên TV.</li>
+          <li>Trên máy tính: <b>Kết nối PS5/PS4 và TV</b> → chọn <b>Android TV</b> → bấm <b>Tìm TV</b>, hoặc gõ <b>IP</b> (hay <b>mã</b>) đang hiện trên TV.</li>
         </ol>
       </div>
       <div class="hs-gd" data-g="lg" hidden>
@@ -1136,7 +1139,7 @@ body:not(.desk) .dk-only{display:none!important}
           <li>Trên TV mở <b>LG Content Store</b>, cài app <b>Developer Mode</b>.</li>
           <li>Mở Developer Mode, đăng nhập tài khoản LG Developer (tạo miễn phí tại webostv.developer.lge.com), bật <b>Dev Mode Status</b> rồi để TV khởi động lại.</li>
           <li>Mở lại Developer Mode, bật <b>Key Server</b>. Ghi lại <b>Passphrase</b> đang hiện (6 chữ).</li>
-          <li>Trên máy tính: <b>Kết nối PS và TV</b> → <b>TV LG</b> → <b>Tìm TV</b> → gõ Passphrase → <b>Cài lên TV</b>. Từ lần sau máy tính tự mở và tự cập nhật app trên TV.</li>
+          <li>Trên máy tính: <b>Kết nối PS5/PS4 và TV</b> → <b>TV LG</b> → <b>Tìm TV LG</b> → gõ Passphrase → <b>Cài app lên TV</b>. Từ lần sau máy tính tự mở và tự cập nhật app trên TV.</li>
         </ol>
       </div>
       <div class="hs-gd" data-g="samsung" hidden>
@@ -2563,9 +2566,9 @@ function loadVoices(){
   }
   voices=('speechSynthesis' in window)?speechSynthesis.getVoices():[];
   var vi=voices.filter(function(v){return /^vi/i.test(v.lang);});
-  sel.innerHTML=optAuto()+vi.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join('');
+  sel.innerHTML=optAuto()+vi.map(function(v){return '<option value="'+esc(v.name)+'">'+esc(v.name)+'</option>';}).join('')+'<option value="gg:vi">Google (nữ, online)</option>';
   sel.value=[].some.call(sel.options,function(o){return o.value===want;})?want:'auto';
-  $('hsVoiceTip').hidden=vi.length>0; castUi();
+  $('hsVoiceTip').hidden=true; castUi(); engineUi();   /* no Vietnamese voice in this browser: the Google voice reads instead */
 }
 /* AI voices of the Windows app (downloaded voice pack): many Vietnamese voices, one per character */
 var winVoices=null, AIV={ready:false,list:[],off:load('aivOff',false)};
@@ -2585,15 +2588,21 @@ if($('hsSpeakWhere')) $('hsSpeakWhere').addEventListener('change',function(){ tv
 function engines(){ return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
 function engineNow(){
   var v=$('hsVoice').value||'auto';
+  if(!D) return /^gg:/.test(v)?'gg':'browser';
   if(v==='auto'||/^ai:/.test(v)) return AIV.ready&&!AIV.off?(AIV.fast?'aifast':'ai'):(v==='auto'?'auto':'ai');
   if(v==='hs:piper') return 'piper'; if(/^gg:/.test(v)) return 'gg'; if(/^win:/.test(v)) return 'win'; return '';
 }
 function engineUi(){
-  var box=$('hsEngine'); if(!box||!D) return;
-  var now=engineNow();
-  box.innerHTML=engines().map(function(e){ return '<button type="button" class="dk-chip" data-e="'+e.k+'" aria-pressed="'+(e.k===now)+'">'+esc(e.n)+(e.s?' <small>'+esc(e.s)+'</small>':'')+'</button>'; }).join('');
+  var box=$('hsEngine'); if(!box) return;
+  var now=engineNow(), list=D?engines():[{k:'browser',n:'Giọng của trình duyệt',s:webViCount()?webViCount()+' giọng':'máy chưa có'},{k:'gg',n:'Google',s:'online'}];
+  box.innerHTML=list.map(function(e){ return '<button type="button" class="dk-chip" data-e="'+e.k+'" aria-pressed="'+(e.k===now)+'">'+esc(e.n)+(e.s?' <small>'+esc(e.s)+'</small>':'')+'</button>'; }).join('');
 }
+function webViCount(){ return (voices||[]).filter(function(v){return /^vi/i.test(v.lang);}).length; }
 function engineSet(k){
+  if(!D){
+    if(k==='browser'&&!webViCount()){ var n0=$('hsEngineNote'); if(n0){ n0.textContent='Trình duyệt này chưa có giọng tiếng Việt, nên Hóng Sub đọc bằng giọng Google. Mở trang bằng Microsoft Edge để có giọng Hoài My và Nam Minh.'; n0.hidden=false; } }
+    $('hsVoice').value=k==='gg'?'gg:vi':'auto'; $('hsVoice').dispatchEvent(new Event('change')); return;
+  }
   var sel=$('hsVoice'), note=$('hsEngineNote'), dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);}), pick='';
   if(note) note.hidden=true;
   var say=function(m){ if(note){ note.textContent=m; note.hidden=false; } };
@@ -2718,7 +2727,25 @@ async function aiVoice(text,voice){
 var spSeq=0, spAudio=null;
 function stopSpeak(){
   spSeq++; if(spAudio){try{spAudio.pause();}catch(e){} spAudio=null;}
-  if(D) D.speak('','',1); else if('speechSynthesis' in window) speechSynthesis.cancel();
+  if(D) D.speak('','',1); else { if('speechSynthesis' in window) speechSynthesis.cancel(); ggStop(); }
+}
+/* the Google voice on the web page: honggame.store passes it on (at most ~200 letters a request) */
+var GQ=[], gAud=null;
+function ggUrl(c){ return (location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/tts?q='+encodeURIComponent(c); }
+function ggChunks(t){ var out=[], s=String(t).replace(/\s+/g,' ').trim(); while(s.length>190){ var cut=Math.max(s.lastIndexOf('. ',190),s.lastIndexOf(', ',190),s.lastIndexOf('? ',190),s.lastIndexOf('! ',190)); if(cut<80) cut=s.lastIndexOf(' ',190); if(cut<=0) cut=190; out.push(s.slice(0,cut+1).trim()); s=s.slice(cut+1).trim(); } if(s) out.push(s); return out; }
+function ggStop(){ GQ.length=0; if(gAud){ try{ gAud.pause(); }catch(e){} gAud=null; } }
+function ggNext(){
+  var it=GQ.shift(); if(!it){ gAud=null; return; }
+  var a=new Audio(ggUrl(it.t)); a.playbackRate=it.r; gAud=a;
+  var next=function(){ if(gAud===a){ gAud=null; ggNext(); } };
+  a.onended=next; a.onerror=next; a.play().catch(next);
+}
+function ggWeb(t,rate,queue){
+  if(!queue) ggStop();
+  if(GQ.length>=4) GQ.length=0;                       /* far behind: drop what is waiting */
+  var r=Math.max(0.5,Math.min(2,rate||1))*(queue&&(gAud||GQ.length)?1.12:1);
+  ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
+  if(!gAud) ggNext();
 }
 function playUrl(url){ spAudio=new Audio(url); spAudio.playbackRate=parseFloat($('hsRate').value)||1; spAudio.play().catch(function(){}); }
 function speakAi(t,voice,fallbackG){
@@ -2758,12 +2785,12 @@ function devSpeak(t,mode,g,who,pitch,queue){
   var rate=parseFloat($('hsRate').value);
   if(pitch==null){ var ce=castOf(who); pitch=ce&&castAutoOn()?(ce.p||1):1; }
   if(D){ D.speak(t,devPick(mode,g,castAutoOn()?who:''),rate,pitch,!!queue); return; }
-  if(!('speechSynthesis' in window)) return;
+  var v0=mode==='gg:vi'?null:webVoice(mode,g);
+  if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
   /* subtitles wait for the line being read; if two are already waiting, start fresh */
   if(!queue||speechSynthesis.pending) speechSynthesis.cancel();
   else if(speechSynthesis.speaking) rate=Math.min(2,rate*1.12);
-  var v=webVoice(mode,g);
-  if(!v){ if(!S.noViWarned){ S.noViWarned=true; status('warn','Máy chưa có giọng tiếng Việt nên chưa đọc to. Mở bằng Edge, hoặc chọn Giọng AI Google.'); } return; } /* never read Vietnamese with an English voice */
+  var v=v0;
   var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';

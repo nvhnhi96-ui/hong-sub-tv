@@ -86,6 +86,7 @@ var ST=A.load('ovStyle',{color:'#FFFFFF',bg:74,width:80,font:'bevn'}); if(!ST.fo
   sel.innerHTML=Object.keys(A.fonts).map(function(k){ return '<option value="'+k+'">'+A.fonts[k].n+'</option>'; }).join('');
   sel.value=ST.font; sel.addEventListener('change',function(){ ST.font=sel.value; applyStyle(); }); })();
 function applyStyle(push){
+  if(!A.fonts[ST.font]) ST.font='bevn';   /* an old or unknown font name: back to the default */
   document.querySelectorAll('#dkColor button').forEach(function(b){ b.classList.toggle('on',b.dataset.c.toLowerCase()===ST.color.toLowerCase()); });
   $('dkBg').value=ST.bg; $('dkBgV').textContent=ST.bg+'%'; $('dkWidth').value=ST.width; $('dkWidthV').textContent=ST.width+'%';
   var prev=$('dkPrev').firstElementChild; prev.style.background='rgba(8,8,10,'+(ST.bg/100)+')';
@@ -121,7 +122,7 @@ timing();
 $('dkDefaults').addEventListener('click',function(){
   A.setScan(300); A.setWait(900); A.setHold(10); timing();
   $('hsSize').value=28; $('hsSize').dispatchEvent(new Event('input'));
-  ST={color:'#FFFFFF',bg:74,width:80}; applyStyle(); D.overlaySize(80);
+  ST={color:'#FFFFFF',bg:74,width:80,font:'bevn'}; if($('dkFont')) $('dkFont').value='bevn'; applyStyle(); D.overlaySize(80);
 });
 
 /* ---------- characters ---------- */
@@ -477,13 +478,13 @@ function tvCheck(){
     var pcs=(st&&st.pcIps)||[];
     if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
     else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
-    else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
+    else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(window.hsPcIp||pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
     else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
   });
 }
 function draw(s){
   st=s||st||{}; var pcs=st.pcIps||[];
-  $('dkTzPcIp').textContent=pcs[0]||'IP máy tính';
+  $('dkTzPcIp').textContent=window.hsPcIp||pcs[0]||'IP máy tính';
   line('dkTzS2',!!st.tools,st.tools?'Đã thấy Tizen Studio ở '+st.root+'.':'Chưa thấy Tizen Studio trên máy này. Cài xong bấm Kiểm tra lại.');
   var pr=st.profiles||[], sel=$('dkTzProf'), keep=sel.value||st.profile||st.active;
   sel.innerHTML=pr.length?pr.map(function(x){ return '<option value="'+esc(x.name)+'">'+esc(x.name)+(x.samsung?' (Samsung)':' (không phải Samsung)')+'</option>'; }).join(''):'<option value="">Chưa có chứng chỉ</option>';
@@ -526,6 +527,22 @@ $('dkTzOpen').onclick=function(){ openOnTv(); };
 refresh();
 })();
 
+/* ---------- this computer on the home network: shown in every TV guide (found by itself, checked again every minute) ---------- */
+(function(){
+  var D=window.hsDeskApi; if(!D||!D.netInfo) return;
+  function fill(n){
+    if(!n||!n.ip) return;
+    var pre=n.ip.split('.').slice(0,3).join('.')+'.';
+    var html='Máy tính này: IP <b>'+n.ip+'</b>'+(n.port?', Hóng Sub nhận TV ở cổng <b>'+n.port+'</b>':'')+'. TV phải dùng chung mạng wifi/modem với máy tính: IP của TV thường bắt đầu bằng <b>'+pre+'</b>';
+    document.querySelectorAll('[data-pcinfo]').forEach(function(el){ el.innerHTML=html; el.hidden=false; });
+    ['hsTvGuidePcIp','dkTzPcIp'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=n.ip; });
+    window.hsPcIp=n.ip;
+  }
+  function look(){ D.netInfo().then(fill).catch(function(){}); }
+  look(); setInterval(look,60000);
+  window.hsNetLook=look;
+})();
+
 /* ---------- how to put the TV app on each kind of TV ---------- */
 (function(){
   var tzGo=document.getElementById('hsTvGuideTz'); if(tzGo) tzGo.addEventListener('click',function(){ var A2=window.hsApi; document.getElementById('hsTvGuide').classList.remove('open'); if(A2&&A2.setTvType) A2.setTvType('samsung'); var b=document.querySelector('[data-p=ketnoi]'); if(b) b.click(); setTimeout(function(){ var d=document.getElementById('dkTz'); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } },150); });
@@ -537,7 +554,7 @@ refresh();
   function open(g){
     var t=g||(A&&A.tvType&&A.tvType())||'android'; tab(t==='samsung'||t==='lg'?t:'android');
     m.classList.add('open'); var x=$('hsTvGuideX'); if(x) x.focus();
-    if(D&&D.lg&&D.lg.addr) D.lg.addr().then(function(a){ var el=$('hsTvGuidePcIp'); if(el&&a) el.textContent=String(a).split(':')[0]; }).catch(function(){});
+    if(window.hsNetLook) window.hsNetLook();
   }
   function close(){ m.classList.remove('open'); }
   m.querySelectorAll('.hs-tabs [data-g]').forEach(function(b){ b.addEventListener('click',function(){ tab(b.dataset.g); }); });

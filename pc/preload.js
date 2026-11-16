@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld('hsDesktop', {
     lines.push(L); startNext();
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
+  netInfo: () => ipcRenderer.invoke('net-info'),
   voiceClip: (text, voice) => ipcRenderer.invoke('voice-clip', text, voice),
   /* play a clip made by voiceClip here too (same queue as the subtitles read aloud) */
   playClip: (clip, rate, pitch, queue) => {

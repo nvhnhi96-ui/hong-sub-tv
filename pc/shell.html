@@ -42,6 +42,7 @@ body:not(.desk) .dk-only{display:none!important}
 .tvs span{flex:1;line-height:1.4}
 .tvs .hs-btn{padding:6px 12px;font-size:13px}
 .tvp{display:none}.tvp.on{display:block}
+.dk-pcinfo{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0 12px}.dk-pcinfo b{color:var(--ink)}
 .tzst{font-size:13px;margin-top:6px;color:var(--muted)}.tzst.ok{color:#3DDC84}.tzst.bad{color:#FF9F43}.tzst:empty{display:none}
 .dk-tzsub{margin:6px 0 0;padding-left:18px;display:grid;gap:6px;list-style:disc}
 .dk-engines{flex-wrap:wrap;gap:8px;margin-top:6px}.dk-engines .dk-chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#1a1200}.dk-engines .dk-chip small{font-weight:500;opacity:.8;font-size:12px}
@@ -411,6 +412,7 @@ body:not(.desk) .dk-only{display:none!important}
           <div>
             <div class="dk-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
+              <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden></p>
               <div class="tvk" id="hsTvType" role="radiogroup" aria-label="Loại TV">
                 <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
                 <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
@@ -758,7 +760,7 @@ body:not(.desk) .dk-only{display:none!important}
               <div class="lab"><label for="dkBg">Độ đậm nền sau chữ</label><output id="dkBgV">74%</output></div>
               <input class="hs-range" id="dkBg" type="range" min="0" max="100" step="2" value="74">
             </div>
-            <div class="dk-set dk-only">
+            <div class="dk-set">
               <div class="lab"><label for="dkWidth">Độ rộng khung phụ đề</label><output id="dkWidthV">80%</output></div>
               <input class="hs-range" id="dkWidth" type="range" min="40" max="100" step="5" value="80">
             </div>
@@ -876,6 +878,7 @@ body:not(.desk) .dk-only{display:none!important}
         <button type="button" role="tab" data-g="lg">TV LG</button>
         <button type="button" role="tab" data-g="samsung">TV Samsung</button>
       </div>
+      <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden style="margin-top:10px"></p>
       <div class="hs-gd" data-g="android">
         <p class="hs-note">Sony, TCL, Xiaomi, Casper, FPT Play Box và các TV, box chạy Android TV hay Google TV.</p>
         <ol class="hs-steps">
@@ -883,7 +886,7 @@ body:not(.desk) .dk-only{display:none!important}
           <li>Mở Downloader, chọn ô gõ địa chỉ rồi gõ đúng: <span class="hs-code">honggame.store/tv</span> và bấm <b>Go</b>.</li>
           <li>Đợi tải xong, bấm <b>Cài đặt</b>. Nếu TV hỏi, bật <b>Cho phép cài app từ Downloader</b> rồi bấm Cài đặt lại.</li>
           <li>Mở app <b>Hóng Sub TV</b>, bấm <b>Cho phép hiện trên app khác</b>, rồi bấm <b>Bật phụ đề</b>.</li>
-          <li>Trên máy tính: <b>Kết nối PS và TV</b> → chọn <b>Android TV</b> → gõ <b>IP</b> hoặc <b>mã</b> đang hiện trên TV.</li>
+          <li>Trên máy tính: <b>Kết nối PS5/PS4 và TV</b> → chọn <b>Android TV</b> → bấm <b>Tìm TV</b>, hoặc gõ <b>IP</b> (hay <b>mã</b>) đang hiện trên TV.</li>
         </ol>
       </div>
       <div class="hs-gd" data-g="lg" hidden>
@@ -892,7 +895,7 @@ body:not(.desk) .dk-only{display:none!important}
           <li>Trên TV mở <b>LG Content Store</b>, cài app <b>Developer Mode</b>.</li>
           <li>Mở Developer Mode, đăng nhập tài khoản LG Developer (tạo miễn phí tại webostv.developer.lge.com), bật <b>Dev Mode Status</b> rồi để TV khởi động lại.</li>
           <li>Mở lại Developer Mode, bật <b>Key Server</b>. Ghi lại <b>Passphrase</b> đang hiện (6 chữ).</li>
-          <li>Trên máy tính: <b>Kết nối PS và TV</b> → <b>TV LG</b> → <b>Tìm TV</b> → gõ Passphrase → <b>Cài lên TV</b>. Từ lần sau máy tính tự mở và tự cập nhật app trên TV.</li>
+          <li>Trên máy tính: <b>Kết nối PS5/PS4 và TV</b> → <b>TV LG</b> → <b>Tìm TV LG</b> → gõ Passphrase → <b>Cài app lên TV</b>. Từ lần sau máy tính tự mở và tự cập nhật app trên TV.</li>
         </ol>
       </div>
       <div class="hs-gd" data-g="samsung" hidden>
