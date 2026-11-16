@@ -20,7 +20,9 @@ def rep(a, b, n=1):
         sys.exit('tizen build: expected %d of %r, found %d' % (n, a[:70], t.count(a)))
     t = t.replace(a, b)
 
-rep("var VERSION='1.0.0';", "var VERSION='%s';" % ver)
+if not re.search(r"var VERSION='[^']*';", t):
+    sys.exit('tizen build: VERSION line not found')
+t = re.sub(r"var VERSION='[^']*';", "var VERSION='%s';" % ver, t, count=1)
 # Samsung's own scripts (the IP of the TV); missing in a browser, harmless
 rep('<script>\n', '<script src="$WEBAPIS/webapis/webapis.js"></script>\n<script>\n', 1)
 rep("var packaged=location.protocol==='file:';", "var packaged=typeof tizen!=='undefined';   /* installed on a Samsung TV */")
