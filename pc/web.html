@@ -577,14 +577,14 @@ body.desk .hs-dk.hs-off{display:none!important}
         <p class="hg-tip">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV tự gỡ app.</p>
 
         <div class="hg-sub" id="tv-samsung">TV Samsung (Tizen)</div>
-        <p class="hg-p">Samsung chỉ cho cài app ngoài cửa hàng khi có <b>chứng chỉ Samsung làm riêng cho TV đó</b>, tạo bằng phần mềm Tizen Studio của Samsung. Phần mềm Hóng Sub cho Windows kiểm tra từng bước giúp bạn và tự làm phần cài đặt. Làm một lần, khoảng 20 phút. Không tự làm được thì có thể nhờ cửa hàng Hóng Game cài giúp (hẹn qua Zalo).</p>
+        <p class="hg-p">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> làm riêng cho TV, tạo bằng phần mềm Tizen Studio. Làm một lần, khoảng 20 phút; phần mềm Hóng Sub cho Windows kiểm tra từng bước và tự cài. Không tự làm được thì hẹn cửa hàng qua Zalo để cài giúp.</p>
         <ol class="hg-steps">
-          <li><b>Bật Developer Mode trên TV:</b> bấm Home, vào <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> (remote không có phím số: bấm phím <b>123</b> để hiện bàn phím số). Chọn <b>On</b>, ô <b>Host PC IP</b> gõ IP máy tính (phần mềm Hóng Sub hiện sẵn IP này), bấm OK. Tắt TV hẳn (giữ nút nguồn) rồi bật lại.</li>
-          <li><b>Cài Tizen Studio</b> trên máy tính: tải bản Windows 64-bit có chữ "with IDE installer" ở developer.tizen.org, cài vào C:\tizen-studio. Cửa sổ Package Manager mở ra: thẻ <b>Extension SDK</b>, bấm Install cho <b>Samsung Certificate Extension</b> và <b>TV Extensions</b>.</li>
-          <li><b>Tạo chứng chỉ Samsung:</b> mở Tizen Studio. <b>Tools › Device Manager</b>: Remote Device Manager › dấu + › gõ IP của TV › Add, gạt Connection sang On. Rồi <b>Tools › Certificate Manager</b> › dấu + › <b>Samsung</b> › <b>TV</b> › đặt tên (vd HongSub) › Create a new author certificate (tên, mật khẩu tự đặt) › đăng nhập tài khoản Samsung › bước Distributor để Public, ô DUID có mã TV › Finish.</li>
-          <li>Trong phần mềm Hóng Sub: <span class="hg-ui">Kết nối PS5/PS4 và TV</span> › <b>TV Samsung</b> › <b>Tìm TV Samsung</b> › chọn chứng chỉ › <b>Cài app lên TV</b>. Phần mềm tự tải app, ký, cài và mở Hóng Sub trên TV. TV tự nối với máy tính, không cần gõ mã.</li>
+          <li><b>TV:</b> Home › <b>Ứng dụng</b> (TV đời 2023 trở đi: Nội dung › Ứng dụng; có ô <b>Cài đặt ứng dụng</b> thì chọn ô đó) › bấm <b>1 2 3 4 5</b> (remote không có phím số: bấm nút <b>123</b>) › Developer mode <b>On</b>, ô <b>Host PC IP</b> gõ IP máy tính (phần mềm Hóng Sub hiện sẵn) › OK. Rút điện TV 30 giây rồi bật lại.</li>
+          <li><b>Máy tính:</b> cài <b>Tizen Studio</b> bản Windows 64-bit vào C:\tizen-studio. Trong <b>Package Manager</b> › thẻ <b>Extension SDK</b> cài <b>TV Extensions</b>, <b>TV Extensions Tools</b>, <b>Samsung Certificate Extension</b>.</li>
+          <li><b>Tizen Studio:</b> <b>Tools › Device Manager</b> › Scan › bật Connection cho TV. <b>Tools › Certificate Manager</b> › + › <b>Samsung</b> › <b>TV</b> › đặt tên › Create a new author certificate (tên, mật khẩu tự đặt) › đăng nhập tài khoản Samsung › Distributor để <b>Public</b> › Finish.</li>
+          <li><b>Hóng Sub:</b> <span class="hg-ui">Kết nối PS5/PS4 và TV</span> › <b>TV Samsung</b> › <b>Tìm TV Samsung</b> › <b>Cài app lên TV</b>. TV tự mở Hóng Sub và tự nối với máy tính.</li>
         </ol>
-        <p class="hg-tip">Mỗi bước trong phần mềm có dòng kiểm tra (dấu ✓ là xong). Developer Mode tự tắt khi TV cập nhật phần mềm; khi đó bật lại ở bước 1.</p>
+        <p class="hg-tip">TV tự tắt Developer Mode khi cập nhật phần mềm: khi đó bật lại ở bước 1. Có TV lưu IP bị đảo ngược (192.168.1.2 thành 2.1.168.192): phần mềm sẽ báo và chỉ cách gõ lại.</p>
       </div>
 
       <div class="hg-way" id="tinh-nang">

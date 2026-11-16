@@ -159,7 +159,9 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
 
     say('Đang kiểm tra TV...');
     const i = await info(ip);
-    if (i.ok && !i.dev) return { ok: false, err: 'TV chưa bật Developer Mode. Làm bước 1: Ứng dụng › bấm 1 2 3 4 5 › bật Developer mode, Host PC IP gõ ' + (myIps()[0] || 'IP máy tính') + ', rồi tắt TV hẳn và bật lại.' };
+    if (i.ok && !i.dev) return { ok: false, err: 'TV chưa bật Developer Mode. Làm bước 1: Ứng dụng › bấm 1 2 3 4 5 › Developer mode On, Host PC IP gõ ' + (myIps()[0] || 'IP máy tính') + ', rồi rút điện TV 30 giây và bật lại.' };
+    const rev = String(i.devIp || '').split('.').reverse().join('.');
+    if (i.ok && i.devIp && myIps().indexOf(i.devIp) < 0 && myIps().indexOf(rev) >= 0) return { ok: false, err: 'TV lưu Host PC IP bị đảo ngược (' + i.devIp + '). Vào lại bảng Developer mode trên TV, gõ IP theo thứ tự ngược: ' + i.devIp.split('.').reverse().join('.').split('.').reverse().join('.') + ', rồi khởi động lại TV.' };
     if (i.ok && i.devIp && myIps().indexOf(i.devIp) < 0) return { ok: false, err: 'Developer Mode trên TV đang ghi Host PC IP là ' + i.devIp + ', không phải máy tính này (' + myIps().join(', ') + '). Sửa lại IP trên TV, tắt TV hẳn và bật lại.' };
 
     say('Đang tải app Hóng Sub cho TV Samsung...');

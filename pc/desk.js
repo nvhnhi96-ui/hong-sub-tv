@@ -478,6 +478,7 @@ function tvCheck(){
     var pcs=(st&&st.pcIps)||[];
     if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
     else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
+    else if(i.devIp&&pcs.indexOf(i.devIp)<0&&pcs.indexOf(i.devIp.split('.').reverse().join('.'))>=0) line('dkTzS1',false,(i.name||'TV')+': TV lưu Host PC IP bị đảo ngược ('+i.devIp+'). Vào lại bảng Developer mode, gõ IP theo thứ tự ngược: '+pcs.filter(function(x){return x===i.devIp.split('.').reverse().join('.');})[0].split('.').reverse().join('.')+', rồi khởi động lại TV.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(window.hsPcIp||pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
     else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
   });
