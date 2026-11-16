@@ -6,12 +6,12 @@ def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
 
 android {
     namespace 'store.honggame.hongsub'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'store.honggame.hongsub'
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         versionCode runNumber
         versionName "1.0." + runNumber
     }
@@ -26,6 +26,13 @@ android {
                 keyPassword System.getenv("HSTV_KEY_PASSWORD") ?: (System.getenv("HSTV_STORE_PASSWORD") ?: "hongsubtv")
             }
         }
+    }
+
+    // site: downloaded from honggame.store, updates itself; play: Google Play (updated by Google Play)
+    flavorDimensions 'store'
+    productFlavors {
+        site { dimension 'store' }
+        play { dimension 'store' }
     }
 
     buildTypes {

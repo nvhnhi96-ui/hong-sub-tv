@@ -45,7 +45,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-main{min-width:0}
 
 /* game picture */
-.hs-stage{position:relative;aspect-ratio:16/9;background:#0A0A0A;border-radius:10px 10px 0 0;overflow:hidden;user-select:none;-webkit-user-select:none}
+.hs-stage{position:relative;aspect-ratio:16/9;min-width:0;max-width:100%;background:#0A0A0A;border-radius:10px 10px 0 0;overflow:hidden;user-select:none;-webkit-user-select:none}
 .hs-stage video,.hs-stage canvas#hsVideo{width:100%;height:100%;object-fit:contain;display:block;background:#0A0A0A}
 .hs-ov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
 .hs-ov.off{cursor:default;pointer-events:none}
@@ -254,7 +254,12 @@ body.desk .hs-dk.hs-off{display:none!important}
 html.hs-phone,html.hs-phone body{background:#101216!important}
 html.hs-phone .hs.hs-app{margin:0!important;border:0!important;border-radius:0!important;max-width:none!important;min-height:100vh}
 html.hs-phone #hsOv{touch-action:none}
-html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsCam,html.hs-phone #hsPip,html.hs-phone #dkSrcCard,html.hs-phone [data-p="phim"],html.hs-phone #hsRun kbd,html.hs-phone .hs-ph-hide{display:none!important}
+html.hs-phone,html.hs-phone body{overflow-x:hidden}html.hs-phone .dk-play>*,html.hs-phone .dk-body>*{min-width:0}html.hs-phone .hs-stage video,html.hs-phone .hs-stage canvas{max-width:100%}html.hs-phone .dk-tg{flex-wrap:wrap;border-right:0;padding-right:0}
+html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone #dkSrcCard,html.hs-phone [data-p="phim"],html.hs-phone #hsRun kbd,html.hs-phone .hs-ph-hide{display:none!important}
+.hs-quad{position:absolute;inset:0;z-index:30;touch-action:none}
+.hs-quad svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.hs-quad polygon{fill:rgba(255,196,0,.12);stroke:#FFC400;stroke-width:2}
+.hs-quad i{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#FFC400;border:3px solid #111;box-shadow:0 2px 6px rgba(0,0,0,.5);touch-action:none;cursor:grab}
+.hs-quad-bar{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(12,13,16,.86);color:#fff;border-radius:10px;padding:6px 8px;font-size:13px}.hs-quad-bar span{flex:1;min-width:140px}
 
 </style>
 <style>
@@ -1528,6 +1533,14 @@ $('hsPick').addEventListener('click',function(){S.offlineDemo=false;pick(false);
 /* capture card or camera (PS5 -> capture card -> USB; the TV keeps the picture through passthrough) */
 async function pickCam(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){status('err','Máy này không mở được capture card');return;}
+  if(PH){   /* the phone's back camera, pointed at the TV */
+    try{
+      var cst=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false});
+      S.offlineDemo=false; S.cam=true; setStream(cst,null); log('camera điện thoại');
+      later(function(){ if(!S.camQuad) quadEdit(true); },900);
+    }catch(e){ log('camera lỗi: '+e.name+' '+e.message); status('err',/NotAllowed/i.test(e.name)?'Chưa cho phép dùng camera. Bấm lại và chọn Cho phép.':'Không mở được camera ('+e.name+').'); }
+    return;
+  }
   var tmp=null;
   try{
     var devs=(await navigator.mediaDevices.enumerateDevices()).filter(function(d){return d.kind==='videoinput';});
@@ -1878,7 +1891,8 @@ var ZT={};
 function zTv(z){
   if(z.tv===false&&z.vi) return;
   if(!(tvIp()||tvCode().length>=4)) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:+z.x.toFixed(4),y:+z.y.toFixed(4),w:+z.w.toFixed(4),h:+z.h.toFixed(4),hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
+  var zr=camRect(z); if(!zr) return;   /* camera without the TV corners: no place on the TV yet */
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 function zHold(z){
@@ -2366,7 +2380,7 @@ function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(e
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
 function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(18,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(40,Math.min(100,+st.width||80))}; }
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
-function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?{x:+S.region.x.toFixed(4),y:+S.region.y.toFixed(4),w:+S.region.w.toFixed(4),h:+S.region.h.toFixed(4)}:null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; o.cov=coverOn()&&S.region?camRect(S.region):null; o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 function tvRelay(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r; }).catch(function(e){ log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
@@ -3668,6 +3682,50 @@ document.querySelectorAll('#hsSpeed button').forEach(function(b){
 });
 if(S.model) $('hsModelTag').textContent=S.model;
 
+/* ---------- phone camera pointed at the TV ----------
+   The camera sees the TV at an angle. The four corners of the TV picture, marked once on the camera picture, turn a place
+   on the camera picture into the same place on the TV, so the Vietnamese still lands on the original text there. */
+S.cam=false; S.camQuad=load('camQuad',null); S.camH=null;
+function homog(src,dst){   /* 3x3 projective map taking the 4 src points to the 4 dst points */
+  var A=[],b=[];
+  for(var i=0;i<4;i++){ var x=src[i][0],y=src[i][1],u=dst[i][0],v=dst[i][1];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u); A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v); }
+  for(var c=0;c<8;c++){ var m=c; for(var r=c+1;r<8;r++) if(Math.abs(A[r][c])>Math.abs(A[m][c])) m=r;
+    var tA=A[c]; A[c]=A[m]; A[m]=tA; var tb=b[c]; b[c]=b[m]; b[m]=tb; if(Math.abs(A[c][c])<1e-12) return null;
+    for(var r2=0;r2<8;r2++){ if(r2===c) continue; var f=A[r2][c]/A[c][c]; for(var k=c;k<8;k++) A[r2][k]-=f*A[c][k]; b[r2]-=f*b[c]; } }
+  var h=b.map(function(v,i){ return v/A[i][i]; }); h.push(1); return h;
+}
+function camPt(x,y){ var H=S.camH||(S.camH=homog(S.camQuad,[[0,0],[1,0],[1,1],[0,1]])); if(!H) return [x,y]; var w=H[6]*x+H[7]*y+H[8]; return [(H[0]*x+H[1]*y+H[2])/w,(H[3]*x+H[4]*y+H[5])/w]; }
+function camRect(r){
+  var cl=function(v){ return Math.max(0,Math.min(1,v)); };
+  if(!S.cam) return {x:+r.x.toFixed(4),y:+r.y.toFixed(4),w:+r.w.toFixed(4),h:+r.h.toFixed(4)};
+  if(!S.camQuad) return null;
+  var ps=[camPt(r.x,r.y),camPt(r.x+r.w,r.y),camPt(r.x+r.w,r.y+r.h),camPt(r.x,r.y+r.h)], xs=ps.map(function(p){return p[0];}), ys=ps.map(function(p){return p[1];});
+  var x0=cl(Math.min.apply(null,xs)), y0=cl(Math.min.apply(null,ys)), x1=cl(Math.max.apply(null,xs)), y1=cl(Math.max.apply(null,ys));
+  return x1-x0>0.01&&y1-y0>0.005?{x:+x0.toFixed(4),y:+y0.toFixed(4),w:+(x1-x0).toFixed(4),h:+(y1-y0).toFixed(4)}:null;
+}
+/* the picture inside the stage (object-fit: contain) */
+function vRect(){ var st=$('hsStage').getBoundingClientRect(), vw=video.videoWidth||16, vh=video.videoHeight||9, s=Math.min(st.width/vw,st.height/vh), w=vw*s, h=vh*s; return {x:(st.width-w)/2,y:(st.height-h)/2,w:w,h:h}; }
+function quadEdit(on){
+  var old=document.getElementById('hs'+'Quad'); if(old) old.remove();
+  if(!on||!S.stream) return;
+  var q=(S.camQuad||[[.1,.1],[.9,.1],[.9,.9],[.1,.9]]).map(function(p){return p.slice();});
+  var box=document.createElement('div'); box.id='hsQuad'; box.className='hs-quad';
+  box.innerHTML='<svg><polygon/></svg><div class="hs-quad-bar"><span>Kéo 4 chấm vàng vào 4 góc màn hình TV</span><button type="button" class="hs-btn" data-q="no">Huỷ</button><button type="button" class="hs-btn pri" data-q="ok">Xong</button></div>'+[0,1,2,3].map(function(i){return '<i data-i="'+i+'"></i>';}).join('');
+  $('hsStage').appendChild(box);
+  function draw(){ var R=vRect(); box.querySelector('polygon').setAttribute('points',q.map(function(p){return (R.x+p[0]*R.w)+','+(R.y+p[1]*R.h);}).join(' '));
+    [].forEach.call(box.querySelectorAll('i'),function(el){ var p=q[+el.dataset.i]; el.style.left=(R.x+p[0]*R.w)+'px'; el.style.top=(R.y+p[1]*R.h)+'px'; }); }
+  [].forEach.call(box.querySelectorAll('i'),function(el){
+    el.addEventListener('pointerdown',function(e){ e.preventDefault(); el.setPointerCapture(e.pointerId);
+      var mv=function(ev){ var st=$('hsStage').getBoundingClientRect(), R=vRect(); q[+el.dataset.i]=[Math.max(0,Math.min(1,(ev.clientX-st.left-R.x)/R.w)),Math.max(0,Math.min(1,(ev.clientY-st.top-R.y)/R.h))]; draw(); };
+      var up=function(){ el.removeEventListener('pointermove',mv); el.removeEventListener('pointerup',up); };
+      el.addEventListener('pointermove',mv); el.addEventListener('pointerup',up); });
+  });
+  box.querySelector('[data-q=ok]').addEventListener('click',function(){ S.camQuad=q; S.camH=null; save('camQuad',q); quadEdit(false); status('idle','Đã khoanh 4 góc TV. Giờ khoanh dòng phụ đề (Vùng phụ đề) rồi bấm Bắt đầu dịch.'); if(S.hist[0]) tvPush(S.hist[0].vi,S.hist[0].en,S.hist[0].who,false); });
+  box.querySelector('[data-q=no]').addEventListener('click',function(){ quadEdit(false); });
+  draw(); window.addEventListener('resize',draw,{once:true});
+}
+
 /* ---------- Android phone app ----------
    The app shares the phone screen (Android screen recording) and hands this page one picture at a time; the page reads,
    translates and sends the Vietnamese back to the app, which draws it over PS Remote Play and reads it aloud.
@@ -3687,7 +3745,7 @@ function phoneStream(w,h){
   c.className=video.className; video.id='hsVideoOff'; video.style.display='none'; c.id='hsVideo';
   video.parentNode.insertBefore(c,video); video=c; S.ph.cv=c; S.ph.cx=c.getContext('2d');
   var fake={getTracks:function(){ return [{stop:function(){}}]; },getVideoTracks:function(){ return [{addEventListener:function(ev,fn){ S.ph.end=fn; }}]; }};
-  setStream(fake,null);
+  S.cam=false; setStream(fake,null);
   S.ph.timer=WT?WT.set(phPull,220,true):setInterval(phPull,220); phPull();
   phState(false);
 }
@@ -3727,7 +3785,11 @@ if(PH){
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chia sẻ màn hình điện thoại';
     [].forEach.call(e.querySelectorAll('p'),function(p){ p.className=''; p.hidden=true; });
     var p=e.querySelector('p'); if(p){ p.hidden=false; p.textContent='Bấm nút dưới, cho phép Hóng Sub ghi màn hình, rồi mở app PS Remote Play. Trên game có nút H nổi màu vàng: bấm vào để khoanh phụ đề, bắt đầu dịch, dịch cả màn hình.'; }
-    if($('hsPick')) $('hsPick').textContent='Chia sẻ màn hình'; })();
+    if($('hsPick')) $('hsPick').textContent='Chia sẻ màn hình';
+    if($('hsCam')){ $('hsCam').textContent='Camera chĩa vào TV'; $('hsCam').classList.add('hs-ph-cam'); }
+    var row=$('hsPick')&&$('hsPick').parentNode; if(row&&!document.getElementById('hs'+'QuadBtn')){ var qb=document.createElement('button'); qb.type='button'; qb.className='hs-btn'; qb.id='hsQuadBtn'; qb.textContent='Khoanh 4 góc TV'; qb.hidden=true; qb.addEventListener('click',function(){ quadEdit(true); }); $('hsDraw').parentNode.insertBefore(qb,$('hsDraw')); }
+    setInterval(function(){ var qb=document.getElementById('hs'+'QuadBtn'); if(qb) qb.hidden=!(S.cam&&S.stream); },1000);
+    var mp=e.querySelector('p'); if(mp) mp.textContent='Cách 1: chia sẻ màn hình khi chơi bằng app PS Remote Play trên điện thoại. Cách 2: chơi trên TV, kê điện thoại trên giá cho camera nhìn trọn màn hình TV, bấm Camera chĩa vào TV. Chữ Việt hiện trên TV qua app Hóng Sub TV (vào Kết nối TV, gõ mã TV).'; })();
   (function(){ var h=$('hsHint'); if(!h||!window.MutationObserver) return; var fix=function(){ if(/chuột/.test(h.textContent)) h.textContent=h.textContent.replace(/Kéo chuột/g,'Kéo ngón tay'); }; new MutationObserver(fix).observe(h,{childList:true,characterData:true,subtree:true}); fix(); })();
   $('hsSpeak').addEventListener('change',function(){ phState(S.running); });
   try{ S.appVer=PH.version()||S.appVer; }catch(e){}

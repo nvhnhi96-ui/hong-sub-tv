@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -39,7 +40,8 @@ import java.util.Map;
  */
 public class MainActivity extends Activity {
     static final String BASE = "https://honggame.store/hong-sub/";
-    private static final int REQ_CAPTURE = 7, REQ_NOTIF = 3;
+    private static final int REQ_CAPTURE = 7, REQ_NOTIF = 3, REQ_CAM = 9;
+    private PermissionRequest camAsk = null;   // the page asked for the camera; waiting for Android's answer
     private static WeakReference<MainActivity> current = new WeakReference<>(null);
 
     WebView web;
@@ -67,6 +69,17 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Bridge(), "HSPhone");
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onConsoleMessage(ConsoleMessage m) { return true; }
+            /* the camera, for "Camera chĩa vào TV" (the page asks, Android asks the person once) */
+            @Override public void onPermissionRequest(PermissionRequest r) {
+                main.post(() -> {
+                    boolean cam = false;
+                    for (String s : r.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(s)) cam = true;
+                    if (!cam) { r.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) { r.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE}); return; }
+                    camAsk = r;
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAM);
+                });
+            }
         });
         web.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
@@ -82,7 +95,20 @@ public class MainActivity extends Activity {
             }
         });
         web.setDownloadListener((url, ua, cd, mime, len) -> openUrl(url));
-        setContentView(web);
+        /* Android 15+ draws apps under the status and navigation bars: keep the page clear of them */
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(16, 18, 22));
+        root.addView(web, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        root.setOnApplyWindowInsetsListener((v, ins) -> {
+            if (Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = ins.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout() | android.view.WindowInsets.Type.ime());
+                v.setPadding(i.left, i.top, i.right, i.bottom);
+            } else v.setPadding(ins.getSystemWindowInsetLeft(), ins.getSystemWindowInsetTop(), ins.getSystemWindowInsetRight(), ins.getSystemWindowInsetBottom());
+            return ins;
+        });
+        setContentView(root);
+        /* back: go back in the page, else leave Hóng Sub running behind the game */
+        if (Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);
         String html = readAsset("app.html");
         web.loadDataWithBaseURL(BASE, html, "text/html", "utf-8", null);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
@@ -167,10 +193,23 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public void onBackPressed() {
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == REQ_CAM && camAsk != null) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camAsk.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+            else camAsk.deny();
+            camAsk = null;
+        }
+    }
+
+    private void goBack() {
         if (web != null && web.canGoBack()) { web.goBack(); return; }
         moveTaskToBack(true);   // keep Hóng Sub running behind the game
     }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public void onBackPressed() { goBack(); }
 
     @Override
     protected void onDestroy() {

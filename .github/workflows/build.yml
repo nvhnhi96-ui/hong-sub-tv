@@ -22,7 +22,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
 
       - name: Restore signing key (if configured)
         env:
@@ -36,12 +36,13 @@ jobs:
           HSTV_STORE_PASSWORD: ${{ secrets.HSTV_STORE_PASSWORD }}
           HSTV_KEY_ALIAS: ${{ secrets.HSTV_KEY_ALIAS }}
           HSTV_KEY_PASSWORD: ${{ secrets.HSTV_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease :phone:assembleRelease --no-daemon --stacktrace
+        run: gradle :app:assembleRelease :phone:assembleSiteRelease :phone:bundlePlayRelease --no-daemon --stacktrace
 
       - name: Rename APK
         run: |
           cp app/build/outputs/apk/release/app-release.apk hong-sub-tv.apk
-          cp phone/build/outputs/apk/release/phone-release.apk hong-sub-android.apk
+          cp phone/build/outputs/apk/site/release/phone-site-release.apk hong-sub-android.apk
+          cp phone/build/outputs/bundle/playRelease/phone-play-release.aab hong-sub-android-play.aab
 
       - uses: actions/upload-artifact@v4
         with:
@@ -49,6 +50,7 @@ jobs:
           path: |
             hong-sub-tv.apk
             hong-sub-android.apk
+            hong-sub-android-play.aab
 
   webos:
     runs-on: ubuntu-latest
@@ -262,13 +264,15 @@ jobs:
             Bản tự động.
             - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
-            - hong-sub-android.apk: app Hóng Sub cho điện thoại Android (đủ chức năng như bản Windows), dùng kèm app PS Remote Play.
+            - hong-sub-android.apk: app Hóng Sub cho điện thoại Android (đủ chức năng như bản Windows): PS Remote Play trên điện thoại hoặc camera chĩa vào TV.
+            - hong-sub-android-play.aab: cùng app đó, gói để nộp lên Google Play.
             - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
             - hong-sub-samsung.wgt: TV Samsung (Tizen), cài bằng Tizen Studio với chứng chỉ Samsung.
           files: |
             out/hong-sub-pc.exe
             out/hong-sub-tv.apk
             out/hong-sub-android.apk
+            out/hong-sub-android-play.aab
             out/hong-sub-lg.ipk
             out/hong-sub-samsung.wgt
           make_latest: true
