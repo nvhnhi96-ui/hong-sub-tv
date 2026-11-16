@@ -217,7 +217,10 @@ body.desk .hs-dk.hs-off{display:none!important}
 .hs-ps .pin{display:flex;gap:6px;margin-top:8px}.hs-ps .pin input{flex:1}
 .hs-psip{display:flex;gap:6px;margin-top:8px}
 #hsGame2{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;outline:none}
-.hs-stage:fullscreen{background:#000;border-radius:0}.hs-stage:fullscreen .hs-ov,.hs-stage:fullscreen .hs-hint{display:none!important}
+.hs-stage:fullscreen{background:#000;border-radius:0;aspect-ratio:auto;width:100vw;height:100vh;max-width:none}.hs-stage:fullscreen .hs-ov{opacity:0;pointer-events:none}.hs-stage:fullscreen .hs-hint,.hs-stage:fullscreen .hs-empty,.hs-stage:fullscreen .hs-region{display:none!important}
+.hs-fsbar{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:8px;align-items:center;padding:8px 10px;background:rgba(12,13,16,.88);border:1px solid rgba(255,255,255,.12);border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;font-size:14px;color:#fff;white-space:nowrap}
+.hs-fsbar.on{opacity:1;pointer-events:auto}.hs-stage:not(:fullscreen) .hs-fsbar{display:none}.hs-fsbar .hs-btn{margin:0}.hs-fsbar span{opacity:.7;padding:0 6px}
+#hsPsFull{display:none!important}
 
 /* guide */
 .hs-guide{border-top:1px solid var(--line);background:var(--panel);padding:40px 24px 16px;scroll-margin-top:110px}
@@ -2020,7 +2023,7 @@ function show(res){
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+esc(h.en)+'</small></li>';}).join('');
   pipRender(html,$('hsEn').textContent);
   S.lastHtml=html; coverShow(html);
-  if(D) D.sub({html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
+  if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
   phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent});
   tvPush(vi,en,who,false);
   speak(vi,res);
@@ -2039,19 +2042,23 @@ function placeSync(){
 }
 setInterval(placeSync,1500);
 function coverEl(){ var c=document.getElementById('hsCoverBox'); if(!c){ c=document.createElement('div'); c.id='hsCoverBox'; c.className='hs-cover'; c.hidden=true; c.innerHTML='<div></div>'; $('hsStage').appendChild(c); } return c; }
+function stageFs(){ var f=document.fullscreenElement||document.webkitFullscreenElement; return !!f&&f===$('hsStage'); }
+function coverAt(){ return coverOn()||stageFs(); }   /* full screen: always on the original subtitle */
 function coverShow(html){
   var c=coverEl();
-  if(!html||!coverOn()||!S.stream||!S.region||(S.fs&&S.fs.on)||!video.videoWidth){ c.hidden=true; return; }
+  if(!html||!coverAt()||!S.stream||!S.region||(S.fs&&S.fs.on)||!video.videoWidth){ c.hidden=true; return; }
   var b=videoBox(), r=S.region, st=$('hsStage').getBoundingClientRect(), ox=b.r.left-st.left, oy=b.r.top-st.top;
   var w=r.w*b.w, h=r.h*b.h;
   c.style.left=(ox+b.l+r.x*b.w)+'px'; c.style.top=(oy+b.t+r.y*b.h)+'px'; c.style.width=w+'px'; c.style.minHeight=h+'px';
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
-  var fs=Math.max(10,Math.min(44,h*0.36)); d.style.fontSize=fs+'px'; c.style.padding=(w<360?'2px 6px':'');
+  var lk=load('ovStyle',{}); d.style.fontFamily=subFont(); d.style.color=/^#[0-9A-Fa-f]{6}$/.test(lk.color||'')?lk.color:'#FFFFFF';
+  c.style.background='rgba(6,7,9,'+Math.max(stageFs()?.97:.85,(lk.bg==null?74:+lk.bg)/100)+')';   /* the box hides the English line under it */
+  var fs=Math.max(10,Math.min(stageFs()?84:44,h*0.36)); d.style.fontSize=fs+'px'; c.style.padding=(w<360?'2px 6px':'');
   for(var i=0;i<10&&c.offsetHeight>h*1.6&&fs>9;i++){ fs*=0.88; d.style.fontSize=fs+'px'; }   /* long line: smaller letters, not a taller box */
   var top=oy+b.t+r.y*b.h, over=top+c.offsetHeight-st.height; if(over>0) c.style.top=Math.max(0,top-over)+'px';   /* keep it inside the picture (small phone screens) */
   S.coverHtml=html;
 }
-function coverWait(){ if(coverOn()&&S.running) coverShow('<span class="wait">•••</span>'); }   /* new English line: hide it while it is being translated */
+function coverWait(){ if(coverAt()&&S.running) coverShow('<span class="wait">•••</span>'); }   /* new English line: hide it while it is being translated */
 function coverHide(){ var c=document.getElementById('hsCoverBox'); if(c) c.hidden=true; S.coverHtml=''; }
 window.addEventListener('resize',function(){ if(S.coverHtml) coverShow(S.coverHtml); });
 document.addEventListener('fullscreenchange',function(){ if(S.coverHtml) setTimeout(function(){ coverShow(S.coverHtml); },250); });
@@ -2888,7 +2895,7 @@ function fsDraw(){
   /* shrink text that does not fit its box */
   [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
   if(PH){ try{ PH.full(JSON.stringify(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFontKey()}:null)); }catch(e){} }
-  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
+  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on&&!stageFs()?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
@@ -3290,11 +3297,47 @@ if(PH){
   try{ PH.ready(JSON.stringify({ver:S.appVer||''})); }catch(e){}
 }
 
+/* ---------- full screen: the game picture fills the screen, the Vietnamese lines sit right on the English ones ---------- */
+function stageFull(){
+  var st=$('hsStage');
+  if(stageFs()){ try{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){} return; }
+  if(!S.stream) return;
+  try{ var pr=(st.requestFullscreen||st.webkitRequestFullscreen).call(st); if(pr&&pr.then) pr.then(fsFocus).catch(function(){}); }catch(e){}
+}
+function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) try{ PS.cvs.focus(); }catch(e){} }   /* the PS5 controls keep working */
+(function(){
+  if(PH) return;
+  var ref=$('hsDraw'); if(!ref) return;
+  var b=document.createElement('button'); b.type='button'; b.className='hs-btn'; b.id='hsStFs'; b.disabled=true;
+  b.title='Hình game và chữ dịch toàn màn hình. Phím F hoặc bấm đúp vào hình; Esc để thoát.'; b.innerHTML='Toàn màn hình <kbd>F</kbd>';
+  b.addEventListener('click',stageFull); ref.parentNode.insertBefore(b,ref);
+  var bar=document.createElement('div'); bar.className='hs-fsbar';
+  bar.innerHTML='<button type="button" class="hs-btn pri" data-f="run"></button><button type="button" class="hs-btn" data-f="all">Dịch cả màn hình</button><button type="button" class="hs-btn" data-f="now">Dịch câu này</button><button type="button" class="hs-btn" data-f="out">Thoát toàn màn hình</button><span>Esc để thoát</span>';
+  $('hsStage').appendChild(bar);
+  var hideT=0, runLbl=function(){ bar.querySelector('[data-f=run]').textContent=S.running?'Dừng dịch':'Bắt đầu dịch'; bar.querySelector('[data-f=all]').classList.toggle('on',!!(S.fs&&S.fs.on)); };
+  var wake=function(){ if(!stageFs()) return; runLbl(); bar.classList.add('on'); clearTimeout(hideT); hideT=setTimeout(function(){ if(!bar.matches(':hover')) bar.classList.remove('on'); },2600); };
+  bar.addEventListener('click',function(e){ var k=e.target&&e.target.getAttribute&&e.target.getAttribute('data-f'); if(!k) return;
+    if(k==='run') S.running?stopRun():startRun(); else if(k==='all') fullScreen(); else if(k==='now'){ if(S.stream) tick(true); } else if(k==='out') stageFull();
+    runLbl(); fsFocus(); });
+  $('hsStage').addEventListener('mousemove',wake);
+  $('hsStage').addEventListener('dblclick',function(e){ if(drawing||!S.stream) return; if(e.target.closest&&e.target.closest('.hs-fsbar,.hs-quad,button')) return; stageFull(); });
+  var onFs=function(){
+    var on=stageFs(); document.documentElement.classList.toggle('hs-stfs',on);
+    if(on){ if(D){ D.sub({html:'',en:''}); } wake(); }
+    else { bar.classList.remove('on'); if(D&&S.lastHtml) D.sub({html:S.lastHtml,en:$('hsEn').textContent,size:+$('hsSize').value}); }
+    if(S.fs&&S.fs.on) fsDraw();
+    setTimeout(function(){ if(S.coverHtml||S.lastHtml) coverShow(S.coverHtml||S.lastHtml); if(!on&&!coverOn()) coverHide(); if(S.fs&&S.fs.on) fsDraw(); if(typeof zShow==='function') zShow(); },250);
+  };
+  document.addEventListener('fullscreenchange',onFs); document.addEventListener('webkitfullscreenchange',onFs);
+  setInterval(function(){ b.disabled=!S.stream; },800);
+})();
+
 /* ---------- hotkeys ---------- */
 function hotkey(e){
   var t=e.target, tag=t&&t.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(e.code==='Space'&&S.stream){e.preventDefault(); S.running?stopRun():startRun();}
   else if((e.key==='t'||e.key==='T'||e.key==='m'||e.key==='M')&&S.stream){e.preventDefault(); fullScreen();}
+  else if((e.key==='f'||e.key==='F')&&S.stream&&!PH){e.preventDefault(); stageFull();}
   else if((e.key==='n'||e.key==='N')&&S.stream){e.preventDefault(); zoneTick(true);}
   else if(e.key==='Escape'){$('hsModal').classList.remove('open'); if(S.fs.on) fsStop();}
   else if((e.key==='r'||e.key==='R')&&S.stream){e.preventDefault(); setSpeak(!$('hsSpeak').checked);}
