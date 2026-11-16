@@ -42,10 +42,26 @@ function setSource(n){
   srcOk=false;
   try{ video.style.display='none'; }catch(e){}
   if(!n||!window.tizen||!tizen.tvwindow){ document.documentElement.className=''; try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} if(!n) homeShow(); else srcFail(n); return; }
-  tizen.tvwindow.setSource({type:'HDMI',number:n},function(){
-    tizen.tvwindow.show(function(){ srcOk=true; document.documentElement.className='see'; homeHide(); },
-      function(){ document.documentElement.className=''; srcFail(n); },['0px','0px',window.screen.width+'px',window.screen.height+'px'],'MAIN');
-  },function(){ document.documentElement.className=''; srcFail(n); });
+  var fail=function(e){ if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){} };
+  var go=function(src){
+    try{
+      tizen.tvwindow.setSource(src,function(){
+        /* BEHIND: the game picture goes under the page, so the Vietnamese subtitles stay on top (the default, FRONT, covers them) */
+        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; document.documentElement.className='see'; homeHide(); },
+          fail,['0px','0px','100%','100%'],'MAIN','BEHIND');
+      },fail,'MAIN');
+    }catch(e){ fail(e); }
+  };
+  /* the TV wants its own description of the input, taken from its list of connected sources */
+  var once=false, plain={type:'HDMI',number:n}, pick=function(src){ if(once) return; once=true; go(src); };
+  setTimeout(function(){ pick(plain); },1500);
+  try{
+    tizen.systeminfo.getPropertyValue('VIDEOSOURCE',function(vs){
+      var list=(vs&&vs.connected)||[], hit=null;
+      for(var i=0;i<list.length;i++) if(list[i].type==='HDMI'&&+list[i].number===n) hit=list[i];
+      pick(hit||plain);
+    },function(){ pick(plain); });
+  }catch(e){ pick(plain); }
   homeBtns();
 }
 function gameSound(){}
@@ -57,14 +73,74 @@ function ipAsk(){
 try{ ['ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','1','2','3','4'].forEach(function(k){ try{ tizen.tvinputdevice.registerKey(k); }catch(e){} }); }catch(e){}
 document.addEventListener('visibilitychange',function(){ if(document.hidden){ try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} } });
 """
-rep("window.hsTv={handle:handle,P:P,version:VERSION};", TIZEN + "window.hsTv={handle:handle,P:P,version:VERSION};")
+UPD = r"""
+/* ---------- staying up to date ----------
+   index.html (the loader) opens the newest Hóng Sub from the internet, so the TV never needs a reinstall.
+   While the app runs it looks for a new version every half hour and switches over when nobody is reading subtitles. */
+(function(){
+  var LIVE='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/tv-live/samsung/', last=Date.now();
+  function vn(v){ var p=String(v||'').split('.'); return (+p[0]||0)*1e8+(+p[1]||0)*1e4+(+p[2]||0); }
+  try{ new MutationObserver(function(){ last=Date.now(); }).observe($('sub'),{childList:true,subtree:true,characterData:true}); }catch(e){}
+  function check(){
+    var x=new XMLHttpRequest();
+    x.onreadystatechange=function(){
+      if(x.readyState!==4||x.status!==200) return;
+      var v=String(x.responseText||'').trim();
+      if(!/^\d+\.\d+\.\d+$/.test(v)||vn(v)<=vn(VERSION)) return;
+      var idle=$('home').className!=='off'||Date.now()-last>20*60e3;
+      if(!idle) return;
+      pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
+      setTimeout(function(){ location.replace('index.html'); },2500);
+    };
+    try{ x.open('GET',LIVE+'version.txt?t='+Date.now(),true); x.send(); }catch(e){}
+  }
+  setTimeout(check,60e3); setInterval(check,30*60e3);
+})();
+"""
+rep("window.hsTv={handle:handle,P:P,version:VERSION};", TIZEN + UPD + "window.hsTv={handle:handle,P:P,version:VERSION};")
 # see-through page while the game shows
 rep("</style>", "html.see,html.see body{background:transparent!important}\n</style>", 1)
+
+LOADER = r"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Hóng Sub</title>
+<style>html,body{margin:0;width:100%;height:100%;background:#0E1014;color:#F4F5F7;font-family:Arial,sans-serif;overflow:hidden}#m{position:fixed;left:8vw;top:46vh;font-size:3.2vh;opacity:.8}</style>
+</head><body><div id="m">Hóng Sub đang mở...</div>
+<script>
+/* Hóng Sub for Samsung: opens the newest version from the internet (no reinstall needed);
+   the copy installed on the TV (app.html) is used when the internet is slow or down. */
+(function(){
+  var BUNDLED='%VER%', LIVE='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/tv-live/samsung/', ls=null, done=false;
+  try{ ls=window.localStorage; }catch(e){}
+  function vn(v){ var p=String(v||'').split('.'); return (+p[0]||0)*1e8+(+p[1]||0)*1e4+(+p[2]||0); }
+  function get(u,ms,cb){
+    var x=new XMLHttpRequest(), fin=false;
+    var t=setTimeout(function(){ if(fin) return; fin=true; try{ x.abort(); }catch(e){} cb(null); },ms);
+    x.onreadystatechange=function(){ if(x.readyState!==4||fin) return; fin=true; clearTimeout(t); cb(x.status===200?x.responseText:null); };
+    try{ x.open('GET',u+'?t='+Date.now(),true); x.send(); }catch(e){ if(!fin){ fin=true; clearTimeout(t); cb(null); } }
+  }
+  function local(){ if(done) return; done=true; location.replace('app.html'); }
+  function boot(h){ if(done) return; done=true; document.open(); document.write(h); document.close(); }
+  function saved(){ try{ var v=ls.getItem('hs.live.v'), h=ls.getItem('hs.live.html'); if(h&&vn(v)>vn(BUNDLED)&&h.indexOf("var VERSION='"+v+"'")>0) return h; }catch(e){} return null; }
+  setTimeout(function(){ var s=saved(); if(s) boot(s); else local(); },15000);   /* never hang on a slow network */
+  get(LIVE+'version.txt',4000,function(v){
+    v=String(v||'').replace(/\s+/g,'');
+    if(!/^\d+\.\d+\.\d+$/.test(v)){ var s=saved(); if(s) boot(s); else local(); return; }
+    if(vn(v)<=vn(BUNDLED)){ local(); return; }
+    try{ if(ls.getItem('hs.live.v')===v){ var s1=saved(); if(s1){ boot(s1); return; } } }catch(e){}
+    get(LIVE+'app.html',9000,function(h){
+      if(h&&h.indexOf("var VERSION='"+v+"'")>0){ try{ ls.setItem('hs.live.html',h); ls.setItem('hs.live.v',v); }catch(e){} boot(h); }
+      else { var s2=saved(); if(s2) boot(s2); else local(); }
+    });
+  });
+})();
+</script></body></html>
+"""
 
 if OUT.exists():
     shutil.rmtree(OUT)
 (OUT / 'fonts').mkdir(parents=True)
-(OUT / 'index.html').write_text(t, encoding='utf-8')
+(OUT / 'app.html').write_text(t, encoding='utf-8')
+(OUT / 'index.html').write_text(LOADER.replace('%VER%', ver), encoding='utf-8')
 (OUT / 'preset.js').write_text('window.HS_PRESET=null;   /* {code, pc}: filled in by Hóng Sub on the computer when it installs the app */\n', encoding='utf-8')
 for f in (SRC / 'fonts').iterdir():
     shutil.copy(f, OUT / 'fonts' / f.name)

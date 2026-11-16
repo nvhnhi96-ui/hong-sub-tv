@@ -72,6 +72,7 @@ jobs:
           V=1.0.${{ github.run_number }}
           python3 tizen/build.py "$V"
           (cd tizen/app && zip -qr ../../hong-sub-samsung.wgt .)
+          cp tizen/app/app.html samsung-app.html
           ls -la hong-sub-samsung.wgt
       - uses: actions/upload-artifact@v4
         with:
@@ -79,6 +80,7 @@ jobs:
           path: |
             hong-sub-lg.ipk
             hong-sub-samsung.wgt
+            samsung-app.html
 
   rp-helper:
     runs-on: windows-latest
@@ -276,3 +278,26 @@ jobs:
             out/hong-sub-lg.ipk
             out/hong-sub-samsung.wgt
           make_latest: true
+
+      # Samsung TVs open the newest app page from the tv-live branch (the installed app is only a fallback),
+      # so a new version reaches the TV without reinstalling
+      - name: Publish the Samsung TV app page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          R: ${{ github.repository }}
+          V: 1.0.${{ github.run_number }}
+        run: |
+          set -e
+          B=tv-live
+          if ! gh api "repos/$R/branches/$B" >/dev/null 2>&1; then
+            gh api "repos/$R/git/refs" -f ref="refs/heads/$B" -f sha="$GITHUB_SHA" >/dev/null
+          fi
+          printf '%s\n' "$V" > /tmp/version.txt
+          put() {
+            OLD=$(gh api "repos/$R/contents/samsung/$2?ref=$B" -q .sha 2>/dev/null || true)
+            python3 -c "import base64,json,sys; d={'message':'Samsung TV app '+sys.argv[2],'branch':'tv-live','content':base64.b64encode(open(sys.argv[1],'rb').read()).decode()}; import re; o=sys.argv[3].strip(); d.update({'sha':o} if re.fullmatch('[0-9a-f]{40}',o) else {}); json.dump(d,open('/tmp/put.json','w'))" "$1" "$V" "$OLD"
+            gh api -X PUT "repos/$R/contents/samsung/$2" --input /tmp/put.json >/dev/null
+          }
+          put out/samsung-app.html app.html
+          put /tmp/version.txt version.txt
+          echo "published $V"
