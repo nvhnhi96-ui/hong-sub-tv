@@ -235,6 +235,11 @@ body.desk .hs-dk.hs-off{display:none!important}
 .hs-guide ol.hg-steps li::marker{font-weight:700}
 .hs-guide .hg-ui{font-weight:600;background:var(--sunk);border:1px solid var(--line);border-radius:5px;padding:0 6px;white-space:nowrap;text-decoration:none!important}
 .hs-guide .hg-tip{margin-top:14px;font-size:14.5px;color:var(--muted)}
+.hs-guide .hg-toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.hs-guide .hg-toc a{font-size:14px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:5px 12px;text-decoration:none;color:inherit;background:var(--sunk)}
+.hs-guide .hg-toc a:hover,.hs-guide .hg-toc a:focus-visible{border-color:var(--brand)}
+.hs-guide .hg-sub{font-weight:700;font-size:16.5px;margin-top:22px;scroll-margin-top:110px}
+.hs-guide .hg-p{margin-top:6px;color:var(--muted)}
 .hs-guide .hg-faq{margin-top:40px;border-top:1px solid var(--line)}
 .hs-guide .hg-faq details{border-bottom:1px solid var(--line);padding:14px 0}
 .hs-guide .hg-faq summary{cursor:pointer;font-weight:600}
@@ -504,79 +509,125 @@ body.desk .hs-dk.hs-off{display:none!important}
   <section class="hs-guide" id="huong-dan">
     <div class="in">
       <div class="hg-h" role="heading" aria-level="2">Cách dùng Hóng Sub</div>
-      <p class="hg-lead">Hóng Sub đọc phụ đề trên hình game (tiếng Anh, Nhật, Trung, Hàn, Pháp, Đức, Tây Ban Nha, Nga...), dịch sang tiếng Việt và đọc to. Miễn phí. Không có mã vẫn dịch được bằng máy dịch; thêm mã Gemini miễn phí của Google thì dịch tự nhiên và đúng xưng hô hơn.</p>
+      <p class="hg-lead">Hóng Sub đọc chữ trên hình game PS5 / PS4 (tiếng Anh, Nhật, Trung, Hàn, Pháp, Đức, Tây Ban Nha, Nga...), dịch sang tiếng Việt, hiện đè lên chữ gốc và đọc to. Miễn phí, không cần can thiệp vào máy PS.</p>
       <ul class="hg-need">
-        <li>Máy tính Windows hoặc Mac, mở trang này bằng Chrome hoặc Edge. Hoặc điện thoại Android.</li>
+        <li>Máy tính Windows (khuyên dùng phần mềm Hóng Sub), hoặc máy tính mở trang này bằng Chrome / Edge, hoặc điện thoại Android.</li>
         <li>PS5 / PS4 đã bật Chơi từ xa: <b>Settings › System › Remote Play › Enable Remote Play</b>.</li>
-        <li>Nên có mã Gemini miễn phí: vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, đăng nhập Gmail, bấm <b>Create API key</b> rồi sao chép mã (bắt đầu bằng AIza).</li>
+        <li>Nên có mã Gemini miễn phí: vào <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, đăng nhập Gmail, bấm <b>Create API key</b>, sao chép mã (bắt đầu bằng AIza). Không có mã vẫn dịch được bằng máy dịch miễn phí.</li>
       </ul>
+      <nav class="hg-toc" aria-label="Mục hướng dẫn">
+        <a href="#pc">Phần mềm Windows</a><a href="#web">Trên trình duyệt</a><a href="#android">Điện thoại Android</a><a href="#tv">Phụ đề lên TV</a><a href="#tinh-nang">Các tính năng</a><a href="#hoi-dap">Hỏi đáp</a>
+      </nav>
 
       <div class="hg-way" id="pc">
         <div class="hg-t" role="heading" aria-level="3">Phần mềm Hóng Sub cho Windows</div>
-        <p>Chơi PS5 / PS4 ngay trong Hóng Sub hoặc dùng app PS Remote Play của Sony. Phụ đề tiếng Việt nổi trên hình game, đọc to bằng 25 giọng AI, mỗi nhân vật một giọng.</p>
+        <p>Chơi PS5 / PS4 ngay trong Hóng Sub, hoặc dùng kèm app PS Remote Play của Sony. Phụ đề Việt nổi đè lên phụ đề gốc, đọc bằng giọng AI, tự cập nhật bản mới.</p>
         <ol class="hg-steps">
-          <li>Tải <a class="hg-ui" href="https://honggame.store/hongsubpc">Hóng Sub cho Windows</a> và mở file vừa tải. Nếu Windows hiện bảng xanh, bấm <b>More info</b> rồi <b>Run anyway</b>.</li>
-          <li>Trang <span class="hg-ui">Dịch</span>: dán mã Gemini (không có mã vẫn dịch được bằng máy dịch miễn phí) và chọn game đang chơi.</li>
-          <li>Trang <span class="hg-ui">Kết nối PS5 / PS4</span>: bấm <b>Đăng nhập PSN</b>, <b>Tìm máy</b>, <b>Ghép máy</b> và nhập mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> trên PS5. Chỉ làm một lần. Dùng app của Sony hoặc capture card thì chọn ở cột <b>Nguồn hình</b> trong trang <span class="hg-ui">Màn hình chơi</span>.</li>
-          <li>Trang <span class="hg-ui">Màn hình chơi</span>: bấm <b>Chọn vùng phụ đề</b>, kéo khung quanh dòng phụ đề tiếng Anh, rồi bấm <span class="hg-ui">Bắt đầu dịch</span> (hoặc phím <b>F7</b> khi đang chơi).</li>
-          <li>Trang <span class="hg-ui">Giọng đọc</span>: bấm <b>Tải bộ giọng AI</b> một lần để có 25 giọng nam, nữ ba miền.</li>
+          <li>Tải <a class="hg-ui" href="https://honggame.store/hongsubpc">Hóng Sub cho Windows</a> và mở file vừa tải. Windows hiện bảng xanh thì bấm <b>More info</b> rồi <b>Run anyway</b>.</li>
+          <li><span class="hg-ui">Cài đặt › Dịch và mã AI</span>: dán mã Gemini. <span class="hg-ui">Cài đặt › Game đang chơi</span>: chọn đúng game.</li>
+          <li><span class="hg-ui">Kết nối PS5/PS4 và TV</span>: bấm <b>Đăng nhập PSN</b>, <b>Tìm máy</b>, <b>Ghép máy</b>, nhập mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> trên PS5. Chỉ làm một lần.</li>
+          <li><span class="hg-ui">Màn hình chơi</span>: bấm <b>Chơi PS5 / PS4</b> (hoặc <b>Chọn cửa sổ game</b> nếu dùng app của Sony), bấm <b>Vùng phụ đề</b> và kéo khung quanh dòng phụ đề, rồi bấm <span class="hg-ui">Bắt đầu dịch</span> (phím <b>F7</b>).</li>
+          <li><span class="hg-ui">Cài đặt › Giọng đọc</span>: bấm <b>Tải bộ giọng AI</b> một lần để có 25 giọng nam, nữ ba miền. Bật tắt đọc bằng nút <b>Đọc phụ đề</b> trên thanh trên cùng.</li>
         </ol>
-        <p class="hg-tip">Cỡ chữ, màu chữ, độ trễ dịch, thời gian giữ phụ đề và phím tắt chỉnh ở trang <b>Phụ đề và độ trễ</b> và <b>Phím tắt</b>.</p>
+        <p class="hg-tip">Khi chơi bằng app Sony toàn màn hình, phụ đề Việt và chữ của các vùng dịch nổi đè đúng lên chữ gốc. Phím <b>F9</b> ẩn hoặc hiện, <b>F10</b> kéo tới chỗ khác.</p>
       </div>
 
       <div class="hg-way" id="web">
         <div class="hg-t" role="heading" aria-level="3">Dùng ngay trên trình duyệt</div>
         <p>Không cần cài gì, dùng kèm app PS Remote Play của Sony trên máy tính.</p>
         <ol class="hg-steps">
-          <li>Dán mã Gemini vào ô <span class="hg-ui">Mã Gemini</span> rồi bấm <span class="hg-ui">Kiểm tra mã</span>.</li>
+          <li>Mở <span class="hg-ui">Cài đặt › Dịch và mã AI</span>, dán mã Gemini rồi bấm <b>Kiểm tra mã</b>.</li>
           <li>Mở app <a href="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/" target="_blank" rel="noopener">PS Remote Play</a>, đăng nhập và kết nối PS5. Để cửa sổ đó hiện trên màn hình.</li>
-          <li>Bấm <span class="hg-ui">Chọn cửa sổ game</span>, chọn <b>PS Remote Play</b>, bấm <b>Chia sẻ</b>.</li>
-          <li>Kéo chuột quanh dòng phụ đề tiếng Anh, rồi bấm <span class="hg-ui">Bắt đầu dịch</span>.</li>
+          <li>Ở <span class="hg-ui">Màn hình chơi</span> bấm <b>Chọn cửa sổ game</b>, chọn <b>PS Remote Play</b>, bấm <b>Chia sẻ</b>.</li>
+          <li>Bấm <b>Vùng phụ đề</b>, kéo khung quanh dòng phụ đề, rồi bấm <span class="hg-ui">Bắt đầu dịch</span>.</li>
         </ol>
-        <p class="hg-tip">Chọn đúng game ở ô <b>Game đang chơi</b> để AI dịch đúng tên nhân vật và cách xưng hô.</p>
-      </div>
-
-      <div class="hg-way" id="capture">
-        <div class="hg-t" role="heading" aria-level="3">Chơi trên TV bằng capture card</div>
-        <p>Vẫn chơi trên TV lớn bằng tay cầm như thường, máy tính chỉ nhận hình để đọc phụ đề.</p>
-        <ol class="hg-steps">
-          <li>Cắm PS5 vào cổng HDMI IN của capture card, cổng HDMI OUT (passthrough) của capture card nối vào TV, dây USB của capture card cắm vào máy tính.</li>
-          <li>Trên PS5 tắt <b>Settings › System › HDMI › Enable HDCP</b>, nếu không capture card chỉ nhận màn hình đen.</li>
-          <li>Trong Hóng Sub bấm <span class="hg-ui">Capture card</span>, chọn đúng thiết bị, kéo khung quanh phụ đề rồi bấm <span class="hg-ui">Bắt đầu dịch</span>.</li>
-        </ol>
-        <p class="hg-tip">Không có capture card mà vẫn muốn chơi trên TV: dùng phần mềm Windows, bật <b>Chỉ xem để dịch</b> ở mục PS5 / PS4 và đăng nhập PSN bằng tài khoản phụ. Máy tính nhận hình để dịch, bạn vẫn cầm tay cầm chơi trên TV.</p>
-      </div>
-
-      <div class="hg-way" id="tv">
-        <div class="hg-t" role="heading" aria-level="3">Hiện phụ đề lên TV</div>
-        <p>PS5 vẫn cắm thẳng vào TV nên hình giữ nguyên. Máy tính đọc phụ đề, TV hiện chữ Việt. Dùng cho TV Android / Google TV.</p>
-        <ol class="hg-steps">
-          <li>Trên TV, cài app <b>Downloader</b>, mở và gõ <b>honggame.store/hongsubtv</b> để cài Hóng Sub TV.</li>
-          <li>Mở Hóng Sub TV, bấm <b>Cấp quyền</b>, rồi <b>Bật phụ đề</b>. Ghi lại mã 6 ký tự trên TV.</li>
-          <li>Trên máy tính, mở <span class="hg-ui">Thêm tùy chọn</span>, nhập mã TV và bấm <span class="hg-ui">Gửi thử</span>.</li>
-        </ol>
+        <p class="hg-tip">Chơi trên TV lớn mà vẫn dịch: cắm PS5 qua capture card (HDMI vào capture card, HDMI ra TV, USB vào máy tính), tắt <b>Settings › System › HDMI › Enable HDCP</b> trên PS5, rồi bấm <b>Capture card</b> thay cho Chọn cửa sổ game.</p>
       </div>
 
       <div class="hg-way" id="android">
         <div class="hg-t" role="heading" aria-level="3">Điện thoại Android</div>
         <ol class="hg-steps">
           <li>Cài app <b>PS Remote Play</b> từ Google Play và kết nối PS5.</li>
-          <li>Mở <b>honggame.store/hongsubapp</b> trên điện thoại, tải và cài Hóng Sub.</li>
-          <li>Dán mã Gemini, bấm <b>Bắt đầu</b> và cho phép hiển thị trên ứng dụng khác, ghi màn hình.</li>
+          <li>Trên điện thoại mở <b>honggame.store/hongsubapp</b>, tải và cài Hóng Sub.</li>
+          <li>Dán mã Gemini, bấm <b>Bắt đầu</b>, cho phép hiển thị trên ứng dụng khác và ghi màn hình.</li>
           <li>Trên thanh nổi chữ H: bấm <b>Khung</b>, kéo khung trùm lên phụ đề, rồi bấm <b>Dịch</b>.</li>
         </ol>
       </div>
 
-      <div class="hg-faq" id="ps4">
-        <details><summary>Dùng với PS4 được không?</summary><div class="a">Được. Trên PS4 vào <b>Settings › Remote Play Connection Settings</b>, bật <b>Enable Remote Play</b>, và đặt máy làm PS4 chính ở <b>Settings › Account Management › Activate as Your Primary PS4</b>.</div></details>
-        <details><summary>Báo "Mã tạm hết lượt"</summary><div class="a">Mã Gemini miễn phí có giới hạn lượt mỗi phút và mỗi ngày, tính theo <b>dự án</b> chứ không theo mã. Muốn thêm lượt thì tạo mã ở dự án khác hoặc bằng Gmail khác, mỗi dòng một mã, hoặc thêm mã Groq trong <b>Thêm tùy chọn</b>. Khi mọi mã đều hết lượt, Hóng Sub tự chuyển sang máy dịch miễn phí nên không bị đứng. Số câu đã dịch của từng mã hiện ngay dưới ô mã.</div></details>
-        <details><summary>Dịch menu, nhiệm vụ, mô tả đồ vật</summary><div class="a">Bấm <b>Dịch cả màn hình</b> hoặc phím <b>T</b> (phần mềm Windows: F11). Hóng Sub đọc toàn bộ chữ đang có trên màn hình và dịch từng dòng.</div></details>
-        <details><summary>Muốn mỗi nhân vật một giọng, một màu tên</summary><div class="a">Khi phụ đề có tên người nói (ví dụ "ATREUS: ..."), nhân vật đó tự vào mục <b>Nhân vật đã gặp</b> trong phần Giọng đọc. Ở đó chọn nam/nữ, giọng đọc và màu tên cho từng người. Mỗi game lưu riêng.</div></details>
-        <details><summary>Gặp lỗi thì báo shop thế nào?</summary><div class="a">Mở <b>Thêm tùy chọn</b>, bấm <b>Gửi lỗi cho shop</b>. Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở Zalo của shop, bạn gửi file đó kèm vài dòng mô tả.</div></details>
-        <details><summary>Dịch sai câu hoặc dịch cả chữ khác</summary><div class="a">Bấm <b>Chỉnh vùng phụ đề</b> và kéo sát quanh dòng phụ đề. Nếu game cho chỉnh, tăng cỡ phụ đề và bật nền đen sau chữ.</div></details>
-        <details><summary>Hình game bị đen</summary><div class="a">Cửa sổ PS Remote Play đang thu nhỏ hoặc chọn nhầm cửa sổ. Mở lại cửa sổ đó rồi bấm <b>Đổi cửa sổ</b>.</div></details>
-        <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Trên trình duyệt, mở trang này bằng Microsoft Edge: có giọng nữ HoaiMy và giọng nam NamMinh, Hóng Sub tự chọn giọng theo nhân vật. Phần mềm Windows có sẵn giọng Việt; muốn thêm giọng nam thì bấm <b>Cài giọng tiếng Việt</b> trong phần mềm.</div></details>
-        <details><summary>TV không hiện chữ</summary><div class="a">Kiểm tra mã TV, bấm <b>Gửi thử</b>. Trên TV phải bấm <b>Bật phụ đề</b> và cho quyền hiển thị trên ứng dụng khác.</div></details>
+      <div class="hg-way" id="tv">
+        <div class="hg-t" role="heading" aria-level="3">Hiện phụ đề Việt lên TV</div>
+        <p>PS5 vẫn cắm thẳng vào TV. Máy tính đọc và dịch phụ đề, TV hiện chữ Việt ngay trên hình game. App trên TV chỉ để kết nối: cỡ chữ, kiểu chữ, màu, nền, chỗ hiện và giọng đọc đều chỉnh trên máy tính.</p>
+
+        <div class="hg-sub" id="tv-android">Android TV, Google TV (Sony, TCL, Xiaomi, Casper, TV box)</div>
+        <ol class="hg-steps">
+          <li>Trên TV mở <b>CH Play</b>, cài app <b>Downloader</b> (biểu tượng màu cam).</li>
+          <li>Mở Downloader, gõ <span class="hg-ui">honggame.store/tv</span> rồi bấm <b>Go</b>, đợi tải xong bấm <b>Cài đặt</b>. TV hỏi thì cho phép Downloader cài app.</li>
+          <li>Mở <b>Hóng Sub TV</b>, bấm <b>Cho phép hiện trên app khác</b>, rồi <b>Bật phụ đề</b>. TV hiện IP và mã 6 ký tự.</li>
+          <li>Trên máy tính: <span class="hg-ui">Kết nối PS5/PS4 và TV</span> › chọn <b>Android TV</b> › gõ IP (cùng wifi) hoặc mã TV.</li>
+        </ol>
+
+        <div class="hg-sub" id="tv-lg">TV LG (webOS)</div>
+        <ol class="hg-steps">
+          <li>Trên TV mở <b>LG Content Store</b>, cài app <b>Developer Mode</b>. Đăng nhập tài khoản LG Developer (tạo miễn phí ở webostv.developer.lge.com).</li>
+          <li>Bật <b>Dev Mode Status</b> (TV khởi động lại), mở lại app, bật <b>Key Server</b> và ghi lại <b>Passphrase</b> 6 chữ.</li>
+          <li>Trên phần mềm Windows: <span class="hg-ui">Kết nối PS5/PS4 và TV</span> › <b>TV LG</b> › <b>Tìm TV</b> › gõ Passphrase › <b>Cài lên TV</b>.</li>
+          <li>Từ lần sau phần mềm tự mở Hóng Sub trên TV và tự cập nhật bản mới. Chọn cổng HDMI đang cắm PS5 ngay trên máy tính.</li>
+        </ol>
+        <p class="hg-tip">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV tự gỡ app.</p>
+
+        <div class="hg-sub" id="tv-samsung">TV Samsung (Tizen)</div>
+        <p class="hg-p">Samsung chỉ cho cài app ngoài cửa hàng bằng chứng chỉ Samsung gắn với từng TV, nên cần cài một lần bằng Tizen Studio. Có thể nhờ cửa hàng Hóng Game cài giúp (hẹn qua Zalo).</p>
+        <ol class="hg-steps">
+          <li>Trên TV mở <b>Ứng dụng (Apps)</b>, bấm <b>1 2 3 4 5</b> trên remote, bật <b>Developer mode</b>, ô <b>Host PC IP</b> gõ IP máy tính. Tắt TV rồi bật lại.</li>
+          <li>Trên máy tính cài <b>Tizen Studio</b> kèm Samsung TV Extension và Samsung Certificate Extension; vào <b>Device Manager</b> thêm TV theo IP.</li>
+          <li><b>Certificate Manager</b> › tạo chứng chỉ <b>Samsung</b> (đăng nhập tài khoản Samsung), chọn TV vừa thêm.</li>
+          <li>Tải app ở <span class="hg-ui">honggame.store/samsung</span> rồi cài file <b>hong-sub-samsung.wgt</b> lên TV bằng Tizen Studio.</li>
+          <li>Mở <b>Hóng Sub</b> trên TV. Trên máy tính chọn <b>TV Samsung</b> và gõ mã đang hiện trên TV.</li>
+        </ol>
+
+        <div class="hg-sub" id="tv-web">TV khác (chỉ có trình duyệt)</div>
+        <ol class="hg-steps">
+          <li>Mở trình duyệt trên TV, gõ <span class="hg-ui">honggame.store/tvweb</span>. Trang hiện mã 6 ký tự.</li>
+          <li>Trên máy tính chọn <b>TV khác</b> và gõ mã. Cách này chỉ hiện phụ đề, không có hình game phía sau.</li>
+        </ol>
+      </div>
+
+      <div class="hg-way" id="tinh-nang">
+        <div class="hg-t" role="heading" aria-level="3">Các tính năng</div>
+
+        <div class="hg-sub">Chữ Việt đè lên chữ gốc</div>
+        <p class="hg-p"><span class="hg-ui">Cài đặt › Phụ đề và độ trễ</span>: chọn cỡ chữ, <b>kiểu chữ</b> (9 kiểu đủ dấu tiếng Việt), <b>màu chữ</b> (14 màu), độ đậm nền và độ rộng khung. Bật <b>Đè chữ Việt lên đúng chỗ phụ đề gốc</b> để chữ Việt che phụ đề gốc trên hình, trên phụ đề nổi và trên TV; bật <b>Chữ Việt xuống dòng giống phụ đề gốc</b> để có cùng số dòng. TV đổi theo ngay khi bạn chỉnh.</p>
+
+        <div class="hg-sub">Vùng dịch thêm: nhiệm vụ, vật phẩm, bản đồ, menu</div>
+        <ol class="hg-steps">
+          <li><span class="hg-ui">Cài đặt › Vùng dịch</span> (hoặc nút trên Màn hình chơi) › <b>Thêm vùng</b>, kéo khung ôm sát chữ cần dịch. Tối đa 8 vùng.</li>
+          <li>Mỗi vùng chọn: <b>Loại chữ</b> (nhiệm vụ, vật phẩm...), <b>Khi nào dịch</b> (tự dịch khi chữ đổi hoặc chỉ khi bấm <b>F6</b>), <b>Cỡ chữ</b>, <b>Độ đậm nền</b>, <b>Số giây hiện</b> (0 = đến khi chữ gốc đổi), <b>Hiện trên TV</b>, <b>Đọc to chữ dịch</b>.</li>
+          <li>Gợi ý nút bấm (L1, R2, ✕ Chọn...) tự được bỏ qua. Số đếm như 2/5, 125m đổi thì cập nhật ngay, không tốn lượt dịch.</li>
+        </ol>
+
+        <div class="hg-sub">Dịch cả màn hình</div>
+        <p class="hg-p">Bấm <b>Dịch cả màn hình</b> (phần mềm Windows: <b>F11</b>; trên trình duyệt: phím <b>T</b>) khi đang ở menu, túi đồ, bản đồ. Hóng Sub đọc toàn bộ chữ trên màn hình (cả chữ nhỏ ở các góc) và đè chữ Việt lên đúng từng khối chữ gốc. Màn hình đổi thì tự dịch lại.</p>
+
+        <div class="hg-sub">Kho dịch chung</div>
+        <p class="hg-p">Chọn đúng game ở <span class="hg-ui">Cài đặt › Game đang chơi</span>. Câu thoại đã có người dịch (hoặc có bản Việt hóa, như Black Myth: Wukong) hiện tiếng Việt ngay, không chờ AI và không tốn lượt mã. Câu bạn dịch được góp vào kho cho người chơi sau; tắt được bằng công tắc <b>Góp câu tôi dịch vào kho chung</b>.</p>
+
+        <div class="hg-sub">Giọng đọc và nhân vật</div>
+        <p class="hg-p">Khi phụ đề có tên người nói (ví dụ "ATREUS: ..."), nhân vật tự vào <span class="hg-ui">Cài đặt › Nhân vật</span>, mỗi người một giọng và một màu tên. Chọn đọc ở máy tính, TV hay cả hai ở <span class="hg-ui">Cài đặt › Giọng đọc</span>.</p>
+
+        <div class="hg-sub">Phím tắt (phần mềm Windows)</div>
+        <p class="hg-p"><b>F7</b> bắt đầu / dừng dịch · <b>F8</b> dịch ngay câu đang hiện · <b>F6</b> dịch các vùng · <b>F11</b> dịch cả màn hình · <b>F9</b> ẩn / hiện phụ đề nổi · <b>F10</b> di chuyển phụ đề nổi · <b>F5</b> bật / tắt đọc phụ đề. Đổi phím ở <span class="hg-ui">Cài đặt › Phím tắt</span>.</p>
+      </div>
+
+      <div class="hg-faq" id="hoi-dap">
+        <details id="ps4"><summary>Dùng với PS4 được không?</summary><div class="a">Được. Trên PS4 vào <b>Settings › Remote Play Connection Settings</b>, bật <b>Enable Remote Play</b>, và đặt máy làm PS4 chính ở <b>Settings › Account Management › Activate as Your Primary PS4</b>.</div></details>
+        <details><summary>Báo "Mã tạm hết lượt"</summary><div class="a">Mã Gemini miễn phí có giới hạn lượt mỗi phút và mỗi ngày, tính theo dự án chứ không theo mã. Muốn thêm lượt thì tạo mã ở dự án khác (hoặc Gmail khác) và dán thêm, mỗi mã một dòng. Chọn đúng game để dùng kho dịch chung cũng đỡ tốn lượt.</div></details>
+        <details><summary>TV không hiện chữ</summary><div class="a">Ở <b>Kết nối PS5/PS4 và TV</b> xem dòng trạng thái TV và bấm <b>Gửi thử</b>. Android TV: trên TV phải bấm <b>Bật phụ đề</b> và cho quyền hiện trên app khác. TV LG, Samsung: mở app Hóng Sub trên TV và kiểm tra mã trên TV trùng với mã trên máy tính.</div></details>
+        <details><summary>Đã tắt đọc phụ đề mà TV vẫn đọc</summary><div class="a">TV đang chạy app bản cũ. TV LG: phần mềm Windows tự cập nhật khi kết nối. Android TV: cài lại app bằng Downloader với <b>honggame.store/tv</b>.</div></details>
+        <details><summary>Hình có nét 4K không?</summary><div class="a">Dùng app Sony toàn màn hình hoặc capture card thì Hóng Sub lấy hình tới 4K. Chơi PS5 ngay trong Hóng Sub thì tối đa 1080p vì đó là giới hạn Chơi từ xa của Sony.</div></details>
+        <details><summary>Dịch sai câu hoặc dịch cả chữ khác</summary><div class="a">Bấm <b>Vùng phụ đề</b> và kéo sát quanh dòng phụ đề. Nếu game cho chỉnh, tăng cỡ phụ đề và bật nền đen sau chữ.</div></details>
+        <details><summary>Hình game bị đen</summary><div class="a">Cửa sổ PS Remote Play đang thu nhỏ hoặc chọn nhầm cửa sổ: mở lại cửa sổ đó rồi chọn lại nguồn hình. Capture card hình đen: tắt HDCP trên PS5.</div></details>
+        <details><summary>Không có giọng đọc tiếng Việt</summary><div class="a">Phần mềm Windows: tải bộ giọng AI ở Cài đặt › Giọng đọc. Trên trình duyệt: mở trang này bằng Microsoft Edge để có giọng HoaiMy và NamMinh.</div></details>
+        <details><summary>Gặp lỗi thì báo shop thế nào?</summary><div class="a">Mở <b>Hỗ trợ</b>, bấm <b>Gửi lỗi cho shop</b>. Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở Zalo của shop, bạn chỉ cần gửi file đó.</div></details>
       </div>
     </div>
   </section>
