@@ -307,6 +307,7 @@ public class OverlayService extends Service {
         final String zs = j.optString("zs", "m");
         final int zpx = Math.max(0, Math.min(80, j.optInt("zpx", 0)));
         final String zal = j.optString("zal", "l");
+        final boolean zfit = j.optBoolean("zfit", false);
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
         final Typeface face = faceFor(j.optString("font", prefs.font()));
         main.post(() -> {
@@ -347,6 +348,13 @@ public class OverlayService extends Service {
                 if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
                 tv.setMinHeight(bh);
                 tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, zpx * (H / 1080f));
+                tv.setHorizontallyScrolling(zfit);
+                if (zfit) {   // same lines as the original paragraph: smaller letters instead of an extra line
+                    float widest = 0;
+                    for (String line : vi.split("\n")) widest = Math.max(widest, tv.getPaint().measureText(line));
+                    int avail = bw - tv.getPaddingLeft() - tv.getPaddingRight();
+                    if (widest > avail && avail > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(6f, tv.getTextSize() * avail / widest));
+                }
                 final TextView v2 = tv;
                 Runnable off2 = () -> { zoneLayer.removeView(v2); zoneViews.remove(id); zoneOff.remove(id); };
                 zoneOff.put(id, off2);

@@ -7,6 +7,7 @@ body:not(.move) #card{border-color:transparent!important}
 #name{display:none;font-size:11.5px;font-weight:700;letter-spacing:.01em;flex:none}
 body.move #name{display:block}
 #tx{flex:1;min-height:0;overflow:hidden;white-space:pre-line;overflow-wrap:anywhere;line-height:1.28;font-weight:600;text-shadow:0 1px 2px #000;display:flex;flex-direction:column;justify-content:center}
+#its{position:absolute;inset:0;pointer-events:none}#its>div{position:absolute;box-sizing:border-box;color:#fff;white-space:pre;line-height:1.15;padding:0 3px;border-radius:3px;font-weight:600;text-shadow:0 1px 2px #000;overflow:hidden}
 #grip{display:none;position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;-webkit-app-region:no-drag}
 #grip::after{content:"";position:absolute;right:5px;bottom:5px;width:10px;height:10px;border-right:3px solid #fff;border-bottom:3px solid #fff;opacity:.85}
 body.move #card{border-style:dashed;-webkit-app-region:drag;cursor:move}
@@ -14,12 +15,25 @@ body.move #grip{display:block}
 body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. Kéo khung tới chỗ chữ gốc, kéo góc dưới bên phải để đổi cỡ.";color:#cfd6df}
 </style></head>
 <body>
-<div id="card"><div id="name"></div><div id="tx"></div><div id="grip" title="Kéo để đổi cỡ"></div></div>
+<div id="card"><div id="name"></div><div id="tx"></div><div id="grip" title="Kéo để đổi cỡ"></div></div><div id="its"></div>
 <script>
 (function(){
   var D=window.hsDesktop, card=document.getElementById('card'), nm=document.getElementById('name'), tx=document.getElementById('tx'), grip=document.getElementById('grip');
   var cur=null;
   /* largest font (up to the chosen size) that fits the window */
+  /* "Đúng chỗ từng đoạn": every paragraph of the original gets its own box at its own place in the window */
+  function spots(){
+    var its=document.getElementById('its'), d=cur, on=!!(d&&d.items&&d.items.length&&d.vi);
+    tx.style.visibility=on?'hidden':''; card.style.background=on?'transparent':(d&&d.bg!=null?'rgba(8,9,12,'+d.bg+')':'');
+    if(!on){ its.innerHTML=''; return; }
+    var H=window.innerHeight, bg='rgba(8,9,12,'+(d.bg!=null?d.bg:.9)+')';
+    its.innerHTML=d.items.map(function(it){
+      var f=+d.px>0?(+d.px*screen.height/1080):Math.max(6,it.lh*H*0.78);
+      return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;width:'+(it.w*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
+    }).join('');
+    if(d.font) its.style.fontFamily=d.font;
+    [].forEach.call(its.children,function(el){ var f=parseFloat(el.style.fontSize); for(var k=0;k<20&&el.scrollWidth>el.clientWidth+1&&f>5;k++){ f*=0.92; el.style.fontSize=f+'px'; } });
+  }
   function fit(){
     if(!cur) return;
     /* as big as the area allows (up to the chosen size), smaller for long text, never spilling out of the area */
@@ -31,10 +45,10 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     cur=d; card.style.borderColor=d.c; nm.style.color=d.c;
     if(d.bg!=null) card.style.background='rgba(8,9,12,'+d.bg+')'; if(d.font) tx.style.fontFamily=d.font; if(d.fontUrl&&!document.querySelector('link[href="'+d.fontUrl+'"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=d.fontUrl; document.head.appendChild(l); }
     nm.textContent=d.name+(d.kind?' · '+d.kind:'');
-    tx.textContent=d.vi||''; tx.style.textAlign=d.al||''; fit();
+    tx.textContent=d.vi||''; tx.style.textAlign=d.al||''; fit(); spots();
   });
   D.onOverlay(function(st){ document.body.classList.toggle('move',!!st.move); fit(); });
-  window.addEventListener('resize',fit);
+  window.addEventListener('resize',function(){ fit(); spots(); });
   /* transparent windows cannot be resized by their edges on Windows: resize from the corner grip */
   grip.addEventListener('pointerdown',function(e){
     if(!cur) return; e.preventDefault(); grip.setPointerCapture(e.pointerId);
