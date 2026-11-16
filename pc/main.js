@@ -647,8 +647,8 @@ function setupIpc() {
     const pp = piperPaths(); if (pp.exe && pp.model) list.push({ name: VOICE_NAME, lang: 'vi-VN', id: 'hs:piper' });
     const r = await ttsCall({ cmd: 'voices' }, 20000);
     (r.voices || []).forEach(v => list.push({ name: v.name, lang: v.lang, id: 'win:' + v.name }));
-    /* online voices: no key, no download; used while the computer is online */
-    onlineTts.MS_VOICES.concat(onlineTts.GG_VOICES).forEach(v => list.push({ name: v.name, lang: 'vi-VN', id: v.id, g: v.gender, online: true }));
+    /* online voice: no key, no download; used while the computer is online */
+    onlineTts.GG_VOICES.forEach(v => list.push({ name: v.name, lang: 'vi-VN', id: v.id, g: v.gender, online: true }));
     return list;
   });
   const onlineFails = {}, onlineOff = {};
@@ -656,9 +656,9 @@ function setupIpc() {
     if (!text) return { stop: true };
     voice = voice || '';
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
-    if ((voice.startsWith('ms:') || voice.startsWith('gg:')) && Date.now() > (onlineOff[voice.slice(0, 3)] || 0)) {
+    if (voice.startsWith('gg:') && Date.now() > (onlineOff[voice.slice(0, 3)] || 0)) {
       try {
-        const mp3 = voice.startsWith('ms:') ? await onlineTts.ms(text, voice.slice(3)) : await onlineTts.gg(text, (u, o) => net.fetch(u, o));
+        const mp3 = await onlineTts.gg(text, (u, o) => net.fetch(u, o));
         onlineFails[voice.slice(0, 3)] = 0;
         return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: true };
       } catch (err) {
@@ -783,10 +783,10 @@ async function runSelftest() {
   const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
-  for (const v of onlineTts.MS_VOICES.concat(onlineTts.GG_VOICES)) {   /* online voices from a real Windows machine */
+  for (const v of onlineTts.GG_VOICES) {   /* the online voice from a real Windows machine */
     const t0 = Date.now();
     try {
-      const mp3 = v.id.startsWith('ms:') ? await onlineTts.ms('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', v.id.slice(3)) : await onlineTts.gg('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', (u, o) => net.fetch(u, o));
+      const mp3 = await onlineTts.gg('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', (u, o) => net.fetch(u, o));
       log('online voice', v.id, 'mp3 bytes ' + mp3.length + ' in ' + (Date.now() - t0) + 'ms');
       fs.writeFileSync(path.join(out, 'voice-' + v.id.replace(/[^a-z0-9]/gi, '_') + '.mp3'), mp3);
     } catch (e) { log('online voice', v.id, 'ERR ' + (e && e.message)); }

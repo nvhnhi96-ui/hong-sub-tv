@@ -2195,10 +2195,7 @@ function devPick(mode,g,who){
   if((mode==='auto'||mode==='ai')&&AIV.ready&&!AIV.off&&AIV.list.length){ var a=who?castAuto(who,g):(g&&!who?((aiVoices(g)[0]||{}).id||narrator()):narrator()); if(a) return 'ai:'+a; }
   if(mode!=='auto'&&mode!=='ai') return mode;
   var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
-  /* Microsoft AI voices online (Hoài My, Nam Minh): better than the voices on the computer; when offline the app falls back by itself */
-  var ms=dv.filter(function(v){return /^ms:/.test(v.id||'');}), msF=ms.filter(function(v){return v.g!=='male';})[0], msM=ms.filter(function(v){return v.g==='male';})[0];
-  if(g==='male'&&msM) return msM.id; if(msF) return msF.id;
-  var piper=dv.filter(function(v){return v.id==='hs:piper';})[0], win=dv.filter(function(v){return v.id!=='hs:piper'&&!/^(ms|gg):/.test(v.id||'');});
+  var piper=dv.filter(function(v){return v.id==='hs:piper';})[0], win=dv.filter(function(v){return v.id!=='hs:piper'&&!/^gg:/.test(v.id||'');});
   if(g==='male'&&win.length) return win[0].id||('win:'+win[0].name);
   return piper?piper.id:(win[0]?(win[0].id||('win:'+win[0].name)):'');
 }

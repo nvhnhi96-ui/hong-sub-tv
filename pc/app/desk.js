@@ -244,7 +244,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       cur=String(a[0]||''); var u=a[1]; last=u;
       if(!u||!u.version){ res.textContent='Chưa kiểm tra được (máy đang mất mạng?). Thử lại sau ít phút.'; return; }
       if(u.newer){
-        res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật ngay</b>: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.';
+        res.innerHTML='Có bản mới <b>'+esc(u.version)+'</b> (đang dùng '+esc(cur)+'). Bấm <b>Cập nhật lên '+esc(u.version)+'</b>: Hóng Sub tự tải, tự cài và mở lại, mã và cài đặt vẫn giữ nguyên.';
         go.hidden=false; go.textContent='Cập nhật lên '+u.version;
         notes(cur,u.version,'Có gì mới từ bản '+cur+' đến '+u.version);
       } else {
