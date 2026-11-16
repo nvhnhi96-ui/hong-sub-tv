@@ -36,7 +36,7 @@ final class Prefs {
     }
 
     int textSize() { return sp.getInt("size", 30); }
-    void textSize(int v) { sp.edit().putInt("size", Math.max(18, Math.min(60, v))).apply(); }
+    void textSize(int v) { sp.edit().putInt("size", Math.max(10, Math.min(60, v))).apply(); }
 
     boolean top() { return sp.getBoolean("top", false); }
     void top(boolean v) { sp.edit().putBoolean("top", v).apply(); }
@@ -55,7 +55,12 @@ final class Prefs {
     int bg() { return sp.getInt("bg", 80); }
     void bg(int v) { sp.edit().putInt("bg", Math.max(0, Math.min(100, v))).apply(); }
     int width() { return sp.getInt("wid", 86); }
-    void width(int v) { sp.edit().putInt("wid", Math.max(40, Math.min(100, v))).apply(); }
+    void width(int v) { sp.edit().putInt("wid", Math.max(20, Math.min(100, v))).apply(); }
+    // "Độ cao khung nền" (share of the original line, 40-300) and "same lines as the original"
+    int boxH() { return sp.getInt("hgt", 100); }
+    void boxH(int v) { sp.edit().putInt("hgt", Math.max(40, Math.min(300, v))).apply(); }
+    boolean lines() { return sp.getBoolean("lm", true); }
+    void lines(boolean v) { sp.edit().putBoolean("lm", v).apply(); }
 
     boolean running() { return sp.getBoolean("running", false); }
     void running(boolean v) { sp.edit().putBoolean("running", v).apply(); }

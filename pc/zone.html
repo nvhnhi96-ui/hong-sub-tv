@@ -31,7 +31,7 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     cur=d; card.style.borderColor=d.c; nm.style.color=d.c;
     if(d.bg!=null) card.style.background='rgba(8,9,12,'+d.bg+')'; if(d.font) tx.style.fontFamily=d.font; if(d.fontUrl&&!document.querySelector('link[href="'+d.fontUrl+'"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=d.fontUrl; document.head.appendChild(l); }
     nm.textContent=d.name+(d.kind?' · '+d.kind:'');
-    tx.textContent=d.vi||''; fit();
+    tx.textContent=d.vi||''; tx.style.textAlign=d.al||''; fit();
   });
   D.onOverlay(function(st){ document.body.classList.toggle('move',!!st.move); fit(); });
   window.addEventListener('resize',fit);

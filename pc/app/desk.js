@@ -83,24 +83,26 @@ $('dkFree').checked=S.allowFree;
 $('dkFree').addEventListener('change',function(){ A.setFree(this.checked); });
 
 /* ---------- subtitle look ---------- */
-var ST=A.load('ovStyle',{color:'#FFFFFF',bg:74,width:80,font:'bevn'}); if(!ST.font||!A.fonts[ST.font]) ST.font='bevn';
+var ST=A.load('ovStyle',{color:'#FFFFFF',bg:74,width:80,font:'bevn'}); if(!ST.font||!A.fonts[ST.font]) ST.font='bevn'; if(!ST.hgt) ST.hgt=100;
 (function(){ var sel=$('dkFont'); if(!sel) return;
   sel.innerHTML=Object.keys(A.fonts).map(function(k){ return '<option value="'+k+'">'+A.fonts[k].n+'</option>'; }).join('');
   sel.value=ST.font; sel.addEventListener('change',function(){ ST.font=sel.value; applyStyle(); }); })();
 function applyStyle(push){
   if(!A.fonts[ST.font]) ST.font='bevn';   /* an old or unknown font name: back to the default */
   document.querySelectorAll('#dkColor button').forEach(function(b){ b.classList.toggle('on',b.dataset.c.toLowerCase()===ST.color.toLowerCase()); });
-  $('dkBg').value=ST.bg; $('dkBgV').textContent=ST.bg+'%'; $('dkWidth').value=ST.width; $('dkWidthV').textContent=ST.width+'%';
-  var prev=$('dkPrev').firstElementChild; prev.style.background='rgba(8,8,10,'+(ST.bg/100)+')'; prev.style.width=ST.width+'%'; prev.style.boxSizing='border-box'; prev.style.marginLeft='auto'; prev.style.marginRight='auto';
+  $('dkBg').value=ST.bg; $('dkBgV').textContent=ST.bg+'%'; $('dkWidth').value=ST.width; $('dkWidthV').textContent=ST.width+'%'; if($('dkHgt')){ $('dkHgt').value=ST.hgt; $('dkHgtV').textContent=ST.hgt+'%'; }
+  var prev=$('dkPrev').firstElementChild; prev.style.background='rgba(8,8,10,'+(ST.bg/100)+')'; prev.style.width=ST.width+'%'; prev.style.boxSizing='border-box'; prev.style.paddingTop=prev.style.paddingBottom=Math.round(8*ST.hgt/100)+'px'; prev.style.marginLeft='auto'; prev.style.marginRight='auto';
   $('dkPrevVi').style.color=ST.color; A.fontLoad(ST.font); $('dkPrevVi').style.fontFamily=A.fonts[ST.font].css; $('hsVi').style.fontFamily=ST.font==='bevn'?'':A.fonts[ST.font].css; $('dkPrevVi').style.fontSize=Math.min(26,Math.round((+$('hsSize').value)*.75))+'px';
   $('dkPrevEn').style.display=$('hsShowEn').checked?'':'none';
   $('hsVi').style.color=ST.color==='#FFFFFF'?'':ST.color;
   A.save('ovStyle',ST);
-  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100,family:A.fonts[ST.font].css,fontUrl:A.fontUrl(ST.font)}});
+  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100,family:A.fonts[ST.font].css,fontUrl:A.fontUrl(ST.font),hgt:ST.hgt,lm:$('hsLines')?$('hsLines').checked:true}});
 }
 document.querySelectorAll('#dkColor button').forEach(function(b){ b.addEventListener('click',function(){ ST.color=b.dataset.c; applyStyle(); }); });
 $('dkBg').addEventListener('input',function(){ ST.bg=+this.value; applyStyle(); });
-var wT=0; $('dkWidth').addEventListener('input',function(){ ST.width=+this.value; applyStyle(false); clearTimeout(wT); wT=setTimeout(function(){ D.overlaySize(ST.width); },120); });
+var wT=0; $('dkWidth').addEventListener('input',function(){ ST.width=+this.value; applyStyle(false); clearTimeout(wT); wT=setTimeout(function(){ D.overlaySize(ST.width,undefined,ST.hgt); },120); });
+if($('dkHgt')) $('dkHgt').addEventListener('input',function(){ ST.hgt=+this.value; applyStyle(); clearTimeout(wT); wT=setTimeout(function(){ D.overlaySize(ST.width,undefined,ST.hgt); },120); });
+if($('hsLines')) $('hsLines').addEventListener('change',function(){ applyStyle(); });
 $('dkWidth').addEventListener('change',function(){ D.overlaySize(ST.width); });
 $('hsSize').addEventListener('input',function(){ applyStyle(false); });
 $('hsShowEn').addEventListener('change',function(){ applyStyle(false); });
@@ -124,7 +126,7 @@ timing();
 $('dkDefaults').addEventListener('click',function(){
   A.setScan(300); A.setWait(900); A.setHold(10); timing();
   $('hsSize').value=28; $('hsSize').dispatchEvent(new Event('input'));
-  ST={color:'#FFFFFF',bg:74,width:80,font:'bevn'}; if($('dkFont')) $('dkFont').value='bevn'; applyStyle(); D.overlaySize(80);
+  ST={color:'#FFFFFF',bg:74,width:80,font:'bevn',hgt:100}; if($('dkFont')) $('dkFont').value='bevn'; applyStyle(); D.overlaySize(80,undefined,100);
 });
 
 /* ---------- characters ---------- */

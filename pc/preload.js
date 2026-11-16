@@ -116,7 +116,7 @@ const api = {
   openSonyRp: () => ipcRenderer.invoke('sony-rp-open'),
   openUrl: (u) => ipcRenderer.invoke('open-url', u),
   overlayReset: () => ipcRenderer.invoke('overlay-reset'),
-  overlaySize: (pct, h) => ipcRenderer.invoke('overlay-size', pct, h),
+  overlaySize: (pct, h, hgt) => ipcRenderer.invoke('overlay-size', pct, h, hgt),
   samsung: {
     state: () => ipcRenderer.invoke('tz-state'),
     find: () => ipcRenderer.invoke('tz-find'),

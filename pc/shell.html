@@ -743,7 +743,7 @@ html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiC
             <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
-              <input class="hs-range" id="hsSize" type="range" min="18" max="56" step="2" value="28">
+              <input class="hs-range" id="hsSize" type="range" min="10" max="56" step="1" value="28">
             </div>
             <div class="dk-set">
               <span class="lab">Màu chữ</span>
@@ -774,7 +774,12 @@ html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiC
             </div>
             <div class="dk-set">
               <div class="lab"><label for="dkWidth">Độ rộng khung phụ đề</label><output id="dkWidthV">80%</output></div>
-              <input class="hs-range" id="dkWidth" type="range" min="40" max="100" step="5" value="80">
+              <input class="hs-range" id="dkWidth" type="range" min="20" max="100" step="5" value="80">
+            </div>
+            <div class="dk-set">
+              <div class="lab"><label for="dkHgt">Độ cao khung nền</label><output id="dkHgtV">100%</output></div>
+              <input class="hs-range" id="dkHgt" type="range" min="40" max="300" step="10" value="100">
+              <p class="hs-note" style="margin-top:4px">100% là bằng dòng phụ đề gốc. Kéo lên để nền đen to hơn, che kín chữ gốc; kéo xuống cho nền gọn lại.</p>
             </div>
             <div class="hs-row dk-only" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
           </div>

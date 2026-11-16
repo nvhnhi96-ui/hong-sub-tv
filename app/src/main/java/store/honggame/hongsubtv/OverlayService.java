@@ -306,6 +306,7 @@ public class OverlayService extends Service {
         final int hold = j.optInt("hold", 0);
         final String zs = j.optString("zs", "m");
         final int zpx = Math.max(0, Math.min(80, j.optInt("zpx", 0)));
+        final String zal = j.optString("zal", "l");
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
         final Typeface face = faceFor(j.optString("font", prefs.font()));
         main.post(() -> {
@@ -340,6 +341,7 @@ public class OverlayService extends Service {
             zb.setCornerRadius(dp(5));
             tv.setBackground(zb);
             tv.setTypeface(face);
+            tv.setGravity(("c".equals(zal) ? Gravity.CENTER_HORIZONTAL : "r".equals(zal) ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP);   // lined up like the original text
             if (zpx > 0) {
                 // the size chosen on the computer (on a 1080-line screen); the box grows down if the text needs it
                 if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
@@ -414,7 +416,9 @@ public class OverlayService extends Service {
             int bw = Math.max(dp(120), (int) (prefs.width() / 100f * dm.widthPixels));
             int cx = (int) ((cov[0] + cov[2] / 2) * dm.widthPixels);
             lp.x = Math.max(0, Math.min(dm.widthPixels - bw, cx - bw / 2)); lp.y = (int) (cov[1] * dm.heightPixels);
-            lp.width = bw; lp.height = Math.max(dp(30), (int) (cov[3] * dm.heightPixels));
+            // "Độ cao khung nền": taller or flatter than the original line, centred on it
+            lp.width = bw; lp.height = Math.max(dp(26), (int) (cov[3] * dm.heightPixels * prefs.boxH() / 100f));
+            lp.y = Math.max(0, (int) ((cov[1] + cov[3] / 2) * dm.heightPixels) - lp.height / 2);
             viView.setMaxWidth(lp.width);
             GradientDrawable cb = new GradientDrawable();
             cb.setColor(Color.argb(Math.round(prefs.bg() * 2.55f), 8, 8, 10));
@@ -427,8 +431,30 @@ public class OverlayService extends Service {
             viView.setMaxWidth(lp.width); enView.setMaxWidth(lp.width);
             lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
             lp.y = dp(prefs.top() ? 36 : 46);
+            float k = prefs.boxH() / 100f;
+            box.setPadding(dp(22), (int) (dp(10) * k), dp(22), (int) (dp(12) * k));
         }
         try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
+        fitLines();
+    }
+
+    /* "same lines as the original": no extra wrapping, the letters get smaller until the longest line fits */
+    private void fitLines() {
+        int size = prefs.textSize();
+        boolean lm = prefs.lines();
+        viView.setHorizontallyScrolling(lm);
+        viView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        if (!lm) return;
+        int avail = (cov != null ? lp.width : (lp.width > 0 ? lp.width : getResources().getDisplayMetrics().widthPixels)) - box.getPaddingLeft() - box.getPaddingRight() - dp(4);
+        if (avail <= 0) return;
+        float widest = 0;
+        for (String line : viView.getText().toString().split("\n")) widest = Math.max(widest, viView.getPaint().measureText(line));
+        if (widest > avail) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), viView.getTextSize() * avail / widest));
+        if (cov != null) {   // over the original line: no taller than the box either
+            int lines = Math.max(1, viView.getText().toString().split("\n").length);
+            float maxPx = (lp.height - box.getPaddingTop() - box.getPaddingBottom()) / (lines * 1.2f);
+            if (maxPx > 0 && viView.getTextSize() > maxPx) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), maxPx));
+        }
     }
 
     private void showLine(String who, String vi, String en, long holdMs, boolean speakIt) {
@@ -441,6 +467,7 @@ public class OverlayService extends Service {
             }
             sb.append(vi);
             viView.setText(sb);
+            fitLines();
             boolean en1 = prefs.showEn() && en != null && !en.isEmpty();
             enView.setText(en1 ? en : "");
             enView.setVisibility(en1 ? View.VISIBLE : View.GONE);
@@ -471,7 +498,9 @@ public class OverlayService extends Service {
         int size = j.optInt("size", 0);
         String pos = j.optString("pos", "");
         boolean changed = false;
-        if (size >= 18 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
+        if (size >= 10 && size != prefs.textSize()) { prefs.textSize(size); changed = true; }
+        if (j.has("hgt")) { int hg = j.optInt("hgt", 100); if (hg >= 40 && hg <= 300 && hg != prefs.boxH()) { prefs.boxH(hg); changed = true; } }
+        if (j.has("lm") && j.optBoolean("lm", true) != prefs.lines()) { prefs.lines(j.optBoolean("lm", true)); changed = true; }
         if (j.has("sen") && j.optBoolean("sen", false) != prefs.showEn()) { prefs.showEn(j.optBoolean("sen", false)); }   // English line: set on the computer
         if (j.has("cov")) {
             JSONObject c = j.optJSONObject("cov");
