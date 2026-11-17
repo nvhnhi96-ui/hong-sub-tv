@@ -1580,8 +1580,13 @@ function zTv(z){
       tvSend(Object.assign({},base0,lk,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
     });
   }
-  for(var j=nNew;j<nOld;j++) tvSend(Object.assign({},base0,{zid:z.id+'_'+j,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
+  z.tvMax=Math.max(z.tvMax||0,nOld,nNew);
+  for(var j=nNew;j<(shown?nOld:z.tvMax);j++) tvSend(Object.assign({},base0,{zid:z.id+'_'+j,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
   z.tvN=nNew;
+  /* taken off: said again a little later too, so a message lost on the way never leaves old text on the TV */
+  if(!shown){ if(!z.tvAgainN) z.tvAgainN=0;
+    if(z.tvAgainN<2){ z.tvAgainN++; var tok=z.tvTok=(z.tvTok||0)+1; later(function(){ if(!z.vi&&z.tvTok===tok) zTv(z); },z.tvAgainN===1?2500:8000); } }
+  else { z.tvAgainN=0; z.tvTok=(z.tvTok||0)+1; }
   if(spot) return;
   var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfont:zFontKey(z),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
@@ -2108,7 +2113,12 @@ function tvIp(){ var el=$('hsTvIp'); return D&&D.tv&&el&&S.tvType==='android'?(e
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
 function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(10,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(20,Math.min(100,+st.width||80)),hgt:Math.max(40,Math.min(300,+st.hgt||100)),lm:lineMatch()}; }
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
-function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; var sr=coverOn()&&S.region?subRect():null; o.cov=sr?camRect(sr):null; if(o.cov&&sr.spot){ o.cspot=1; o.cal=sr.al; o.cfs=Math.max(8,Math.round(sr.lh*(o.cov.h/sr.h)*1080*0.82)); o.cn=sr.n; } o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
+function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; var sr=coverOn()&&S.region?subRect():null; o.cov=sr?camRect(sr):null; if(o.cov&&sr.spot){ o.cspot=1; o.cal=sr.al; o.cfs=Math.max(8,Math.round(sr.lh*(o.cov.h/sr.h)*1080*0.82)); o.cn=sr.n; }
+  /* over the whole subtitle area (no line found yet): letters measured on the picture like on the phone/computer
+     (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
+     hides the English like the dark box on the picture */
+  else if(o.cov){ o.cspot=1; o.cal='c'; o.cfs=48; }
+  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6); return o; }   /* mid: the TV shows a line once even if it arrives both ways */
 /* through honggame.store, one message at a time: several sent at once (an area's paragraphs, a subtitle and an area)
    could overwrite each other on the way, so the TV showed only part of them or an older look. A newer message for the
    same area box replaces the one still waiting. */
