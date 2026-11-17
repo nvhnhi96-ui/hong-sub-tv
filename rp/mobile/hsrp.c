@@ -608,10 +608,10 @@ static void cmd_tvpost(char *msg)
 }
 
 /* ---- TV LG / Samsung: the phone answers the TV app's questions on the home network (hslan.c) ---- */
-static void cmd_lanon(void)
+static void cmd_lanon(const char *hint)
 {
 	char ips[200], esc[260], out[400];
-	int port = hslan_on(ips, sizeof(ips));
+	int port = hslan_on(hint, ips, sizeof(ips));
 	json_str(esc, sizeof(esc), ips);
 	snprintf(out, sizeof(out), "{\"ev\":\"lan\",\"port\":%d,\"ips\":\"%s\"}", port, esc);
 	emit_event(out);
@@ -811,7 +811,7 @@ static void command(char *line)
 	}
 	else if(!strcmp(c, "wake") && ac >= 4) cmd_wake(av[1], atoi(av[2]), av[3]);
 	else if(!strcmp(c, "tvfind")) { pthread_t th; if(pthread_create(&th, NULL, tvfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 1800)) == 0) pthread_detach(th); }
-	else if(!strcmp(c, "lanon")) cmd_lanon();
+	else if(!strcmp(c, "lanon")) cmd_lanon(ac > 1 ? av[1] : NULL);
 	else if(!strcmp(c, "lanseen") && ac >= 2) cmd_lanseen(av[1]);
 	else if(!strcmp(c, "lanfind")) { pthread_t th; if(pthread_create(&th, NULL, lanfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 3500)) == 0) pthread_detach(th); }
 	else if(!strcmp(c, "ping")) emit_event("{\"ev\":\"pong\",\"core\":\"hsrp 2\"}");

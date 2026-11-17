@@ -10,8 +10,8 @@
 #define HSLAN_PORT 8767
 
 /* starts the server if it is not running; returns its port (0: could not start).
-   ips: this phone's home-network addresses, comma separated, the best one first */
-int hslan_on(char *ips, size_t ips_size);
+   hint: the TV's address if known; ips: this phone's home-network addresses, comma separated, the best one first */
+int hslan_on(const char *hint, char *ips, size_t ips_size);
 /* a message (a JSON object) for the TV app showing this code */
 void hslan_push(const char *code, const char *json);
 /* how long ago (ms) the TV app with this code last asked, -1: never; ver: its build */

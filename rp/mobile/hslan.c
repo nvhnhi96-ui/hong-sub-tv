@@ -195,18 +195,38 @@ static void *accepter(void *arg)
 	return NULL;
 }
 
-/* this phone's addresses on home networks (Wi-Fi first), comma separated */
-static void my_ips(char *out, size_t n)
+static bool priv_ip(uint32_t ip) { return (ip >> 24) == 10 || (ip >> 20) == 0xac1 || (ip >> 16) == 0xc0a8; }
+/* the address this phone uses to reach `to` (no packet is sent): right even when the list of interfaces is hidden */
+static uint32_t route_ip(const char *to)
+{
+	struct sockaddr_in a; memset(&a, 0, sizeof(a)); a.sin_family = AF_INET; a.sin_port = htons(9);
+	if(!to || inet_pton(AF_INET, to, &a.sin_addr) != 1) return 0;
+	int u = socket(AF_INET, SOCK_DGRAM, 0); if(u < 0) return 0;
+	uint32_t r = 0;
+	if(connect(u, (struct sockaddr *)&a, sizeof(a)) == 0) { struct sockaddr_in me; socklen_t ml = sizeof(me); if(getsockname(u, (struct sockaddr *)&me, &ml) == 0) r = ntohl(me.sin_addr.s_addr); }
+	close(u);
+	return r;
+}
+/* this phone's addresses on home networks (the one towards the TV first, then Wi-Fi), comma separated */
+static void my_ips(const char *hint, char *out, size_t n)
 {
 	struct ifaddrs *ifs = NULL; size_t on = 0; out[0] = 0;
+	const char *tries[] = { hint, "8.8.8.8", "192.168.1.1", "192.168.0.1" };
+	for(int k = 0; k < 4; k++)
+	{
+		uint32_t ip = route_ip(tries[k]);
+		if(!ip || !priv_ip(ip)) continue;
+		char a[20]; struct in_addr ia; ia.s_addr = htonl(ip); inet_ntop(AF_INET, &ia, a, sizeof(a));
+		if(strstr(out, a)) continue;
+		if(on + strlen(a) + 2 < n) on += (size_t)snprintf(out + on, n - on, "%s%s", on ? "," : "", a);
+	}
 	if(getifaddrs(&ifs) != 0) return;
 	for(int pass = 0; pass < 2; pass++)
 		for(struct ifaddrs *i = ifs; i; i = i->ifa_next)
 		{
-			if(!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK) || !(i->ifa_flags & IFF_UP)) continue;
+			if(!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK)) continue;
 			uint32_t ip = ntohl(((struct sockaddr_in *)i->ifa_addr)->sin_addr.s_addr);
-			bool priv = (ip >> 24) == 10 || (ip >> 20) == 0xac1 || (ip >> 16) == 0xc0a8;
-			if(!priv) continue;
+			if(!priv_ip(ip)) continue;
 			bool wifi = i->ifa_name && (!strncmp(i->ifa_name, "wlan", 4) || !strncmp(i->ifa_name, "en", 2) || !strncmp(i->ifa_name, "eth", 3) || !strncmp(i->ifa_name, "ap", 2) || !strncmp(i->ifa_name, "swlan", 5));
 			if((pass == 0) != wifi) continue;
 			char a[20]; struct in_addr ia; ia.s_addr = htonl(ip); inet_ntop(AF_INET, &ia, a, sizeof(a));
@@ -216,9 +236,9 @@ static void my_ips(char *out, size_t n)
 	freeifaddrs(ifs);
 }
 
-int hslan_on(char *ips, size_t ips_size)
+int hslan_on(const char *hint, char *ips, size_t ips_size)
 {
-	if(ips && ips_size) my_ips(ips, ips_size);
+	if(ips && ips_size) my_ips(hint, ips, ips_size);
 	pthread_mutex_lock(&mx);
 	if(lfd >= 0) { int p = lport; pthread_mutex_unlock(&mx); return p; }
 	pthread_mutex_unlock(&mx);
