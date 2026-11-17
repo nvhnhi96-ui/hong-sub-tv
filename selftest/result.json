@@ -5,12 +5,12 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 233
+          "ms": 126
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 169
+          "ms": 211
         },
         {
           "t": "I told you this place was cursed.",
@@ -20,17 +20,17 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 186
+          "ms": 171
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 171
+          "ms": 150
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 151
+          "ms": 166
         }
       ],
       "asked": [
@@ -96,12 +96,12 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 233
+          "ms": 126
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 169
+          "ms": 211
         },
         {
           "t": "I told you this place was cursed.",
@@ -111,32 +111,32 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 186
+          "ms": 171
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 96,
-          "ms": 171
+          "ms": 150
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 151
+          "ms": 166
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 145
+          "ms": 176
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 178
+          "ms": 192
         },
         {
           "t": "We need to get out of here before sunrise.",
           "c": 95,
-          "ms": 193
+          "ms": 173
         }
       ],
       "asked": [
