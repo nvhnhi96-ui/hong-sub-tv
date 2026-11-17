@@ -77,5 +77,10 @@ android {
     }
 }
 
-// no libraries: the Hóng Sub page (assets/app.html, the same page as the Windows app) does the reading and translating;
+dependencies {
+    // SSH to a TV LG in Developer Mode, to put the Hóng Sub app on it from the phone (LgTv.java)
+    implementation 'com.github.mwiede:jsch:0.2.20'
+}
+
+// one library (SSH, for TV LG): the Hóng Sub page (assets/app.html, the same page as the Windows app) does the reading and translating;
 // the one native part is the Remote Play core (rp/mobile, AGPL-3.0, built on chiaki-ng)

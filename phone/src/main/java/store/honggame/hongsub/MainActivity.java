@@ -267,6 +267,15 @@ public class MainActivity extends Activity {
     private void nativeCall(String cmd, String id) {
         if ("psnLogin".equals(cmd)) PsnLogin.show(this, json -> reply(id, json));
         else if ("psnCancel".equals(cmd)) { PsnLogin.cancel(); reply(id, "{\"ok\":true}"); }
+        else if (cmd != null && cmd.startsWith("lg:")) {   /* TV LG: install / open / update the TV app over the home network */
+            final android.content.Context ctx = getApplicationContext();
+            new Thread(() -> {
+                String r;
+                try { r = LgTv.handle(ctx, new org.json.JSONObject(cmd.substring(3)), t -> event("lg", "{\"t\":" + org.json.JSONObject.quote(t) + "}")); }
+                catch (Throwable e) { r = "{\"ok\":false,\"err\":" + org.json.JSONObject.quote(String.valueOf(e.getMessage())) + "}"; }
+                reply(id, r);
+            }, "lgtv").start();
+        }
         else reply(id, "{\"ok\":false,\"err\":\"unknown\"}");
     }
 

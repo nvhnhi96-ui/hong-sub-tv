@@ -3,6 +3,7 @@
  * Source: https://github.com/nvhnhi96-ui/hong-sub-tv/tree/main/rp/mobile
  */
 #include "hsrp.h"
+#include "hslan.h"
 
 #include <chiaki/common.h>
 #include <chiaki/log.h>
@@ -544,7 +545,9 @@ static void *tvpost_thread(void *arg)
 {
 	TvPost *j = (TvPost *)arg;
 	int status = 0; char resp[4096] = {0}; size_t rn = 0;
-	struct sockaddr_in to; memset(&to, 0, sizeof(to)); to.sin_family = AF_INET; to.sin_port = htons(8765);
+	/* "ip" or "ip:port" (default 8765, the Android TV app; 8001 asks a TV Samsung, others an LG's description) */
+	int port = 8765; char *pc = strchr(j->ip, ':'); if(pc) { *pc = 0; port = atoi(pc + 1); if(port <= 0 || port > 65535) port = 8765; }
+	struct sockaddr_in to; memset(&to, 0, sizeof(to)); to.sin_family = AF_INET; to.sin_port = htons((uint16_t)port);
 	int fd = -1;
 	if(inet_pton(AF_INET, j->ip, &to.sin_addr) == 1 && (fd = socket(AF_INET, SOCK_STREAM, 0)) >= 0)
 	{
@@ -567,8 +570,8 @@ static void *tvpost_thread(void *arg)
 		{
 			size_t bl = j->body ? strlen(j->body) : 0;
 			char h[400];
-			int hn = snprintf(h, sizeof(h), "%s %s HTTP/1.0\r\nHost: %s:8765\r\nContent-Type: application/json\r\nContent-Length: %u\r\nConnection: close\r\n\r\n",
-				bl ? "POST" : "GET", j->path, j->ip, (unsigned)bl);
+			int hn = snprintf(h, sizeof(h), "%s %s HTTP/1.0\r\nHost: %s:%d\r\nContent-Type: application/json\r\nContent-Length: %u\r\nConnection: close\r\n\r\n",
+				bl ? "POST" : "GET", j->path, j->ip, port, (unsigned)bl);
 			if(send_all(fd, (const uint8_t *)h, (size_t)hn) && (!bl || send_all(fd, (const uint8_t *)j->body, bl)))
 			{
 				ssize_t r;
@@ -602,6 +605,38 @@ static void cmd_tvpost(char *msg)
 	if(j->path[0] != '/' || strstr(j->path, "..")) { free(j); return; }
 	if(nl && nl[1]) j->body = strdup(nl + 1);
 	pthread_t th; if(pthread_create(&th, NULL, tvpost_thread, j) == 0) pthread_detach(th); else { free(j->body); free(j); }
+}
+
+/* ---- TV LG / Samsung: the phone answers the TV app's questions on the home network (hslan.c) ---- */
+static void cmd_lanon(void)
+{
+	char ips[200], esc[260], out[400];
+	int port = hslan_on(ips, sizeof(ips));
+	json_str(esc, sizeof(esc), ips);
+	snprintf(out, sizeof(out), "{\"ev\":\"lan\",\"port\":%d,\"ips\":\"%s\"}", port, esc);
+	emit_event(out);
+}
+/* "lanpush <code>" then, on the next line, the message (JSON) */
+static void cmd_lanpush(char *msg)
+{
+	char *nl = strchr(msg, '\n'); if(!nl) return; *nl = 0;
+	char *av[3]; int ac = split(msg, av, 3);
+	if(ac >= 2) hslan_push(av[1], nl + 1);
+}
+static void cmd_lanseen(const char *code)
+{
+	char ver[24], codes[80], ev[40], ec[100], cq[20], out[300];
+	long long ago = hslan_seen(code, ver, sizeof(ver)); hslan_codes(codes, sizeof(codes));
+	json_str(ev, sizeof(ev), ver); json_str(ec, sizeof(ec), codes); json_str(cq, sizeof(cq), code);
+	snprintf(out, sizeof(out), "{\"ev\":\"lanseen\",\"id\":\"%s\",\"ago\":%lld,\"ver\":\"%s\",\"codes\":\"%s\"}", cq, ago, ev, ec);
+	emit_event(out);
+}
+static void *lanfind_thread(void *arg)
+{
+	int ms = (int)(intptr_t)arg;
+	char *out = (char *)malloc(65536); if(!out) return NULL;
+	hslan_find(ms, out, 65536); emit_event(out); free(out);
+	return NULL;
 }
 
 static void cmd_discover(int ms, const char *extra)
@@ -776,7 +811,10 @@ static void command(char *line)
 	}
 	else if(!strcmp(c, "wake") && ac >= 4) cmd_wake(av[1], atoi(av[2]), av[3]);
 	else if(!strcmp(c, "tvfind")) { pthread_t th; if(pthread_create(&th, NULL, tvfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 1800)) == 0) pthread_detach(th); }
-	else if(!strcmp(c, "ping")) emit_event("{\"ev\":\"pong\",\"core\":\"hsrp 1\"}");
+	else if(!strcmp(c, "lanon")) cmd_lanon();
+	else if(!strcmp(c, "lanseen") && ac >= 2) cmd_lanseen(av[1]);
+	else if(!strcmp(c, "lanfind")) { pthread_t th; if(pthread_create(&th, NULL, lanfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 3500)) == 0) pthread_detach(th); }
+	else if(!strcmp(c, "ping")) emit_event("{\"ev\":\"pong\",\"core\":\"hsrp 2\"}");
 #ifdef HSRP_TEST_CMDS
 	else if(!strcmp(c, "feed") && ac >= 2)
 	{
@@ -904,6 +942,7 @@ static void ws_session(int fd)
 				/* several commands may come in one message, one per line; "tvpost" carries its JSON on the next line */
 				char *s = (char *)msg, *nl;
 				if(!strncmp(s, "tvpost ", 7)) cmd_tvpost(s);
+				else if(!strncmp(s, "lanpush ", 8)) cmd_lanpush(s);
 				else while(s && *s) { nl = strchr(s, '\n'); if(nl) *nl = 0; if(*s) command(s); s = nl ? nl + 1 : NULL; }
 				free(msg); msg = NULL; msg_n = 0;
 			}

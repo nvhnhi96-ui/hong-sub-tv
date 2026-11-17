@@ -26,7 +26,8 @@ t = re.sub(r"var VERSION='[^']*';", "var VERSION='%s';" % ver, t, count=1)
 # Samsung's own scripts (the IP of the TV); missing in a browser, harmless
 rep('<script>\n', '<script src="$WEBAPIS/webapis/webapis.js"></script>\n<script src="preset.js"></script>\n<script>\n', 1)
 # preset.js: written by Hóng Sub on the computer when it installs the app, so the TV already knows its code and the computer
-rep("function launchParams(){ try{ var s=window.PalmSystem", "function launchParams(){ try{ if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem")
+# opened by Hóng Sub on a phone (POST to the TV's port 8001 with {code, pc}): that comes first, then preset.js
+rep("function launchParams(){ try{ var s=window.PalmSystem", "function launchParams(){ try{ var tl=tzLaunch(); if(tl) return tl; if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem")
 rep("var packaged=location.protocol==='file:';", "var packaged=typeof tizen!=='undefined';   /* installed on a Samsung TV */")
 # keys: Back on a Samsung remote is 10009
 rep("if(k===461||k===27||k===8){ if($('home').className==='off'&&P.src)", "if(k===461||k===10009||k===27||k===8){ if($('home').className==='off'&&P.src)")
@@ -36,6 +37,15 @@ rep("function quit(){ sayStop(); try{ if(window.webOS&&window.webOS.platformBack
     "function quit(){ sayStop(); try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} try{ tizen.application.getCurrentApplication().exit(); }catch(e){ window.close(); } }")
 
 TIZEN = r"""
+/* opened from Hóng Sub on a phone: the code and the phone's address come with the launch (the TV hands them over as
+   app-control data); the same as an LG relaunch when the app is already open */
+function tzLaunch(){
+  try{ var r=tizen.application.getCurrentApplication().getRequestedAppControl(), d=(r&&r.appControl&&r.appControl.data)||[];
+    for(var i=0;i<d.length;i++){ var vs=d[i].value||[]; for(var k=0;k<vs.length;k++){ var o=null; try{ o=JSON.parse(vs[k]); }catch(e){}
+      if(o&&typeof o==='object'&&(o.code||o.pc)) return o; } } }catch(e){}
+  return null;
+}
+window.addEventListener('appcontrol',function(){ try{ var ev=document.createEvent('Event'); ev.initEvent('webOSRelaunch',false,false); document.dispatchEvent(ev); }catch(e){} });
 /* ---------- Samsung (Tizen) ----------
    The HDMI picture is drawn by the TV itself in a window under the page: the page turns see-through where the game shows. */
 function setSource(n){

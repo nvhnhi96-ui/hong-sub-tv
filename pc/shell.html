@@ -466,6 +466,46 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
+                <!-- the phone apps (Android, iPhone): connect by the TV code, straight over the home network; Android can also put the app on the TV -->
+                <div class="mp-tv" id="mpLgBox" hidden>
+                  <ol class="dk-steps">
+                    <li>Trên TV LG bấm <b>Home</b> và mở app <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                  <div class="hs-row" id="mpLgList" style="margin-top:6px"></div>
+                  <details class="tvd" id="mpLg">
+                    <summary id="mpLgSum">TV chưa có app Hóng Sub: cài lên TV LG</summary>
+                    <div id="mpLgAnd" hidden>
+                      <p class="hs-note">Làm một lần trên TV, phần còn lại điện thoại tự làm. Điện thoại và TV dùng chung Wi-Fi.</p>
+                      <ol class="dk-steps">
+                        <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                        <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                        <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                        <li>Bấm <b>Tìm TV LG trong nhà</b> ở trên (hoặc gõ IP của TV), gõ <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
+                      </ol>
+                      <div class="dk-set">
+                        <label class="lab" for="mpLgIp">IP của TV LG</label>
+                        <input class="hs-in" id="mpLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" autocomplete="off">
+                      </div>
+                      <div class="dk-set">
+                        <label class="lab" for="mpLgPass">Passphrase trên TV</label>
+                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="mpLgGo">Cài app lên TV</button></div>
+                      </div>
+                      <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+                    </div>
+                    <div id="mpLgIos" hidden>
+                      <p class="hs-note">Bản Hóng Sub cho iPhone chưa tự cài app lên TV LG được. Cài một lần bằng một trong hai cách dưới, sau đó iPhone chỉ cần gõ Mã TV:</p>
+                      <ol class="dk-steps">
+                        <li>Điện thoại <b>Android</b> có Hóng Sub: Kết nối TV › TV LG › Cài app lên TV (TV bật Developer Mode, gõ Passphrase).</li>
+                        <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV LG, làm theo hướng dẫn.</li>
+                      </ol>
+                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                    </div>
+                  </details>
+                  <div class="hs-msg" id="mpLgMsg" hidden></div>
+                </div>
                 <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
               </div>
 
@@ -509,6 +549,27 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại. Không tự làm được: hẹn cửa hàng qua Zalo để cài giúp.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
+                <!-- the phone apps: Samsung only installs apps signed with a Samsung certificate made for that TV (Tizen Studio on a computer),
+                     so the phone connects to the app already on the TV, by its code, straight over the home network -->
+                <div class="mp-tv" id="mpTzBox" hidden>
+                  <ol class="dk-steps">
+                    <li>Trên TV Samsung bấm <b>Home</b> › <b>Ứng dụng</b> và mở <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                  <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
+                  <details class="tvd" id="mpTz">
+                    <summary>TV chưa có app Hóng Sub: cài lên TV Samsung</summary>
+                    <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng <b>chứng chỉ Samsung</b> làm riêng cho từng TV, và chỉ làm được bằng phần mềm Tizen Studio trên máy tính. Vì vậy điện thoại không tự cài được. Cài một lần (khoảng 20 phút), sau đó app trên TV tự cập nhật và điện thoại chỉ cần gõ Mã TV:</p>
+                    <ol class="dk-steps">
+                      <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV Samsung, làm theo 4 bước (bật Developer Mode trên TV, cài Tizen Studio, tạo chứng chỉ, bấm Cài).</li>
+                      <li>Hoặc nhờ cửa hàng cài giúp.</li>
+                    </ol>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                  </details>
+                  <div class="hs-msg" id="mpTzMsg" hidden></div>
+                </div>
                 <p class="hs-note hs-web">Cài app lên TV Samsung bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV Samsung): phần mềm làm giúp phần lớn các bước.</p>
               </div>
 

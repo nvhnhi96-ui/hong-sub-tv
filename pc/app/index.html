@@ -732,6 +732,46 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
+                <!-- the phone apps (Android, iPhone): connect by the TV code, straight over the home network; Android can also put the app on the TV -->
+                <div class="mp-tv" id="mpLgBox" hidden>
+                  <ol class="dk-steps">
+                    <li>Trên TV LG bấm <b>Home</b> và mở app <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                  <div class="hs-row" id="mpLgList" style="margin-top:6px"></div>
+                  <details class="tvd" id="mpLg">
+                    <summary id="mpLgSum">TV chưa có app Hóng Sub: cài lên TV LG</summary>
+                    <div id="mpLgAnd" hidden>
+                      <p class="hs-note">Làm một lần trên TV, phần còn lại điện thoại tự làm. Điện thoại và TV dùng chung Wi-Fi.</p>
+                      <ol class="dk-steps">
+                        <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                        <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                        <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                        <li>Bấm <b>Tìm TV LG trong nhà</b> ở trên (hoặc gõ IP của TV), gõ <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
+                      </ol>
+                      <div class="dk-set">
+                        <label class="lab" for="mpLgIp">IP của TV LG</label>
+                        <input class="hs-in" id="mpLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" autocomplete="off">
+                      </div>
+                      <div class="dk-set">
+                        <label class="lab" for="mpLgPass">Passphrase trên TV</label>
+                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="mpLgGo">Cài app lên TV</button></div>
+                      </div>
+                      <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+                    </div>
+                    <div id="mpLgIos" hidden>
+                      <p class="hs-note">Bản Hóng Sub cho iPhone chưa tự cài app lên TV LG được. Cài một lần bằng một trong hai cách dưới, sau đó iPhone chỉ cần gõ Mã TV:</p>
+                      <ol class="dk-steps">
+                        <li>Điện thoại <b>Android</b> có Hóng Sub: Kết nối TV › TV LG › Cài app lên TV (TV bật Developer Mode, gõ Passphrase).</li>
+                        <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV LG, làm theo hướng dẫn.</li>
+                      </ol>
+                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                    </div>
+                  </details>
+                  <div class="hs-msg" id="mpLgMsg" hidden></div>
+                </div>
                 <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
               </div>
 
@@ -775,6 +815,27 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại. Không tự làm được: hẹn cửa hàng qua Zalo để cài giúp.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
+                <!-- the phone apps: Samsung only installs apps signed with a Samsung certificate made for that TV (Tizen Studio on a computer),
+                     so the phone connects to the app already on the TV, by its code, straight over the home network -->
+                <div class="mp-tv" id="mpTzBox" hidden>
+                  <ol class="dk-steps">
+                    <li>Trên TV Samsung bấm <b>Home</b> › <b>Ứng dụng</b> và mở <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                  <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
+                  <details class="tvd" id="mpTz">
+                    <summary>TV chưa có app Hóng Sub: cài lên TV Samsung</summary>
+                    <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng <b>chứng chỉ Samsung</b> làm riêng cho từng TV, và chỉ làm được bằng phần mềm Tizen Studio trên máy tính. Vì vậy điện thoại không tự cài được. Cài một lần (khoảng 20 phút), sau đó app trên TV tự cập nhật và điện thoại chỉ cần gõ Mã TV:</p>
+                    <ol class="dk-steps">
+                      <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV Samsung, làm theo 4 bước (bật Developer Mode trên TV, cài Tizen Studio, tạo chứng chỉ, bấm Cài).</li>
+                      <li>Hoặc nhờ cửa hàng cài giúp.</li>
+                    </ol>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                  </details>
+                  <div class="hs-msg" id="mpTzMsg" hidden></div>
+                </div>
                 <p class="hs-note hs-web">Cài app lên TV Samsung bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV Samsung): phần mềm làm giúp phần lớn các bước.</p>
               </div>
 
@@ -2752,7 +2813,7 @@ function tvStatus(){
     return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').',a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
   }
   if(k==='samsung'){
-    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:'Cài app Hóng Sub lên TV Samsung ở dưới (làm một lần), rồi gõ mã đang hiện trên TV.'};
+    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:D?'Cài app Hóng Sub lên TV Samsung ở dưới (làm một lần), rồi gõ mã đang hiện trên TV.':'Trên TV Samsung mở app Hóng Sub, gõ mã đang hiện trên TV vào ô Mã TV.'};
     if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
     if(seen) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối qua internet.'};
     if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
@@ -2782,6 +2843,8 @@ function tvIp(){ var el=$('hsTvIp'); return TVD()&&el&&S.tvType==='android'?(el.
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
 function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(10,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(20,Math.min(100,+st.width||80)),hgt:Math.max(40,Math.min(300,+st.hgt||100)),lm:lineMatch()}; }
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
+/* who answers the TV LG / Samsung app on the home network: the computer (pc/lg.js) or the phone (its core) */
+function LGP(){ return (D&&D.lg)||(DPS&&DPS.lan)||null; }
 function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; var sr=coverOn()&&S.region?subRect():null; o.cov=sr?camRect(sr):null; if(o.cov&&sr.spot){ o.cspot=1; o.cal=sr.al; o.cfs=Math.max(8,Math.round(sr.lh*(o.cov.h/sr.h)*1080*0.82)); o.cn=sr.n; }
   /* over the whole subtitle area (no line found yet): letters measured on the picture like on the phone/computer
      (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
@@ -2812,8 +2875,8 @@ function tvRelayNow(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new
 function tvSend(o){
   o=tvBody(o); var ip=tvIp();
   /* TV LG with the app: straight over the home network (the TV asks this computer), and through honggame.store as a backup */
-  if(lanTv()&&D&&D.lg&&D.lg.push&&tvCode().length>=4){
-    D.lg.push(tvCode(),o);
+  if(lanTv()&&LGP()&&LGP().push&&tvCode().length>=4){
+    LGP().push(tvCode(),o);
     return tvRelay(o).catch(function(e){ if(Date.now()-S.tvLanSeen<15000) return {ok:true}; throw e; });
   }
   if(ip) return TVD().send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); if(tvCode().length>=4) return tvRelay(o); throw new Error((r&&r.err)||'TV không trả lời'); });
@@ -2862,7 +2925,7 @@ S.tvHello=-1; S.tvBoot='';
 function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên '+(PH||IOS?'điện thoại':'máy tính')+'.'); }
 function tvListen(){
   var ip=tvIp(), c=tvCode();
-  if(lanTv()&&D&&D.lg&&D.lg.seen&&c.length>=4) D.lg.seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
+  if(lanTv()&&LGP()&&LGP().seen&&c.length>=4) LGP().seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
   /* the TV LG runs an older Hóng Sub app: update it with the key kept from the first install, once per start */
   if(S.tvType==='lg'&&D&&D.lg&&D.lg.ver&&D.lg.update&&c.length>=4&&!S.lgUpd&&Date.now()-(S.tvLanSeen||0)<20000&&S.appVer)
     D.lg.ver(c).then(function(v){
@@ -2886,6 +2949,8 @@ function tvListen(){
 }
 if(D&&D.version) D.version().then(function(v){ S.appVer=String(v||''); }).catch(function(){});
 if(D&&D.lg&&D.lg.addr) (function la(){ D.lg.addr().then(function(a){ if(a) S.lanPc=a; }).catch(function(){}); setTimeout(la,60000); })();   /* where TVs on the home network reach this computer */
+/* the phone apps: where TVs on the home network reach this phone (its Wi-Fi address changes when it changes networks) */
+function lanPcPhone(){ if(D||!DPS||!DPS.lan) return; (function la(){ DPS.lan.addr().then(function(a){ S.lanPc=a||''; }).catch(function(){}); setTimeout(la,45000); })(); }
 function tvLanInit(){
   if(!TVD()||S.tvLanInit) return; S.tvLanInit=true;
   $('hsTvIp').value=load('tvip','');
@@ -4898,7 +4963,7 @@ function hsMobilePs(){
   function send(line){ if(ws&&ws.readyState===1){ try{ ws.send(line); }catch(e){} } }
   var tvN=0;
   function tvAsk(ip,path,body){
-    if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(String(ip||''))) return Promise.resolve({ok:false,err:'ip'});
+    if(!/^\d{1,3}(\.\d{1,3}){3}(:\d{2,5})?$/.test(String(ip||''))) return Promise.resolve({ok:false,err:'ip'});
     var id='t'+(++tvN);
     return ask('tvpost '+id+' '+ip+' '+path+(body?'\n'+JSON.stringify(body):''),'tvpost',5000,id).then(function(r){
       var j={}; try{ j=JSON.parse(r.body||'{}'); }catch(e){}
@@ -4954,6 +5019,17 @@ function hsMobilePs(){
     stop:function(sleep){ send(sleep?'s':'q'); },
     onVideo:function(f){ H.v.push(f); }, onAudioHeader:function(f){ H.ah.push(f); }, onAudio:function(f){ H.a.push(f); }, onEvent:function(f){ H.ev.push(f); },
     ping:function(){ return ask('ping','pong',3000); },
+    /* TV LG / Samsung: the phone answers the TV app's questions on the home network, as the computer does (hslan.c) */
+    lan:(function(){ var addr='', on=0;
+      function start(){ return ask('lanon','lan',3000).then(function(r){ var ip=String((r&&r.ips)||'').split(',')[0]; addr=r&&r.port>0&&ip?ip+':'+r.port:''; on=Date.now(); return addr; }); }
+      return {
+        addr:function(){ return Date.now()-on<30000&&addr?Promise.resolve(addr):start(); },
+        push:function(code,o){ return open().then(function(w){ w.send('lanpush '+code+'\n'+JSON.stringify(o)); return true; },function(){ return false; }); },
+        seen:function(code){ return ask('lanseen '+code,'lanseen',3000,String(code).toUpperCase()).then(function(r){ return r&&r.ago>=0?Date.now()-r.ago:0; }); },
+        info:function(code){ return ask('lanseen '+(code||'XXXX'),'lanseen',3000,String(code||'XXXX').toUpperCase()); },
+        find:function(){ return ask('lanfind 3800','lanfind',8000).then(function(r){ return (r&&r.list)||[]; }); },
+        get:function(ipport,path,body){ return tvAsk(ipport,path,body); }
+      }; })(),
     tv:{
       find:function(){ return ask('tvfind 1800','tvfind',5000).then(function(r){ return (r&&r.list||[]).map(function(x){ var j={}; try{ j=JSON.parse(x.text); }catch(e){} j.ip=x.addr; return j; }).filter(function(j){ return j.app==='hongsubtv'; }); }); },
       ping:function(ip){ return tvAsk(ip,'/ping',null); },
@@ -5405,6 +5481,124 @@ if(D){
   D.windows().then(function(w){ if(w.some(function(x){return /remote play/i.test(x.name);})&&!S.stream){ pick(false).then(function(ok){ if(ok&&load('regionSet',false)&&(keys().length||groqKeys().length||orKeys().length||D.selftest)) startRun(); }); } }).catch(function(){});
   psInit();
 }
+/* ---------- the phone apps: TV LG and TV Samsung ----------
+   The TV app asks the phone for the next line straight over the home network (the phone's core answers like the
+   computer does), and goes through honggame.store with the TV code when they are not on the same Wi-Fi.
+   TV LG: the Android app can also put the Hóng Sub app on the TV (Developer Mode, as the computer does), open it
+   and update it. TV Samsung: installing needs a Samsung certificate made on a computer, so the phone finds the TV,
+   opens the app on it and connects by its code. */
+var MPTV={lg:[],tz:[]};
+function mpTvMsg(k,cls,t){ var m=$(k==='lg'?'mpLgMsg':'mpTzMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function mpCode(k){
+  var v=String(tvCodeFor(k)||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(v.length<4){ var AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v=''; for(var i=0;i<6;i++) v+=AL.charAt(Math.floor(Math.random()*AL.length));
+    if(S.tvType===k){ $('hsTv').value=v; save('tv',v); save('tv_'+k,v); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; } else save('tv_'+k,v); }
+  return v;
+}
+/* the TV app tells the phone its code when it asks over the home network: fill it in when the box is empty */
+function mpCodeLearn(){
+  if(!lanTv()||tvCode().length>=4||!DPS||!DPS.lan) return;
+  DPS.lan.info('').then(function(r){ var c=String((r&&r.codes)||'').split(',').filter(function(x){ return /^[A-Z0-9]{4,8}$/.test(x); });
+    if(c.length===1&&tvCode().length<4){ $('hsTv').value=c[0]; save('tv',c[0]); save('tv_'+S.tvType,c[0]); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; tvState(); log('đã lấy mã TV '+c[0]+' qua mạng nhà'); } }).catch(function(){});
+}
+function lgName(t){ var m=/DLNADeviceName\.lge\.com:\s*([^\r\n]+)/i.exec(t||'')||/friendlyName[^:]*:\s*([^\r\n]+)/i.exec(t||''); var n=''; try{ n=m?decodeURIComponent(m[1].trim()):''; }catch(e){ n=m?m[1].trim():''; } return n.replace(/^\[LG\]\s*/i,''); }
+function mpFind(k){
+  var b=$(k==='lg'?'mpLgFind':'mpTzFind'), L=$(k==='lg'?'mpLgList':'mpTzList'), tx=b.textContent;
+  b.disabled=true; b.textContent='Đang tìm...'; mpTvMsg(k,'',''); L.innerHTML='';
+  return DPS.lan.find().then(function(list){
+    var has=function(x,p){ return (x.ports||[]).indexOf(p)>=0; };
+    var lg=[], tz=[];
+    list.forEach(function(x){ var t=x.text||'';
+      if(/samsung|tizen/i.test(t)||(has(x,8001)&&has(x,8002))) tz.push({ip:x.addr,name:'TV Samsung '+x.addr});
+      else if(/lge|webos/i.test(t)||has(x,3001)||has(x,9922)||(has(x,3000)&&has(x,3001))) lg.push({ip:x.addr,name:lgName(t)||('TV LG '+x.addr),dev:has(x,9922)}); });
+    /* a TV Samsung says its name, model and Developer Mode on port 8001 */
+    return Promise.all(tz.map(function(t){ return DPS.lan.get(t.ip+':8001','/api/v2/',null).then(function(r){ var d=(r&&r.device)||{}; if(r&&r.ok&&(d.name||r.name)){ t.name=String(d.name||r.name).replace(/^\[TV\]\s*/,''); t.model=d.modelName||''; t.dev=String(d.developerMode)==='1'; } }).catch(function(){}); })).then(function(){ return k==='lg'?lg:tz; });
+  }).then(function(found){
+    b.disabled=false; b.textContent=tx; MPTV[k]=found;
+    if(!found.length){ mpTvMsg(k,'err','Chưa thấy '+(k==='lg'?'TV LG':'TV Samsung')+' nào. Kiểm tra TV đang bật và dùng chung Wi-Fi với điện thoại. '+(IOS?'iPhone: vào Cài đặt › Hóng Sub, bật Mạng cục bộ. ':'')+'Hoặc xem IP trên TV: Cài đặt › Mạng.'); return found; }
+    L.innerHTML=found.map(function(t,i){ return '<button class="hs-btn" type="button" data-i="'+i+'">'+esc(t.name)+' · '+esc(t.ip)+(t.dev?' · Developer Mode':'')+'</button>'; }).join('');
+    [].forEach.call(L.querySelectorAll('button'),function(x){ x.onclick=function(){ mpPick(k,found[+x.dataset.i]); }; });
+    if(found.length===1) mpPick(k,found[0]);
+    else mpTvMsg(k,'','Thấy '+found.length+' TV. Chọn TV đang dùng.');
+    return found;
+  }).catch(function(){ b.disabled=false; b.textContent=tx; return []; });
+}
+function mpPick(k,t){
+  save(k==='lg'?'mpLgIp':'mpTzIp',t.ip);
+  if(k==='lg'){ var ip=$('mpLgIp'); if(ip) ip.value=t.ip;
+    mpTvMsg('lg','ok','Đã chọn '+t.name+' ('+t.ip+').'+(t.dev&&PH?' TV đang bật Developer Mode: gõ Passphrase rồi bấm Cài app lên TV.':' Mở app Hóng Sub trên TV rồi gõ Mã TV đang hiện vào ô dưới.')); }
+  else { mpTvMsg('samsung','ok','Đã chọn '+t.name+(t.model?' ('+t.model+')':'')+', IP '+t.ip+'. Bấm Mở Hóng Sub trên TV, rồi gõ Mã TV đang hiện vào ô dưới.'); mpTzReady(); }
+}
+/* TV Samsung: opened through its remote-control service on port 8001 (the TV may ask once to allow the phone) */
+function mpTzOpen(){
+  var ip=load('mpTzIp',''); if(!ip){ mpTvMsg('samsung','err','Bấm Tìm TV Samsung trong nhà trước.'); return Promise.resolve({ok:false}); }
+  mpTvMsg('samsung','','Đang mở Hóng Sub trên TV...');
+  /* the code and this phone's address go with the launch: the TV app takes them, so nothing has to be typed */
+  return (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return DPS.lan.get(ip+':8001','/api/v2/applications/HongSubTv1.HongSub',{code:mpCode('samsung'),pc:pc||''}); }).then(function(r){
+    if(r&&r.ok){ mpTvMsg('samsung','ok','Đã bảo TV mở Hóng Sub. Nếu TV hỏi cho phép điện thoại thì chọn Cho phép. Mã TV trên TV khác '+tvCodeFor('samsung')+' thì gõ mã đang hiện trên TV vào ô dưới.'); later(mpCodeLearn,6000); }
+    else mpTvMsg('samsung','err','TV chưa mở được ('+((r&&(r.err||r.status))||'lỗi')+'). Trên remote bấm Home › Ứng dụng › Hóng Sub. TV chưa có app thì xem mục cài ở dưới.');
+    tvState(); return r||{ok:false};
+  });
+}
+function mpTzReady(){ var b=$('mpTzOpen'); if(b) b.hidden=!load('mpTzIp',''); window.hsTzOpen=load('mpTzIp','')?mpTzOpen:null; tvState(); }
+/* TV LG from the Android app: install, open, update over SSH with the TV's Developer Mode key */
+function mpLg(a){ return new Promise(function(res){ var id='lg'+Date.now()+Math.random().toString(36).slice(2,5); var cbs=window.hsNatCbs=window.hsNatCbs||{}; cbs[id]=res; try{ PH.nat('lg:'+JSON.stringify(a),id); }catch(e){ delete cbs[id]; res({ok:false,err:String(e)}); } }); }
+function mpLgOpen(){
+  mpTvMsg('lg','','Đang mở Hóng Sub trên TV...');
+  return (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'launch',code:mpCode('lg'),pc:pc||''}); }).then(function(r){
+    mpTvMsg('lg',r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV, mã TV '+tvCodeFor('lg')+'.':'Chưa mở được ('+((r&&r.err)||'')+'). Kiểm tra TV đang bật, cùng Wi-Fi, Developer Mode chưa hết hạn.'); tvState(); return r; });
+}
+/* the app on the TV LG is older than this phone's: update it with the key kept from the install, once per start */
+function mpLgAutoUpdate(){
+  if(S.mpLgUpd||!S.mpLgInst||S.tvType!=='lg'||tvCode().length<4||!S.appVer) return;
+  DPS.lan.info(tvCode()).then(function(r){
+    var vn=function(v){ var p=String(v||'').split('.'); return (+p[0]||0)*1e8+(+p[1]||0)*1e4+(+p[2]||0); };
+    if(S.mpLgUpd||!r||r.ago<0||r.ago>20000||!r.ver||vn(r.ver)>=vn(S.appVer)) return;
+    S.mpLgUpd=true; log('app trên TV LG là bản '+r.ver+', đang cập nhật lên '+S.appVer); status('busy','Đang cập nhật app Hóng Sub trên TV LG...');
+    (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'update',code:tvCode(),pc:pc||''}); }).then(function(x){
+      log(x&&x.ok?'đã cập nhật app trên TV LG':'cập nhật app TV LG chưa được: '+((x&&x.err)||'')); status(S.running?'run':'idle',x&&x.ok?'Đã cập nhật app trên TV LG':'Chưa cập nhật được app trên TV LG, vào Kết nối TV bấm Cài lại'); });
+  }).catch(function(){});
+}
+function mpLgUi(st){
+  var inst=st&&st.installed; S.mpLgInst=!!inst; $('mpLgOpen').hidden=!inst; window.hsLgOpen=inst?mpLgOpen:null;
+  $('mpLgSum').textContent=inst?'Cài lại / cập nhật app trên TV LG':'TV chưa có app Hóng Sub: cài lên TV LG';
+  $('mpLgGo').textContent=inst?'Cài lại':'Cài app lên TV'; if(inst&&!$('mpLgIp').value) $('mpLgIp').value=st.ip||'';
+  tvState();
+}
+function mpTvInit(){
+  if(D||!DPS||!DPS.mobile||!$('mpLgBox')) return;
+  $('mpLgBox').hidden=false; $('mpTzBox').hidden=false;
+  /* the computer's install parts and notes are for the Windows app */
+  [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] .hs-web,.tvp[data-k=samsung] .hs-web'),function(n){ n.style.display='none'; });
+  [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] > .hs-note,.tvp[data-k=samsung] > .hs-note'),function(n){ if(/Mã TV được điền sẵn|không cần gõ mã/.test(n.textContent)) n.textContent=n.textContent.replace(/ Mã TV được điền sẵn khi cài từ máy tính\./,' Cài từ điện thoại Android hoặc máy tính thì mã TV được điền sẵn.').replace(/ Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã\./,' Điện thoại nối với app trên TV bằng Mã TV.'); });
+  var andr=!!(PH&&PH.nat)&&!IOS; $('mpLgAnd').hidden=!andr; $('mpLgIos').hidden=andr;
+  $('mpLgFind').addEventListener('click',function(){ mpFind('lg'); });
+  $('mpTzFind').addEventListener('click',function(){ mpFind('samsung'); });
+  $('mpTzOpen').addEventListener('click',function(){ mpTzOpen(); });
+  $('mpLgOpen').addEventListener('click',function(){ mpLgOpen(); });
+  $('mpLgIp').value=load('mpLgIp','');
+  mpTzReady();
+  if(andr){
+    var prevNat=window.hsNat;   /* answers from the app for the TV LG part come back here */
+    window.hsNat=function(id,res){ var cbs=window.hsNatCbs||{}; if(cbs[id]){ var f=cbs[id]; delete cbs[id]; if(typeof res==='string'){ try{ res=JSON.parse(res); }catch(e){ res={ok:false,err:res}; } } f(res||{}); return; } if(prevNat) prevNat(id,res); };
+    var prevEvt=window.hsPhoneEvt;
+    window.hsPhoneEvt=function(type,data){ if(type==='lg'){ var d={}; try{ d=typeof data==='string'?JSON.parse(data||'{}'):(data||{}); }catch(e){} if(d.t) mpTvMsg('lg','',d.t); return; } return prevEvt&&prevEvt(type,data); };
+    mpLg({do:'state'}).then(mpLgUi);
+    setInterval(mpLgAutoUpdate,15000);
+    $('mpLgGo').addEventListener('click',function(){
+      var b=$('mpLgGo'), ip=($('mpLgIp').value||'').trim(), pass=($('mpLgPass').value||'').trim().toUpperCase();
+      if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ mpTvMsg('lg','err','Bấm Tìm TV LG trong nhà, hoặc gõ IP của TV (Cài đặt › Mạng trên TV).'); return; }
+      if(pass.length<4){ mpTvMsg('lg','err','Gõ Passphrase: 6 chữ đang hiện trong app Developer Mode trên TV.'); return; }
+      save('mpLgIp',ip); b.disabled=true;
+      (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'install',ip:ip,pass:pass,code:mpCode('lg'),pc:pc||''}); }).then(function(r){
+        b.disabled=false;
+        if(r&&r.ok){ mpTvMsg('lg','ok','Đã cài và mở Hóng Sub trên TV LG, mã TV '+tvCodeFor('lg')+'. Bấm Gửi thử để xem chữ trên TV.'); $('mpLg').open=false; mpLg({do:'state'}).then(mpLgUi); }
+        else mpTvMsg('lg','err',(r&&r.err)||'Chưa cài được.');
+      });
+    });
+  }
+  setInterval(mpCodeLearn,5000);
+}
 /* ---------- phone apps with Remote Play inside (Android, iPhone) ---------- */
 if(!D&&DPS){
   document.documentElement.classList.add('hs-mps');
@@ -5435,7 +5629,7 @@ if(!D&&DPS){
   if(typeof VideoDecoder==='undefined') psMsg('err',IOS?'iPhone cần iOS 16.4 trở lên để nhận hình PS5. Vào Cài đặt › Cài đặt chung › Cập nhật phần mềm.':'Điện thoại cần cập nhật Android System WebView (hoặc Chrome) để nhận hình PS5.');
   psInit();
   window.hsPsApi={PS:PS,view:psStartView,dps:DPS,login:psLogin,find:psFind};   /* for testing */
-  tvLanInit(); tvTypeUi&&tvTypeUi(); tvState&&tvState();
+  tvLanInit(); lanPcPhone(); mpTvInit(); tvTypeUi&&tvTypeUi(); tvState&&tvState();
   [].forEach.call(document.querySelectorAll('.hs-devw'),function(e){ e.textContent='điện thoại'; });
   DPS.ping().then(function(r){ log('PS: lõi Remote Play '+(r&&r.core?r.core:'chưa chạy ('+((r&&r.err)||'')+')')); });
 }
