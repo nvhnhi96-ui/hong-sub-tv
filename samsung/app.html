@@ -174,7 +174,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.133';
+var VERSION='1.0.134';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -198,7 +198,7 @@ var P={
   read:'auto'                         /* reading aloud is decided on the computer */
 };
 /* Hóng Sub on the computer opens this app with its TV code, so nobody types it on the TV */
-function launchParams(){ try{ if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem&&window.PalmSystem.launchParams; return (s?(typeof s==='string'?JSON.parse(s):s):null)||{}; }catch(e){ return {}; } }
+function launchParams(){ try{ var tl=tzLaunch(); if(tl) return tl; if(window.HS_PRESET&&typeof window.HS_PRESET==='object') return window.HS_PRESET; var s=window.PalmSystem&&window.PalmSystem.launchParams; return (s?(typeof s==='string'?JSON.parse(s):s):null)||{}; }catch(e){ return {}; } }
 function launchCode(){ var c=String(launchParams().code||'').toUpperCase(); return /^[A-Z0-9]{4,8}$/.test(c)?c:''; }
 function launchPc(){ var a=String(launchParams().pc||''); return /^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(a)?a:''; }
 P.pc=load('pc','');
@@ -649,6 +649,15 @@ if(packaged&&P.src) setSource(P.src); else { if(!packaged) P.src=0; video.style.
 setTimeout(function(){ var b=document.querySelector('#homeBtns .btn'); if(b&&!panelOn) try{ b.focus(); }catch(e){} },300);
 window.addEventListener('resize',applyLook);
 
+/* opened from Hóng Sub on a phone: the code and the phone's address come with the launch (the TV hands them over as
+   app-control data); the same as an LG relaunch when the app is already open */
+function tzLaunch(){
+  try{ var r=tizen.application.getCurrentApplication().getRequestedAppControl(), d=(r&&r.appControl&&r.appControl.data)||[];
+    for(var i=0;i<d.length;i++){ var vs=d[i].value||[]; for(var k=0;k<vs.length;k++){ var o=null; try{ o=JSON.parse(vs[k]); }catch(e){}
+      if(o&&typeof o==='object'&&(o.code||o.pc)) return o; } } }catch(e){}
+  return null;
+}
+window.addEventListener('appcontrol',function(){ try{ var ev=document.createEvent('Event'); ev.initEvent('webOSRelaunch',false,false); document.dispatchEvent(ev); }catch(e){} });
 /* ---------- Samsung (Tizen) ----------
    The HDMI picture is drawn by the TV itself in a window under the page: the page turns see-through where the game shows. */
 function setSource(n){
