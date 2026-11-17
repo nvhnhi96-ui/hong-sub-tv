@@ -2353,11 +2353,16 @@ function zHintGroups(B,lines){
   }
   return B;
 }
-function zBlocks(o){
+function zBlocks(o,zh){
   if(!o||!o.blocks||!o.W) return [];
   var src=o.blocks.filter(function(b){ return b.conf>=0.5; }).map(function(b){ return {x:b.x,y:b.y,w:b.w,h:b.h,lh:b.lh||b.h/(b.n||1),n:b.n||1,x0:b.x0,text:b.text,icons:b.icons||[],conf:b.conf}; });
   zHintGroups(src,(o.lines||[]).filter(function(l){ return l.conf>=0.5; }));
   return src.map(function(b){
+    /* not text to translate: a game logo or title (huge letters), the game's own name, a scrap of a few letters,
+       text already in Vietnamese (the PS5's own screens) */
+    var plain=String(b.text||'').replace(/\uE000/g,' ');
+    if(zh&&(b.lh||b.h/(b.n||1))/o.H*zh>0.065) return null;
+    if(plain.replace(/[^A-Za-zÀ-ỹ]/g,'').length<4||zIsTitle(plain)||viPlain(plain)) return null;
     var P=zPrep(b.text,b.icons), lines=P.n?P.en.split('\n'):[];
     if(!lines.length) return null;
     var n=String(b.text||'').split('\n').length;
@@ -2436,7 +2441,7 @@ async function zoneTick(force,only){
       if(!force){
         if(m.ink<MW*MH*0.004){                                  /* the text went away: take the translation away too */
           z.prevMask=m; z.empty=(z.empty||0)+1;
-          if(z.empty>=2&&(z.vi||z.lastText)) zGone(z);
+          if((z.vi||z.lastText)&&(z.empty>=2||z.items)) zGone(z);   /* boxes over the text: gone with it at once */
           continue;
         }
         z.empty=0;
@@ -2446,14 +2451,15 @@ async function zoneTick(force,only){
         if(!changed){ z.wobble=0; continue; }
         /* quest text in a corner sits over the moving game world, so it never holds perfectly still:
            read it anyway after a moment, not too often. The translation only changes if the words do. */
-        if(!steady){ z.wobble=(z.wobble||0)+1; if(!ocrOn()||z.wobble<3||Date.now()-(z.readAt||0)<2500) continue; }
+        var bigCh=z.doneMask&&maskDiff(m,z.doneMask)>0.3;   /* a new screen, a new menu: read it as soon as it holds a moment */
+        if(!steady){ z.wobble=(z.wobble||0)+1; if(!ocrOn()||z.wobble<(bigCh?2:3)||(!bigCh&&Date.now()-(z.readAt||0)<2500)) continue; }
         z.wobble=0;
       }
       z.doneMask=m; z.readAt=Date.now();
       var text='', bl=null, zic=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o); if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h); if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
@@ -2476,14 +2482,26 @@ async function zoneTick(force,only){
       z.pending=true; if(!z.vi) zShow();                  /* cover the foreign text while it is being translated */
       var t=null;
       if(zSpot(z)&&bl&&bl.length){
-        /* paragraph by paragraph, each keeps its own number of lines */
-        try{ for(var bi=0;bi<bl.length;bi++){ var B=bl[bi], tb=null;
+        /* paragraph by paragraph, each keeps its own number of lines. A paragraph still on screen keeps its translation
+           at once (a menu where only the highlight moved), boxes of text that is gone are taken off at once, and each new
+           translation shows as soon as it is ready instead of after all of them */
+        var prevIts=(z.items||z.keep||[]).slice(); z.keep=null;
+        var lineVi={}; prevIts.forEach(function(p){ if(p.ic&&p.ic.length) return; var el=String(p.en).split('\n'), vl=String(p.vi).split('\n'); if(el.length===vl.length) el.forEach(function(l,i){ lineVi[l]=vl[i]; }); });
+        bl.forEach(function(B){
+          for(var pi=0;pi<prevIts.length;pi++){ if(prevIts[pi].en===B.en){ B.vi=prevIts[pi].vi; B.ic=prevIts[pi].ic; B.old=true; return; } }
+          var el=String(B.en).split('\n'); if(!(B.ic&&B.ic.length)&&el.every(function(l){ return lineVi[l]; })){ B.vi=el.map(function(l){ return lineVi[l]; }).join('\n'); B.old=true; }   /* the same lines, grouped differently */
+        });
+        var zNow=function(){ var its=bl.filter(function(x){ return x.vi; }); z.items=its.length?its:null; z.ic=null; z.vi=its.map(function(x){ return x.vi; }).join('\n'); z.hide=false; zShow(); zPush(); zTv(z); };
+        zNow();
+        try{ await Promise.all(bl.map(async function(B){ try{ var tb=null; if(B.old){ t=t||{vi:B.vi,via:'nhớ'}; return; }
             if(zNeedsEye(B.en,B.ic)){ try{ var e=await zEye(z,zcv,B,B.en,B.n); if(e.vi){ tb={vi:e.vi,via:S.via}; B.ic=e.ic; } }catch(er){ log(zName(z)+': chưa xem được ảnh nút bấm ('+(er.cool?'mã hết lượt':String(er.message||er).slice(0,50))+')'); } }
             if(!tb){ tb=await zTranslate(z,B.en,B.ic); if(tb.ic) B.ic=tb.ic; }
-            B.vi=lineSplit(zViClean(tb.vi),B.n); t=tb; } } finally{ z.pending=false; }
+            B.vi=lineSplit(zViClean(tb.vi),B.n); t=tb;
+            if(zSame(B.en,B.vi)) B.vi='';   /* nothing was translated (a name, a logo read as letters): no box */
+            if(B.vi) zNow(); }catch(eB){ log(zName(z)+' dịch lỗi: '+(eB.cool?'mã hết lượt':String(eB.message||eB).slice(0,60))); } })); } finally{ z.pending=false; }
         var its=bl.filter(function(x){ return x.vi; });
-        if(!its.length){ zShow(); continue; }
-        z.items=its; z.ic=null; t={vi:its.map(function(x){ return x.vi; }).join('\n'),via:t.via};
+        if(!its.length){ z.items=null; z.vi=''; zShow(); zPush(); zTv(z); continue; }
+        z.items=its; z.ic=null; t={vi:its.map(function(x){ return x.vi; }).join('\n'),via:(t&&t.via)||'nhớ'};
       } else { z.items=null; z.ic=zic; try{
           if(zNeedsEye(text,zic)){ try{ var e2=await zEye(z,zcv,{x:0,y:0,w:1,h:1},text,text.split('\n').length); if(e2.vi){ t={vi:e2.vi,via:S.via}; z.ic=e2.ic; } }catch(er2){ log(zName(z)+': chưa xem được ảnh nút bấm'); } }
           if(!t){ t=await zTranslate(z,text,zic); if(t.ic) z.ic=t.ic; }
@@ -2498,9 +2516,17 @@ async function zoneTick(force,only){
 }
 /* the area's Vietnamese as plain words (reading aloud): button names stay, icon pictures are left out */
 function zSay(z){ return z.items&&z.items.length?z.items.map(function(it){ return zIcText(it.vi,it.ic,''); }).join('\n'):zIcText(z.vi,z.ic,''); }
+/* only words of the game's own name ("BLACK MYTH", "WUKONG" on the title screen) */
+function zIsTitle(t){
+  function ws(x){ return String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(function(w){ return w.length>1; }); }
+  var w=ws(t), g={}; ws(($('hsGame')&&$('hsGame').value)||'').forEach(function(x){ g[x]=1; });
+  return w.length>0&&w.length<=6&&Object.keys(g).length>0&&w.every(function(x){ return g[x]; });
+}
+/* the "translation" is the original again (a name, letters of a logo): not worth a box */
+function zSame(en,vi){ var a=String(en||'').replace(/\{\{\d+\}\}/g,'').toLowerCase().replace(/[^a-z0-9]/g,''), b=String(vi||'').replace(/\{\{\d+\}\}/g,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]/g,''); return !b||a===b; }
 /* the original text is gone: so is the translation (unless a number of seconds was set) */
 function zGone(z){
-  if(+z.hold>0){ z.lastText=''; z.doneMask=null; return; }
+  clearTimeout(ZT[z.id]); z.keep=null;
   var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; zShow(); zList(); zPush(); if(had) zTv(z);
 }
 /* a controller hint that slipped into the translation is taken out too */
@@ -4147,9 +4173,12 @@ var MAP_W={zoom:/\bzoom( in| out)?\b/,legend:/\blegends?\b/,waypoint:/\bwaypoint
 var MAP_ONLY={zoom:1,legend:1,waypoint:1,travel:1,marker:1,pin:1,beacon:1};
 function guardOn(){ var c=$('hsGuard'); return c?c.checked:load('guard',true); }
 /* what kind of screen these pieces of text say: 'ps' (the console's own screens), 'map', or '' (the game) */
+var PS_VI=/\b(da phuong tien|tiep tuc tai vi tri|hoat dong hien tai|xem chi tiet hoat dong|thu vien tro choi|trung tam dieu khien|che do nghi|tat ps5|khoi dong lai ps5|bo suu tap cua ban|da choi gan day|cua hang playstation)\b/;
 function guardKind(texts){
   var weak={}, mp={}, strong=false;
   (texts||[]).forEach(function(t0){
+    var sv=String(t0||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ');
+    if(PS_VI.test(sv)) strong=true;   /* the PS5's own screens in Vietnamese */
     var s=String(t0||'').toLowerCase().replace(/[^a-z0-9&+\- ]+/g,' ').replace(/\s+/g,' ').trim(); if(!s) return;
     if(PS_STRONG.test(s)) strong=true;
     if(s.split(' ').length>4) return;                                       /* only short pieces: menu words and button hints */
@@ -4976,7 +5005,7 @@ var VO_JUNK=/^(?:(?:thank you|thanks)(?: (?:so much|very much))?(?: for watching
 /* the recogniser sometimes writes the game's own name when it hears only noise: never a line to translate */
 function voIsTitle(t){
   var w=voWords(t); if(!w.length||w.length>6) return false;
-  var g={}; voWords(($('hsGame')&&$('hsGame').value)||'').concat(['the','video','game','dialogue','from']).forEach(function(x){ g[x]=1; });
+  var g={}; String(($('hsGame')&&$('hsGame').value)||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).concat(['the','video','game','dialogue','from']).forEach(function(x){ if(x) g[x]=1; });
   return w.every(function(x){ return g[x]; });
 }
 /* spoken line or subtitle: the same words? (names, punctuation and small mishearings apart) */
