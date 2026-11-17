@@ -11,6 +11,7 @@ targets:
   HongSub:
     type: application
     platform: iOS
+    scheme: {}
     sources:
       - path: HongSub
       - path: web

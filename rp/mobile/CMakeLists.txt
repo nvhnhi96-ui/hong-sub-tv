@@ -74,6 +74,9 @@ target_link_libraries(hs_chiaki Threads::Threads)
 if(NOT WIN32 AND NOT APPLE AND NOT ANDROID)
 	target_link_libraries(hs_chiaki m)
 endif()
+if(APPLE AND NOT IOS)
+	target_link_libraries(hs_chiaki "-framework CoreServices")   # takion.c asks the macOS version (computer test build)
+endif()
 
 # ---- the bridge to the app's page ----
 if(HSRP_SHARED)

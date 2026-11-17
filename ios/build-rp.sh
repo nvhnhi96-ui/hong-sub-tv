@@ -17,7 +17,7 @@ cmake -S "$HERE/../rp/mobile" -B "$B" -G "Unix Makefiles" \
   -DCHIAKI_DIR="$HERE/../rp/chiaki-ng" $EXTRA
 cmake --build "$B" --target hsrp -j 4
 mkdir -p "$OUT"
-LIBS="$(find "$B" -name '*.a' | grep -E 'libhsrp\.a|libhs_chiaki\.a|libhs_jerasure\.a|libhs_gf\.a|libprotobuf-nanopb-static\.a|libmbedtls\.a|libmbedx509\.a|libmbedcrypto\.a')"
+LIBS="$(find "$B" -name '*.a' | grep -E '/(libhsrp|libhs_chiaki|libhs_jerasure|libhs_gf|libprotobuf-nanopb(-static)?|libmbedtls|libmbedx509|libmbedcrypto)\.a$')"
 echo "$LIBS"
 libtool -static -o "$OUT/libhsrp_all.a" $LIBS
 ls -la "$OUT"
