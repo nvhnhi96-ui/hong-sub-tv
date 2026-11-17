@@ -316,6 +316,7 @@ public class OverlayService extends Service {
         final Typeface face = faceFor(j.optString("font", prefs.font()));
         final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
         final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
+        final String zbgc = j.optString("zbgc", ""), zfgc = j.optString("zfg", "");   // "Theo màu game": colours around the original
         main.post(() -> {
             if (zoneLayer == null) return;
             Runnable old = zoneOff.remove(id);
@@ -336,7 +337,7 @@ public class OverlayService extends Service {
                 zoneLayer.addView(tv);
             }
             if (zgrow) {   // "Đúng chỗ": one paragraph right over its own original
-                spotBox(tv, vi, face, zal, zbg, zpx, zauto, x, y, w, h, zx, zw, zmaxw);
+                spotBox(tv, vi, face, zal, zbg, zpx, zauto, x, y, w, h, zx, zw, zmaxw, zbgc, zfgc);
                 final TextView vs = tv;
                 Runnable offS = () -> { zoneLayer.removeView(vs); zoneViews.remove(id); zoneOff.remove(id); };
                 zoneOff.put(id, offS);
@@ -407,7 +408,7 @@ public class OverlayService extends Service {
          letters get smaller.
        Every size is worked out here and set exactly, so no TV draws it differently. */
     private void spotBox(TextView tv, String vi, Typeface face, String zal, int zbg, int zpx, boolean auto,
-                         double x, double y, double w, double h, double zx, double zw, double zmaxw) {
+                         double x, double y, double w, double h, double zx, double zw, double zmaxw, String bgc, String fgc) {
         DisplayMetrics dm = new DisplayMetrics();
         wm.getDefaultDisplay().getRealMetrics(dm);
         int W = dm.widthPixels, H = dm.heightPixels;
@@ -464,10 +465,39 @@ public class OverlayService extends Service {
         tv.setLayoutParams(fl);
         tv.setPadding(padH, 0, padH, 0);
         tv.setGravity(("c".equals(zal) ? Gravity.CENTER_HORIZONTAL : "r".equals(zal) ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
-        GradientDrawable zb = new GradientDrawable();
-        zb.setColor(Color.argb(Math.round(zbg * 2.55f), 8, 9, 12));
-        zb.setCornerRadius(dp(3));
-        tv.setBackground(zb);
+        int a = Math.round(zbg * 2.55f);
+        int bg = 0;
+        boolean game = bgc != null && bgc.matches("#[0-9A-Fa-f]{6}");
+        if (game) { try { bg = Color.parseColor(bgc); } catch (Exception e) { game = false; } }
+        if (game) {
+            a = 255;   // the game's own colour: fully over the English, the soft edges blend it in
+            // "Theo màu game": the colour of the picture around the original text, the colour of its letters, and soft
+            // edges (three layers fading out around the box) so it blends into the game instead of a dark patch
+            int fe = Math.max(dp(2), Math.round(f * 0.3f));
+            fl.width = boxW + 2 * fe; fl.height = boxH + 2 * fe; fl.leftMargin -= fe; fl.topMargin -= fe;
+            tv.setLayoutParams(fl);
+            tv.setPadding(padH + fe, fe, padH + fe, fe);
+            int r = Color.red(bg), g = Color.green(bg), b = Color.blue(bg);
+            GradientDrawable l0 = new GradientDrawable(), l1 = new GradientDrawable(), l2 = new GradientDrawable();
+            l0.setColor(Color.argb(Math.round(a * 0.3f), r, g, b)); l0.setCornerRadius(fe * 1.5f);
+            l1.setColor(Color.argb(Math.round(a * 0.65f), r, g, b)); l1.setCornerRadius(fe);
+            l2.setColor(Color.argb(a, r, g, b)); l2.setCornerRadius(fe / 2f);
+            android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{l0, l1, l2});
+            ld.setLayerInset(1, fe / 2, fe / 2, fe / 2, fe / 2);
+            ld.setLayerInset(2, fe, fe, fe, fe);
+            tv.setBackground(ld);
+            int fg = Color.WHITE;
+            try { if (fgc != null && fgc.matches("#[0-9A-Fa-f]{6}")) fg = Color.parseColor(fgc); } catch (Exception ignored) { }
+            tv.setTextColor(fg);
+            tv.setShadowLayer(dp(2), 0f, 0f, Color.argb(230, r, g, b));
+        } else {
+            GradientDrawable zb = new GradientDrawable();
+            zb.setColor(Color.argb(a, 8, 9, 12));
+            zb.setCornerRadius(dp(3));
+            tv.setBackground(zb);
+            tv.setTextColor(Color.WHITE);
+            tv.setShadowLayer(3f, 0f, 1f, Color.BLACK);
+        }
     }
 
     /** The typeface picked on the computer, as close as Android TV's own fonts allow. */

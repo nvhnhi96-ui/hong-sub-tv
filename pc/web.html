@@ -1171,7 +1171,7 @@ var zV2=load('zonesV2',false);
 if(!load('zbg90',false)){ S.zones.forEach(function(z){ if(z.bg===0) z.bg=90; }); save('zbg90',true); if(S.zones.length) zSave(); }
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',speak:!!z.speak};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1235,7 +1235,7 @@ function zShow(){
         var f=+z.px>0?(+z.px*b.h/1080):Math.max(6,it.lh*zh*0.92);
         return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+esc(it.vi)+'</div>';
       }).join('');
-      var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)); });   /* the same rules as on the TV */
+      var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)); zLook(d,z.items[i],z,parseFloat(d.style.fontSize)||14); });   /* the same rules as on the TV */
     }
   });
   [].slice.call(zLayer.children).forEach(function(el){ if(!S.zones.some(function(z){return z.el===el;})) el.remove(); });
@@ -1246,6 +1246,45 @@ video.addEventListener('loadedmetadata',zShow);
    Never smaller than the original (the English is hidden) and centred on it; the Vietnamese keeps its lines; with the
    size read from the original the lines fit the original's height (a box never runs onto the next menu line); a longer
    line widens the box inside the area on the side the text is lined up, past that the letters get smaller. */
+/* "Theo màu game": the colour of the picture right around the original text (the edges of its box, where there are no
+   letters) and the colour of its letters, so the Vietnamese box looks like the game's own text, not a dark patch */
+var zcc=document.createElement('canvas'), zccx=zcc.getContext('2d',{willReadFrequently:true});
+function zColors(cv,it){
+  var W=cv.width, H=cv.height, x0=Math.max(0,Math.floor(it.x*W)), y0=Math.max(0,Math.floor(it.y*H)), x1=Math.min(W,Math.ceil((it.x+it.w)*W)), y1=Math.min(H,Math.ceil((it.y+it.h)*H));
+  var w=x1-x0, h=y1-y0; if(w<4||h<4) return {};
+  var sc=Math.min(1,160/w); zcc.width=Math.max(4,Math.round(w*sc)); zcc.height=Math.max(4,Math.round(h*sc));
+  zccx.drawImage(cv,x0,y0,w,h,0,0,zcc.width,zcc.height);
+  var d=zccx.getImageData(0,0,zcc.width,zcc.height).data, cw=zcc.width, ch=zcc.height;
+  var by=Math.max(1,Math.round(ch*0.14)), bx=Math.max(1,Math.round(cw*0.03));
+  var hb=[new Uint32Array(256),new Uint32Array(256),new Uint32Array(256)], nb=0, px=[];
+  for(var y=0;y<ch;y++) for(var x=0;x<cw;x++){ var i=(y*cw+x)*4, edge=y<by||y>=ch-by||x<bx||x>=cw-bx;
+    if(edge){ hb[0][d[i]]++; hb[1][d[i+1]]++; hb[2][d[i+2]]++; nb++; } else px.push(i); }
+  if(!nb) return {};
+  function med(hh){ var half=nb/2, s=0; for(var v=0;v<256;v++){ s+=hh[v]; if(s>=half) return v; } return 255; }
+  var bg=[med(hb[0]),med(hb[1]),med(hb[2])];
+  /* the letters: the pixels inside that are furthest from the background */
+  var far=px.map(function(i){ var a=d[i]-bg[0], b=d[i+1]-bg[1], c=d[i+2]-bg[2]; return [a*a+b*b+c*c,i]; }).filter(function(q){ return q[0]>3600; }).sort(function(a,b){ return b[0]-a[0]; });
+  var fg=null;
+  if(far.length>=6){ var top=far.slice(0,Math.max(6,Math.round(far.length*0.35))), r=[],g=[],b=[];
+    top.forEach(function(q){ r.push(d[q[1]]); g.push(d[q[1]+1]); b.push(d[q[1]+2]); });
+    function m(a){ a.sort(function(p,q){return p-q;}); return a[a.length>>1]; }
+    fg=[m(r),m(g),m(b)]; }
+  function lum(c){ return [0,1,2].map(function(k){ var v=c[k]/255; return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4); }).reduce(function(s,v,k){ return s+v*[0.2126,0.7152,0.0722][k]; },0); }
+  var lb=lum(bg);
+  function contrast(c){ var l=lum(c), a=Math.max(l,lb), b2=Math.min(l,lb); return (a+0.05)/(b2+0.05); }
+  if(!fg||contrast(fg)<3) fg=lb>0.4?[17,17,20]:[255,255,255];   /* never letters that are hard to read */
+  function hex(c){ return '#'+c.map(function(v){ return ('0'+Math.max(0,Math.min(255,Math.round(v))).toString(16)).slice(-2); }).join(''); }
+  return {bg:hex(bg),fg:hex(fg)};
+}
+function rgba(hex,a){ var n=parseInt(String(hex).slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+/* one Vietnamese box: dark, or in the game's own colours with soft edges */
+function zLook(d,it,z,f){
+  var a=(z.bg==null?90:+z.bg)/100, s=d.style;
+  if((z.look||'auto')!=='dark'&&it&&it.bg){
+    var fe=Math.max(2,Math.round(f*0.35)); a=1;   /* the game's own colour: fully over the English, the soft edges blend it in */
+    s.background=rgba(it.bg,a); s.color=it.fg||'#fff'; s.boxShadow='0 0 '+fe+'px '+Math.round(fe/2)+'px '+rgba(it.bg,a); s.textShadow='0 0 3px '+rgba(it.bg,0.9); s.borderRadius=Math.round(fe/2)+'px';
+  } else { s.background='rgba(8,9,12,'+a+')'; s.color=''; s.boxShadow=''; s.textShadow=''; s.borderRadius=''; }
+}
 function spotFit(d,it,zw,zh,al,auto){
   if(!d||!it) return;
   var bx=it.x*zw, by=it.y*zh, bw=it.w*zw, bh=it.h*zh, cx=bx+bw/2;
@@ -1279,6 +1318,7 @@ function zList(){
       (D?'<label><span>Hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên game')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
       '<label><span>Cách hiện</span><select class="hs-in" data-f="place">'+opt('spot',z.place||'spot','Đúng chỗ')+opt('box',z.place,'Một khung')+'</select></label>'+
       '<label><span>Canh lề</span><select class="hs-in" data-f="al">'+opt('auto',al,'Theo chữ gốc')+opt('l',al,'Trái')+opt('c',al,'Giữa')+opt('r',al,'Phải')+'</select></label>'+
+      '<label title="Theo màu game: nền và màu chữ lấy đúng màu quanh chữ gốc, viền mờ dần, như chữ của game. Thanh Nền chỉ dùng cho Nền tối"><span>Màu nền</span><select class="hs-in" data-f="look">'+opt('auto',z.look||'auto','Theo màu game')+opt('dark',z.look||'auto','Nền tối')+'</select></label>'+
       '<label class="hs-zs" title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ <b class="zpxv">'+zpxTxt(px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="1" data-f="px" value="'+px+'" aria-label="Cỡ chữ của vùng"></label>'+
       '<label class="hs-zs"><span>Nền <b class="zbgv">'+bg+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+bg+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
       '</div><div class="hs-zfoot">'+
@@ -1300,7 +1340,7 @@ function zList(){
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on'||el.dataset.f==='place'){ z.lastText=''; z.doneMask=null; }
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
     var bgIn=row.querySelector('[data-f=bg]'); if(bgIn) bgIn.addEventListener('input',function(){ z.bg=+bgIn.value; row.querySelector('.zbgv').textContent=z.bg+'%'; zShow(); });
     var pxIn=row.querySelector('[data-f=px]'); if(pxIn) pxIn.addEventListener('input',function(){ var v=Math.round(+pxIn.value||0); if(v>0&&v<5) v=5; z.px=v; row.querySelector('.zpxv').textContent=zpxTxt(v); zShow(); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
@@ -1427,7 +1467,7 @@ async function zoneTick(force,only){
       var text='', bl=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o);
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
@@ -1487,7 +1527,8 @@ function zTv(z){
     tvSend(Object.assign({},base0,{zid:z.id,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
     z.items.forEach(function(it,i){
       var px=+z.px>0?+z.px:Math.max(6,Math.round(it.lh*zr.h*1080*0.92));
-      tvSend(Object.assign({},base0,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
+      var lk=(z.look||'auto')!=='dark'&&it.bg?{zbgc:it.bg,zfg:it.fg}:{};   /* "Theo màu game": the colours around the original */
+      tvSend(Object.assign({},base0,lk,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
     });
   }
   for(var j=nNew;j<nOld;j++) tvSend(Object.assign({},base0,{zid:z.id+'_'+j,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
@@ -1537,7 +1578,7 @@ function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.st
       if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:it.vi,size:+z.px>0?Math.round(+z.px/2):Math.max(5,Math.round(it.lh*z.h*1080*0.46)),bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
       else pl.push({id:z.id,vi:z.hide?'':(z.vi||''),size:+z.px>0?Math.round(+z.px/2):(ZSIZE[z.size]||17),bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x,y:z.y,w:z.w,h:z.h}); });
     PH.zones(JSON.stringify(pl)); }catch(e){} }
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */

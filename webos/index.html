@@ -314,6 +314,11 @@ function spotFit(el,j,W,H,f0){
   var left=al==='r'?bx+bw-w:al==='c'?cx-w/2:bx;
   s.width=w+'px'; s.paddingTop=s.paddingBottom=((h-nh2)/2)+'px';
   s.left=Math.max(0,Math.min(W-w,left))+'px'; s.top=Math.max(0,Math.min(H-h,by+bh/2-h/2))+'px';
+  /* "Theo màu game": the colours around the original text on the computer's picture, soft edges */
+  var bgc=/^#[0-9A-Fa-f]{6}$/.test(j.zbgc||'')?j.zbgc:'', fgc=/^#[0-9A-Fa-f]{6}$/.test(j.zfg||'')?j.zfg:'';
+  if(bgc){ var a=1, n=parseInt(bgc.slice(1),16), rgb=((n>>16)&255)+','+((n>>8)&255)+','+(n&255), fe=Math.max(2,Math.round(f*.35));
+    s.background='rgba('+rgb+','+a+')'; s.color=fgc||'#fff'; s.boxShadow='0 0 '+fe+'px '+Math.round(fe/2)+'px rgba('+rgb+','+a+')'; s.textShadow='0 0 3px rgba('+rgb+',.9)'; s.borderRadius=Math.round(fe/2)+'px'; }
+  else { s.color=''; s.boxShadow=''; s.textShadow=''; s.borderRadius=''; }
 }
 function zonesClear(){ for(var id in zones) if(zones.hasOwnProperty(id)) zoneOff(id); }
 /* Hóng Sub on the computer says "still here" every 10 s while area boxes are on the TV: when that stops (Hóng Sub

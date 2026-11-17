@@ -39,6 +39,10 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     s.width=W+'px'; s.paddingTop=s.paddingBottom=((H-nh2)/2)+'px';
     s.left=Math.max(0,Math.min(zw-W,left))+'px'; s.top=(by+bh/2-H/2)+'px';
   }
+  /* "Theo màu game": the box in the colours around the original text, with soft edges */
+  function rgba(hex,a){ var n=parseInt(String(hex).slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  function look(el,it,a,f){ if(!it||!it.bg) return; a=1; var fe=Math.max(2,Math.round(f*0.35)), s=el.style;
+    s.background=rgba(it.bg,a); s.color=it.fg||'#fff'; s.boxShadow='0 0 '+fe+'px '+Math.round(fe/2)+'px '+rgba(it.bg,a); s.textShadow='0 0 3px '+rgba(it.bg,.9); s.borderRadius=Math.round(fe/2)+'px'; }
   /* largest font (up to the chosen size) that fits the window */
   /* "Đúng chỗ từng đoạn": every paragraph of the original gets its own box at its own place in the window */
   function spots(){
@@ -51,7 +55,7 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
       return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
     }).join('');
     if(d.font) its.style.fontFamily=d.font;
-    [].forEach.call(its.children,function(el,i){ spotFit(el,d.items[i],window.innerWidth,H,d.al||'left',!(+d.px>0)); });   /* the same rules as on the TV */
+    [].forEach.call(its.children,function(el,i){ spotFit(el,d.items[i],window.innerWidth,H,d.al||'left',!(+d.px>0)); look(el,d.items[i],d.bg!=null?d.bg:.9,parseFloat(el.style.fontSize)||14); });   /* the same rules as on the TV */
   }
   function fit(){
     if(!cur) return;
