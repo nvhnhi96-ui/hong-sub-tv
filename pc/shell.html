@@ -141,6 +141,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
 .dk-set .hs-note{margin-top:2px}
 .dk-sw{margin-top:12px}
 .dk-colors{display:flex;gap:8px;flex-wrap:wrap}
+.dk-h3{font-size:15px;font-weight:700;margin:18px 0 6px;color:var(--ink)}
 .hs-tabs{display:flex;gap:6px;flex-wrap:wrap}
 .hs-tabs button{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line2);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;cursor:pointer}
 .hs-tabs button[aria-selected="true"]{background:var(--brand);border-color:var(--brand);color:#111}
@@ -608,6 +609,26 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="hs-vometer" aria-hidden="true"><i id="hsTalkLvl"></i></div>
               <p class="hs-note" id="hsTalkSt">Đang tắt.</p>
               <p class="hs-note">Cần mã Groq (miễn phí, nghe nhanh và chuẩn nhất) hoặc mã Gemini. Mỗi câu nói dùng 1 lượt. Câu nào game đã có phụ đề thì không dịch lại.</p>
+              <h3 class="dk-h3">Chữ của lời nói</h3>
+              <label class="hs-sw dk-sw">Lời nói dùng cỡ chữ, kiểu chữ và nền riêng (không theo khung phụ đề) <input type="checkbox" id="hsVoOn" checked></label>
+              <div class="dk-prev" id="hsVoPrev"><div><b id="hsVoPrevVi">Này anh bạn, lên xe đi, ta phải đi ngay.</b></div></div>
+              <div class="dk-set" data-vo-set><label class="lab" for="hsVoPos">Chỗ hiện trên hình game</label>
+                <select class="hs-in" id="hsVoPos">
+                  <option value="bottom">Dưới cùng hình game</option>
+                  <option value="top">Trên cùng hình game</option>
+                  <option value="sub">Chỗ vùng phụ đề</option>
+                </select></div>
+              <div class="dk-set" data-vo-set>
+                <div class="lab"><label for="hsVoSize">Cỡ chữ lời nói</label><output><span id="hsVoSizeV">26</span> px</output></div>
+                <input class="hs-range" id="hsVoSize" type="range" min="10" max="56" step="1" value="26">
+              </div>
+              <div class="dk-set" data-vo-set><span class="lab">Màu chữ lời nói</span><div class="dk-colors" id="hsVoColor" role="group" aria-label="Màu chữ lời nói"></div></div>
+              <div class="dk-set" data-vo-set><div class="lab"><label for="hsVoFont">Kiểu chữ lời nói</label></div><select class="hs-in" id="hsVoFont"></select></div>
+              <div class="dk-set" data-vo-set>
+                <div class="lab"><label for="hsVoBg">Độ đậm nền sau chữ lời nói</label><output id="hsVoBgV">60%</output></div>
+                <input class="hs-range" id="hsVoBg" type="range" min="0" max="100" step="2" value="60">
+              </div>
+              <p class="hs-note">Áp dụng cho chữ trên hình game, dưới hình, phụ đề nổi, điện thoại và TV. Phụ đề có sẵn của game vẫn theo mục Hiển thị phụ đề.</p>
             </div>
             <div class="dk-card">
               <h2>Ngôn ngữ và cách đọc chữ</h2>
