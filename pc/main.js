@@ -79,14 +79,26 @@ function createMain() {
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); shell.openExternal(url); } });
   const remember = () => { if (!win.isMinimized() && !win.isMaximized()) { cfg.main = win.getBounds(); saveCfg(); } };
   win.on('resize', remember); win.on('move', remember);
+  /* closing the window ends Hóng Sub: no more translating in the background, nothing left on the TV
+     (keep it running while playing: minimise the window instead) */
   win.on('close', (e) => {
     if (quitting || SELFTEST) return;
-    e.preventDefault(); win.hide();
-    if (!cfg.trayTold && Notification.isSupported()) {
-      new Notification({ title: 'Hóng Sub vẫn đang chạy', body: IS_MAC ? 'Bấm biểu tượng Hóng Sub trên Dock hoặc chữ H trên thanh menu để mở lại; Cmd+Q để tắt hẳn.' : 'Bấm biểu tượng chữ H ở góc phải thanh tác vụ để mở lại, hoặc chọn Thoát để tắt hẳn.' }).show();
-      cfg.trayTold = true; saveCfg();
-    }
+    e.preventDefault(); bye();
   });
+}
+/* Hóng Sub is ending: the page stops translating, stops reading aloud and takes its lines and area boxes off the TV,
+   then the app quits (at most 3 s, even if the TV does not answer) */
+let byeState = 0;
+function bye() {
+  if (byeState) return; byeState = 1;
+  const fin = () => { if (byeState === 2) return; byeState = 2; quitting = true; app.quit(); };
+  try { globalShortcut.unregisterAll(); } catch (e) { /* ignore */ }
+  for (const w of BrowserWindow.getAllWindows()) { if (w !== win && !w.isDestroyed()) { try { w.hide(); } catch (e) { /* ignore */ } } }
+  if (win && !win.isDestroyed()) { try { win.hide(); } catch (e) { /* ignore */ } }
+  if (!win || win.isDestroyed()) return fin();
+  ipcMain.once('bye-done', fin);
+  try { win.webContents.send('bye'); } catch (e) { return fin(); }
+  setTimeout(fin, 3000);
 }
 
 /* ---------- floating subtitle bar ---------- */
@@ -352,7 +364,7 @@ function buildTrayMenu() {
     { label: moveMode ? 'Xong di chuyển phụ đề (' + keys().move + ')' : 'Di chuyển phụ đề (' + keys().move + ')', click: () => overlayCmd('move') },
     { label: 'Đưa phụ đề về chỗ cũ', click: () => overlayCmd('reset') },
     { type: 'separator' },
-    { label: 'Thoát Hóng Sub', click: () => { quitting = true; app.quit(); } }
+    { label: 'Thoát Hóng Sub', click: bye }
   ]));
 }
 function createTray() {
@@ -1014,6 +1026,9 @@ app.on('activate', () => { if (!SELFTEST) showMain(); });
 if (IS_MAC) app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu', label: 'Hóng Sub' }, { role: 'editMenu', label: 'Sửa' }, { role: 'windowMenu', label: 'Cửa sổ' }]));
 });
-app.on('before-quit', () => { quitting = true; });
+app.on('before-quit', (e) => {
+  if (!SELFTEST && byeState !== 2 && win && !win.isDestroyed()) { e.preventDefault(); bye(); return; }   /* Cmd+Q, the tray, an update: tidy the TV first */
+  quitting = true;
+});
 app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper, rectProc]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

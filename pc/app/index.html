@@ -4736,6 +4736,21 @@ async function voStt(wav){
   },3000);
   if(c.checked) setTimeout(function(){ if(voSrc()==='mic'||(typeof PS!=='undefined'&&PS.stream)) voStart(); else voSt('Bật rồi. Hóng Sub nghe khi có hình game: PS5 trong Hóng Sub, hoặc chọn Micro để nghe loa TV.'); },1500);
 })();
+/* the Windows/Mac app is closing: stop translating and reading, take everything off the TV, then let the app quit */
+function hsBye(){
+  try{ stopSpeak(); }catch(e){}
+  try{ if(VO.node) voStop(); }catch(e){}
+  try{ if(S.running) stopRun(); }catch(e){}
+  var sends=[];
+  if(tvIp()||tvCode().length>=4){
+    S.zTvAny=true; try{ zTvClearAll(); }catch(e){}
+    var sp=$('hsSpeak'), was=sp.checked; sp.checked=false;   /* rd:false: the TV stops reading at once */
+    try{ sends.push(tvSend({vi:'Hóng Sub trên máy tính đã tắt.',who:'Hóng Sub',kind:'notice'})); }catch(e){}
+    sp.checked=was;
+  }
+  return Promise.race([Promise.all(sends.map(function(p){ return p.catch(function(){}); })),new Promise(function(ok){ setTimeout(ok,2200); })]);
+}
+if(D&&D.onBye) D.onBye(function(){ hsBye().then(function(){ D.byeDone(); },function(){ D.byeDone(); }); });
 /* ---------- PlayStation player (desktop app, and the phone apps through their Remote Play core) ---------- */
 function psDev(){ return DPS&&typeof DPS.mobile==='string'?'điện thoại':'máy tính'; }
 /* the phone apps (Android, iPhone) carry a Remote Play core (rp/mobile, built on chiaki-ng): the page talks to it

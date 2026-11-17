@@ -62,6 +62,8 @@ const api = {
   updateInstall: () => ipcRenderer.invoke('update-install'),
   onUpdate: (cb) => ipcRenderer.on('update-available', (e, u) => cb(u)),
   onUpdateProgress: (cb) => ipcRenderer.on('update-progress', (e, p) => cb(p)),
+  onBye: (cb) => ipcRenderer.on('bye', () => cb()),
+  byeDone: () => ipcRenderer.send('bye-done'),
   tv: {
     find: () => ipcRenderer.invoke('tv-find'),
     ping: (ip) => ipcRenderer.invoke('tv-ping', ip),
