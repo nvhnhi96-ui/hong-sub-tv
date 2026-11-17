@@ -1233,13 +1233,32 @@ function zShow(){
         var f=+z.px>0?(+z.px*b.h/1080):Math.max(6,it.lh*zh*0.92);
         return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+esc(it.vi)+'</div>';
       }).join('');
-      [].forEach.call(its.children,function(d){ var f=parseFloat(d.style.fontSize); for(var k=0;k<20&&(d.scrollWidth>d.clientWidth+1||d.getBoundingClientRect().right>el.getBoundingClientRect().right+2)&&f>5;k++){ f*=0.92; d.style.fontSize=f+'px'; } });   /* same lines as the original: smaller letters, never an extra line */
+      var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)); });   /* the same rules as on the TV */
     }
   });
   [].slice.call(zLayer.children).forEach(function(el){ if(!S.zones.some(function(z){return z.el===el;})) el.remove(); });
 }
 window.addEventListener('resize',function(){ if(S.stream) zShow(); });
 video.addEventListener('loadedmetadata',zShow);
+/* "Đúng chỗ": a paragraph's Vietnamese box over its own original (it: place as parts of the area; zw, zh: the area in px).
+   Never smaller than the original (the English is hidden) and centred on it; the Vietnamese keeps its lines; with the
+   size read from the original the lines fit the original's height (a box never runs onto the next menu line); a longer
+   line widens the box inside the area on the side the text is lined up, past that the letters get smaller. */
+function spotFit(d,it,zw,zh,al,auto){
+  if(!d||!it) return;
+  var bx=it.x*zw, by=it.y*zh, bw=it.w*zw, bh=it.h*zh, cx=bx+bw/2;
+  var room=Math.max(bw,al==='right'?bx+bw:al==='center'?2*Math.min(cx,zw-cx):zw-bx);
+  var s=d.style; s.left='0'; s.top='0'; s.minWidth='0'; s.minHeight='0'; s.maxWidth='none'; s.width='auto'; s.height='auto'; s.paddingTop=s.paddingBottom='0';
+  var f=parseFloat(s.fontSize)||14;
+  for(var k=0;k<5;k++){ var nh=d.offsetHeight, nw=d.offsetWidth, g=1;
+    if(auto&&nh>bh*1.1) g=Math.min(g,bh*1.1/nh);
+    if(nw>room) g=Math.min(g,room/nw*0.99);
+    if(g>0.995||f<=5) break; f=Math.max(5,f*g); s.fontSize=f+'px'; }
+  var nh2=d.offsetHeight, W=Math.min(room,Math.max(bw,d.offsetWidth)), H=Math.max(bh,nh2);
+  var left=al==='right'?bx+bw-W:al==='center'?cx-W/2:bx;
+  s.width=W+'px'; s.paddingTop=s.paddingBottom=((H-nh2)/2)+'px';
+  s.left=Math.max(0,Math.min(zw-W,left))+'px'; s.top=(by+bh/2-H/2)+'px';
+}
 function zpxTxt(v){ v=+v||0; return v>0?v+'':'tự động'; }
 /* where the lines sit in the box: as the original text, or as chosen */
 function zAlign(z){ var a=z.al||'auto'; return a==='auto'?(z.alAuto||'l'):a; }
@@ -1456,14 +1475,15 @@ function zTv(z){
   if(!(tvIp()||tvCode().length>=4)) return;
   var zr=camRect(z); if(!zr) return;   /* camera without the TV corners: no place on the TV yet */
   var shown=!!(z.vi&&z.on&&!z.hide), spot=zSpot(z)&&z.items&&z.items.length&&shown;
-  var base0={kind:'zone',hold:+z.hold||0,name:zName(z),zs:z.size||'m',zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfit:1};
+  var base0={kind:'zone',hold:+z.hold||0,name:zName(z),zs:z.size||'m',zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfit:1,zx:zr.x,zy:zr.y,zw:zr.w,zh:zr.h};   /* zx..zh: the whole area, so the TV knows how far a box may widen */
+  z.tvLive=shown;   /* something of this area is on the TV: taken off when Hóng Sub stops or the picture goes */
   /* each paragraph its own box (ids area_0, area_1...); boxes no longer needed are emptied */
   var nOld=z.tvN||0, nNew=spot?z.items.length:0;
   if(spot){
     tvSend(Object.assign({},base0,{zid:z.id,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
     z.items.forEach(function(it,i){
       var px=+z.px>0?+z.px:Math.max(6,Math.round(it.lh*zr.h*1080*0.92));
-      tvSend(Object.assign({},base0,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
+      tvSend(Object.assign({},base0,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
     });
   }
   for(var j=nNew;j<nOld;j++) tvSend(Object.assign({},base0,{zid:z.id+'_'+j,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
@@ -1472,6 +1492,36 @@ function zTv(z){
   var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
+/* Hóng Sub stopped, or the game picture went away (PS5 off, Remote Play closed): nothing of the areas stays on the TV.
+   zclr empties every area box on a new TV app; the boxes are also emptied one by one for older TV apps. */
+function zTvClearAll(){
+  if(!(tvIp()||tvCode().length>=4)) return;
+  var any=S.zones.some(function(z){ return z.tvLive||z.tvN; });
+  if(!any&&!S.zTvAny) return;
+  S.zTvAny=false;
+  tvSend({kind:'zone',zclr:1,vi:''}).catch(function(){});
+  S.zones.forEach(function(z){
+    if(!z.tvLive&&!z.tvN) return;
+    var zr=camRect(z)||{x:z.x,y:z.y,w:z.w,h:z.h}, o={kind:'zone',vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h};
+    tvSend(Object.assign({zid:z.id},o)).catch(function(){});
+    for(var j=0;j<(z.tvN||0);j++) tvSend(Object.assign({zid:z.id+'_'+j},o)).catch(function(){});
+    z.tvN=0; z.tvLive=false;
+  });
+}
+/* while something of the areas is on the TV, a short "still here" every 10 s: when it stops coming (Hóng Sub closed,
+   computer asleep, network gone), the TV takes the area boxes away by itself instead of keeping old text for minutes */
+(function(){
+  function beat(){
+    var live=S.zones.some(function(z){ return z.tvLive; });
+    if(live) S.zTvAny=true;
+    if(!live||!(tvIp()||tvCode().length>=4)) return;
+    if(!S.stream){ zTvClearAll(); return; }
+    tvSend({kind:'hb',hb:10,vi:''}).catch(function(){});
+  }
+  window.addEventListener('pagehide',function(){ try{ zTvClearAll(); }catch(e){} });   /* page or app closing: try to take them off right away */
+  function loop(){ try{ beat(); }catch(e){} later(loop,10000); }   /* later(): keeps ticking when the window is behind the game */
+  setTimeout(loop,10000);
+})();
 function zHold(z){
   clearTimeout(ZT[z.id]);
   if(+z.hold>0&&z.vi) ZT[z.id]=setTimeout(function(){ z.hide=true; zShow(); zPush(); zTv(z); },+z.hold*1000);
@@ -2155,11 +2205,16 @@ function coverShow(html){
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
   var lk=load('ovStyle',{}); d.style.fontFamily=subFont(); d.style.color=/^#[0-9A-Fa-f]{6}$/.test(lk.color||'')?lk.color:'#FFFFFF';
   c.style.background='rgba(6,7,9,'+Math.max(stageFs()?.97:.85,(lk.bg==null?74:+lk.bg)/100)+')';   /* the box hides the English line under it */
-  var fs=r.spot?Math.max(8,r.lh*b.h*0.82):Math.max(8,(+$('hsSize').value||28)*1.7*b.h/1080); d.style.fontSize=fs+'px';   /* the original letters' size, or "Cỡ chữ" (on a 1080-line picture) */ c.style.padding=(w<360||r.spot?'2px 6px':'');
+  var sk=Math.max(.4,Math.min(2.5,(+$('hsSize').value||28)/28));   /* "Cỡ chữ": 28 = the original letters' size over the original line */
+  var fs=r.spot?Math.max(8,r.lh*b.h*0.82*sk):Math.max(8,(+$('hsSize').value||28)*1.7*b.h/1080); d.style.fontSize=fs+'px';   /* the original letters' size, or "Cỡ chữ" (on a 1080-line picture) */ c.style.padding=(w<360||r.spot?'2px 6px':'');
   d.style.whiteSpace=lineMatch()||r.spot?'nowrap':''; d.style.textAlign=r.spot?({l:'left',c:'center',r:'right'}[r.al]||'center'):''; c.style.justifyContent=r.spot?({l:'flex-start',c:'center',r:'flex-end'}[r.al]||'center'):'';
   if(r.spot){ var need=d.scrollWidth+16, maxW=Math.min(1,lw/100)*b.w; if(need>w){ var nw=Math.max(w,Math.min(maxW,need)), left0=parseFloat(c.style.left)-ox; var nl=r.al==='l'?left0:r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(b.l,Math.min(b.l+b.w-nw,nl)); c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; } }   /* same lines as the original: no extra wrapping, smaller letters instead */
-  for(var i=0;i<16&&(d.scrollHeight>c.clientHeight+1||d.scrollWidth>c.clientWidth-8)&&fs>8;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }
-  var top=oy+cy-h/2, over=top+c.offsetHeight-st.height; if(over>0) c.style.top=Math.max(0,top-over)+'px';   /* keep it inside the picture (small phone screens) */
+  /* bigger letters make the box taller (still centred on the original line, never smaller than it); letters only shrink
+     when a line is too wide or the box would take almost half the picture */
+  c.style.height='auto'; var maxH=Math.max(h,b.h*0.45);
+  for(var i=0;i<16&&(c.offsetHeight>maxH+1||d.scrollWidth>c.clientWidth-8)&&fs>8;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }
+  var top=oy+cy-c.offsetHeight/2; c.style.top=top+'px';
+  var over=top+c.offsetHeight-st.height; if(over>0) c.style.top=Math.max(0,top-over)+'px';   /* keep it inside the picture (small phone screens) */
   S.coverHtml=html;
 }
 try{ if(document.fonts&&document.fonts.addEventListener) document.fonts.addEventListener('loadingdone',function(){ if(S.coverHtml) coverShow(S.coverHtml); }); }catch(e){}   /* a late font is wider: fit again */
@@ -2986,7 +3041,7 @@ function startRun(){
   phState(true);
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
-function stopRun(){S.running=false; stopTimer(); coverHide(); if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''});}
+function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''});}
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
 
 /* ---------- full-screen translate ---------- */

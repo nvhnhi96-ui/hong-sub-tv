@@ -20,6 +20,25 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
 (function(){
   var D=window.hsDesktop, card=document.getElementById('card'), nm=document.getElementById('name'), tx=document.getElementById('tx'), grip=document.getElementById('grip');
   var cur=null;
+  /* "Đúng chỗ": a paragraph's Vietnamese box over its own original (it: place as parts of the area; zw, zh: the area in px).
+     Never smaller than the original (the English is hidden) and centred on it; the Vietnamese keeps its lines; with the
+     size read from the original the lines fit the original's height (a box never runs onto the next menu line); a longer
+     line widens the box inside the area on the side the text is lined up, past that the letters get smaller. */
+  function spotFit(d,it,zw,zh,al,auto){
+    if(!d||!it) return;
+    var bx=it.x*zw, by=it.y*zh, bw=it.w*zw, bh=it.h*zh, cx=bx+bw/2;
+    var room=Math.max(bw,al==='right'?bx+bw:al==='center'?2*Math.min(cx,zw-cx):zw-bx);
+    var s=d.style; s.left='0'; s.top='0'; s.minWidth='0'; s.minHeight='0'; s.maxWidth='none'; s.width='auto'; s.height='auto'; s.paddingTop=s.paddingBottom='0';
+    var f=parseFloat(s.fontSize)||14;
+    for(var k=0;k<5;k++){ var nh=d.offsetHeight, nw=d.offsetWidth, g=1;
+      if(auto&&nh>bh*1.1) g=Math.min(g,bh*1.1/nh);
+      if(nw>room) g=Math.min(g,room/nw*0.99);
+      if(g>0.995||f<=5) break; f=Math.max(5,f*g); s.fontSize=f+'px'; }
+    var nh2=d.offsetHeight, W=Math.min(room,Math.max(bw,d.offsetWidth)), H=Math.max(bh,nh2);
+    var left=al==='right'?bx+bw-W:al==='center'?cx-W/2:bx;
+    s.width=W+'px'; s.paddingTop=s.paddingBottom=((H-nh2)/2)+'px';
+    s.left=Math.max(0,Math.min(zw-W,left))+'px'; s.top=(by+bh/2-H/2)+'px';
+  }
   /* largest font (up to the chosen size) that fits the window */
   /* "Đúng chỗ từng đoạn": every paragraph of the original gets its own box at its own place in the window */
   function spots(){
@@ -32,7 +51,7 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
       return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
     }).join('');
     if(d.font) its.style.fontFamily=d.font;
-    [].forEach.call(its.children,function(el){ var f=parseFloat(el.style.fontSize); for(var k=0;k<20&&el.scrollWidth>el.clientWidth+1&&f>5;k++){ f*=0.92; el.style.fontSize=f+'px'; } });
+    [].forEach.call(its.children,function(el,i){ spotFit(el,d.items[i],window.innerWidth,H,d.al||'left',!(+d.px>0)); });   /* the same rules as on the TV */
   }
   function fit(){
     if(!cur) return;

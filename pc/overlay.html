@@ -33,7 +33,8 @@ body.move #mv{display:flex}
   function size(px){ base=px; vi.style.fontSize=px+'px'; en.style.fontSize=Math.max(13,Math.round(px*.52))+'px'; fit(); }
   /* over the original subtitle the box is the subtitle's size: smaller letters rather than spilling out */
   /* same lines as the original (no extra wrapping): letters get smaller until each line fits the box */
-  function fit(){ var f=spotFs||base; vi.style.fontSize=f+'px'; if(!cover&&!lm) return;   /* over the original text: start from the original letters' size */
+  function fit(){ var f=spotFs?spotFs*Math.max(.4,Math.min(2.5,base/28)):base;   /* over the original: its letters' size, made bigger or smaller by Cỡ chữ (28 = as the original) */
+    vi.style.fontSize=f+'px'; if(!cover&&!lm) return;   /* over the original text: start from the original letters' size */
     for(var i=0;i<24&&((cover&&box.scrollHeight>box.clientHeight+1)||vi.scrollWidth>vi.clientWidth+1||box.scrollWidth>box.clientWidth+1)&&f>9;i++){ f*=0.92; vi.style.fontSize=f+'px'; en.style.fontSize=Math.max(10,f*.52)+'px'; } }
   try{ document.fonts.addEventListener('loadingdone',function(){ fit(); }); }catch(e){}
   D.onSub(function(p){

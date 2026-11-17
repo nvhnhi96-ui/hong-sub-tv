@@ -181,6 +181,7 @@ public class OverlayService extends Service {
             }
         });
         startPolling();
+        main.postDelayed(watch, 4000);
         lan = new LanServer(this, prefs, this::handle);
         lan.start();
         String ip = LanServer.ip();
@@ -313,6 +314,8 @@ public class OverlayService extends Service {
         final double zmaxw = j.optDouble("zmaxw", 0);
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
         final Typeface face = faceFor(j.optString("font", prefs.font()));
+        final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
+        final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
         main.post(() -> {
             if (zoneLayer == null) return;
             Runnable old = zoneOff.remove(id);
@@ -332,6 +335,15 @@ public class OverlayService extends Service {
                 zoneViews.put(id, tv);
                 zoneLayer.addView(tv);
             }
+            if (zgrow) {   // "Đúng chỗ": one paragraph right over its own original
+                spotBox(tv, vi, face, zal, zbg, zpx, zauto, x, y, w, h, zx, zw, zmaxw);
+                final TextView vs = tv;
+                Runnable offS = () -> { zoneLayer.removeView(vs); zoneViews.remove(id); zoneOff.remove(id); };
+                zoneOff.put(id, offS);
+                main.postDelayed(offS, hold > 0 ? hold * 1000L : 300000L);
+                return;
+            }
+            tv.setMaxHeight(Integer.MAX_VALUE);
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
             int W = dm.widthPixels, H = dm.heightPixels, bw = (int) (w * W), bh = (int) (h * H);
@@ -384,6 +396,78 @@ public class OverlayService extends Service {
             zoneOff.put(id, off);
             main.postDelayed(off, hold > 0 ? hold * 1000L : 300000L);
         });
+    }
+
+    /* "Đúng chỗ": the Vietnamese right over its own original paragraph, so the English under it is hidden.
+       - the box is never smaller than the original text and is centred on it
+       - the Vietnamese keeps its lines (the same number as the original): no extra wrapping
+       - with the size read from the original, the lines fit the original's height, so a box never runs onto the next
+         line of a menu
+       - a longer Vietnamese line widens the box inside the area (on the side the text is lined up); past that the
+         letters get smaller.
+       Every size is worked out here and set exactly, so no TV draws it differently. */
+    private void spotBox(TextView tv, String vi, Typeface face, String zal, int zbg, int zpx, boolean auto,
+                         double x, double y, double w, double h, double zx, double zw, double zmaxw) {
+        DisplayMetrics dm = new DisplayMetrics();
+        wm.getDefaultDisplay().getRealMetrics(dm);
+        int W = dm.widthPixels, H = dm.heightPixels;
+        float bx = (float) (x * W), by = (float) (y * H), bw = (float) Math.max(2, w * W), bh = (float) Math.max(2, h * H);
+        float room;
+        if (zw > 0.01) {
+            float L = (float) (zx * W), R = (float) ((zx + zw) * W), cx = bx + bw / 2;
+            room = "r".equals(zal) ? (bx + bw) - L : "c".equals(zal) ? 2 * Math.min(cx - L, R - cx) : R - bx;
+        } else room = (float) (Math.max(w, zmaxw) * W);
+        room = Math.max(bw, Math.min(room, W));
+        if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
+        tv.setTypeface(face);
+        tv.setIncludeFontPadding(false);
+        tv.setLineSpacing(0f, 1f);
+        tv.setHorizontallyScrolling(false);
+        tv.setMinWidth(0); tv.setMinHeight(0); tv.setMaxWidth(Integer.MAX_VALUE); tv.setMaxHeight(Integer.MAX_VALUE);
+        tv.setText(vi);
+        String[] lines = vi.split("\n");
+        int n = Math.max(1, lines.length);
+        int padH = dp(4), slack = dp(4);
+        float padK = 0.12f;   // room above and below the lines, per pixel of letter size
+        float f = Math.max(6f, (zpx > 0 ? zpx : 22) * H / 1080f);
+        android.text.TextPaint p = new android.text.TextPaint(tv.getPaint());
+        p.setTypeface(face);
+        p.setTextSize(f);
+        android.graphics.Paint.FontMetrics fm = p.getFontMetrics();
+        float lineK = (fm.descent - fm.ascent) / f;
+        if (auto) {
+            float maxH = bh * 1.1f, need = f * (n * lineK + 2 * padK);
+            if (need > maxH) f = Math.max(6f, maxH / (n * lineK + 2 * padK));
+        }
+        for (int i = 0; i < 3; i++) {
+            p.setTextSize(f);
+            float widest = 0;
+            for (String s : lines) widest = Math.max(widest, p.measureText(s));
+            float avail = room - 2 * padH - slack;
+            if (widest <= avail || avail <= 0 || f <= 6f) break;
+            f = Math.max(6f, f * avail / widest * 0.99f);
+        }
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, f);
+        p.setTextSize(f);
+        float widest = 0;
+        for (String s : lines) widest = Math.max(widest, p.measureText(s));
+        android.graphics.Paint.FontMetricsInt fi = p.getFontMetricsInt();
+        int padV = Math.round(f * padK);
+        int boxW = (int) Math.ceil(Math.min(Math.max(room, bw), Math.max(bw, widest + 2 * padH + slack)));
+        int boxH = (int) Math.ceil(Math.max(bh, n * (fi.descent - fi.ascent) + 2 * padV));
+        float left = "r".equals(zal) ? bx + bw - boxW : "c".equals(zal) ? bx + bw / 2 - boxW / 2f : bx;
+        left = Math.max(0, Math.min(W - boxW, left));
+        float top = Math.max(0, Math.min(H - boxH, by + bh / 2 - boxH / 2f));
+        FrameLayout.LayoutParams fl = new FrameLayout.LayoutParams(boxW, boxH);
+        fl.leftMargin = Math.round(left);
+        fl.topMargin = Math.round(top);
+        tv.setLayoutParams(fl);
+        tv.setPadding(padH, 0, padH, 0);
+        tv.setGravity(("c".equals(zal) ? Gravity.CENTER_HORIZONTAL : "r".equals(zal) ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        GradientDrawable zb = new GradientDrawable();
+        zb.setColor(Color.argb(Math.round(zbg * 2.55f), 8, 9, 12));
+        zb.setCornerRadius(dp(3));
+        tv.setBackground(zb);
     }
 
     /** The typeface picked on the computer, as close as Android TV's own fonts allow. */
@@ -465,7 +549,8 @@ public class OverlayService extends Service {
         if (cov != null && covSpot && covFs > 0) {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
-            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, covFs * dm.heightPixels / 1080f);
+            // the original letters' size, made bigger or smaller by "Cỡ chữ" on the computer (28 there = 30 here = as the original)
+            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, covFs * dm.heightPixels / 1080f * Math.max(0.4f, Math.min(2.5f, size / 30f)));
             float need = 0;
             for (String line : viView.getText().toString().split("\\n")) need = Math.max(need, viView.getPaint().measureText(line));
             int base = (int) (cov[2] * dm.widthPixels), maxW = (int) (prefs.width() / 100f * dm.widthPixels);
@@ -527,8 +612,32 @@ public class OverlayService extends Service {
         });
     }
 
+    /* Hóng Sub on the computer says "still here" every 10 s while area boxes are on the TV (hb). When that stops
+       (Hóng Sub closed, computer asleep, network gone) the boxes go away by themselves instead of staying for minutes. */
+    private volatile long pcAt = 0;
+    private volatile boolean hbOn = false;
+    private static final long PC_QUIET_MS = 32000;
+    private final Runnable watch = new Runnable() {
+        @Override public void run() {
+            if (hbOn && !zoneViews.isEmpty() && android.os.SystemClock.elapsedRealtime() - pcAt > PC_QUIET_MS) zonesClear();
+            main.postDelayed(this, 4000);
+        }
+    };
+
+    /** every area box off the TV (on the main thread) */
+    private void zonesClear() {
+        main.post(() -> {
+            for (Runnable r : zoneOff.values()) main.removeCallbacks(r);
+            zoneOff.clear();
+            if (zoneLayer != null) zoneLayer.removeAllViews();
+            zoneViews.clear();
+        });
+    }
+
     /** one message from the computer (through honggame.store or straight over the home network) */
     void handle(JSONObject j) {
+        pcAt = android.os.SystemClock.elapsedRealtime();
+        if (j.has("hb")) hbOn = true;
         String mid = j.optString("mid", "");
         if (!mid.isEmpty()) {
             synchronized (mids) {
@@ -585,6 +694,8 @@ public class OverlayService extends Service {
             return;
         }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
+        else if (kind.equals("hb")) { /* only "still here" */ }
+        else if (kind.equals("zone") && j.optInt("zclr", 0) == 1) zonesClear();   // Hóng Sub stopped: every area box off
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
             if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, ttsParams(), "zone" + (++ttsSeq)); }

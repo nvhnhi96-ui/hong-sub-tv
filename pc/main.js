@@ -159,6 +159,7 @@ function rectAsk() {
 }
 /* "Đè chữ Việt lên phụ đề gốc": the subtitle bar sits exactly over the game's own subtitle area */
 let subPlace = null;
+let subSize = 28;   /* "Cỡ chữ" on the computer: bigger letters over the original subtitle need a bigger window */
 function applyPlace() {
   if (!overlay || overlay.isDestroyed() || moveMode) return;
   if (subPlace) {
@@ -169,7 +170,9 @@ function applyPlace() {
     /* "Đè đúng chỗ từng dòng": right over the original text, a little wider for the longer Vietnamese (no wider than the width setting) */
     if (subPlace.spot) bw = Math.max(60, Math.min(bw, Math.round(subPlace.w * b.width * 1.25)));
     /* "Độ cao khung nền": taller or flatter than the original line, centred on it */
-    const bh = Math.max(30, Math.round(subPlace.h * b.height * hs)), cy = b.y + (subPlace.y + subPlace.h / 2) * b.height;
+    const sk = Math.max(1, Math.min(2.5, subSize / 28));
+    if (subPlace.spot && sk > 1) bw = Math.max(60, Math.min(Math.round(pct * b.width), Math.round(subPlace.w * b.width * 1.25 * sk)));
+    const bh = Math.max(30, Math.round(subPlace.h * b.height * hs * sk)), cy = b.y + (subPlace.y + subPlace.h / 2) * b.height;
     let left = cx - bw / 2;
     if (subPlace.spot && subPlace.al === 'l') left = b.x + subPlace.x * b.width;
     if (subPlace.spot && subPlace.al === 'r') left = b.x + (subPlace.x + subPlace.w) * b.width - bw;
@@ -727,7 +730,10 @@ function setupIpc() {
     cfg.zoneWins = cfg.zoneWins || {}; cfg.zoneWins[id] = z.win.getBounds(); saveCfg();
   });
   ipcMain.handle('zones-panel', (e, on) => { cfg.zonesHidden = !on; saveCfg(); zonesVisible(); return true; });
-  ipcMain.on('sub', (e, payload) => { if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload); });
+  ipcMain.on('sub', (e, payload) => {
+    if (overlay && !overlay.isDestroyed()) overlay.webContents.send('sub', payload);
+    if (payload && +payload.size >= 8 && +payload.size !== subSize) { subSize = +payload.size; if (subPlace) applyPlace(); }   /* Cỡ chữ changed: resize the box over the original */
+  });
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
   ipcMain.on('sub-place', (e, r) => {
     const ok = r && [r.x, r.y, r.w, r.h].every((v) => typeof v === 'number' && v >= 0 && v <= 1.01) && r.w > 0.02 && r.h > 0.02;
