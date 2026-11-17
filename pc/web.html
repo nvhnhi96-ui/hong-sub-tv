@@ -49,7 +49,9 @@ html,body{margin:0;background:#ECEEF1}
 .hs-ov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
 .hs-ov.off{cursor:default;pointer-events:none}
 .hs-region{position:absolute;border:2px solid var(--brand);border-radius:6px;background:rgba(255,196,0,.08);pointer-events:none}
-.hs-region span{position:absolute;bottom:100%;left:-2px;margin-bottom:4px;background:var(--brand);color:#000;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.hs-region span{position:absolute;bottom:100%;left:-2px;margin-bottom:4px;background:var(--brand);color:#000;font-size:12px;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap;pointer-events:auto;cursor:move;user-select:none;touch-action:none}
+.hs-region .rs{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border:3px solid var(--brand);border-left:0;border-top:0;pointer-events:auto;cursor:nwse-resize;touch-action:none}
+.hs-region.drag{background:rgba(255,196,0,.16)}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
 .hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
@@ -302,7 +304,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
           </div>
         </div>
         <div class="hs-ov off" id="hsOv" aria-label="Vùng kéo khung phụ đề">
-          <div class="hs-region" id="hsRegion" hidden><span>Vùng phụ đề</span></div>
+          <div class="hs-region" id="hsRegion" hidden><span title="Kéo để di chuyển vùng phụ đề">Vùng phụ đề ✥</span><i class="rs" title="Kéo để đổi cỡ"></i></div>
         </div>
         <div class="hs-hint" id="hsHint" hidden>Kéo chuột bao quanh dòng phụ đề gốc</div>
       </div>
@@ -1137,6 +1139,27 @@ function showRegion(){
   reg.style.width=(R.w*b.w)+'px'; reg.style.height=(R.h*b.h)+'px';
 }
 video.addEventListener('loadedmetadata',showRegion);
+/* the subtitle area moves by its yellow tag and resizes by its corner, like the extra areas (no need to draw it again) */
+(function(){
+  function drag(e,mode){
+    if(e.button!==0||!S.region) return; e.preventDefault(); e.stopPropagation();
+    var b=videoBox(), sx=e.clientX, sy=e.clientY, R=S.region, x0=R.x, y0=R.y, w0=R.w, h0=R.h, tgt=e.currentTarget;
+    try{ tgt.setPointerCapture(e.pointerId); }catch(err){}
+    reg.classList.add('drag');
+    function mv(ev){
+      var dx=(ev.clientX-sx)/b.w, dy=(ev.clientY-sy)/b.h, r=S.region;
+      if(mode==='move'){ r.x=Math.max(0,Math.min(1-r.w,x0+dx)); r.y=Math.max(0,Math.min(1-r.h,y0+dy)); }
+      else{ r.w=Math.max(.04,Math.min(1-r.x,w0+dx)); r.h=Math.max(.03,Math.min(1-r.y,h0+dy)); }
+      showRegion();
+    }
+    function up(){ tgt.removeEventListener('pointermove',mv); tgt.removeEventListener('pointerup',up); tgt.removeEventListener('pointercancel',up); reg.classList.remove('drag');
+      save('region',S.region); save('regionSet',true); S.lastSig=null; S.subBox=null; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; coverHide(); steps(); status(S.running?'run':'idle','Đã đổi chỗ vùng phụ đề'); }
+    tgt.addEventListener('pointermove',mv); tgt.addEventListener('pointerup',up); tgt.addEventListener('pointercancel',up);
+  }
+  var lab=reg.querySelector('span'), rs=reg.querySelector('.rs');
+  if(lab) lab.addEventListener('pointerdown',function(e){ drag(e,'move'); });
+  if(rs) rs.addEventListener('pointerdown',function(e){ drag(e,'size'); });
+})();
 window.addEventListener('resize',function(){if(S.stream)showRegion();});
 var drawing=false, start=null;
 function setDraw(on){drawing=on; ov.classList.toggle('off',!on); $('hsHint').hidden=!on;}
@@ -1171,7 +1194,7 @@ var zV2=load('zonesV2',false);
 if(!load('zbg90',false)){ S.zones.forEach(function(z){ if(z.bg===0) z.bg=90; }); save('zbg90',true); if(S.zones.length) zSave(); }
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',speak:!!z.speak};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'play',speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1318,6 +1341,7 @@ function zList(){
       (D?'<label><span>Hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên game')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
       '<label><span>Cách hiện</span><select class="hs-in" data-f="place">'+opt('spot',z.place||'spot','Đúng chỗ')+opt('box',z.place,'Một khung')+'</select></label>'+
       '<label><span>Canh lề</span><select class="hs-in" data-f="al">'+opt('auto',al,'Theo chữ gốc')+opt('l',al,'Trái')+opt('c',al,'Giữa')+opt('r',al,'Phải')+'</select></label>'+
+      '<label title="Đang chơi: vùng này không dịch ở menu, màn hình PS5, cửa hàng, màn hình đứng yên (game không chuyển động). Mọi lúc: dịch cả khi đứng yên, hợp với túi đồ, bảng mô tả vật phẩm."><span>Dịch khi</span><select class="hs-in" data-f="when">'+opt('play',z.when||'play','Đang chơi')+opt('all',z.when||'play','Mọi lúc')+'</select></label>'+
       '<label title="Theo màu game: nền và màu chữ lấy đúng màu quanh chữ gốc, viền mờ dần, như chữ của game. Thanh Nền chỉ dùng cho Nền tối"><span>Màu nền</span><select class="hs-in" data-f="look">'+opt('auto',z.look||'auto','Theo màu game')+opt('dark',z.look||'auto','Nền tối')+'</select></label>'+
       '<label class="hs-zs" title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ <b class="zpxv">'+zpxTxt(px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="1" data-f="px" value="'+px+'" aria-label="Cỡ chữ của vùng"></label>'+
       '<label class="hs-zs"><span>Nền <b class="zbgv">'+bg+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+bg+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
@@ -1337,7 +1361,7 @@ function zList(){
       if(el.dataset.f==='hold'){ v=Math.max(0,Math.min(600,Math.round(+v)||0)); el.value=v; if(z.hide&&z.vi){ z.hide=false; } }
       if(el.dataset.f==='bg') v=Math.max(0,Math.min(100,+v||0));
       if(el.dataset.f==='px'){ v=Math.round(+v||0); if(v>0&&v<5) v=5; v=Math.min(64,v); }
-      z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on'||el.dataset.f==='place'){ z.lastText=''; z.doneMask=null; }
+      z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on'||el.dataset.f==='place'||el.dataset.f==='when'){ z.lastText=''; z.doneMask=null; }
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
       if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
@@ -1445,6 +1469,7 @@ async function zoneTick(force,only){
     for(var i=0;i<S.zones.length;i++){
       var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force)) continue;
       if(GUARD.kind&&!force) break;
+      var gate=!force&&zPlayOnly(z)&&!playing();   /* "Dịch khi: Đang chơi" and the game is not moving (menu, PS5, store, pause) */
       if(!grab(z,1280,900)) continue;                       /* small quest text is enlarged so the reader catches it */
       var m=textMask();
       zcv.width=cap.width; zcv.height=cap.height; zcv.getContext('2d').drawImage(cap,0,0);   /* keep this crop: the subtitle check reuses cap meanwhile */
@@ -1457,6 +1482,7 @@ async function zoneTick(force,only){
         z.empty=0;
         var changed=!z.doneMask||maskDiff(m,z.doneMask)>0.12, steady=z.prevMask&&maskDiff(m,z.prevMask)<0.06;
         z.prevMask=m;
+        if(gate){ if(changed&&(z.vi||z.items)) zWipe(z); continue; }   /* not playing: no new translation, and an old one over other text goes */
         if(!changed){ z.wobble=0; continue; }
         /* quest text in a corner sits over the moving game world, so it never holds perfectly still:
            read it anyway after a moment, not too often. The translation only changes if the words do. */
@@ -1468,6 +1494,7 @@ async function zoneTick(force,only){
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
         S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
+          if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
@@ -3082,6 +3109,29 @@ function guardSet(k){
   GUARD.kind=''; GUARD.neg=0; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; S.prevMask=null; S.forceOcr=true;
   log('dịch tiếp: đã vào lại game'); if(S.running) runStatus();
 }
+/* is the game being played? The whole picture, tiny and grey, is compared every 0.35 s: while playing, the world and the
+   character move; on menus, the PS5's screens, the store, a pause screen or a loading picture almost nothing moves.
+   Playing = clear movement in at least 3 of the last 5 looks (a menu opening or closing is only one). */
+var mvc=document.createElement('canvas'); mvc.width=64; mvc.height=36; var mvx=mvc.getContext('2d',{willReadFrequently:true});
+S.mv={prev:null,hist:[],at:0};
+function motionSample(){
+  var now=Date.now(); if(now-S.mv.at<350||!video.videoWidth) return; S.mv.at=now;
+  try{ mvx.drawImage(video,0,0,64,36); }catch(e){ return; }
+  var d=mvx.getImageData(0,0,64,36).data, g=new Uint8Array(64*36), p=S.mv.prev, n=0;
+  for(var i=0;i<g.length;i++){ g[i]=(d[i*4]*3+d[i*4+1]*6+d[i*4+2])/10; if(p&&Math.abs(g[i]-p[i])>14) n++; }
+  if(p){ S.mv.hist.push(n/g.length); if(S.mv.hist.length>6) S.mv.hist.shift(); }
+  S.mv.prev=g;
+}
+function playing(){ var h=S.mv.hist.slice(-5); if(h.length<3) return true; return h.filter(function(f){ return f>=0.05; }).length>=3; }
+function zPlayOnly(z){ return guardOn()&&(z.when||'play')==='play'; }
+/* a list of 4 or more short lines (title-case words, no sentence): a game menu ("Continue Journey / New Journey / Settings") */
+function menuLike(lines){
+  var L=(lines||[]).filter(function(l){ return l.conf>=0.55&&String(l.text||'').trim(); }); if(L.length<4) return false;
+  var short=L.filter(function(l){ var s=String(l.text).trim(); return s.length<=24&&s.split(/\s+/).length<=3&&!/[.!?,:;]$/.test(s); }).length;
+  return short/L.length>=0.75;
+}
+/* take an area's translation off (computer and TV), whatever "Hiện ... giây" says */
+function zWipe(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.pending=false; zShow(); zList(); zPush(); if(had) zTv(z); }
 var gcv=document.createElement('canvas'), gcx=gcv.getContext('2d',{willReadFrequently:true});
 async function guardProbe(){
   if(GUARD.busy||S.ocrBusy||!ocrOn()||!video.videoWidth) return;
@@ -3107,6 +3157,7 @@ async function tick(force){
     var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
   }
   var m=textMask(), now=Date.now();
+  motionSample();
   if(guardOn()&&!force){
     if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()) guardProbe();
     if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */
