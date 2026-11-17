@@ -3616,7 +3616,7 @@ function send(force){ return sendImage(); }   /* kept for older callers */
 /* on-device reading: read again whenever the subtitle area changes, translate when the text is new and complete */
 async function ocrStep(m,force){
   var noKey=!keys().length&&!groqKeys().length;
-  if(m.ink<MW*MH*0.003){ S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(S.coverHtml&&Date.now()-S.noInkAt>700) coverHide(); return; }   /* no text on screen */
+  if(m.ink<MW*MH*0.003){ S.subLive=false; S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(S.coverHtml&&Date.now()-S.noInkAt>700) coverHide(); return; }   /* no text on screen */
   S.noInkAt=0;
   var again=S.forceOcr; S.forceOcr=false;
   if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
@@ -3627,7 +3627,8 @@ async function ocrStep(m,force){
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(ocrText(o));
-  if(txt){ subBoxFrom(o,ocv.width,ocv.height); subSeen(txt); }
+  S.subLive=!!(txt&&subLike(txt));
+  if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
   if(!txt){
     S.cand=null;
     var nowI=Date.now();
@@ -4459,13 +4460,16 @@ function voFeed(buf){
   VO.pos=p-n;
 }
 function voFrame(f,selfVoice){
-  var e=0; for(var i=0;i<f.length;i++) e+=f[i]*f[i]; var rms=Math.sqrt(e/f.length);
+  /* loudness of the voice band only (about 250-3500 Hz): music bass, engines and explosions count much less */
+  var e=0, hx=VO.hx||0, hy=VO.hy||0, ly=VO.ly||0;
+  for(var i=0;i<f.length;i++){ hy=0.9106*(hy+f[i]-hx); hx=f[i]; ly+=0.579*(hy-ly); e+=ly*ly; }
+  VO.hx=hx; VO.hy=hy; VO.ly=ly; var rms=Math.sqrt(e/f.length);
   VO.lvl=VO.lvl*0.7+rms*0.3; VO.sm=(VO.sm||0)*0.6+rms*0.4;
-  /* the background (music, engine, wind): the quieter part of the last 3 seconds */
-  VO.hist=VO.hist||[]; VO.hist.push(rms); if(VO.hist.length>150) VO.hist.shift();
-  if(VO.hist.length%10===0||VO.hist.length<20){ var so=VO.hist.slice().sort(function(a,b){return a-b;}); VO.noise=Math.max(0.0008,so[Math.floor(so.length*0.3)]); }
+  /* the background (music, engine, wind): the quieter part of the last 5 seconds */
+  VO.hist=VO.hist||[]; VO.hist.push(rms); if(VO.hist.length>250) VO.hist.shift();
+  if(VO.hist.length%10===0||VO.hist.length<20){ var so=VO.hist.slice().sort(function(a,b){return a-b;}); VO.noise=Math.max(0.0006,so[Math.floor(so.length*0.25)]); }
   if(selfVoice){ VO.talk=false; VO.frames=[]; VO.pre=[]; VO.sp=0; return; }   /* Hóng Sub itself is talking: do not listen to it */
-  var speech=VO.sm>Math.max(VO.noise*(VO.talk?2.2:3),0.006);
+  var speech=VO.sm>Math.max(VO.noise*(VO.talk?1.8:2.4),0.004);
   if(!VO.talk){
     VO.pre.push(f); if(VO.pre.length>15) VO.pre.shift();
     VO.sp=speech?VO.sp+1:0;
@@ -4492,6 +4496,12 @@ function voWav(frames){
 }
 /* what recognisers write when there is only music or noise */
 var VO_JUNK=/^(?:(?:thank you|thanks)(?: (?:so much|very much))?(?: for watching| for listening)?|you|bye|okay|oh|uh|um|hmm|ah|music|applause|laughter|silence|subtitles? by.*|transcri.*|\W*)[.!?…]*$/i;
+/* the recogniser sometimes writes the game's own name when it hears only noise: never a line to translate */
+function voIsTitle(t){
+  var w=voWords(t); if(!w.length||w.length>6) return false;
+  var g={}; voWords(($('hsGame')&&$('hsGame').value)||'').concat(['the','video','game','dialogue','from']).forEach(function(x){ g[x]=1; });
+  return w.every(function(x){ return g[x]; });
+}
 /* spoken line or subtitle: the same words? (names, punctuation and small mishearings apart) */
 function voWords(t){ return String(t||'').toLowerCase().replace(/^[a-z' .\-]{1,24}:\s+/,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af\u0400-\u04ff]+/).filter(function(w){ return w.length>1; }); }
 function voSame(a,b){
@@ -4508,7 +4518,9 @@ function subSeen(txt){
   if(L&&similar(L.t,txt)&&now-L.to<3000){ L.to=now; return; }
   S.subLines.push({t:txt,from:now,to:now}); if(S.subLines.length>60) S.subLines.shift();
 }
-function subStill(){ var L=S.subLines[S.subLines.length-1]; if(L&&Date.now()-L.to<1500) L.to=Date.now(); }   /* the same subtitle is still on screen */
+function subStill(){ var L=S.subLines[S.subLines.length-1]; if(S.subLive&&L&&Date.now()-L.to<1500) L.to=Date.now(); }
+/* a real subtitle: a few words, not a stray sign or two letters read off the picture */
+function subLike(t){ t=String(t||''); return t.replace(/[^A-Za-z\u00C0-\u024F\u0400-\u04FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/g,'').length>=6&&(/\s/.test(t.trim())||/[\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(t)); }   /* the same subtitle is still on screen */
 /* was a subtitle on screen while the character spoke? (text that never changes for 45 s is part of the screen, not a subtitle) */
 function subDuring(t0,t1){
   return S.subLines.some(function(L){ return L.to-L.from<45000&&L.from<=t1+1200&&L.to>=t0-600; });
@@ -4518,7 +4530,7 @@ function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.n
 /* the words were heard: tell the subtitle reader, which then skips the same line (no second AI call) */
 VO.lines=[];
 async function voPhrase(frames,t0,t1){
-  if(VO.busy>=3) return;   /* far behind: skip this one rather than pile up */
+  if(VO.busy>=4){ log('lời nói: đang chép 4 câu, bỏ câu này'); return; }   /* far behind: skip this one rather than pile up */
   VO.busy++; VO.heard++;
   var secs=(frames.length*0.02).toFixed(1);
   try{
@@ -4527,6 +4539,7 @@ async function voPhrase(frames,t0,t1){
     if(subWatching()&&subDuring(t0,t1)){ VO.skipSub++; voSt(voReadyText()); log('lời nói ('+secs+'s) có phụ đề trên màn hình: chỉ dịch phụ đề, không tốn lượt chép lời'); return; }
     var wav=voWav(frames), text=await voStt(wav);
     text=String(text||'').replace(/\s+/g,' ').trim();
+    if(voIsTitle(text)){ log('lời nói ('+secs+'s): chỉ nghe ra tên game, bỏ qua'); return; }
     if(!text||VO_JUNK.test(text)||text.replace(/[^A-Za-z\u00C0-\u024F\u0400-\u04FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/g,'').length<3){ log('lời nói ('+secs+'s): không có câu nói'); return; }
     /* the game showed (or is showing) these words as a subtitle: the subtitle is translated, this is not */
     var now=Date.now(), dup=S.subLines.some(function(L){ return now-L.to<20000&&voSame(text,L.t); })||S.recent.some(function(r){ return now-r.at<20000&&voSame(text,r.raw); });
@@ -4545,7 +4558,8 @@ function voHeard(txt){ var now=Date.now(); return VO.lines.some(function(l){ ret
    subtitle look "already translated", and shows only when no subtitle is on screen (else it goes to the list) */
 VO.tr=0;
 async function voTranslate(text,heardAt){
-  if(VO.tr>=2){ log('lời nói: đang dịch 2 câu, bỏ câu này'); return; }
+  for(var w=0;VO.tr>=3&&w<40;w++) await new Promise(function(ok){ setTimeout(ok,150); });
+  if(VO.tr>=3){ log('lời nói: đang dịch 3 câu, bỏ câu này'); return; }
   VO.tr++;
   try{
     var res=tmFind(text);
@@ -4555,7 +4569,7 @@ async function voTranslate(text,heardAt){
     if(!res||!String(res.vi||'').trim()){ log('lời nói: không có gì để dịch'); return; }
     res._voice=true; res._nl=1;
     var L=VO.lines.find(function(l){ return l.t===text; });
-    var now=Date.now(), busy=subOnScreen()||(S.lastShownAt&&now-S.lastShownAt<4000), late=now-heardAt>9000;
+    var now=Date.now(), busy=subOnScreen()||(S.lastShownAt&&now-S.lastShownAt<3000), late=now-heardAt>10000;
     if(busy||late){
       S.hist.splice(S.hist.length?1:0,0,{en:res.en||text,vi:res.vi,who:res.speaker||'',voice:true}); S.hist=S.hist.slice(0,40);
       log('lời nói dịch xong'+(busy?' lúc đang có phụ đề':' (đã quá lâu)')+': chỉ đưa vào danh sách câu trước');
@@ -4576,7 +4590,6 @@ async function voStt(wav){
       var key=groqPick(); if(!key) break;
       var fd=new FormData(); fd.append('file',wav,'speech.wav'); fd.append('model','whisper-large-v3-turbo'); fd.append('response_format','verbose_json'); fd.append('temperature','0');
       if(/^(en|ja|ko|zh|ru|fr|de|es|it|pt)$/.test(lang)) fd.append('language',lang);
-      var gn=$('hsGame')&&$('hsGame').value.trim(); if(gn) fd.append('prompt','Dialogue from the video game '+gn+'.');
       var r,j;
       try{ r=await fetch(GROQ+'/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd}); j=await r.json().catch(function(){return {};}); }
       catch(e){ last=new Error('Mất kết nối mạng'); continue; }
