@@ -3935,14 +3935,22 @@ function voFrame(f,selfVoice){
   if(!VO.talk){
     VO.pre.push(f); if(VO.pre.length>15) VO.pre.shift();
     VO.sp=speech?VO.sp+1:0;
-    if(VO.sp>=4){ VO.talk=true; VO.frames=VO.pre.slice(); VO.pre=[]; VO.sil=0; VO.voiced=VO.sp; VO.t0=Date.now()-VO.frames.length*20; }
+    if(VO.sp>=3){ VO.talk=true; VO.frames=VO.pre.slice(); VO.pre=[]; VO.sil=0; VO.voiced=VO.sp; VO.t0=Date.now()-VO.frames.length*20; }
     return;
   }
   VO.frames.push(f);
   if(speech){ VO.sil=0; VO.voiced++; } else VO.sil++;
-  if(VO.sil>=35||VO.frames.length>=750){   /* 0.7 s quiet ends a phrase; a phrase is at most 15 s */
-    var fr=VO.frames, voiced=VO.voiced; VO.talk=false; VO.frames=[]; VO.sp=0; VO.voiced=0;
-    if(voiced>=20) voPhrase(fr,VO.t0||Date.now()-fr.length*20,Date.now()-VO.sil*20);
+  /* 0.44 s quiet ends a phrase; after 4 s a short breath (0.2 s) is enough, and 8 s is the most:
+     a long talk is translated piece by piece instead of all at once at the end */
+  var L=VO.frames.length;
+  if(VO.sil>=22||(L>=200&&VO.sil>=10)||L>=400){
+    var fr=VO.frames, voiced=VO.voiced, t0=VO.t0||Date.now()-fr.length*20, t1=Date.now()-VO.sil*20; VO.talk=false; VO.frames=[]; VO.sp=0; VO.voiced=0;
+    if(L>=400&&VO.sil<3){   /* still talking: cut at the quietest moment of the last 1.5 s, carry on with the rest */
+      var cut=L-75, lo=1e9; for(var k=L-75;k<L-3;k++){ var fk=fr[k], ek=0; for(var j=0;j<fk.length;j+=4) ek+=fk[j]*fk[j]; if(ek<lo){ lo=ek; cut=k; } }
+      var rest=fr.slice(cut); fr=fr.slice(0,cut); t1=Date.now()-rest.length*20;
+      VO.talk=true; VO.frames=rest; VO.voiced=rest.length; VO.sil=0; VO.t0=t1;
+    }
+    if(voiced>=12) voPhrase(fr,t0,t1);
   }
 }
 setInterval(function(){ if(VO.node) voLevel(); },150);
@@ -3992,12 +4000,12 @@ function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.n
 /* the words were heard: tell the subtitle reader, which then skips the same line (no second AI call) */
 VO.lines=[];
 async function voPhrase(frames,t0,t1){
-  if(VO.busy>=4){ log('lời nói: đang chép 4 câu, bỏ câu này'); return; }   /* far behind: skip this one rather than pile up */
+  if(VO.busy>=5){ log('lời nói: đang chép 5 câu, bỏ câu này'); return; }   /* far behind: skip this one rather than pile up */
   VO.busy++; VO.heard++;
   var secs=(frames.length*0.02).toFixed(1);
   try{
     /* a subtitle shows up with the voice, or a moment later: look before using a turn of the speech recogniser */
-    await new Promise(function(ok){ setTimeout(ok,900); });
+    if(!(subWatching()&&subDuring(t0,t1))) await new Promise(function(ok){ setTimeout(ok,250); });
     if(subWatching()&&subDuring(t0,t1)){ VO.skipSub++; voSt(voReadyText()); log('lời nói ('+secs+'s) có phụ đề trên màn hình: chỉ dịch phụ đề, không tốn lượt chép lời'); return; }
     var wav=voWav(frames), text=await voStt(wav);
     text=String(text||'').replace(/\s+/g,' ').trim();
@@ -4026,12 +4034,12 @@ async function voTranslate(text,heardAt){
   try{
     var res=tmFind(text);
     if(res) log('lời nói có sẵn trong kho dịch chung');
-    else res=await askText(voicePrompt(text),text);
+    else res=await askText(voicePrompt(text),text,null,null,false,'fast');   /* the first answer wins: a spoken line is late already */
     res=res&&splitSpeaker(res,text);
     if(!res||!String(res.vi||'').trim()){ log('lời nói: không có gì để dịch'); return; }
     res._voice=true; res._nl=1;
     var L=VO.lines.find(function(l){ return l.t===text; });
-    var now=Date.now(), busy=subOnScreen()||(S.lastShownAt&&now-S.lastShownAt<3000), late=now-heardAt>10000;
+    var now=Date.now(), busy=subOnScreen()||(S.lastShownAt&&now-S.lastShownAt<1500), late=now-heardAt>12000;
     if(busy||late){
       S.hist.splice(S.hist.length?1:0,0,{en:res.en||text,vi:res.vi,who:res.speaker||'',voice:true}); S.hist=S.hist.slice(0,40);
       log('lời nói dịch xong'+(busy?' lúc đang có phụ đề':' (đã quá lâu)')+': chỉ đưa vào danh sách câu trước');
@@ -4058,7 +4066,7 @@ async function voStt(wav){
       if(r.ok){
         count(key,'q');
         /* drop what is not a person talking: silence or noise (no_speech), unsure guesses, and repeated words (songs, loops) */
-        var segs=(j.segments||[]).filter(function(s){ return !(s.no_speech_prob>0.6&&s.avg_logprob<-0.5)&&!(s.avg_logprob<-1.2)&&!(s.compression_ratio>2.4)&&!/[♪♫]/.test(s.text||''); });
+        var segs=(j.segments||[]).filter(function(s){ return !(s.no_speech_prob>0.6&&s.avg_logprob<-0.5)&&!(s.avg_logprob<-1.4)&&!(s.compression_ratio>2.4)&&!/[♪♫]/.test(s.text||''); });
         return j.segments?segs.map(function(s){return s.text;}).join(' '):(j.text||'');
       }
       var msg=(j.error&&j.error.message)||('HTTP '+r.status); last=new Error(msg);
