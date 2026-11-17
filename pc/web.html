@@ -2993,17 +2993,17 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(j.voice?voicePrompt(j.text):textPrompt(j.text,j.nl),j.text);
+      res=await askText(textPrompt(j.text,j.nl),j.text);
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
-        if(!j.voice) tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
+        tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
     if(res&&res.vi){ tmPlayed(); S.recent.push({raw:j.text,res:res,at:Date.now()}); if(S.recent.length>40) S.recent.shift(); }
     S.perf.t=Math.round(performance.now()-t1);
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(res){ res._nl=j.nl||1; res._voice=!!j.voice; }
+    if(res) res._nl=j.nl||1;
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -3959,8 +3959,9 @@ function voWords(t){ return String(t||'').toLowerCase().replace(/^[a-z' .\-]{1,2
 function voSame(a,b){
   var wa=voWords(a), wb=voWords(b); if(!wa.length||!wb.length) return false;
   var sb={}; wb.forEach(function(w){ sb[w]=1; }); var hit=wa.filter(function(w){ return sb[w]; }).length;
-  var n=Math.min(wa.length,wb.length);
-  return n<=2?hit>=n&&Math.abs(wa.length-wb.length)<=1:hit/n>=0.6;
+  var n=Math.min(wa.length,wb.length), m=Math.max(wa.length,wb.length);
+  if(n<3) return wa.join(' ')===wb.join(' ');
+  return hit/m>=0.6||dice(a,b)>=0.7;
 }
 /* subtitles seen in the subtitle area, with when they were on screen (from the reader) */
 S.subLines=[];
@@ -3974,6 +3975,7 @@ function subStill(){ var L=S.subLines[S.subLines.length-1]; if(L&&Date.now()-L.t
 function subDuring(t0,t1){
   return S.subLines.some(function(L){ return L.to-L.from<45000&&L.from<=t1+1200&&L.to>=t0-600; });
 }
+function subOnScreen(){ var L=S.subLines[S.subLines.length-1], now=Date.now(); return !!(L&&now-L.to<1500&&L.to-L.from<45000); }
 function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.now()-S.lastTickAt<3000); }
 /* the words were heard: tell the subtitle reader, which then skips the same line (no second AI call) */
 VO.lines=[];
@@ -3993,15 +3995,41 @@ async function voPhrase(frames,t0,t1){
     if(dup){ VO.skipSub++; voSt(voReadyText()); log('lời nói trùng phụ đề, bỏ qua: '+text.slice(0,80)); return; }
     log('lời nói ('+secs+'s): '+text.slice(0,160));
     VO.lines.push({t:text,at:now}); if(VO.lines.length>20) VO.lines.shift();
-    VO.sent++; voSt(voReadyText());
-    S.q.push({seq:++S.seq,text:text,nl:1,voice:true}); if(S.q.length>4) S.q.splice(0,S.q.length-4); pump();
+    voTranslate(text,t1);
   }catch(e){
     var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
     log('lời nói: '+m); voSt(m);
   }finally{ VO.busy--; }
 }
-/* a subtitle read now that is a line just heard and translated: already on screen in Vietnamese */
-function voHeard(txt){ var now=Date.now(); return VO.lines.some(function(l){ return now-l.at<20000&&voSame(txt,l.t); }); }
+/* a subtitle read now that is (nearly letter for letter) a line just heard and translated */
+function voHeard(txt){ var now=Date.now(); return VO.lines.some(function(l){ return l.shown&&now-l.at<15000&&dice(txt,l.t)>=0.8; }); }
+/* translate a spoken line apart from the subtitles: it never takes a subtitle's place in the queue, never makes a
+   subtitle look "already translated", and shows only when no subtitle is on screen (else it goes to the list) */
+VO.tr=0;
+async function voTranslate(text,heardAt){
+  if(VO.tr>=2){ log('lời nói: đang dịch 2 câu, bỏ câu này'); return; }
+  VO.tr++;
+  try{
+    var res=tmFind(text);
+    if(res) log('lời nói có sẵn trong kho dịch chung');
+    else res=await askText(voicePrompt(text),text);
+    res=res&&splitSpeaker(res,text);
+    if(!res||!String(res.vi||'').trim()){ log('lời nói: không có gì để dịch'); return; }
+    res._voice=true; res._nl=1;
+    var L=VO.lines.find(function(l){ return l.t===text; });
+    var now=Date.now(), busy=subOnScreen()||(S.lastShownAt&&now-S.lastShownAt<4000), late=now-heardAt>9000;
+    if(busy||late){
+      S.hist.splice(S.hist.length?1:0,0,{en:res.en||text,vi:res.vi,who:res.speaker||'',voice:true}); S.hist=S.hist.slice(0,40);
+      log('lời nói dịch xong'+(busy?' lúc đang có phụ đề':' (đã quá lâu)')+': chỉ đưa vào danh sách câu trước');
+      return;
+    }
+    if(L) L.shown=true;
+    VO.sent++; voSt(voReadyText());
+    log('dịch lời nói: '+String(res.vi).slice(0,120));
+    show(res);
+  }catch(e){ log('lời nói: chưa dịch được ('+(e.cool?'mã hết lượt':String(e.message||e).slice(0,60))+')'); }
+  finally{ VO.tr--; }
+}
 /* speech -> text: Whisper on Groq (fast, free), else Gemini */
 async function voStt(wav){
   var lang=LG(), last=null;
@@ -4016,7 +4044,8 @@ async function voStt(wav){
       catch(e){ last=new Error('Mất kết nối mạng'); continue; }
       if(r.ok){
         count(key,'q');
-        var segs=(j.segments||[]).filter(function(s){ return !(s.no_speech_prob>0.6&&s.avg_logprob<-0.5)&&!(s.avg_logprob<-1.2); });
+        /* drop what is not a person talking: silence or noise (no_speech), unsure guesses, and repeated words (songs, loops) */
+        var segs=(j.segments||[]).filter(function(s){ return !(s.no_speech_prob>0.6&&s.avg_logprob<-0.5)&&!(s.avg_logprob<-1.2)&&!(s.compression_ratio>2.4)&&!/[♪♫]/.test(s.text||''); });
         return j.segments?segs.map(function(s){return s.text;}).join(' '):(j.text||'');
       }
       var msg=(j.error&&j.error.message)||('HTTP '+r.status); last=new Error(msg);
