@@ -47,6 +47,8 @@ static int g_listen = -1;
 void hsrp_set_log(void (*fn)(const char *line)) { log_fn = fn; }
 
 static void hlog(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+static int split(char *s, char **av, int max);
+static uint64_t now_ms(void);
 static void hlog(const char *fmt, ...)
 {
 	if(!log_fn) return;
@@ -459,20 +461,11 @@ static void stream_start(char **av, int ac)
 
 /* ================= finding and waking the console (same packets as chiaki-ng) ================= */
 
-static void cmd_discover(int ms, const char *extra)
+/* where to ask on the home network: everyone (255.255.255.255), each network's broadcast address, and every
+   address of the phone's own network one by one (the iPhone may not send broadcasts without an Apple permission) */
+static size_t lan_targets(uint32_t *t, size_t cap, const char *extra)
 {
-	if(ms < 300 || ms > 10000) ms = 1600;
-	int fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(fd < 0) { emit_event("{\"ev\":\"discover\",\"list\":[],\"err\":\"socket\"}"); return; }
-	int one = 1;
-	setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
-	struct sockaddr_in me; memset(&me, 0, sizeof(me)); me.sin_family = AF_INET; me.sin_addr.s_addr = htonl(INADDR_ANY);
-	bind(fd, (struct sockaddr *)&me, sizeof(me));
-
-	/* where to ask: everyone (255.255.255.255), each network's broadcast address, and every address of the
-	   phone's own network one by one (the iPhone may not send broadcasts without a special Apple permission) */
-	uint32_t *t = (uint32_t *)malloc(sizeof(uint32_t) * 4200); size_t nt = 0;
-	if(!t) { close(fd); return; }
+	size_t nt = 0;
 	t[nt++] = 0xffffffffu;
 	if(extra && *extra) { struct in_addr a; if(inet_pton(AF_INET, extra, &a) == 1) t[nt++] = ntohl(a.s_addr); }
 	struct ifaddrs *ifs = NULL;
@@ -486,14 +479,144 @@ static void cmd_discover(int ms, const char *extra)
 			uint32_t mask = ntohl(((struct sockaddr_in *)i->ifa_netmask)->sin_addr.s_addr);
 			if((ip >> 24) == 169 || (ip >> 24) == 127) continue;
 			uint32_t net = ip & mask, bc = net | ~mask;
-			if(nt < 4200) t[nt++] = bc;
+			if(nt < cap) t[nt++] = bc;
 			uint32_t hosts = ~mask;
 			if(hosts > 1 && hosts <= 1024)
-				for(uint32_t h = 1; h < hosts && nt < 4200; h++) { uint32_t a = net | h; if(a != ip) t[nt++] = a; }
-			hlog("discover on %s: %u.%u.%u.%u/%08x", i->ifa_name, ip >> 24, (ip >> 16) & 255, (ip >> 8) & 255, ip & 255, mask);
+				for(uint32_t h = 1; h < hosts && nt < cap; h++) { uint32_t a = net | h; if(a != ip) t[nt++] = a; }
 		}
 		freeifaddrs(ifs);
 	}
+	return nt;
+}
+
+/* the Hóng Sub TV app (Android TV) answers "HONGSUB_TV?" on UDP 8766 with a little JSON about itself */
+static void cmd_tvfind(int ms)
+{
+	if(ms < 300 || ms > 8000) ms = 1800;
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) { emit_event("{\"ev\":\"tvfind\",\"list\":[]}"); return; }
+	int one = 1; setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
+	struct sockaddr_in me; memset(&me, 0, sizeof(me)); me.sin_family = AF_INET; me.sin_addr.s_addr = htonl(INADDR_ANY);
+	bind(fd, (struct sockaddr *)&me, sizeof(me));
+	uint32_t *t = (uint32_t *)malloc(sizeof(uint32_t) * 4200);
+	char *out = (char *)malloc(32768);
+	if(!t || !out) { free(t); free(out); close(fd); return; }
+	size_t nt = lan_targets(t, 4200, NULL), on = 0; int found = 0;
+	char seen[40][20]; int nseen = 0;
+	on += (size_t)snprintf(out, 32768, "{\"ev\":\"tvfind\",\"list\":[");
+	static const char q[] = "HONGSUB_TV?";
+	uint64_t t0 = now_ms(), end = t0 + (uint64_t)ms; int round = 0;
+	while(now_ms() < end)
+	{
+		if(round < 3 && now_ms() >= t0 + (uint64_t)round * 450)
+		{
+			for(size_t k = 0; k < nt; k++)
+			{
+				struct sockaddr_in to; memset(&to, 0, sizeof(to)); to.sin_family = AF_INET; to.sin_addr.s_addr = htonl(t[k]); to.sin_port = htons(8766);
+				sendto(fd, q, sizeof(q) - 1, 0, (struct sockaddr *)&to, sizeof(to));
+			}
+			round++;
+		}
+		fd_set rf; FD_ZERO(&rf); FD_SET(fd, &rf);
+		struct timeval tv = { 0, 100000 };
+		if(select(fd + 1, &rf, NULL, NULL, &tv) <= 0) continue;
+		char rb[1500]; struct sockaddr_in from; socklen_t fl = sizeof(from);
+		ssize_t r = recvfrom(fd, rb, sizeof(rb) - 1, 0, (struct sockaddr *)&from, &fl);
+		if(r <= 0) continue;
+		rb[r] = 0;
+		if(!strstr(rb, "hongsubtv")) continue;
+		char addr[20]; inet_ntop(AF_INET, &from.sin_addr, addr, sizeof(addr));
+		bool dup = false; for(int k = 0; k < nseen; k++) if(!strcmp(seen[k], addr)) dup = true;
+		if(dup || nseen >= 40) continue;
+		snprintf(seen[nseen++], sizeof(seen[0]), "%s", addr);
+		char esc[3200]; json_str(esc, sizeof(esc), rb);
+		if(on + strlen(esc) + 64 < 32768)
+			on += (size_t)snprintf(out + on, 32768 - on, "%s{\"addr\":\"%s\",\"text\":\"%s\"}", found++ ? "," : "", addr, esc);
+	}
+	snprintf(out + on, 32768 - on, "]}");
+	emit_event(out);
+	free(out); free(t); close(fd);
+}
+
+/* straight to the TV app on the home network: HTTP to <ip>:8765 (GET /ping, POST /sub with the line) */
+typedef struct { char id[40]; char ip[40]; char path[64]; char *body; } TvPost;
+static void *tvpost_thread(void *arg)
+{
+	TvPost *j = (TvPost *)arg;
+	int status = 0; char resp[4096] = {0}; size_t rn = 0;
+	struct sockaddr_in to; memset(&to, 0, sizeof(to)); to.sin_family = AF_INET; to.sin_port = htons(8765);
+	int fd = -1;
+	if(inet_pton(AF_INET, j->ip, &to.sin_addr) == 1 && (fd = socket(AF_INET, SOCK_STREAM, 0)) >= 0)
+	{
+		struct timeval tv = { 3, 0 };
+		setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)); setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#ifdef SO_NOSIGPIPE
+		int one = 1; setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#endif
+		/* connect with a time limit: a TV that is off must not keep the line waiting */
+		int fl = fcntl(fd, F_GETFL, 0); fcntl(fd, F_SETFL, fl | O_NONBLOCK);
+		int c = connect(fd, (struct sockaddr *)&to, sizeof(to));
+		bool ok = c == 0;
+		if(!ok && errno == EINPROGRESS)
+		{
+			fd_set wf; FD_ZERO(&wf); FD_SET(fd, &wf); struct timeval ct = { 2, 500000 };
+			if(select(fd + 1, NULL, &wf, NULL, &ct) == 1) { int e = 0; socklen_t el = sizeof(e); getsockopt(fd, SOL_SOCKET, SO_ERROR, &e, &el); ok = e == 0; }
+		}
+		fcntl(fd, F_SETFL, fl);
+		if(ok)
+		{
+			size_t bl = j->body ? strlen(j->body) : 0;
+			char h[400];
+			int hn = snprintf(h, sizeof(h), "%s %s HTTP/1.0\r\nHost: %s:8765\r\nContent-Type: application/json\r\nContent-Length: %u\r\nConnection: close\r\n\r\n",
+				bl ? "POST" : "GET", j->path, j->ip, (unsigned)bl);
+			if(send_all(fd, (const uint8_t *)h, (size_t)hn) && (!bl || send_all(fd, (const uint8_t *)j->body, bl)))
+			{
+				ssize_t r;
+				while(rn + 1 < sizeof(resp) && (r = recv(fd, resp + rn, sizeof(resp) - 1 - rn, 0)) > 0) rn += (size_t)r;
+				resp[rn] = 0;
+				if(!strncmp(resp, "HTTP/", 5)) { const char *sp = strchr(resp, ' '); if(sp) status = atoi(sp + 1); }
+			}
+		}
+		close(fd);
+	}
+	const char *b = strstr(resp, "\r\n\r\n"); b = b ? b + 4 : "";
+	char esc[3000]; json_str(esc, sizeof(esc), b);
+	char *out = (char *)malloc(3300);
+	if(out)
+	{
+		char idq[60]; json_str(idq, sizeof(idq), j->id);
+		snprintf(out, 3300, "{\"ev\":\"tvpost\",\"id\":\"%s\",\"status\":%d,\"body\":\"%s\"}", idq, status, esc);
+		emit_event(out); free(out);
+	}
+	free(j->body); free(j);
+	return NULL;
+}
+/* "tvpost <id> <ip> <path>" then, on the next line, the JSON to send (none: GET) */
+static void cmd_tvpost(char *msg)
+{
+	char *nl = strchr(msg, '\n'); if(nl) *nl = 0;
+	char *av[5]; int ac = split(msg, av, 5);
+	if(ac < 4) return;
+	TvPost *j = (TvPost *)calloc(1, sizeof(TvPost)); if(!j) return;
+	snprintf(j->id, sizeof(j->id), "%s", av[1]); snprintf(j->ip, sizeof(j->ip), "%s", av[2]); snprintf(j->path, sizeof(j->path), "%s", av[3]);
+	if(j->path[0] != '/' || strstr(j->path, "..")) { free(j); return; }
+	if(nl && nl[1]) j->body = strdup(nl + 1);
+	pthread_t th; if(pthread_create(&th, NULL, tvpost_thread, j) == 0) pthread_detach(th); else { free(j->body); free(j); }
+}
+
+static void cmd_discover(int ms, const char *extra)
+{
+	if(ms < 300 || ms > 10000) ms = 1600;
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(fd < 0) { emit_event("{\"ev\":\"discover\",\"list\":[],\"err\":\"socket\"}"); return; }
+	int one = 1;
+	setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
+	struct sockaddr_in me; memset(&me, 0, sizeof(me)); me.sin_family = AF_INET; me.sin_addr.s_addr = htonl(INADDR_ANY);
+	bind(fd, (struct sockaddr *)&me, sizeof(me));
+
+	uint32_t *t = (uint32_t *)malloc(sizeof(uint32_t) * 4200);
+	if(!t) { close(fd); return; }
+	size_t nt = lan_targets(t, 4200, extra);
 	static const char pk5[] = "SRCH * HTTP/1.1\ndevice-discovery-protocol-version:00030010\n";
 	static const char pk4[] = "SRCH * HTTP/1.1\ndevice-discovery-protocol-version:00020020\n";
 
@@ -605,6 +728,7 @@ static int split(char *s, char **av, int max)
 }
 
 typedef struct { int ms; char extra[64]; } DiscJob;
+static void *tvfind_thread(void *arg) { int ms = (int)(intptr_t)arg; cmd_tvfind(ms); return NULL; }
 static void *discover_thread(void *arg) { DiscJob *j = (DiscJob *)arg; cmd_discover(j->ms, j->extra); free(j); return NULL; }
 
 static void command(char *line)
@@ -651,6 +775,7 @@ static void command(char *line)
 		pthread_t th; if(pthread_create(&th, NULL, discover_thread, j) == 0) pthread_detach(th);
 	}
 	else if(!strcmp(c, "wake") && ac >= 4) cmd_wake(av[1], atoi(av[2]), av[3]);
+	else if(!strcmp(c, "tvfind")) { pthread_t th; if(pthread_create(&th, NULL, tvfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 1800)) == 0) pthread_detach(th); }
 	else if(!strcmp(c, "ping")) emit_event("{\"ev\":\"pong\",\"core\":\"hsrp 1\"}");
 #ifdef HSRP_TEST_CMDS
 	else if(!strcmp(c, "feed") && ac >= 2)
@@ -776,9 +901,10 @@ static void ws_session(int fd)
 			free(p);
 			if(fin)
 			{
-				/* several commands may come in one message, one per line */
+				/* several commands may come in one message, one per line; "tvpost" carries its JSON on the next line */
 				char *s = (char *)msg, *nl;
-				while(s && *s) { nl = strchr(s, '\n'); if(nl) *nl = 0; if(*s) command(s); s = nl ? nl + 1 : NULL; }
+				if(!strncmp(s, "tvpost ", 7)) cmd_tvpost(s);
+				else while(s && *s) { nl = strchr(s, '\n'); if(nl) *nl = 0; if(*s) command(s); s = nl ? nl + 1 : NULL; }
 				free(msg); msg = NULL; msg_n = 0;
 			}
 			continue;

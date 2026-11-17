@@ -30,7 +30,7 @@ html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiC
 .hs-vometer{height:6px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden;margin:10px 0 2px}.hs-vometer i{display:block;height:100%;width:0;background:#3ecf8e;transition:width .12s linear}.hs-vometer.talk i{background:#f5c542}
 /* phone apps with Remote Play inside (Android, iPhone): the PS5 / PS4 parts of the desktop app */
 html.hs-mps #hsPsSec{display:block!important}html.hs-mps #hsPsGo,html.hs-mps #hsPsEnd{display:inline-flex!important}html.hs-mps #hsPsEnd.hs-off,html.hs-mps #hsPsFull{display:none!important}
-html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .dk-nav span.hs-web{display:none!important}
+html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=android] .dk-set.dk-only{display:block!important}html.hs-mps .dk-nav span.hs-web{display:none!important}
 .hs-macnote{border:1px solid rgba(255,196,0,.35);background:rgba(255,196,0,.07);border-radius:10px;padding:10px 12px;margin:10px 0}
 
 /* TV: one panel per kind of TV */
@@ -435,7 +435,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .dk-nav span.h
                   <label class="lab" for="hsTvIp">Nối qua mạng nhà (nhanh nhất)</label>
                   <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
                   <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
-                  <p class="hs-note" id="hsTvLanNote">TV và máy tính dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+                  <p class="hs-note" id="hsTvLanNote">TV và <span class="hs-devw">máy tính</span> dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
                 </div>
               </div>
 
