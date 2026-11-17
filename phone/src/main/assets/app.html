@@ -2952,10 +2952,10 @@ function show(res){
   var ch=who?castMeet(who,res.gender,res.age):null;
   var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi).replace(/\n/g,'<br>');
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=html;
-  $('hsEn').textContent=$('hsShowEn').checked?en:'';
-  S.hist.unshift({en:en,vi:vi,who:who}); S.hist=S.hist.slice(0,40);
+  $('hsEn').textContent=$('hsShowEn').checked?(res._voice?'🔊 ':'')+en:'';
+  S.hist.unshift({en:en,vi:vi,who:who,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
   $('hsHistN').textContent=S.hist.length;
-  $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+esc(h.en)+'</small></li>';}).join('');
+  $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+(h.voice?'🔊 ':'')+esc(h.en)+'</small></li>';}).join('');
   pipRender(html,$('hsEn').textContent);
   S.lastHtml=html; coverShow(html);
   if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
@@ -3656,7 +3656,7 @@ async function translateText(j){
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(res) res._nl=j.nl||1;
+    if(res){ res._nl=j.nl||1; res._voice=!!j.voice; }
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -3742,7 +3742,7 @@ async function ocrStep(m,force){
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(ocrText(o));
-  if(txt) subBoxFrom(o,ocv.width,ocv.height);
+  if(txt){ subBoxFrom(o,ocv.width,ocv.height); subSeen(txt); }
   if(!txt){
     S.cand=null;
     var nowI=Date.now();
@@ -3774,6 +3774,7 @@ function ocrTake(txt,force){
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
   if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
+  if(!force&&voHeard(part)){ log('phụ đề trùng lời nói vừa dịch, không dịch lại: '+part.slice(0,80)); S.saved++; return; }
   log('đọc được: '+part);
   coverWait();
   enqueue(part);
@@ -3932,6 +3933,7 @@ async function tick(force){
     var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
   }
   var m=textMask(), now=Date.now();
+  S.lastTickAt=now; if(m.ink>=MW*MH*0.003) subStill();
   motionSample();
   if(micAreas()){ micPadPoll(); micIconLook(); }
   if(guardOn()&&!force){
@@ -4495,7 +4497,7 @@ if(!PH&&(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||/Andr
 /* ---------- spoken lines: what characters say without a subtitle (people in the street, phone calls, radio in GTA...) ----------
    The game's sound (the PS5 inside Hóng Sub, the shared game window, or the microphone listening to the TV) is cut into
    phrases where someone speaks; each phrase is written down by Whisper (Groq) or Gemini, then translated like a subtitle. */
-var VO={ctx:null,node:null,mute:null,stream:null,ownCtx:false,src:'',frames:[],pre:[],talk:false,sp:0,sil:0,voiced:0,noise:0.003,lvl:0,busy:0,muteUntil:0,heard:0,sent:0,err:'',acc:null,accN:0,ratio:3,keep:null};
+var VO={skipSub:0,t0:0,ctx:null,node:null,mute:null,stream:null,ownCtx:false,src:'',frames:[],pre:[],talk:false,sp:0,sil:0,voiced:0,noise:0.003,lvl:0,busy:0,muteUntil:0,heard:0,sent:0,err:'',acc:null,accN:0,ratio:3,keep:null};
 var VO_FR=320, VO_SR=16000;   /* 20 ms frames at 16 kHz, what speech recognition wants */
 function voOn(){ var c=$('hsTalk'); return !!(c&&c.checked); }
 function voSrc(){ return ($('hsTalkSrc')&&$('hsTalkSrc').value)||'game'; }
@@ -4558,7 +4560,7 @@ async function voStart(){
 function voReadyText(){
   var how=groqKeys().length?'Groq':keys().length?'Gemini':'';
   if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).';
-  return 'Đang nghe '+(VO.src==='ps'?'tiếng từ máy PS':VO.src==='mic'?'qua micro':'tiếng game')+', chép lời bằng '+how+(VO.sent?' · đã dịch '+VO.sent+' câu nói':'')+'.';
+  return 'Đang nghe '+(VO.src==='ps'?'tiếng từ máy PS':VO.src==='mic'?'qua micro':'tiếng game')+', chép lời bằng '+how+(VO.sent?' · đã dịch '+VO.sent+' câu nói':'')+(VO.skipSub?' · bỏ qua '+VO.skipSub+' câu đã có phụ đề':'')+'.';
 }
 /* 16 kHz mono frames, then a simple speaking / quiet detector that follows the background sound of the game */
 function voFeed(buf){
@@ -4582,14 +4584,14 @@ function voFrame(f,selfVoice){
   if(!VO.talk){
     VO.pre.push(f); if(VO.pre.length>15) VO.pre.shift();
     VO.sp=speech?VO.sp+1:0;
-    if(VO.sp>=4){ VO.talk=true; VO.frames=VO.pre.slice(); VO.pre=[]; VO.sil=0; VO.voiced=VO.sp; }
+    if(VO.sp>=4){ VO.talk=true; VO.frames=VO.pre.slice(); VO.pre=[]; VO.sil=0; VO.voiced=VO.sp; VO.t0=Date.now()-VO.frames.length*20; }
     return;
   }
   VO.frames.push(f);
   if(speech){ VO.sil=0; VO.voiced++; } else VO.sil++;
   if(VO.sil>=35||VO.frames.length>=750){   /* 0.7 s quiet ends a phrase; a phrase is at most 15 s */
     var fr=VO.frames, voiced=VO.voiced; VO.talk=false; VO.frames=[]; VO.sp=0; VO.voiced=0;
-    if(voiced>=20) voPhrase(fr);
+    if(voiced>=20) voPhrase(fr,VO.t0||Date.now()-fr.length*20,Date.now()-VO.sil*20);
   }
 }
 setInterval(function(){ if(VO.node) voLevel(); },150);
@@ -4605,18 +4607,45 @@ function voWav(frames){
 }
 /* what recognisers write when there is only music or noise */
 var VO_JUNK=/^(?:(?:thank you|thanks)(?: (?:so much|very much))?(?: for watching| for listening)?|you|bye|okay|oh|uh|um|hmm|ah|music|applause|laughter|silence|subtitles? by.*|transcri.*|\W*)[.!?…]*$/i;
-async function voPhrase(frames){
+/* spoken line or subtitle: the same words? (names, punctuation and small mishearings apart) */
+function voWords(t){ return String(t||'').toLowerCase().replace(/^[a-z' .\-]{1,24}:\s+/,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af\u0400-\u04ff]+/).filter(function(w){ return w.length>1; }); }
+function voSame(a,b){
+  var wa=voWords(a), wb=voWords(b); if(!wa.length||!wb.length) return false;
+  var sb={}; wb.forEach(function(w){ sb[w]=1; }); var hit=wa.filter(function(w){ return sb[w]; }).length;
+  var n=Math.min(wa.length,wb.length);
+  return n<=2?hit>=n&&Math.abs(wa.length-wb.length)<=1:hit/n>=0.6;
+}
+/* subtitles seen in the subtitle area, with when they were on screen (from the reader) */
+S.subLines=[];
+function subSeen(txt){
+  var now=Date.now(), L=S.subLines[S.subLines.length-1];
+  if(L&&similar(L.t,txt)&&now-L.to<3000){ L.to=now; return; }
+  S.subLines.push({t:txt,from:now,to:now}); if(S.subLines.length>60) S.subLines.shift();
+}
+function subStill(){ var L=S.subLines[S.subLines.length-1]; if(L&&Date.now()-L.to<1500) L.to=Date.now(); }   /* the same subtitle is still on screen */
+/* was a subtitle on screen while the character spoke? (text that never changes for 45 s is part of the screen, not a subtitle) */
+function subDuring(t0,t1){
+  return S.subLines.some(function(L){ return L.to-L.from<45000&&L.from<=t1+1200&&L.to>=t0-600; });
+}
+function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.now()-S.lastTickAt<3000); }
+/* the words were heard: tell the subtitle reader, which then skips the same line (no second AI call) */
+VO.lines=[];
+async function voPhrase(frames,t0,t1){
   if(VO.busy>=3) return;   /* far behind: skip this one rather than pile up */
   VO.busy++; VO.heard++;
   var secs=(frames.length*0.02).toFixed(1);
   try{
+    /* a subtitle shows up with the voice, or a moment later: look before using a turn of the speech recogniser */
+    await new Promise(function(ok){ setTimeout(ok,900); });
+    if(subWatching()&&subDuring(t0,t1)){ VO.skipSub++; voSt(voReadyText()); log('lời nói ('+secs+'s) có phụ đề trên màn hình: chỉ dịch phụ đề, không tốn lượt chép lời'); return; }
     var wav=voWav(frames), text=await voStt(wav);
     text=String(text||'').replace(/\s+/g,' ').trim();
-    if(!text||VO_JUNK.test(text)||text.replace(/[^A-Za-zÀ-ɏЀ-ӿ぀-ヿ一-鿿가-힯]/g,'').length<3){ log('lời nói ('+secs+'s): không có câu nói'); return; }
-    /* the game already showed this line as a subtitle: it is translated already */
-    var now=Date.now(), dup=S.recent.some(function(r){ return now-r.at<20000&&dice(r.raw,text)>=0.5; })||(S.lastRaw&&now-S.lastShownAt<8000&&dice(S.lastRaw,text)>=0.5);
-    if(dup){ log('lời nói trùng phụ đề, bỏ qua: '+text.slice(0,80)); return; }
+    if(!text||VO_JUNK.test(text)||text.replace(/[^A-Za-z\u00C0-\u024F\u0400-\u04FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/g,'').length<3){ log('lời nói ('+secs+'s): không có câu nói'); return; }
+    /* the game showed (or is showing) these words as a subtitle: the subtitle is translated, this is not */
+    var now=Date.now(), dup=S.subLines.some(function(L){ return now-L.to<20000&&voSame(text,L.t); })||S.recent.some(function(r){ return now-r.at<20000&&voSame(text,r.raw); });
+    if(dup){ VO.skipSub++; voSt(voReadyText()); log('lời nói trùng phụ đề, bỏ qua: '+text.slice(0,80)); return; }
     log('lời nói ('+secs+'s): '+text.slice(0,160));
+    VO.lines.push({t:text,at:now}); if(VO.lines.length>20) VO.lines.shift();
     VO.sent++; voSt(voReadyText());
     S.q.push({seq:++S.seq,text:text,nl:1,voice:true}); if(S.q.length>4) S.q.splice(0,S.q.length-4); pump();
   }catch(e){
@@ -4624,6 +4653,8 @@ async function voPhrase(frames){
     log('lời nói: '+m); voSt(m);
   }finally{ VO.busy--; }
 }
+/* a subtitle read now that is a line just heard and translated: already on screen in Vietnamese */
+function voHeard(txt){ var now=Date.now(); return VO.lines.some(function(l){ return now-l.at<20000&&voSame(txt,l.t); }); }
 /* speech -> text: Whisper on Groq (fast, free), else Gemini */
 async function voStt(wav){
   var lang=LG(), last=null;
