@@ -462,6 +462,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
             <b>Hiển thị</b>
             <label class="hs-sw" style="margin-top:4px">Đè chữ Việt lên phụ đề gốc trên hình <input type="checkbox" id="hsCover" checked></label>
             <label class="hs-sw" style="margin-top:4px">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
+            <label class="hs-sw" style="margin-top:4px" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (bỏ qua màn hình PS5, bản đồ) <input type="checkbox" id="hsGuard" checked></label>
         <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="hs-f">
               <label for="hsSize">Cỡ chữ phụ đề <span id="hsSizeV">28</span>px</label>
@@ -846,6 +847,7 @@ async function read(src,opts){
   var boxes=await detect(src,W,H), items=[];
   if(opts&&opts.maxBoxes) boxes=boxes.slice(0,opts.maxBoxes);
   for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i]); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; items.push(boxes[i]); } }
+  if(opts&&opts.raw) return {items:items, W:W, H:H, ms:Math.round(performance.now()-t0)};   /* every text box on its own (button hints, menu words) */
   if(opts&&opts.blocks) return {blocks:blockUp(items.slice()), lines:lineUp(items.slice()), W:W, H:H, ms:Math.round(performance.now()-t0)};
   var lines=lineUp(items);
   var tl=lines.reduce(function(a,l){return a+l.text.length;},0);
@@ -1402,6 +1404,7 @@ async function zoneTick(force,only){
   try{
     for(var i=0;i<S.zones.length;i++){
       var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force)) continue;
+      if(GUARD.kind&&!force) break;
       if(!grab(z,1280,900)) continue;                       /* small quest text is enlarged so the reader catches it */
       var m=textMask();
       zcv.width=cap.width; zcv.height=cap.height; zcv.getContext('2d').drawImage(cap,0,0);   /* keep this crop: the subtitle check reuses cap meanwhile */
@@ -1424,7 +1427,8 @@ async function zoneTick(force,only){
       var text='', bl=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o); var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o);
+          if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
         var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Leave out controller hints (L1, R2, R3, ✕ ○ △ □, "Press ... to ...", "Back / Select"). Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
@@ -2967,6 +2971,12 @@ function ocrTake(txt,force){
   if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
   if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; return; }   /* the line on screen, read again */
   if(viPlain(txt)){ S.cand=null; S.lastOcr=txt; return; }                          /* the console's own menus in Vietnamese */
+  if(!force&&guardOn()&&S.running&&PS_STRONG.test(txt.toLowerCase())){ S.cand=null; S.lastOcr=txt; guardSet('ps'); return; }   /* PS5 words: its own screen */
+  if(!force&&guardOn()&&S.running&&ocrOn()&&guardHint(txt)){                       /* maybe a map's button hints: check the screen before translating */
+    if(!S.hintAt) S.hintAt=Date.now();
+    if(!(GUARD.st>S.hintAt&&GUARD.at>GUARD.st)){ S.cand=null; GUARD.next=0; S.forceOcr=true; return; }
+  }
+  S.hintAt=0;
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*2;
@@ -2980,6 +2990,69 @@ function ocrTake(txt,force){
   coverWait();
   enqueue(part);
 }
+/* ---------- "Chỉ dịch khi đang chơi": not on the PS5's own screens, not on the game map ----------
+   Every 3 s while translating, the top and bottom edges of the picture are read (that is where the PS5 shows its menu bar,
+   its cards and Control Center, and where a game map shows its button hints: Zoom, Legend, Set Waypoint...).
+   PS5 words or map words there pause all translation (subtitle and areas, on the computer and on the TV); it starts again
+   by itself a few seconds after the game picture is back. Only short pieces of text count, so a dialogue line that talks
+   about a map never stops anything. */
+var GUARD={kind:'',neg:0,next:0,at:0,st:0,busy:false};
+var PS_STRONG=/\b(control cent(er|re)|game base|playstation store|ps store|game library|enter rest mode|turn off ps5|restart ps5|power options|remote play|playstation plus|ps plus|media gallery|game help|your collection|add to library|recently played|trophy progress|activity goals?|officially launched)\b/;
+var PS_WEAK={games:/^games?$/,media:/^media$/,explore:/^explore$/,library:/^library$/,store:/^store$/,settings:/^settings$/,notif:/\bnotifications?\b/,
+  friends:/\bfriends\b/,party:/^part(y|ies)$/,acc:/\baccessories\b/,power:/^power$/,sound:/^sound$/,network:/^network$/,mic:/^mic$/,switcher:/\bswitcher\b/,
+  trophy:/\btroph(y|ies)\b/,act:/\bactivit(y|ies)\b/,profile:/^profile$/,wish:/\bwishlist\b/,installed:/^installed$/,purchased:/^purchased$/,captures:/^captures$/,
+  create:/^create$/,search:/^search$/,online:/^(online|offline)$/,addons:/\badd-?ons\b/,info:/^game info$/,home:/^home$/,music:/^music$/,seeall:/^(see|view) all$/,ready:/\bready to play\b/};
+var MAP_W={zoom:/\bzoom( in| out)?\b/,legend:/\blegends?\b/,waypoint:/\bwaypoints?\b/,travel:/\bfast travel\b/,marker:/\bmarkers?\b/,pin:/\bpins?\b/,beacon:/\bbeacons?\b/,
+  filter:/\bfilters?\b/,center:/\b(re-?)?cent(er|re)\b/,track:/\b(un)?track\b/,map:/\b(world |local |region )?map\b/,layer:/\blayers?\b/,dest:/\bdestination\b/,icons:/^icons$/};
+var MAP_ONLY={zoom:1,legend:1,waypoint:1,travel:1,marker:1,pin:1,beacon:1};
+function guardOn(){ var c=$('hsGuard'); return c?c.checked:load('guard',true); }
+/* what kind of screen these pieces of text say: 'ps' (the console's own screens), 'map', or '' (the game) */
+function guardKind(texts){
+  var weak={}, mp={}, strong=false;
+  (texts||[]).forEach(function(t0){
+    var s=String(t0||'').toLowerCase().replace(/[^a-z0-9&+\- ]+/g,' ').replace(/\s+/g,' ').trim(); if(!s) return;
+    if(PS_STRONG.test(s)) strong=true;
+    if(s.split(' ').length>4) return;                                       /* only short pieces: menu words and button hints */
+    Object.keys(PS_WEAK).forEach(function(k){ if(PS_WEAK[k].test(s)) weak[k]=1; });
+    Object.keys(MAP_W).forEach(function(k){ if(MAP_W[k].test(s)) mp[k]=1; });
+  });
+  if(strong||Object.keys(weak).length>=3) return 'ps';
+  var mk=Object.keys(mp); if(mk.length>=2&&mk.some(function(k){ return MAP_ONLY[k]; })) return 'map';
+  return '';
+}
+/* a short line with a map or PS5 word in the subtitle area ("Zoom  Legend", "Games"): look at the whole edges first */
+function guardHint(s){ s=String(s||'').toLowerCase(); if(s.split(/\s+/).length>8) return false;
+  return Object.keys(MAP_W).some(function(k){ return MAP_W[k].test(s); })||/\b(games|media|notifications|trophies|activities|switcher|game base)\b/.test(s); }
+function guardSet(k){
+  if(k){ GUARD.neg=0; if(GUARD.kind===k) return;
+    GUARD.kind=k; log('ngừng dịch: '+(k==='map'?'đang mở bản đồ':'đang ở màn hình của máy PS'));
+    coverHide(); S.cand=null; clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''});
+    S.zones.forEach(function(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.prevMask=null; z.pending=false; if(had) zTv(z); });
+    zShow(); zList(); zPush();
+    status('idle',k==='map'?'Tạm ngừng dịch vì đang mở bản đồ. Đóng bản đồ là dịch tiếp.':'Tạm ngừng dịch vì đang ở màn hình của máy PS. Vào game là dịch tiếp.');
+    return; }
+  if(!GUARD.kind) return;
+  if(++GUARD.neg<2) return;                                                  /* two looks in a row without it: back in the game */
+  GUARD.kind=''; GUARD.neg=0; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; S.prevMask=null; S.forceOcr=true;
+  log('dịch tiếp: đã vào lại game'); if(S.running) runStatus();
+}
+var gcv=document.createElement('canvas'), gcx=gcv.getContext('2d',{willReadFrequently:true});
+async function guardProbe(){
+  if(GUARD.busy||S.ocrBusy||!ocrOn()||!video.videoWidth) return;
+  GUARD.busy=true; S.ocrBusy=true; GUARD.st=Date.now(); var texts=[];
+  try{
+    var vw=video.videoWidth, vh=video.videoHeight, hw=vw*0.53;
+    var parts=[[0,0,hw,vh*0.16],[vw-hw,0,hw,vh*0.16],[0,vh*0.8,hw,vh*0.2],[vw-hw,vh*0.8,hw,vh*0.2]];   /* top and bottom edges, left and right halves */
+    for(var i=0;i<parts.length;i++){
+      var q=parts[i], sc=Math.min(1.5,Math.max(0.5,960/q[2]));
+      gcv.width=Math.round(q[2]*sc); gcv.height=Math.round(q[3]*sc); gcx.drawImage(video,q[0],q[1],q[2],q[3],0,0,gcv.width,gcv.height);
+      var o=await HsOcr.read(gcv,{raw:true,maxBoxes:24});
+      (o.items||[]).forEach(function(it){ if(it.conf>=0.6&&it.text) texts.push(it.text); });
+    }
+    if(guardOn()&&S.running) guardSet(guardKind(texts));
+  }catch(e){ log('xem màn hình lỗi: '+e.message); }
+  finally{ S.ocrBusy=false; GUARD.busy=false; GUARD.at=Date.now(); GUARD.next=GUARD.at+(GUARD.kind?1500:3000); }
+}
 async function tick(force){
   if((!S.running&&force!==true)||!S.stream) return;
   force=force===true;
@@ -2988,6 +3061,10 @@ async function tick(force){
     var L=S.demo.line(); if(similar(L.en,S.lastEn)) return; S.lastEn=L.en; show({en:L.en,vi:L.vi}); status('run','Đang dịch (câu mẫu)'); return;
   }
   var m=textMask(), now=Date.now();
+  if(guardOn()&&!force){
+    if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()) guardProbe();
+    if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */
+  } else if(GUARD.kind){ GUARD.kind=''; GUARD.neg=0; }
   if(readMode()==='local'&&!ocrOn()&&OCR.loading){ if(!S.ocrWait){ S.ocrWait=true; status('busy','Đang chuẩn bị bộ đọc chữ...'); } return; }
   if(S.ocrWait){ S.ocrWait=false; status('run','Đang dịch'); }
   if(S.zones.length&&!force) later(function(){ zoneTick(false); },10);
@@ -3036,12 +3113,12 @@ function startRun(){
     log('chạy không có mã: dùng máy dịch miễn phí');
   }
   S.sents=[]; OCR.miss=0;
-  S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0;
+  S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0; GUARD.kind=''; GUARD.neg=0; GUARD.next=0;
   restartTimer(); later(tick,30);
   phState(true);
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
-function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''});}
+function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''});}
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
 
 /* ---------- full-screen translate ---------- */
@@ -3251,6 +3328,9 @@ function toastOnce(m){ status('warn',m); }
 (function(){ var c=document.getElementById('hsSubSpot'); if(!c) return; c.checked=load('subspot',true);
   c.addEventListener('change',function(){ save('subspot',c.checked); S.placeK=null; placeSync(); if(S.coverHtml) coverShow(S.coverHtml); if(S.hist[0]) tvPush(S.hist[0].vi,S.hist[0].en,S.hist[0].who,false); }); })();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
+(function(){ var g=$('hsGuard'); if(!g) return; g.checked=load('guard',true);
+  g.addEventListener('change',function(){ save('guard',g.checked); if(!g.checked&&GUARD.kind){ GUARD.kind=''; GUARD.neg=0; S.forceOcr=true; if(S.running) runStatus(); } status(S.running?'run':'idle',g.checked?'Chỉ dịch khi đang chơi: tự ngừng ở màn hình PS5 và bản đồ':'Dịch cả màn hình PS5 và bản đồ'); });
+})();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});
 $('hsRead').value=load('read','local');
 $('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
