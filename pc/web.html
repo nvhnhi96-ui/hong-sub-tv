@@ -1752,8 +1752,10 @@ async function zoneTick(force,only){
         zNow();
         try{ await Promise.all(bl.map(async function(B){ try{ var tb=null; if(B.old){ t=t||{vi:B.vi,via:'nhớ'}; return; }
             if(zNeedsEye(B.en,B.ic)){ try{ var e=await zEye(z,zcv,B,B.en,B.n); if(e.vi){ tb={vi:e.vi,via:S.via}; B.ic=e.ic; } }catch(er){ log(zName(z)+': chưa xem được ảnh nút bấm ('+(er.cool?'mã hết lượt':String(er.message||er).slice(0,50))+')'); } }
-            if(!tb){ tb=await zTranslate(z,B.en,B.ic); if(tb.ic) B.ic=tb.ic; }
-            B.vi=lineSplit(zViClean(tb.vi),B.n); t=tb;
+            var U=zUnits(B.en);   /* whole sentences / menu items, one per line for the AI, then laid out on the original lines */
+            if(!tb){ tb=await zTranslate(z,U.map(function(u){ return u.t; }).join('\n'),B.ic); if(tb.ic) B.ic=tb.ic; B.vi=zUnitLines(zViClean(tb.vi),U,B.n); }
+            else B.vi=lineSplitS(zViClean(tb.vi),B.n);
+            t=tb;
             if(zSame(B.en,B.vi)) B.vi='';   /* nothing was translated (a name, a logo read as letters): no box */
             if(B.vi) zNow(); }catch(eB){ log(zName(z)+' dịch lỗi: '+(eB.cool?'mã hết lượt':String(eB.message||eB).slice(0,60))); } })); } finally{ z.pending=false; }
         var its=bl.filter(function(x){ return x.vi; });
@@ -2554,7 +2556,7 @@ function voApply(el,vl){
 function voWrap(html){ return '<span class="vo-line">'+html+'</span>'; }
 function show(res){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
-  vi=lineSplit(vi,lineMatch()?(res._nl||1):1);                /* as many lines as the original subtitle */
+  vi=lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var ch=who?castMeet(who,res.gender,res.age):null;
   var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi).replace(/\n/g,'<br>');
   var vl=res._voice?voLook():null; if(vl&&!vl.on) vl=null;
@@ -3070,6 +3072,55 @@ function lineSplit(vi,n){
   out.push(cur);
   return out.join('\n');
 }
+/* the sentences of a translation */
+function viSents(t){ return String(t||'').replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…。！？])\s+(?=[A-ZÀ-ỸĐ0-9"'“‘(\[\-–—{])/).map(function(x){ return x.trim(); }).filter(Boolean); }
+/* n lines, breaking between sentences: as many sentences as lines gives one per line; fewer sentences get lines by
+   their length; more sentences are grouped in order, as evenly as the sentence ends allow */
+function lineSplitS(vi,n){
+  vi=String(vi||'').trim(); if(!vi||n<=1) return lineSplit(vi,n);
+  var have=vi.split('\n').map(function(x){ return x.trim(); }).filter(Boolean); if(have.length===n) return have.join('\n');
+  var s=viSents(vi); if(s.length<2) return lineSplit(vi,n);
+  if(s.length===n) return s.join('\n');
+  var len=s.map(function(x){ return x.length; }), tot=len.reduce(function(a,b){ return a+b; },0);
+  if(s.length<n){
+    var k=len.map(function(l){ return Math.max(1,Math.round(l/tot*n)); }), sum=function(){ return k.reduce(function(a,b){ return a+b; },0); };
+    while(sum()>n){ var bi=-1; k.forEach(function(v,i){ if(v>1&&(bi<0||len[i]/v<len[bi]/k[bi])) bi=i; }); if(bi<0) break; k[bi]--; }
+    while(sum()<n){ var mi=0; k.forEach(function(v,i){ if(len[i]/v>len[mi]/k[mi]) mi=i; }); k[mi]++; }
+    if(sum()!==n) return lineSplit(vi,n);
+    return s.map(function(x,i){ return lineSplit(x,k[i]); }).join('\n');
+  }
+  /* more sentences than lines: cut between sentences so the longest line is as short as possible */
+  var m=s.length, best=null;
+  (function rec(i,left,acc,mx){
+    if(best&&mx>=best.mx) return;
+    if(left===1){ var l=0; for(var j=i;j<m;j++) l+=len[j]+1; var M=Math.max(mx,l); if(!best||M<best.mx) best={mx:M,cuts:acc.concat([m])}; return; }
+    var l2=0; for(var e=i;e<=m-left;e++){ l2+=len[e]+1; rec(e+1,left-1,acc.concat([e+1]),Math.max(mx,l2)); }
+  })(0,n,[],0);
+  if(!best||best.mx>tot/n*1.7) return lineSplit(vi,n);
+  var out=[], st=0; best.cuts.forEach(function(c){ out.push(s.slice(st,c).join(' ')); st=c; });
+  return out.join('\n');
+}
+/* the original lines of an area paragraph as units: a sentence wrapped over several lines is one unit, a new
+   sentence, a list item or a short menu line starts a new one. k: how many lines the unit takes on screen */
+function zUnits(en){
+  var L=String(en||'').split('\n').map(function(x){ return x.trim(); }).filter(Boolean), max=1, U=[], cur=null;
+  L.forEach(function(l){ if(l.length>max) max=l.length; });
+  L.forEach(function(l,i){
+    var prev=i?L[i-1]:'';
+    var glue=/[,(&\-]$|\b(the|a|an|of|to|and|or|in|on|at|for|with|from|by|your|his|her|their|my|our|its|this|that)$/i.test(prev);
+    var cont=cur&&!/[.!?…:;。！？"”’)\]]$/.test(prev)&&!/^([-•·*–—►▶]|\d+[.)]\s|\{\{\d+\}\})/.test(l)
+      &&!((prev.length<max*0.6||max<=24)&&/^[A-Z]/.test(l)&&!glue);   /* a short line, or a list of short lines (a menu) */
+    if(cont){ cur.t+=' '+l; cur.k++; } else { cur={t:l,k:1}; U.push(cur); }
+  });
+  return U.length?U:[{t:String(en||''),k:1}];
+}
+/* the translation laid out like the original: each unit's Vietnamese on as many lines as the English took */
+function zUnitLines(vi,U,n){
+  var v=String(vi||'').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+  if(!v.length) return '';
+  if(v.length!==U.length){ var s=viSents(v.join(' ')); if(s.length===U.length) v=s; else return lineSplitS(vi,n); }
+  return v.map(function(t,i){ return lineSplitS(t,U[i].k); }).join('\n');
+}
 function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
 function runStatus(){
   status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
@@ -3430,7 +3481,7 @@ var MAP_W={zoom:/\bzoom( in| out)?\b/,legend:/\blegends?\b/,waypoint:/\bwaypoint
 var MAP_ONLY={zoom:1,legend:1,waypoint:1,travel:1,marker:1,pin:1,beacon:1};
 function guardOn(){ var c=$('hsGuard'); return c?c.checked:load('guard',true); }
 /* what kind of screen these pieces of text say: 'ps' (the console's own screens), 'map', or '' (the game) */
-var PS_VI=/\b(da phuong tien|tiep tuc tai vi tri|hoat dong hien tai|xem chi tiet hoat dong|thu vien tro choi|trung tam dieu khien|che do nghi|tat ps5|khoi dong lai ps5|bo suu tap cua ban|da choi gan day|cua hang playstation)\b/;
+var PS_VI=/\b(choi tro choi|ban be cung choi|mot nguoi choi|nhieu nguoi choi|tro choi da cai dat|da phuong tien|tiep tuc tai vi tri|hoat dong hien tai|xem chi tiet hoat dong|thu vien tro choi|trung tam dieu khien|che do nghi|tat ps5|khoi dong lai ps5|bo suu tap cua ban|da choi gan day|cua hang playstation)\b/;
 function guardKind(texts){
   var weak={}, mp={}, strong=false;
   (texts||[]).forEach(function(t0){
