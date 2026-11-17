@@ -172,7 +172,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.111';
+var VERSION='1.0.112';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -246,11 +246,12 @@ var cov=null;
 function coverPlace(){
   var s=$('sub'), bx=document.querySelector('#sub .box');
   if(!cov){ s.style.top=''; s.style.height=''; s.className=s.className.replace(/\s*cov/g,''); $('vi').style.textAlign=''; $('en').style.textAlign=''; if(bx){ bx.style.alignItems=''; bx.style.padding=''; } applyLook(); return; }
-  var W=window.innerWidth, H=window.innerHeight;
+  var W=window.innerWidth, H=window.innerHeight, sk=Math.max(.4,Math.min(2.5,P.size/30));   /* "Cỡ chữ" on the computer: 28 there (30 here) = as big as the original letters */
   /* on the original subtitle's line, as wide as "Độ rộng khung phụ đề" says (centred on the original), with the chosen background */
   var bw=Math.max(P.wid/100*W,120), cx=(cov.x+cov.w/2)*W, left=Math.max(0,Math.min(W-bw,cx-bw/2));
   if(cov.spot){   /* "đúng chỗ từng dòng": over the original text itself, wider only if the Vietnamese needs it */
-    var v0=$('vi'); v0.style.whiteSpace='nowrap'; v0.style.fontSize=(cov.fs*scale())+'px';
+    if(s.className.indexOf('cov')<0) s.className+=' cov'; if(bx) bx.style.alignItems={l:'flex-start',c:'center',r:'flex-end'}[cov.al]||'center';   /* measured at the Vietnamese's own width, not the box's */
+    var v0=$('vi'); v0.style.whiteSpace='nowrap'; v0.style.fontSize=(cov.fs*scale()*sk)+'px';
     var need=v0.scrollWidth+24, base=cov.w*W; bw=Math.max(base,Math.min(P.wid/100*W,need));
     left=cov.al==='l'?cov.x*W:cov.al==='r'?(cov.x+cov.w)*W-bw:cx-bw/2; left=Math.max(0,Math.min(W-bw,left));
   }
@@ -259,12 +260,14 @@ function coverPlace(){
   s.style.left=left+'px'; s.style.right='auto'; s.style.width=bw+'px'; s.style.top=Math.max(0,cy-bh/2)+'px'; s.style.height=bh+'px';
   if(s.className.indexOf('cov')<0) s.className+=' cov';
   if(bx) bx.style.background='rgba(8,9,12,'+(P.bg/100)+')';
-  var px=cov.spot&&cov.fs?cov.fs*scale():P.size*1.6*scale(), v=$('vi'); v.style.fontSize=px+'px'; v.style.whiteSpace=P.lm||cov.spot?'nowrap':'';
+  var px=cov.spot&&cov.fs?cov.fs*scale()*sk:P.size*1.6*scale(), v=$('vi'); v.style.fontSize=px+'px'; v.style.whiteSpace=P.lm||cov.spot?'nowrap':'';
   v.style.textAlign=$('en').style.textAlign=cov.spot?({l:'left',c:'center',r:'right'}[cov.al]):''; if(bx){ bx.style.alignItems=cov.spot?({l:'flex-start',c:'center',r:'flex-end'}[cov.al]):''; bx.style.padding=cov.spot?'.05em .3em':''; }   /* same lines as the original: smaller letters, never an extra line */
+  /* bigger letters make the box taller (centred on the original, never smaller than it); they only shrink when a line is too wide or the box would take almost half the screen */
+  if(bx&&bx.scrollHeight>bh+1){ var nh=Math.min(bx.scrollHeight,Math.max(bh,H*.45)); s.style.height=nh+'px'; s.style.top=Math.max(0,Math.min(H-nh,cy-nh/2))+'px'; }
   for(var i=0;i<24&&bx&&(bx.scrollHeight>bx.clientHeight+1||bx.scrollWidth>bx.clientWidth+1||v.scrollWidth>v.clientWidth+1)&&px>9;i++){ px*=.92; v.style.fontSize=px+'px'; }
 }
 /* a font that arrives late is wider than the stand-in: fit again then */
-try{ if(document.fonts&&document.fonts.addEventListener) document.fonts.addEventListener('loadingdone',function(){ if(cov) coverPlace(); fitLines(); }); }catch(e){}
+try{ if(document.fonts&&document.fonts.addEventListener) document.fonts.addEventListener('loadingdone',function(){ if(cov) coverPlace(); fitLines(); for(var id in zones){ var z=zones[id]; if(z&&z.j&&z.j.zgrow) spotFit(z.el,z.j,window.innerWidth,window.innerHeight,(+z.j.zpx||0)*scale()); } }); }catch(e){}
 function fitLines(){
   if(cov) return;
   var px=P.size*1.6*scale(), v=$('vi'), bx=document.querySelector('#sub .box'); v.style.fontSize=px+'px'; v.style.whiteSpace=P.lm?'nowrap':'';
@@ -292,6 +295,34 @@ function showLine(who,vi,en,hold,readIt){
 
 /* ---------- translations of the extra areas ---------- */
 var zones={};
+/* "Đúng chỗ": the Vietnamese right over its own original paragraph, so the English under it is hidden.
+   Never smaller than the original and centred on it; the Vietnamese keeps its lines (no extra wrapping); with the size
+   read from the original the lines fit the original's height (a box never runs onto the next line of a menu); a longer
+   line widens the box inside the area on the side the text is lined up, past that the letters get smaller. */
+function spotFit(el,j,W,H,f0){
+  var bx=(+j.x||0)*W, by=(+j.y||0)*H, bw=Math.max(2,(+j.w||0)*W), bh=Math.max(2,(+j.h||0)*H), cx=bx+bw/2, al=j.zal==='r'?'r':j.zal==='c'?'c':'l';
+  var room;
+  if(+j.zw>0.01){ var L=+j.zx*W, R=(+j.zx+(+j.zw))*W; room=al==='r'?bx+bw-L:al==='c'?2*Math.min(cx-L,R-cx):R-bx; }
+  else room=Math.max(+j.w||0,+j.zmaxw||0)*W;
+  room=Math.max(bw,Math.min(room,W));
+  var s=el.style, auto=j.zauto!==0;
+  s.left='0px'; s.top='0px'; s.width='auto'; s.height='auto'; s.minWidth='0'; s.minHeight='0'; s.maxWidth='none'; s.overflow='hidden';
+  s.whiteSpace='pre'; s.lineHeight='1.15'; s.padding='0 .25em'; s.textAlign={l:'left',c:'center',r:'right'}[al];
+  var f=Math.max(6,f0||20); s.fontSize=f+'px';
+  for(var k=0;k<5;k++){ var nh=el.offsetHeight, nw=el.offsetWidth, g=1;
+    if(auto&&nh>bh*1.1) g=Math.min(g,bh*1.1/nh);
+    if(nw>room) g=Math.min(g,room/nw*.99);
+    if(g>.995||f<=6) break; f=Math.max(6,f*g); s.fontSize=f+'px'; }
+  var nh2=el.offsetHeight, w=Math.min(room,Math.max(bw,el.offsetWidth)), h=Math.max(bh,nh2);
+  var left=al==='r'?bx+bw-w:al==='c'?cx-w/2:bx;
+  s.width=w+'px'; s.paddingTop=s.paddingBottom=((h-nh2)/2)+'px';
+  s.left=Math.max(0,Math.min(W-w,left))+'px'; s.top=Math.max(0,Math.min(H-h,by+bh/2-h/2))+'px';
+}
+function zonesClear(){ for(var id in zones) if(zones.hasOwnProperty(id)) zoneOff(id); }
+/* Hóng Sub on the computer says "still here" every 10 s while area boxes are on the TV: when that stops (Hóng Sub
+   closed, computer asleep, network gone) the boxes go away by themselves instead of staying for minutes */
+var pcAt=0, hbOn=false;
+setInterval(function(){ if(hbOn&&Date.now()-pcAt>32000){ for(var id in zones){ if(zones.hasOwnProperty(id)){ zonesClear(); break; } } } },4000);
 function zoneOff(id){ var z=zones[id]; if(!z) return; clearTimeout(z.t); if(z.el.parentNode) z.el.parentNode.removeChild(z.el); delete zones[id]; }
 function zoneShow(j,vi){
   var id=String(j.zid||''); if(!id) return;
@@ -316,7 +347,9 @@ function zoneShow(j,vi){
     var fs=Math.max(12,Math.min(cap,bh/lines*.62)); z.el.style.fontSize=fs+'px';
     for(var k=0;k<22&&(z.el.scrollHeight>z.el.clientHeight+1||z.el.scrollWidth>z.el.clientWidth+1)&&fs>9;k++){ fs*=.9; z.el.style.fontSize=fs+'px'; }
   }
-  if(j.zfit){ var f2=parseFloat(z.el.style.fontSize)||20; for(var q=0;q<24&&z.el.scrollWidth>z.el.clientWidth+1&&f2>6;q++){ f2*=.92; z.el.style.fontSize=f2+'px'; } }
+  if(j.zgrow) spotFit(z.el,j,W,H,px*scale());
+  else if(j.zfit){ var f2=parseFloat(z.el.style.fontSize)||20; for(var q=0;q<24&&z.el.scrollWidth>z.el.clientWidth+1&&f2>6;q++){ f2*=.92; z.el.style.fontSize=f2+'px'; } }
+  z.j=j; z.vi=vi;
   clearTimeout(z.t);
   var hold=+j.hold||0;
   z.t=setTimeout(function(){ zoneOff(id); },hold>0?hold*1000:300000);   /* "until it changes": still gone after 5 minutes without news */
@@ -431,6 +464,7 @@ function takeAll(j,after){
 }
 var mids=[];
 function handle(j){
+  pcAt=Date.now(); if(j.hasOwnProperty('hb')) hbOn=true;
   if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
   var kind=j.kind||'sub', vi=String(j.vi||'').trim();
   /* "Đọc phụ đề" turned off on the computer (rd:false) wins over every TV setting, "Luôn đọc" included */
@@ -454,7 +488,8 @@ function handle(j){
   if(j.hasOwnProperty('vol')&&+j.vol>=30&&+j.vol<=300) P.vol=+j.vol;   /* how loud the voice is, in percent */
   if(changed){ applyLook(); if(cov) coverPlace(); }
   if(kind==='say'){ if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
-  if(kind==='hello'||kind==='ctl') return;
+  if(kind==='hello'||kind==='ctl'||kind==='hb') return;
+  if(kind==='zone'&&+j.zclr===1){ zonesClear(); return; }   /* Hóng Sub stopped: every area box off */
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
   if(kind==='zone'){ zoneShow(j,vi); if(vi&&!pcOff&&j.speak) say(vi.replace(/\n/g,'. ')); return; }   /* read aloud only when the area asks for it on the computer */
   if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
