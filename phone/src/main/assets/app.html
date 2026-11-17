@@ -746,7 +746,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <ol class="dk-steps">
                 <li>Chọn nguồn hình ở <b>Màn hình chơi</b> trước.</li>
                 <li>Bấm <b>Thêm vùng</b>, kéo chuột bao quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ. Muốn thêm chỗ khác thì bấm tiếp <b>Thêm vùng</b>.</li>
-                <li>Mỗi vùng chọn được loại chữ, tự dịch hay chỉ dịch khi bấm F6, cỡ chữ và có đọc to không. Đổi tên vùng ngay ở ô tên.</li>
+                <li>Mỗi vùng chọn được loại chữ, kiểu chữ, cỡ chữ, có đọc to không, và tự dịch khi chữ đổi hay chỉ dịch <b>khi bấm nút mic</b> trên tay cầm PS5 (bấm một lần, PS5 hiện biểu tượng mic ở góc trên bên phải; hoặc bấm F6 trên máy tính). Đổi tên vùng ngay ở ô tên.</li>
                 <li class="hs-web">Bản dịch mỗi vùng hiện ngay trên hình, đè lên đúng chỗ chữ gốc. Kéo thanh tên vùng để dời, kéo góc để đổi cỡ, bấm × để xóa.</li>
                 <li class="dk-only">Bản dịch mỗi vùng hiện ở khung nổi riêng, nằm đè lên đúng chỗ chữ gốc khi game chạy toàn màn hình. Bấm <b>Di chuyển các khung</b> để kéo khung tới chỗ khác.</li>
               </ol>
@@ -1419,14 +1419,28 @@ async function recognize(src,b){
   for(var i=0;i<n;i++){ t[i]=d[i*4+2]/127.5-1; t[n+i]=d[i*4+1]/127.5-1; t[2*n+i]=d[i*4]/127.5-1; }
   var out=await rec.run({x:new ort.Tensor('float32',t,[1,3,IH,IW])});
   var o=out[rec.outputNames[0]], T=o.dims[1], C=o.dims[2], p=o.data;
-  var s='', last=0, conf=0, m=0;
+  var s='', last=0, conf=0, m=0, at=[];
   for(var j=0;j<T;j++){
     var best=0, bv=-1, base=j*C;
     for(var c=0;c<C;c++){ if(p[base+c]>bv){bv=p[base+c]; best=c;} }
-    if(best!==0&&best!==last){ s+=chars[best]||''; conf+=bv; m++; }
+    if(best!==0&&best!==last){ var ch=chars[best]||''; s+=ch; for(var q=0;q<ch.length;q++) at.push(j); conf+=bv; m++; }
     last=best;
   }
-  return {text:s.trim(), conf:m?conf/m:0};
+  /* where the words start: a button icon before the text ("△ Hold to Charge") is read as a stray letter or not at all,
+     so the first real word (2+ letters, not a button name) tells where the original text really begins */
+  var x0=null, re=/\S+/g, mt, cut=0;
+  while((mt=re.exec(s))){ var w=mt[0].replace(/^[^A-Za-zÀ-ỹ0-9]+/,''), k=mt.index+(mt[0].length-w.length);
+    if(w.length>=2&&/[A-Za-zÀ-ỹ]{2}|\d/.test(w)&&!/^([LR][123]|[LR][BTS]|Z[LR]|OK)$/i.test(w)){
+      x0=b.x+Math.max(0,(at[k]+0.5)/T*b.w-b.h*0.22);
+      /* what came before it is the button icon read as a letter or a sign ("O Hold to Charge", "④ Hold..."):
+         only single letters set well apart from the words, or signs with no letter at all */
+      var pre=s.slice(0,mt.index).trim();
+      if(pre&&pre.split(/\s+/).every(function(q){ return !/[A-Za-zÀ-ỹ0-9]/.test(q)||/^[OXBY]$/.test(q); })){   /* not "A" or "I": real words */
+        var pi=mt.index-1; while(pi>=0&&/\s/.test(s.charAt(pi))) pi--; var gap=pi>=0&&at[pi]!=null?(at[k]-at[pi])/T*b.w:0;
+        if(!/[A-Za-zÀ-ỹ0-9]/.test(pre)||gap>b.h*0.5) cut=mt.index;
+      }
+      break; } }
+  return {text:s.slice(cut).trim(), conf:m?conf/m:0, x0:x0};
 }
 
 /* boxes on the same text line are joined left to right */
@@ -1463,7 +1477,8 @@ function blockUp(items){
     L.parts.sort(function(a,b){return a.x-b.x;});
     var x=L.parts[0].x, x2=Math.max.apply(null,L.parts.map(function(p){return p.x+p.w;}));
     var tl=L.parts.reduce(function(a,p){return a+p.text.length;},0);
-    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h};
+    var x0=null; for(var q=0;q<L.parts.length;q++){ if(L.parts[q].x0!=null){ x0=L.parts[q].x0; break; } }
+    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h,x0:x0};
   }).filter(function(l){return l.text;});
   lines.sort(function(a,b){return a.y-b.y;});
   var blocks=[];
@@ -1480,7 +1495,8 @@ function blockUp(items){
   });
   return blocks.map(function(b){
     var tl=b.lines.reduce(function(a,l){return a+l.text.length;},0);
-    return {x:b.x,y:b.y,w:b.w,h:b.h,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl)};
+    var xs=b.lines.map(function(l){ return l.x0; }).filter(function(v){ return v!=null; });
+    return {x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl)};
   });
 }
 async function read(src,opts){
@@ -1488,7 +1504,7 @@ async function read(src,opts){
   var t0=performance.now(), W=src.width, H=src.height;
   var boxes=await detect(src,W,H), items=[];
   if(opts&&opts.maxBoxes) boxes=boxes.slice(0,opts.maxBoxes);
-  for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i]); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; items.push(boxes[i]); } }
+  for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i]); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; boxes[i].x0=r.x0; items.push(boxes[i]); } }
   if(opts&&opts.raw) return {items:items, W:W, H:H, ms:Math.round(performance.now()-t0)};   /* every text box on its own (button hints, menu words) */
   if(opts&&opts.blocks) return {blocks:blockUp(items.slice()), lines:lineUp(items.slice()), W:W, H:H, ms:Math.round(performance.now()-t0)};
   var lines=lineUp(items);
@@ -1835,7 +1851,7 @@ if(!load('zbg90',false)){ S.zones.forEach(function(z){ if(z.bg===0) z.bg=90; });
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
 if(!load('zWhenGame',false)){ S.zones.forEach(function(z){ if(z.when==='play') z.when='game'; }); save('zWhenGame',true); if(S.zones.length) zSave(); }   /* game menus are translated again; only the PS5's own screens and the map are skipped */
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'game',speak:!!z.speak};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'game',font:FONTS[z.font]?z.font:'',speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1879,7 +1895,7 @@ function zShow(){
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
     var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
     tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
-    tx.style.background='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')'; tx.style.fontFamily=subFont(); tx.style.textAlign=zAlignCss(z);
+    tx.style.background='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')'; tx.style.fontFamily=zFont(z); tx.style.textAlign=zAlignCss(z);
     tx.style.bottom=''; tx.style.minHeight=''; tx.style.overflow='';
     if(!tx.hidden&&z.vi&&+z.px>0&&b.h>0){             /* size chosen: that size (on a 1080-line picture), the box grows down if needed */
       tx.style.fontSize=(+z.px*b.h/1080)+'px'; tx.style.bottom='auto'; tx.style.minHeight=(z.h*b.h)+'px'; tx.style.overflow='visible';
@@ -1894,7 +1910,7 @@ function zShow(){
     its.hidden=!spot;
     if(spot){
       tx.hidden=true;
-      var zh=z.h*b.h, bgc='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')', al=zAlignCss(z), ff=subFont().replace(/"/g,"'");
+      var zh=z.h*b.h, bgc='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')', al=zAlignCss(z), ff=zFont(z).replace(/"/g,"'");
       its.innerHTML=z.items.map(function(it){
         var f=+z.px>0?(+z.px*b.h/1080):Math.max(6,it.lh*zh*0.92);
         return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+esc(it.vi)+'</div>';
@@ -1966,7 +1982,9 @@ function spotFit(d,it,zw,zh,al,auto){
 }
 function zpxTxt(v){ v=+v||0; return v>0?v+'':'tự động'; }
 /* where the lines sit in the box: as the original text, or as chosen */
-function zAlign(z){ var a=z.al||'auto'; return a==='auto'?(z.alAuto||'l'):a; }
+function zAlign(z){ return z.alAuto||'l'; }   /* always lined up like the original text */
+function zFontKey(z){ return FONTS[z.font]?z.font:subFontKey(); }
+function zFont(z){ var k=zFontKey(z); fontLoad(k); return FONTS[k].css; }
 function zAlignCss(z){ return {l:'left',c:'center',r:'right'}[zAlign(z)]||'left'; }
 function zList(){
   var box=$('hsZoneList'); if(!box) return;
@@ -1978,10 +1996,10 @@ function zList(){
       '<label class="hs-zon" title="Bật vùng này"><input type="checkbox" data-f="on"'+(z.on?' checked':'')+'> Bật</label></div>'+
       '<div class="hs-zg">'+
       '<label><span>Loại chữ</span><select class="hs-in" data-f="kind">'+Object.keys(ZKINDS).map(function(k){return opt(k,z.kind,ZKINDS[k].n);}).join('')+'</select></label>'+
-      '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Khi chữ đổi')+opt('key',z.mode,'Khi bấm phím')+'</select></label>'+
+      '<label><span>Khi nào dịch</span><select class="hs-in" data-f="mode">'+opt('auto',z.mode==='key'?'':'auto','Khi chữ đổi')+opt('key',z.mode,'Khi bấm nút mic')+'</select></label>'+
       (D?'<label><span>Hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên game')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
       '<label><span>Cách hiện</span><select class="hs-in" data-f="place">'+opt('spot',z.place||'spot','Đúng chỗ')+opt('box',z.place,'Một khung')+'</select></label>'+
-      '<label><span>Canh lề</span><select class="hs-in" data-f="al">'+opt('auto',al,'Theo chữ gốc')+opt('l',al,'Trái')+opt('c',al,'Giữa')+opt('r',al,'Phải')+'</select></label>'+
+      '<label><span>Kiểu chữ</span><select class="hs-in" data-f="font">'+opt('',FONTS[z.font]?z.font:'','Như phụ đề')+Object.keys(FONTS).map(function(k){ return opt(k,FONTS[z.font]?z.font:'',FONTS[k].n.replace(/\s*\(.*\)$/,'')); }).join('')+'</select></label>'+
       '<label title="Trong game: dịch mọi chữ của game (menu, hướng dẫn, túi đồ...), chỉ bỏ qua màn hình của máy PS5 và bản đồ. Chỉ lúc di chuyển: thêm bỏ qua menu và mọi lúc hình đứng yên, hợp với vùng nhiệm vụ ở góc màn hình."><span>Dịch khi</span><select class="hs-in" data-f="when">'+opt('game',z.when==='play'?'play':'game','Trong game')+opt('play',z.when==='play'?'play':'game','Chỉ lúc di chuyển')+'</select></label>'+
       '<label title="Theo màu game: nền và màu chữ lấy đúng màu quanh chữ gốc, viền mờ dần, như chữ của game. Thanh Nền chỉ dùng cho Nền tối"><span>Màu nền</span><select class="hs-in" data-f="look">'+opt('auto',z.look||'auto','Theo màu game')+opt('dark',z.look||'auto','Nền tối')+'</select></label>'+
       '<label class="hs-zs" title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ <b class="zpxv">'+zpxTxt(px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="1" data-f="px" value="'+px+'" aria-label="Cỡ chữ của vùng"></label>'+
@@ -2005,7 +2023,7 @@ function zList(){
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on'||el.dataset.f==='place'||el.dataset.f==='when'){ z.lastText=''; z.doneMask=null; }
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look'||el.dataset.f==='font') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
     var bgIn=row.querySelector('[data-f=bg]'); if(bgIn) bgIn.addEventListener('input',function(){ z.bg=+bgIn.value; row.querySelector('.zbgv').textContent=z.bg+'%'; zShow(); });
     var pxIn=row.querySelector('[data-f=px]'); if(pxIn) pxIn.addEventListener('input',function(){ var v=Math.round(+pxIn.value||0); if(v>0&&v<5) v=5; z.px=v; row.querySelector('.zpxv').textContent=zpxTxt(v); zShow(); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
@@ -2030,7 +2048,8 @@ var ZBTN=/(^|[^A-Za-z0-9])(?:[LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕�
 var ZPROMPT=/^(?:back|select|confirm|cancel|close|exit|return|track|untrack|details?|zoom|move|scroll|sort|filter|equip|unequip|use|drop|discard|inspect|view|map|menu|options|toggle|skip|next|prev(?:ious)?|page|tab|hold|press|rotate|info|more|compare|mark|unmark|buy|sell|collect|read|open|show|hide|set|waypoint|navigate|change|switch|upgrade|craft|dismantle|favorite|favourite|lock|unlock|accept|decline|continue|quit|help|controls|legend|quests?|journal|inventory|camera|reset|aim|fire|shoot|sprint|run|walk|jump|crouch|attack|heavy|light|dodge|roll|block|parry|reload|interact|climb|swim|dive|throw|heal|whistle|call|mount|dismount|ride|lock|target|vision|scan|focus|sneak|loot|pick|up|on|off|and|or|to|the|a|of|all)$/i;
 function zBtnLine(s){
   var n=0; s=s.replace(ZBTN,function(m,a){ n++; return a+' '; }).replace(/[()\[\]{}<>|]+\s*[()\[\]{}<>|]*/g,function(x){ return /\w/.test(x)?x:' '; }).replace(/\s+/g,' ').trim();
-  if(/^(?:press|hold|tap|mash|use|click)\b.{0,40}\bto\b/i.test(s)&&n||/^(?:press|hold|tap|mash)\s+(?:\S{1,3}\s+)?to\b/i.test(s)) return '';   /* "Press R3 to track" */
+  var after=(s.match(/\bto\b\s+(.*)$/i)||[])[1]||'', shortHint=after.split(/\s+/).filter(Boolean).length<=2;   /* "Press R3 to track", not "Hold to Charge and Build Up Focus" */
+  if(shortHint&&(/^(?:press|hold|tap|mash|use|click)\b.{0,40}\bto\b/i.test(s)&&n||/^(?:press|hold|tap|mash)\s+(?:\S{1,3}\s+)?to\b/i.test(s))) return '';
   var w=s.split(' ').filter(Boolean), glyph=n>0||w.some(function(x){ return /^[XOABY]$/.test(x); });   /* the reader often turns ✕ ○ into X O */
   if(glyph&&w.length&&w.every(function(x){ return ZPROMPT.test(x.replace(/[^A-Za-z]/g,''))||!/[A-Za-z]{2}/.test(x); })) return '';   /* "✕ Select  ○ Back" */
   return s;
@@ -2051,8 +2070,10 @@ function zBlocks(o){
     var lines=String(b.text||'').split('\n').map(function(l){ return zBtnLine(l.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim()); }).filter(function(l){ return l&&langOk(l,2,0.5); });
     if(!lines.length) return null;
     var n=String(b.text||'').split('\n').length;
-    var lh=(b.lh||b.h/n)/o.H, px=Math.min(b.x/o.W,0.01), py=Math.min(b.y/o.H,lh*0.18);   /* a little larger than the original, so no letter peeks out */
-    return {x:b.x/o.W-px,y:b.y/o.H-py,w:Math.min(1-(b.x/o.W-px),b.w/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,n:lines.length,en:lines.join('\n')};
+    var lh=(b.lh||b.h/n)/o.H, py=Math.min(b.y/o.H,lh*0.18);   /* a little larger than the original, so no letter peeks out */
+    /* the box starts where the words start: a button icon in front ("△ Hold to Charge") stays visible, not covered */
+    var bx=b.x0!=null&&b.x0-b.x>(b.lh||b.h/n)*0.8?Math.min(b.x0,b.x+b.w*0.6):b.x, bw=b.x+b.w-bx, px=Math.min(bx/o.W,0.01);
+    return {x:bx/o.W-px,y:b.y/o.H-py,w:Math.min(1-(bx/o.W-px),bw/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,n:lines.length,en:lines.join('\n')};
   }).filter(Boolean).sort(function(a,b){ return a.y-b.y||a.x-b.x; });
 }
 function zText(o){
@@ -2187,7 +2208,7 @@ function zTv(z){
   if(!(tvIp()||tvCode().length>=4)) return;
   var zr=camRect(z); if(!zr) return;   /* camera without the TV corners: no place on the TV yet */
   var shown=!!(z.vi&&z.on&&!z.hide), spot=zSpot(z)&&z.items&&z.items.length&&shown;
-  var base0={kind:'zone',hold:+z.hold||0,name:zName(z),zs:z.size||'m',zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfit:1,zx:zr.x,zy:zr.y,zw:zr.w,zh:zr.h};   /* zx..zh: the whole area, so the TV knows how far a box may widen */
+  var base0={kind:'zone',hold:+z.hold||0,name:zName(z),zs:z.size||'m',zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfont:zFontKey(z),zfit:1,zx:zr.x,zy:zr.y,zw:zr.w,zh:zr.h};   /* zx..zh: the whole area, so the TV knows how far a box may widen */
   z.tvLive=shown;   /* something of this area is on the TV: taken off when Hóng Sub stops or the picture goes */
   /* each paragraph its own box (ids area_0, area_1...); boxes no longer needed are emptied */
   var nOld=z.tvN||0, nNew=spot?z.items.length:0;
@@ -2202,7 +2223,7 @@ function zTv(z){
   for(var j=nNew;j<nOld;j++) tvSend(Object.assign({},base0,{zid:z.id+'_'+j,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
   z.tvN=nNew;
   if(spot) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
+  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfont:zFontKey(z),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 /* Hóng Sub stopped, or the game picture went away (PS5 off, Remote Play closed): nothing of the areas stays on the TV.
@@ -2243,10 +2264,10 @@ function zHold(z){
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
   if(PH){ try{ var pl=[]; S.zones.filter(function(z){return z.on;}).forEach(function(z){
-      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:it.vi,size:+z.px>0?Math.round(+z.px/2):Math.max(5,Math.round(it.lh*z.h*1080*0.46)),bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
-      else pl.push({id:z.id,vi:z.hide?'':(z.vi||''),size:+z.px>0?Math.round(+z.px/2):(ZSIZE[z.size]||17),bg:(z.bg==null?90:+z.bg),font:subFontKey(),x:z.x,y:z.y,w:z.w,h:z.h}); });
+      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:it.vi,size:+z.px>0?Math.round(+z.px/2):Math.max(5,Math.round(it.lh*z.h*1080*0.46)),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
+      else pl.push({id:z.id,vi:z.hide?'':(z.vi||''),size:+z.px>0?Math.round(+z.px/2):(ZSIZE[z.size]||17),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x,y:z.y,w:z.w,h:z.h}); });
     PH.zones(JSON.stringify(pl)); }catch(e){} }
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:subFont(),fontUrl:fontUrl(subFontKey()),x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:zFont(z),fontUrl:fontUrl(zFontKey(z)),x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */
@@ -3773,6 +3794,66 @@ function menuLike(lines){
 }
 /* take an area's translation off (computer and TV), whatever "Hiện ... giây" says */
 function zWipe(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.pending=false; zShow(); zList(); zPush(); if(had) zTv(z); }
+/* ---------- "Khi bấm nút mic": the areas set to it are translated when the controller's mic button is pressed ----------
+   Seen two ways:
+   - the controller is plugged into this computer (playing PS5 inside Hóng Sub with it): the button itself
+     (DualSense over USB/Bluetooth, read directly; other pads through the Gamepad API)
+   - the controller is paired with the PS5: a tap on the mic button makes the PS5 show a small mic icon in the
+     top-right corner for a moment. A small new shape there that goes away again within a few seconds is that tap. */
+function micAreas(){ return S.zones.some(function(z){ return z.on&&z.mode==='key'; }); }
+S.micAt=0;
+function micPressed(how){
+  if(!S.stream||!micAreas()||Date.now()-S.micAt<1500) return; S.micAt=Date.now();
+  log('nút mic ('+how+'): dịch các vùng'); status('busy','Đang dịch các vùng (nút mic)...');
+  zoneTick(true); later(function(){ if(S.running) runStatus(); },2500);
+}
+(function(){
+  if(!navigator.hid) return;
+  var seen=[], down=false;
+  function attach(d){
+    if(!d||seen.indexOf(d)>=0||d.vendorId!==0x054c) return; seen.push(d);
+    (d.opened?Promise.resolve():d.open()).then(function(){
+      d.addEventListener('inputreport',function(e){
+        var v=e.data, b=null;
+        if(e.reportId===0x01&&v.byteLength>=10) b=v.getUint8(9);          /* USB */
+        else if(e.reportId===0x31&&v.byteLength>=11) b=v.getUint8(10);   /* Bluetooth */
+        if(b==null) return;
+        var m=!!(b&0x04); if(m&&!down) micPressed('tay cầm'); down=m;
+      });
+    }).catch(function(){});
+  }
+  function scan(){ try{ navigator.hid.getDevices().then(function(ds){ ds.forEach(attach); }).catch(function(){}); }catch(e){} }
+  try{ navigator.hid.addEventListener('connect',function(e){ attach(e.device); }); }catch(e){}
+  scan(); setInterval(scan,15000);
+})();
+S.micPad=false;
+function micPadPoll(){
+  var pads=navigator.getGamepads?navigator.getGamepads():[], on=false;
+  for(var i=0;i<pads.length;i++){ var g=pads[i]; if(g&&g.connected&&g.buttons.length>18&&g.buttons[18]&&g.buttons[18].pressed) on=true; }
+  if(on&&!S.micPad) micPressed('tay cầm'); S.micPad=on;
+}
+/* the PS5's mic icon in the top-right corner of the picture */
+var mic={cv:document.createElement('canvas'),hist:[],shown:null};
+mic.cv.width=60; mic.cv.height=36; mic.cx=mic.cv.getContext('2d',{willReadFrequently:true});
+function micIconLook(){
+  if(!video.videoWidth) return;
+  var vw=video.videoWidth, vh=video.videoHeight, now=Date.now();
+  try{ mic.cx.drawImage(video,vw*0.80,0,vw*0.20,vh*0.17,0,0,60,36); }catch(e){ return; }
+  var d=mic.cx.getImageData(0,0,60,36).data, g=new Uint8Array(60*36);
+  for(var i=0;i<g.length;i++) g[i]=(d[i*4]*3+d[i*4+1]*6+d[i*4+2])/10;
+  mic.hist.push({t:now,g:g}); while(mic.hist.length&&now-mic.hist[0].t>6000) mic.hist.shift();
+  function cmp(a,b){ var n=0,x0=99,y0=99,x1=-1,y1=-1; for(var y=0;y<36;y++) for(var x=0;x<60;x++){ var k=y*60+x; if(Math.abs(a[k]-b[k])>38){ n++; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } return {n:n,w:x1-x0+1,h:y1-y0+1}; }
+  if(!mic.shown){
+    var ref=null; for(var j=mic.hist.length-1;j>=0;j--){ if(now-mic.hist[j].t>=900){ ref=mic.hist[j]; break; } } if(!ref) return;
+    var c=cmp(g,ref.g);
+    /* a small, compact new shape (the icon is about a twentieth of the picture's width), the rest of the corner unchanged */
+    if(c.n>=12&&c.w<=22&&c.h<=26&&c.n>=c.w*c.h*0.18) mic.shown={t:now,ref:ref.g,n:c.n};
+    return;
+  }
+  var age=now-mic.shown.t, back=cmp(g,mic.shown.ref);
+  if(back.n<=Math.max(4,mic.shown.n*0.25)){ if(age>=400&&age<=5000) micPressed('biểu tượng mic trên PS5'); mic.shown=null; }
+  else if(age>5000) mic.shown=null;   /* stayed: part of the game, not the mic icon */
+}
 var gcv=document.createElement('canvas'), gcx=gcv.getContext('2d',{willReadFrequently:true});
 async function guardProbe(){
   if(GUARD.busy||S.ocrBusy||!ocrOn()||!video.videoWidth) return;
@@ -3799,6 +3880,7 @@ async function tick(force){
   }
   var m=textMask(), now=Date.now();
   motionSample();
+  if(micAreas()){ micPadPoll(); micIconLook(); }
   if(guardOn()&&!force){
     if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()) guardProbe();
     if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */

@@ -313,7 +313,7 @@ public class OverlayService extends Service {
         final boolean zgrow = j.optInt("zgrow", 0) == 1;
         final double zmaxw = j.optDouble("zmaxw", 0);
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
-        final Typeface face = faceFor(j.optString("font", prefs.font()));
+        final Typeface face = faceFor(j.optString("zfont", j.optString("font", prefs.font())));   // the area's own font ("Kiểu chữ" of the area), else the subtitle's
         final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
         final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
         final String zbgc = j.optString("zbgc", ""), zfgc = j.optString("zfg", "");   // "Theo màu game": colours around the original

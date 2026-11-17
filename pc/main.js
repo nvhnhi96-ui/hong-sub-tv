@@ -398,6 +398,15 @@ async function listSources(withThumbs) {
   return srcs.filter(s => !/^Hóng Sub/.test(s.name));
 }
 function setupCapture() {
+  /* the PS5 controller (DualSense) plugged into this computer: Hóng Sub reads its mic button to translate the areas
+     ("Khi bấm nút mic"). Only Sony controllers, nothing else on USB/Bluetooth. */
+  try {
+    const sony = (d) => d && (d.vendorId === 0x054c || d.vendorId === 1356);
+    session.defaultSession.setDevicePermissionHandler((det) => det.deviceType === 'hid' && sony(det.device));
+    const prevCheck = null;
+    session.defaultSession.setPermissionCheckHandler((wc, perm, origin, det) => perm === 'hid' ? true : (prevCheck ? prevCheck(wc, perm, origin, det) : true));
+    session.defaultSession.on('select-hid-device', (e, det, cb) => { e.preventDefault(); const d = (det.deviceList || []).find(sony); cb(d ? d.deviceId : ''); });
+  } catch (e) { }
   session.defaultSession.setDisplayMediaRequestHandler(async (req, cb) => {
     try {
       const srcs = await listSources(false);
