@@ -393,11 +393,28 @@ function registerKeys() {
   return res;
 }
 /* Sony's own PS Remote Play app, if it is installed */
-function sonyRp() {
-  if (IS_MAC) {
-    for (const f of ['/Applications/PS Remote Play.app', path.join(os.homedir(), 'Applications', 'PS Remote Play.app')]) if (fs.existsSync(f)) return f;
-    return '';
+/* Mac: Sony's installer names the bundle RemotePlay.app (shown as "PS Remote Play"); look under both names, any app
+   folder with "Remote Play" in it, and finally ask Spotlight for Sony's bundle id */
+let macRpCache = { at: 0, f: '' };
+function sonyRpMac() {
+  const dirs = ['/Applications', path.join(os.homedir(), 'Applications'), '/Applications/PlayStation'];
+  for (const d of dirs) for (const n of ['RemotePlay.app', 'PS Remote Play.app', 'PS RemotePlay.app']) { const f = path.join(d, n); if (fs.existsSync(f)) return f; }
+  for (const d of dirs) {
+    let list = []; try { list = fs.readdirSync(d); } catch (e) { continue; }
+    const n = list.find((x) => /\.app$/i.test(x) && /remote\s*play/i.test(x) && !/h[oó]ng/i.test(x));
+    if (n) return path.join(d, n);
   }
+  if (Date.now() - macRpCache.at < 60000) return macRpCache.f;
+  let f = '';
+  try {
+    const out = require('child_process').execFileSync('/usr/bin/mdfind', ["kMDItemCFBundleIdentifier == 'com.playstation.RemotePlay'"], { timeout: 4000, encoding: 'utf8' });
+    f = String(out || '').split('\n').map((x) => x.trim()).find((x) => /\.app$/i.test(x) && fs.existsSync(x)) || '';
+  } catch (e) { /* ignore */ }
+  macRpCache = { at: Date.now(), f };
+  return f;
+}
+function sonyRp() {
+  if (IS_MAC) return sonyRpMac();
   const bases = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')].filter(Boolean);
   for (const b of bases) { const f = path.join(b, 'Sony', 'PS Remote Play', 'RemotePlay.exe'); if (fs.existsSync(f)) return f; }
   return '';
@@ -879,7 +896,16 @@ function setupIpc() {
   ipcMain.handle('hotkeys-set', (e, k) => { cfg.hotkeys = Object.assign({}, cfg.hotkeys || {}, k || {}); saveCfg(); const st = registerKeys(); buildTrayMenu(); return { keys: keys(), state: st }; });
   ipcMain.handle('hotkeys-pause', (e, on) => { if (on) globalShortcut.unregisterAll(); else registerKeys(); return true; });
   ipcMain.handle('sony-rp', () => ({ path: sonyRp() }));
-  ipcMain.handle('sony-rp-open', async () => { const f = sonyRp(); if (!f) return { ok: false }; const err = await shell.openPath(f); return { ok: !err, err }; });
+  ipcMain.handle('sony-rp-open', async () => {
+    const f = sonyRp();
+    if (f) { const err = await shell.openPath(f); return { ok: !err, err }; }
+    /* not found where we looked: let the Mac open it by Sony's bundle id if it is anywhere */
+    if (IS_MAC) {
+      const ok = await new Promise((res) => { try { require('child_process').execFile('/usr/bin/open', ['-b', 'com.playstation.RemotePlay'], { timeout: 8000 }, (e) => res(!e)); } catch (e) { res(false); } });
+      if (ok) return { ok: true };
+    }
+    return { ok: false, err: 'missing' };
+  });
   ipcMain.handle('open-url', (e, u) => { if (/^https:\/\//.test(String(u))) shell.openExternal(String(u)); return true; });
   ipcMain.handle('overlay-reset', () => { overlayCmd('reset'); return true; });
   ipcMain.handle('overlay-size', (e, pct, h, hgt) => {

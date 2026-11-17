@@ -5967,16 +5967,20 @@ function sonyInfo(){
   return D.sonyRp().then(function(r){
     sony=r.path||'';
     $('dkSonyState').textContent=sony?'Máy đã cài app PS Remote Play. Bấm Mở, đăng nhập và kết nối PS5 trong app đó; Hóng Sub tự nhận cửa sổ và đọc phụ đề.':'Máy chưa cài app PS Remote Play của Sony. Không cần app này nếu chơi ngay trong Hóng Sub.';
-    $('dkSonyOpen').disabled=!sony; $('dkSonyNote').textContent=sony?'Mở app của Sony, Hóng Sub tự đọc cửa sổ đó':'Chưa cài, bấm để tải';
+    $('dkSonyNote').textContent=sony?'Mở app của Sony, Hóng Sub tự đọc cửa sổ đó':'Chưa cài, bấm để tải';
   });
 }
 if((D.web===true)){ if(!document.documentElement.classList.contains('hs-mps')) TITLES.ketnoi='Kết nối TV'; $('dkSonyNote').textContent='Mở app của Sony rồi chọn cửa sổ đó'; $('dkSrcWin').querySelector('small').textContent='Game trên máy tính, phim, tab khác'; if(A.load('dkPage','choi')==='ketnoi') $('dkTitle').textContent=TITLES.ketnoi; }
 else sonyInfo();
 function openSony(){
   if((D.web===true)){ A.pick(false); return; }
-  if(!sony){ D.openUrl('https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/'); A.status('warn','Máy chưa có app PS Remote Play. Tải và cài xong thì bấm lại.'); return; }
   D.openSonyRp().then(function(r){
-    if(!r.ok){ A.status('err','Không mở được PS Remote Play'); return; }
+    if(!r.ok){
+      if(!sony&&r.err==='missing'){ D.openUrl('https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/'); A.status('warn','Máy chưa có app PS Remote Play. Tải và cài xong thì bấm lại.'); }
+      else A.status('err','Không mở được PS Remote Play'+(r.err?' ('+r.err+')':''));
+      return;
+    }
+    if(!sony) sonyInfo();
     A.status('busy','Đang chờ cửa sổ PS Remote Play... Đăng nhập và kết nối PS5 trong app của Sony.');
     var t0=Date.now();
     (function wait(){
