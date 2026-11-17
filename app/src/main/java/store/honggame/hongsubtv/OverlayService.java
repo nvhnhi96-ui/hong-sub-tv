@@ -300,9 +300,57 @@ public class OverlayService extends Service {
         wm.addView(box, lp);
     }
 
-    private void zoneShow(JSONObject j, String vi) {
+    /** {{1}}, {{2}}... in an area translation: the button icons cut from the game picture, or a button name like R3 */
+    private CharSequence iconText(String raw, JSONArray zic, float px) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\{\\{(\\d+)\\}\\}").matcher(raw);
+        int last = 0;
+        while (m.find()) {
+            sb.append(raw, last, m.start());
+            last = m.end();
+            int k = Integer.parseInt(m.group(1)) - 1;
+            String v = k >= 0 && k < zic.length() ? zic.optString(k, "") : "";
+            if (v.startsWith("t:")) { sb.append(v.substring(2)); continue; }
+            int c = v.indexOf("base64,");
+            if (c < 0) continue;
+            try {
+                byte[] b = android.util.Base64.decode(v.substring(c + 7), android.util.Base64.DEFAULT);
+                android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeByteArray(b, 0, b.length);
+                if (bm == null) continue;
+                int hgt = Math.max(8, Math.round(px * 1.05f)), wid = Math.max(8, Math.round(hgt * bm.getWidth() / (float) bm.getHeight()));
+                android.graphics.drawable.BitmapDrawable d = new android.graphics.drawable.BitmapDrawable(getResources(), bm);
+                d.setBounds(0, 0, wid, hgt);
+                int st = sb.length();
+                sb.append("\uFFFC");
+                sb.setSpan(new android.text.style.ImageSpan(d, Build.VERSION.SDK_INT >= 29 ? android.text.style.DynamicDrawableSpan.ALIGN_CENTER : android.text.style.DynamicDrawableSpan.ALIGN_BOTTOM),
+                        st, st + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } catch (Exception e) { /* a broken picture: left out */ }
+        }
+        sb.append(raw.substring(last));
+        return sb;
+    }
+
+    /** the same text with a letter-wide stand-in for each icon, to measure the lines */
+    private static String iconMeasure(String raw, JSONArray zic) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\{\\{(\\d+)\\}\\}").matcher(raw);
+        StringBuffer out = new StringBuffer();
+        while (m.find()) {
+            int k = Integer.parseInt(m.group(1)) - 1;
+            String v = k >= 0 && k < zic.length() ? zic.optString(k, "") : "";
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(v.startsWith("t:") ? v.substring(2) : v.isEmpty() ? "" : "WW"));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    private void zoneShow(JSONObject j, String vi0) {
         final String id = j.optString("zid", "");
         if (id.isEmpty()) return;
+        final String zv = j.optString("zv", "");
+        final JSONArray zic = j.optJSONArray("zic");
+        final boolean icons = !zv.isEmpty() && zic != null && zic.length() > 0 && !vi0.isEmpty();
+        final String vi = icons ? iconMeasure(zv, zic) : vi0;   // with the game's button icons ({{1}}...) when the computer sends them
+        final float zsc = (float) Math.max(0.3, Math.min(1.6, j.optInt("zsc", 100) / 100.0));   // "Cỡ chữ" of the area: share of the original's size
         final boolean grow0 = j.optInt("zgrow", 0) == 1;   // a paragraph over its own original: no minimum size, a tight box like on the computer
         final double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = Math.max(grow0 ? 0.005 : 0.06, j.optDouble("w", 0.3)), h = Math.max(grow0 ? 0.005 : 0.04, j.optDouble("h", 0.15));
         final int hold = j.optInt("hold", 0);
@@ -338,6 +386,7 @@ public class OverlayService extends Service {
             }
             if (zgrow) {   // "Đúng chỗ": one paragraph right over its own original
                 spotBox(tv, vi, face, zal, zbg, zpx, zauto, x, y, w, h, zx, zw, zmaxw, zbgc, zfgc);
+                if (icons) tv.setText(iconText(zv, zic, tv.getTextSize()));
                 final TextView vs = tv;
                 Runnable offS = () -> { zoneLayer.removeView(vs); zoneViews.remove(id); zoneOff.remove(id); };
                 zoneOff.put(id, offS);
@@ -376,6 +425,7 @@ public class OverlayService extends Service {
                     int avail = maxW - tv.getPaddingLeft() - tv.getPaddingRight();
                     if (widest > avail && avail > 0) tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(6f, tv.getTextSize() * avail / widest * 0.96f));
                 }
+                if (icons) tv.setText(iconText(zv, zic, tv.getTextSize()));
                 final TextView v2 = tv;
                 Runnable off2 = () -> { zoneLayer.removeView(v2); zoneViews.remove(id); zoneOff.remove(id); };
                 zoneOff.put(id, off2);
@@ -384,14 +434,15 @@ public class OverlayService extends Service {
             }
             tv.setMinHeight(0);
             // as big as the area allows, smaller for long text
-            float cap = (zs.equals("xs") ? 20 : zs.equals("s") ? 26 : zs.equals("l") ? 44 : zs.equals("xl") ? 56 : 34) * (H / 1080f);
+            float cap = (zs.equals("xs") ? 20 : zs.equals("s") ? 26 : zs.equals("l") ? 44 : zs.equals("xl") ? 56 : 34) * (H / 1080f) * zsc;
             int lines = vi.split("\n").length;
-            float fit = Math.max(12f, Math.min(cap, bh / (float) lines * 0.62f));
+            float fit = Math.max(8f, Math.min(cap, bh / (float) lines * 0.62f * zsc));
             if (Build.VERSION.SDK_INT >= 26) {
-                tv.setAutoSizeTextTypeUniformWithConfiguration(10, Math.max(11, (int) fit), 1, TypedValue.COMPLEX_UNIT_PX);
+                tv.setAutoSizeTextTypeUniformWithConfiguration(Math.max(6, Math.min(10, (int) fit - 1)), Math.max(7, (int) fit), 1, TypedValue.COMPLEX_UNIT_PX);
             } else {
                 tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, fit);
             }
+            if (icons) tv.setText(iconText(zv, zic, fit));
             final TextView view = tv;
             Runnable off = () -> { zoneLayer.removeView(view); zoneViews.remove(id); zoneOff.remove(id); };
             zoneOff.put(id, off);
@@ -728,7 +779,7 @@ public class OverlayService extends Service {
         else if (kind.equals("zone") && j.optInt("zclr", 0) == 1) zonesClear();   // Hóng Sub stopped: every area box off
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
-            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". "), TextToSpeech.QUEUE_ADD, ttsParams(), "zone" + (++ttsSeq)); }
+            if (!vi.isEmpty() && read && ttsReady) { ttsPending.incrementAndGet(); tts.speak(vi.replace("\n", ". ").replace("●", ""), TextToSpeech.QUEUE_ADD, ttsParams(), "zone" + (++ttsSeq)); }
         }
         else if (kind.equals("notice")) {
             // a message from Hóng Sub on the computer (app opened, PS5 waking...): shown, not read aloud

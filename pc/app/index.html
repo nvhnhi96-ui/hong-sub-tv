@@ -102,6 +102,8 @@ body.desk .hs-empty #hsPick{background:transparent;color:#fff!important;border-c
 /* caption bar: the subtitle, styled like the real thing */
 .hs-sub{background:var(--cap);color:#fff;border-radius:0 0 10px 10px;padding:18px 24px 20px;min-height:132px;text-align:center;position:relative}
 .hs-sub .lbl{position:absolute;top:8px;right:12px;font-size:11.5px;color:#8D939C}
+.hs-key{display:inline-block;height:1.08em;width:1.08em;vertical-align:-.2em;margin:0 .08em;border-radius:.2em}
+span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.25;border:.1em solid currentColor;border-radius:.35em;vertical-align:.05em}
 .hs-vi{font-weight:600;font-size:var(--subsize,28px);line-height:1.35;text-wrap:balance;max-width:34em;margin:0 auto}
 .hs-vi .who{color:var(--brand);font-weight:700}
 .hs-vi.placeholder{color:#7A808A;font-weight:500;font-size:18px;padding-top:18px}
@@ -1334,7 +1336,7 @@ async function detect(src,W,H){
 }
 
 /* ---- recognition ---- */
-async function recognize(src,b){
+async function recognize(src,b,icons){
   var IH=48, IW=Math.min(1600,Math.max(48,Math.ceil(IH*b.w/b.h/8)*8));
   var d=pixels(src,b.x,b.y,b.w,b.h,IW,IH), n=IW*IH, t=new Float32Array(3*n);
   for(var i=0;i<n;i++){ t[i]=d[i*4+2]/127.5-1; t[n+i]=d[i*4+1]/127.5-1; t[2*n+i]=d[i*4]/127.5-1; }
@@ -1361,7 +1363,40 @@ async function recognize(src,b){
         if(!/[A-Za-zÀ-ỹ0-9]/.test(pre)||gap>b.h*0.5) cut=mt.index;
       }
       break; } }
-  return {text:s.slice(cut).trim(), conf:m?conf/m:0, x0:x0};
+  var slots=[];
+  if(icons&&T){   /* controller button icons inside the line ("Press ◉ to toggle..."): a marker in the text, and where the icon sits */
+    var ins=iconSlots(s,at,T,b,cut);
+    for(var qi=ins.length-1;qi>=0;qi--){ var q=ins[qi]; s=s.slice(0,q.i)+'\uE000'+(q.len?'':' ')+s.slice(q.i+q.len); }
+    slots=ins.map(function(q){ var side=Math.min(b.h*0.92,q.gw?q.gw-b.h*0.55:b.h*0.92); return {x:q.cx-side/2,y:b.y+b.h/2-side/2,w:side,h:side,why:q.why}; });
+  }
+  return {text:s.slice(cut).trim(), conf:m?conf/m:0, x0:x0, slots:slots};
+}
+/* where a button icon sits in a line read by the recogniser: a sign read in its place ("Press @ to", "Hold ® to"), a
+   single O/X after "press", "hold"..., or a wide empty stretch between two words (the icon not read at all) */
+function iconSlots(s,at,T,b,cut){
+  var re=/\S+/g, m, toks=[], ins=[];
+  while((m=re.exec(s))){ if(m.index>=cut) toks.push({t:m[0],i:m.index}); }
+  for(var q=1;q<toks.length;q++){
+    var tk=toks[q], prev=toks[q-1], pw=prev.t.replace(/[^A-Za-z]/g,'');
+    var sym=/^[^A-Za-zÀ-ỹ0-9]{1,2}$/.test(tk.t)&&!/^[.,!?;:'"“”‘’…\-–—\/&%+()\[\]#*=~]+$/.test(tk.t);
+    var letter=/^[OoXx0@]$/.test(tk.t)&&/^(press|hold|tap|push|use|click|mash|release|or|and|then|with)$/i.test(pw);
+    if((sym||letter)&&at[tk.i]!=null){ ins.push({i:tk.i,len:tk.t.length,cx:b.x+(at[tk.i]+0.5)/T*b.w,why:'read '+tk.t}); continue; }
+    var pe=prev.i+prev.t.length-1;
+    if(at[pe]!=null&&at[tk.i]!=null){ var gap=(at[tk.i]-at[pe])/T*b.w; if(gap>b.h*1.5&&gap<b.h*4) ins.push({i:tk.i,len:0,cx:b.x+((at[pe]+at[tk.i])/2+0.5)/T*b.w,gw:gap,why:'gap '+(gap/b.h).toFixed(2)}); }
+  }
+  return ins;
+}
+/* a button icon cut out of the picture: kept only if something is drawn there (not plain background) */
+var icv=document.createElement('canvas'), icx=icv.getContext('2d',{willReadFrequently:true});
+function iconCut(src,r){
+  var W=src.width, H=src.height, x=Math.max(0,r.x), y=Math.max(0,r.y), w=Math.min(W-x,r.w), h=Math.min(H-y,r.h);
+  if(w<4||h<4) return '';
+  var sz=Math.max(12,Math.min(40,Math.round(h))); icv.width=sz; icv.height=sz;
+  icx.drawImage(src,x,y,w,h,0,0,sz,sz);
+  var d=icx.getImageData(0,0,sz,sz).data, n=sz*sz, sum=0, sq=0;
+  for(var i=0;i<n;i++){ var v=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11; sum+=v; sq+=v*v; }
+  var mean=sum/n, sd=Math.sqrt(Math.max(0,sq/n-mean*mean));
+  return sd>=26?icv.toDataURL('image/png'):'';
 }
 
 /* boxes on the same text line are joined left to right */
@@ -1378,7 +1413,7 @@ function lineUp(items){
     var text=L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim();
     var conf=L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,L.parts.reduce(function(a,p){return a+p.text.length;},0));
     var x=Math.min.apply(null,L.parts.map(function(p){return p.x;})), x2=Math.max.apply(null,L.parts.map(function(p){return p.x+p.w;}));
-    return {text:text,conf:conf,x:x,y:L.y,w:x2-x,h:L.h};
+    return {text:text,conf:conf,x:x,y:L.y,w:x2-x,h:L.h,icons:[].concat.apply([],L.parts.map(function(p){ return p.icons||[]; }))};
   }).filter(function(l){return l.text;});
 }
 
@@ -1399,7 +1434,7 @@ function blockUp(items){
     var x=L.parts[0].x, x2=Math.max.apply(null,L.parts.map(function(p){return p.x+p.w;}));
     var tl=L.parts.reduce(function(a,p){return a+p.text.length;},0);
     var x0=null; for(var q=0;q<L.parts.length;q++){ if(L.parts[q].x0!=null){ x0=L.parts[q].x0; break; } }
-    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h,x0:x0};
+    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h,x0:x0,icons:[].concat.apply([],L.parts.map(function(p){ return p.icons||[]; }))};
   }).filter(function(l){return l.text;});
   lines.sort(function(a,b){return a.y-b.y;});
   var blocks=[];
@@ -1417,7 +1452,7 @@ function blockUp(items){
   return blocks.map(function(b){
     var tl=b.lines.reduce(function(a,l){return a+l.text.length;},0);
     var xs=b.lines.map(function(l){ return l.x0; }).filter(function(v){ return v!=null; });
-    return {x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl)};
+    return {x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl),icons:[].concat.apply([],b.lines.map(function(l){ return l.icons||[]; }))};
   });
 }
 async function read(src,opts){
@@ -1425,7 +1460,9 @@ async function read(src,opts){
   var t0=performance.now(), W=src.width, H=src.height;
   var boxes=await detect(src,W,H), items=[];
   if(opts&&opts.maxBoxes) boxes=boxes.slice(0,opts.maxBoxes);
-  for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i]); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; boxes[i].x0=r.x0; items.push(boxes[i]); } }
+  var ic=!!(opts&&opts.icons);
+  for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i],ic); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; boxes[i].x0=r.x0; boxes[i].slots=r.slots||[]; items.push(boxes[i]); } }
+  if(ic) iconsFind(src,items);
   if(opts&&opts.raw) return {items:items, W:W, H:H, ms:Math.round(performance.now()-t0)};   /* every text box on its own (button hints, menu words) */
   if(opts&&opts.blocks) return {blocks:blockUp(items.slice()), lines:lineUp(items.slice()), W:W, H:H, ms:Math.round(performance.now()-t0)};
   var lines=lineUp(items);
@@ -1433,6 +1470,28 @@ async function read(src,opts){
   return {lines:lines, text:lines.map(function(l){return l.text;}).join('\n'), conf:tl?lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/tl:0, ms:Math.round(performance.now()-t0)};
 }
 
+/* the icons of every text box: also an icon between two boxes of the same line ("Press" [icon] "to toggle..." read
+   as two boxes); each marker in the text gets its picture, markers over plain background are taken out */
+function iconsFind(src,items){
+  items.forEach(function(a){   /* the icon found as a text box of its own, read as a sign or a single O/X */
+    var r=a.w/Math.max(1,a.h), t=String(a.text||'').trim();
+    if(r>0.6&&r<1.7&&(/^[^A-Za-zÀ-ỹ0-9]{1,2}$/.test(t)&&!/^[.,!?;:'"…\-–—]+$/.test(t)||/^[OoXx0@]$/.test(t))&&items.some(function(c){ return c!==a&&Math.abs((c.y+c.h/2)-(a.y+a.h/2))<Math.min(a.h,c.h)*0.5&&c.w>a.w*2&&c.x<a.x; })){   /* inside the sentence: an icon in front of a line stays visible, not covered */
+      a.text='\uE000'; a.slots=[{x:a.x,y:a.y,w:a.w,h:a.h,why:'box '+t}]; a.iconBox=true; }
+  });
+  items.forEach(function(a){
+    if(a.iconBox) return;
+    var best=null;
+    items.forEach(function(c){ if(c===a||c.iconBox) return; var gap=c.x-(a.x+a.w), h=Math.min(a.h,c.h);
+      if(Math.abs((c.y+c.h/2)-(a.y+a.h/2))<h*0.5&&gap>h*0.3&&gap<h*2&&(!best||c.x<best.x)) best=c; });
+    if(best){ var h2=Math.min(a.h,best.h), gap2=best.x-(a.x+a.w), side=Math.min(h2*0.92,gap2+h2*0.3), cx=a.x+a.w+gap2/2;
+      a.text+=' \uE000'; a.slots.push({x:cx-side/2,y:a.y+a.h/2-side/2,w:side,h:side,why:'boxes '+(gap2/h2).toFixed(2)}); }
+  });
+  items.forEach(function(it){
+    var k=0, icons=[];
+    it.text=it.text.replace(/\uE000/g,function(){ var r=it.slots[k++], u=r?iconCut(src,r):''; if(window.__icdbg) window.__icdbg.push((r&&r.why)+' h='+Math.round(it.h)+' -> '+(u?'icon':'no')); if(u){ icons.push(u); return '\uE000'; } return ''; }).replace(/\s{2,}/g,' ').trim();
+    it.icons=icons;
+  });
+}
 window.HsOcr={init:init, read:read, setLang:setLang, lang:function(){return recLang;}, ready:function(){return !!(det&&rec);}};
 })();
 </script>
@@ -1772,7 +1831,7 @@ if(!load('zbg90',false)){ S.zones.forEach(function(z){ if(z.bg===0) z.bg=90; });
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
 if(!load('zWhenGame',false)){ S.zones.forEach(function(z){ if(z.when==='play') z.when='game'; }); save('zWhenGame',true); if(S.zones.length) zSave(); }   /* game menus are translated again; only the PS5's own screens and the map are skipped */
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'game',font:FONTS[z.font]?z.font:'',speak:!!z.speak};})); }
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,sc:+z.sc||100,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'game',font:FONTS[z.font]?z.font:'',speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1815,14 +1874,14 @@ function zShow(){
     el.hidden=!S.stream||!z.on; el.querySelector('span').textContent=zName(z)+(z.mode==='key'?' · bấm phím':'');
     el.style.left=(b.l+z.x*b.w)+'px'; el.style.top=(b.t+z.y*b.h)+'px'; el.style.width=(z.w*b.w)+'px'; el.style.height=(z.h*b.h)+'px';
     var tx=el.querySelector('.tx'), txt=z.vi||(z.pending?'•••':'');
-    tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); tx.textContent=txt;
+    tx.hidden=!txt||!!z.hide||!S.stream||!z.on; tx.className='tx'+(!z.vi&&z.pending?' wait':''); if(z.vi) tx.innerHTML=zIcHtml(z.vi,z.ic); else tx.textContent=txt;
     tx.style.background='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')'; tx.style.fontFamily=zFont(z); tx.style.textAlign=zAlignCss(z);
     tx.style.bottom=''; tx.style.minHeight=''; tx.style.overflow='';
     if(!tx.hidden&&z.vi&&+z.px>0&&b.h>0){             /* size chosen: that size (on a 1080-line picture), the box grows down if needed */
       tx.style.fontSize=(+z.px*b.h/1080)+'px'; tx.style.bottom='auto'; tx.style.minHeight=(z.h*b.h)+'px'; tx.style.overflow='visible';
     } else if(!tx.hidden&&z.vi){                       /* as big as the area allows, smaller for long text */
-      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap=ZCAP[z.size]||28;
-      var fs=Math.max(10,Math.min(cap,bh/lines*0.62)); tx.style.fontSize=fs+'px';
+      var bh=z.h*b.h, lines=z.vi.split('\n').length, cap=(ZCAP[z.size]||28)*zSc(z);
+      var fs=Math.max(8,Math.min(cap,bh/lines*0.62*zSc(z))); tx.style.fontSize=fs+'px';
       for(var k=0;k<12&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)&&fs>9;k++){ fs*=0.9; tx.style.fontSize=fs+'px'; }
     } else tx.style.fontSize='16px';
     /* each paragraph over its own original */
@@ -1833,10 +1892,10 @@ function zShow(){
       tx.hidden=true;
       var zh=z.h*b.h, bgc='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')', al=zAlignCss(z), ff=zFont(z).replace(/"/g,"'");
       its.innerHTML=z.items.map(function(it){
-        var f=+z.px>0?(+z.px*b.h/1080):Math.max(6,it.lh*zh*0.92);
-        return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+esc(it.vi)+'</div>';
+        var f=+z.px>0?(+z.px*b.h/1080):Math.max(5,it.lh*zh*0.92*zSc(z));
+        return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+zIcHtml(it.vi,it.ic)+'</div>';
       }).join('');
-      var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)); zLook(d,z.items[i],z,parseFloat(d.style.fontSize)||14); });   /* the same rules as on the TV */
+      var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)&&zSc(z)<=1); zLook(d,z.items[i],z,parseFloat(d.style.fontSize)||14); });   /* the same rules as on the TV */
     }
   });
   [].slice.call(zLayer.children).forEach(function(el){ if(!S.zones.some(function(z){return z.el===el;})) el.remove(); });
@@ -1902,6 +1961,12 @@ function spotFit(d,it,zw,zh,al,auto){
   s.left=Math.max(0,Math.min(zw-W,left))+'px'; s.top=(by+bh/2-H/2)+'px';
 }
 function zpxTxt(v){ v=+v||0; return v>0?v+'':'tự động'; }
+/* "Cỡ chữ" of an area: as a share of the original letters (100% = as big as the original), smaller or bigger.
+   An area set earlier to a fixed size in px keeps it until the slider is moved. */
+function zSc(z){ return +z.px>0?1:Math.max(0.3,Math.min(1.6,(+z.sc||100)/100)); }
+function zscTxt(z){ return +z.px>0?(+z.px)+' px':(Math.round(zSc(z)*100)===100?'bằng chữ gốc':Math.round(zSc(z)*100)+'%'); }
+/* the area's translation with its icons, for the list under the area's settings */
+function zViHtml(z){ return z.items&&z.items.length?z.items.map(function(it){ return zIcHtml(it.vi,it.ic).replace(/\n/g,'<br>'); }).join('<br>'):zIcHtml(z.vi,z.ic).replace(/\n/g,'<br>'); }
 /* where the lines sit in the box: as the original text, or as chosen */
 function zAlign(z){ return z.alAuto||'l'; }   /* always lined up like the original text */
 function zFontKey(z){ return FONTS[z.font]?z.font:subFontKey(); }
@@ -1923,14 +1988,14 @@ function zList(){
       '<label><span>Kiểu chữ</span><select class="hs-in" data-f="font">'+opt('',FONTS[z.font]?z.font:'','Như phụ đề')+Object.keys(FONTS).map(function(k){ return opt(k,FONTS[z.font]?z.font:'',FONTS[k].n.replace(/\s*\(.*\)$/,'')); }).join('')+'</select></label>'+
       '<label title="Trong game: dịch mọi chữ của game (menu, hướng dẫn, túi đồ...), chỉ bỏ qua màn hình của máy PS5 và bản đồ. Chỉ lúc di chuyển: thêm bỏ qua menu và mọi lúc hình đứng yên, hợp với vùng nhiệm vụ ở góc màn hình."><span>Dịch khi</span><select class="hs-in" data-f="when">'+opt('game',z.when==='play'?'play':'game','Trong game')+opt('play',z.when==='play'?'play':'game','Chỉ lúc di chuyển')+'</select></label>'+
       '<label title="Theo màu game: nền và màu chữ lấy đúng màu quanh chữ gốc, viền mờ dần, như chữ của game. Thanh Nền chỉ dùng cho Nền tối"><span>Màu nền</span><select class="hs-in" data-f="look">'+opt('auto',z.look||'auto','Theo màu game')+opt('dark',z.look||'auto','Nền tối')+'</select></label>'+
-      '<label class="hs-zs" title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ <b class="zpxv">'+zpxTxt(px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="1" data-f="px" value="'+px+'" aria-label="Cỡ chữ của vùng"></label>'+
+      '<label class="hs-zs" title="100% là bằng chữ gốc của game. Kéo sang trái cho chữ nhỏ hơn, sang phải cho to hơn"><span>Cỡ chữ <b class="zpxv">'+zscTxt(z)+'</b></span><input class="hs-range" type="range" min="30" max="160" step="5" data-f="sc" value="'+(+z.px>0?100:Math.round(zSc(z)*100))+'" aria-label="Cỡ chữ của vùng, phần trăm so với chữ gốc"></label>'+
       '<label class="hs-zs"><span>Nền <b class="zbgv">'+bg+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+bg+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
       '</div><div class="hs-zfoot">'+
       '<label class="hs-zon" title="0: chữ Việt ở lại đến khi chữ gốc đổi hay mất">Hiện <input class="hs-in hs-zsec" type="number" inputmode="numeric" min="0" max="600" step="1" data-f="hold" value="'+(+z.hold||0)+'" aria-label="Số giây chữ Việt hiện, 0 là đến khi chữ gốc đổi"> giây</label>'+
       '<label class="hs-zon"><input type="checkbox" data-f="tv"'+(z.tv!==false?' checked':'')+'> TV</label>'+
       '<label class="hs-zon" title="Đọc theo nút Đọc phụ đề và chỗ đọc (máy tính hay TV)"><input type="checkbox" data-f="speak"'+(z.speak?' checked':'')+'> Đọc to</label>'+
       '<span class="hs-sp"></span><button class="hs-btn" type="button" data-a="now">Dịch</button><button class="hs-btn" type="button" data-a="draw">Vẽ lại</button><button class="hs-btn" type="button" data-a="del" aria-label="Xóa vùng">Xóa</button></div>'+
-      (z.vi?'<div class="hs-zout" style="text-align:'+zAlignCss(z)+'">'+esc(z.vi).replace(/\n/g,'<br>')+'</div>':'')+'</div>';
+      (z.vi?'<div class="hs-zout" style="text-align:'+zAlignCss(z)+'">'+zViHtml(z)+'</div>':'')+'</div>';
   }).join('')||'<p class="hs-note">Chưa có vùng nào. Bấm <b>Thêm vùng</b> rồi kéo khung quanh chỗ hiện nhiệm vụ, mô tả vật phẩm hay bản đồ.</p>';
   $('hsZoneAdd').disabled=S.zones.length>=ZMAX||!S.stream; $('hsZoneNow').disabled=!S.zones.length||!S.stream;
   $('hsZoneAdd').textContent=S.zones.length>=ZMAX?'Đã đủ '+ZMAX+' vùng':'Thêm vùng '+(S.zones.length+1);
@@ -1941,12 +2006,13 @@ function zList(){
       if(el.dataset.f==='hold'){ v=Math.max(0,Math.min(600,Math.round(+v)||0)); el.value=v; if(z.hide&&z.vi){ z.hide=false; } }
       if(el.dataset.f==='bg') v=Math.max(0,Math.min(100,+v||0));
       if(el.dataset.f==='px'){ v=Math.round(+v||0); if(v>0&&v<5) v=5; v=Math.min(64,v); }
+      if(el.dataset.f==='sc'){ v=Math.max(30,Math.min(160,Math.round(+v||100))); z.px=0; }
       z[el.dataset.f]=v; if(el.dataset.f==='kind'||el.dataset.f==='on'||el.dataset.f==='place'||el.dataset.f==='when'){ z.lastText=''; z.doneMask=null; }
       if(el.dataset.f==='hold') zHold(z);
       zSave(); zShow(); zList(); zPush();
-      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look'||el.dataset.f==='font') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
+      if(el.dataset.f==='on'||el.dataset.f==='tv'||el.dataset.f==='size'||el.dataset.f==='px'||el.dataset.f==='sc'||el.dataset.f==='al'||el.dataset.f==='place'||el.dataset.f==='hold'||el.dataset.f==='bg'||el.dataset.f==='look'||el.dataset.f==='font') zTv(el.dataset.f==='tv'&&!v?{id:z.id,x:z.x,y:z.y,w:z.w,h:z.h,vi:'',on:false,size:z.size}:z); }); });
     var bgIn=row.querySelector('[data-f=bg]'); if(bgIn) bgIn.addEventListener('input',function(){ z.bg=+bgIn.value; row.querySelector('.zbgv').textContent=z.bg+'%'; zShow(); });
-    var pxIn=row.querySelector('[data-f=px]'); if(pxIn) pxIn.addEventListener('input',function(){ var v=Math.round(+pxIn.value||0); if(v>0&&v<5) v=5; z.px=v; row.querySelector('.zpxv').textContent=zpxTxt(v); zShow(); });
+    var scIn=row.querySelector('[data-f=sc]'); if(scIn) scIn.addEventListener('input',function(){ z.sc=Math.max(30,Math.min(160,Math.round(+scIn.value||100))); z.px=0; row.querySelector('.zpxv').textContent=zscTxt(z); zShow(); });
     row.querySelector('[data-a=draw]').addEventListener('click',function(){ drawFor(z); });
     row.querySelector('[data-a=now]').addEventListener('click',function(){ zoneTick(true,z); });
     row.querySelector('[data-a=del]').addEventListener('click',function(){ zDelete(z); });
@@ -1968,13 +2034,42 @@ function drawFor(z){ if(window.hsGo) hsGo('choi'); drawTarget=z; setDraw(true); 
 var ZBTN=/(^|[^A-Za-z0-9])(?:[LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕◯⨯⭘])(?![A-Za-z0-9])/g;
 var ZPROMPT=/^(?:back|select|confirm|cancel|close|exit|return|track|untrack|details?|zoom|move|scroll|sort|filter|equip|unequip|use|drop|discard|inspect|view|map|menu|options|toggle|skip|next|prev(?:ious)?|page|tab|hold|press|rotate|info|more|compare|mark|unmark|buy|sell|collect|read|open|show|hide|set|waypoint|navigate|change|switch|upgrade|craft|dismantle|favorite|favourite|lock|unlock|accept|decline|continue|quit|help|controls|legend|quests?|journal|inventory|camera|reset|aim|fire|shoot|sprint|run|walk|jump|crouch|attack|heavy|light|dodge|roll|block|parry|reload|interact|climb|swim|dive|throw|heal|whistle|call|mount|dismount|ride|lock|target|vision|scan|focus|sneak|loot|pick|up|on|off|and|or|to|the|a|of|all)$/i;
 function zBtnLine(s){
-  var n=0; s=s.replace(ZBTN,function(m,a){ n++; return a+' '; }).replace(/[()\[\]{}<>|]+\s*[()\[\]{}<>|]*/g,function(x){ return /\w/.test(x)?x:' '; }).replace(/\s+/g,' ').trim();
+  var n=(String(s).match(/\uE000/g)||[]).length; s=String(s).replace(/\uE000/g,' ').replace(ZBTN,function(m,a){ n++; return a+' '; }).replace(/[()\[\]{}<>|]+\s*[()\[\]{}<>|]*/g,function(x){ return /\w/.test(x)?x:' '; }).replace(/\s+/g,' ').trim();
   var after=(s.match(/\bto\b\s+(.*)$/i)||[])[1]||'', shortHint=after.split(/\s+/).filter(Boolean).length<=2;   /* "Press R3 to track", not "Hold to Charge and Build Up Focus" */
   if(shortHint&&(/^(?:press|hold|tap|mash|use|click)\b.{0,40}\bto\b/i.test(s)&&n||/^(?:press|hold|tap|mash)\s+(?:\S{1,3}\s+)?to\b/i.test(s))) return '';
   var w=s.split(' ').filter(Boolean), glyph=n>0||w.some(function(x){ return /^[XOABY]$/.test(x); });   /* the reader often turns ✕ ○ into X O */
   if(glyph&&w.length&&w.every(function(x){ return ZPROMPT.test(x.replace(/[^A-Za-z]/g,''))||!/[A-Za-z]{2}/.test(x); })) return '';   /* "✕ Select  ○ Back" */
   return s;
 }
+/* button icons kept in the sentence: each icon (a picture cut from the game, or a button name read as text, "R3")
+   becomes {{1}}, {{2}}... in the text sent to the AI, which keeps them where they belong in the Vietnamese; the
+   Vietnamese is then shown with the same icons, so "Press ◉ to..." reads "Nhấn ◉ để...", not "Nhấn để..." */
+var ZBTN1=/(^|[^A-Za-z0-9{])([LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕◯⨯⭘])(?![A-Za-z0-9}])|\uE000/g;
+function zPrep(raw,icons){
+  var qi=0, out=[], ic=[];
+  String(raw||'').split('\n').forEach(function(l){
+    var m=(l.match(/\uE000/g)||[]).length, mine=(icons||[]).slice(qi,qi+m); qi+=m;
+    var c=l.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim();
+    var k=zBtnLine(c); if(!k||!langOk(k,2,0.5)) return;
+    var j=0, t=c.replace(ZBTN1,function(x,a,tok){ if(x==='\uE000'){ var u=mine[j++]; if(!u) return ' '; ic.push(u); return ' {{'+ic.length+'}} '; } ic.push('t:'+tok); return (a||'')+'{{'+ic.length+'}}'; });
+    out.push(t.replace(/\s+([.,!?;:])/g,'$1').replace(/\s{2,}/g,' ').trim());
+  });
+  return {en:out.join('\n'),ic:ic,n:out.length};
+}
+/* the AI wrote the markers a little differently, or left one out: put them right (a missing one goes in front of its line) */
+function zIcFix(en,vi,ic){
+  vi=String(vi||'').replace(/\{\s*\{?\s*(\d{1,2})\s*\}?\s*\}/g,'{{$1}}');
+  if(!ic||!ic.length) return vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim();
+  var el=String(en).split('\n'), vl=vi.split('\n');
+  for(var k=1;k<=ic.length;k++){ var tag='{{'+k+'}}'; if(vi.indexOf(tag)>=0) continue;
+    var li=0; el.forEach(function(l,i){ if(l.indexOf(tag)>=0) li=i; }); if(vl.length!==el.length) li=0;
+    var ln=vl[li]||'', mv=ln.match(/^\s*((?:nhấn và giữ|nhấn giữ|bấm giữ|nhấn|bấm|ấn|giữ|chạm|dùng|thả)\s+)/i);   /* "Nhấn để..." → "Nhấn {{1}} để..." */
+    vl[li]=mv?mv[1]+tag+' '+ln.slice(mv[0].length):tag+' '+ln; vi=vl.join('\n'); }
+  return vi.replace(/\{\{(\d+)\}\}/g,function(m,k){ return +k>=1&&+k<=ic.length?m:''; });
+}
+/* the Vietnamese with its icons: as HTML (pictures and button names), or as plain text for places that show only text */
+function zIcHtml(t,ic){ return esc(String(t||'')).replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; if(!v) return ''; return v.indexOf('t:')===0?'<span class="hs-key">'+esc(v.slice(2))+'</span>':'<img class="hs-key" src="'+v+'" alt="">'; }); }
+function zIcText(t,ic,pic){ return String(t||'').replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; return !v?'':v.indexOf('t:')===0?v.slice(2):(pic||''); }).replace(/[ \t]{2,}/g,' ').replace(/ +\n|\n +/g,'\n').trim(); }
 /* how the original lines sit: lined up on the left, centred or on the right */
 function linesAlign(L,W){
   if(!L||!L.length||!W) return '';
@@ -1988,19 +2083,19 @@ function zSpot(z){ return (z.place||'spot')==='spot'; }
 function zBlocks(o){
   if(!o||!o.blocks||!o.W) return [];
   return o.blocks.filter(function(b){ return b.conf>=0.5; }).map(function(b){
-    var lines=String(b.text||'').split('\n').map(function(l){ return zBtnLine(l.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim()); }).filter(function(l){ return l&&langOk(l,2,0.5); });
+    var P=zPrep(b.text,b.icons), lines=P.n?P.en.split('\n'):[];
     if(!lines.length) return null;
     var n=String(b.text||'').split('\n').length;
     var lh=(b.lh||b.h/n)/o.H, py=Math.min(b.y/o.H,lh*0.18);   /* a little larger than the original, so no letter peeks out */
     /* the box starts where the words start: a button icon in front ("△ Hold to Charge") stays visible, not covered */
     var bx=b.x0!=null&&b.x0-b.x>(b.lh||b.h/n)*0.8?Math.min(b.x0,b.x+b.w*0.6):b.x, bw=b.x+b.w-bx, px=Math.min(bx/o.W,0.01);
-    return {x:bx/o.W-px,y:b.y/o.H-py,w:Math.min(1-(bx/o.W-px),bw/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,n:lines.length,en:lines.join('\n')};
+    return {x:bx/o.W-px,y:b.y/o.H-py,w:Math.min(1-(bx/o.W-px),bw/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,n:lines.length,en:lines.join('\n'),ic:P.ic};
   }).filter(Boolean).sort(function(a,b){ return a.y-b.y||a.x-b.x; });
 }
 function zText(o){
-  return o.lines.filter(function(l){ return l.conf>=0.55&&langOk(l.text,2,0.5); })
-    .map(function(l){ return zBtnLine(l.text.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim()); })
-    .filter(function(s){ return s&&langOk(s,2,0.5); }).join('\n');
+  var L=o.lines.filter(function(l){ return l.conf>=0.55&&langOk(l.text.replace(/\uE000/g,''),2,0.5); });
+  var P=zPrep(L.map(function(l){ return l.text; }).join('\n'),[].concat.apply([],L.map(function(l){ return l.icons||[]; })));
+  o.zic=P.ic; return P.en;
 }
 /* only a number changed (a distance, "2/5 collected", a timer): put the new numbers into the old translation, no new request */
 function zNumOnly(a,b){ var A=String(a||'').replace(/\d+/g,'#'), B=String(b||'').replace(/\d+/g,'#'); return a!==b&&A===B&&/\d/.test(b); }
@@ -2014,7 +2109,8 @@ function zPrompt(z,text){
   return 'You translate on-screen video game text ('+ZKINDS[z.kind].d+') from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>>. It may contain OCR mistakes or words stuck together.\n<<<\n'+text+'\n>>>\n'+
     'Translate it into short, clear Vietnamese in "vi". Keep one output line for each input line, joined with \\n. Keep names of characters and places as they are; numbers and stats stay unchanged. '+
-    'Leave out every controller hint: button names like L1, L2, L3, R1, R2, R3, LB, RT, ✕ ○ △ □, Options, Touchpad, and lines such as "Press R3 to track" or "Back / Select". Ignore lines that are only numbers or icons. '+
+    (/\{\{\d+\}\}/.test(text)?'{{1}}, {{2}}... are controller button icons drawn in the sentence: keep every one of them in the Vietnamese, at the place that matches the meaning, written exactly the same (e.g. "Press {{1}} to jump" → "Nhấn {{1}} để nhảy", "Hold {{1}} and {{2}} to aim" → "Giữ {{1}} và {{2}} để ngắm"). Never translate, drop or add them. Leave out lines that are only button hints, like "Back / Select". ':
+    'Leave out every controller hint: button names like L1, L2, L3, R1, R2, R3, LB, RT, ✕ ○ △ □, Options, Touchpad, and lines such as "Press R3 to track" or "Back / Select". ')+'Ignore lines that are only numbers or icons. '+
     ({quest:'This is a quest or objective: write it as a short instruction a player can act on (e.g. "Đi đến ...", "Nói chuyện với ...", "Tìm ... (2/5)"), keep the quest title as a title. ',
       item:'This is an item: on the first line give the item name in Vietnamese followed by the original name in parentheses, e.g. "Kiếm sắt (Iron Sword)"; a unique named item keeps its name. Then translate the description and effects clearly; keep numbers, rarity and stats. ',
       map:'These are map labels and hints: keep place names, translate the generic words (e.g. "Camp" → "Trại", "Fast Travel" → "Dịch chuyển nhanh"). ',
@@ -2033,7 +2129,12 @@ function tmZone(text){
   if(out) return out.join('\n');
   var w=tmFind(lines.join(' ')); return w?w.vi:'';   /* one paragraph broken over several lines on screen */
 }
-async function zTranslate(z,text){
+async function zTranslate(z,text,ic){
+  var r0=await zTranslate0(z,text);
+  if(r0.vi&&(ic&&ic.length||/\{\{/.test(r0.vi))) r0.vi=zIcFix(text,r0.vi,ic);
+  return r0;
+}
+async function zTranslate0(z,text){
   var k=zKey(text);
   if(S.zcache[k]) return {vi:S.zcache[k],via:'nhớ'};
   /* the shared store: the whole area as one entry, or every line of it found (a menu, a list of items) */
@@ -2073,17 +2174,17 @@ async function zoneTick(force,only){
         z.wobble=0;
       }
       z.doneMask=m; z.readAt=Date.now();
-      var text='', bl=null;
+      var text='', bl=null, zic=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true}); text=zText(o); bl=zBlocks(o); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
         var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Leave out controller hints (L1, R2, R3, ✕ ○ △ □, "Press ... to ...", "Back / Select"). Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
         var v=zViClean(r&&r.vi); if(!v) continue;
-        z.items=null; z.vi=v; z.hide=false; z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(v.replace(/\n/g,'. ')); continue;
+        z.items=null; z.ic=null; z.vi=v; z.hide=false; z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(v.replace(/\n/g,'. ')); continue;
       }
       if(!text){                                             /* only hints or nothing readable left */
         if(!force){ z.miss=(z.miss||0)+1; if(z.miss>=2&&(z.vi||z.lastText)) zGone(z); }
@@ -2100,19 +2201,21 @@ async function zoneTick(force,only){
       var t;
       if(zSpot(z)&&bl&&bl.length){
         /* paragraph by paragraph, each keeps its own number of lines */
-        try{ for(var bi=0;bi<bl.length;bi++){ var tb=await zTranslate(z,bl[bi].en); bl[bi].vi=lineSplit(zViClean(tb.vi),bl[bi].n); t=tb; } } finally{ z.pending=false; }
+        try{ for(var bi=0;bi<bl.length;bi++){ var tb=await zTranslate(z,bl[bi].en,bl[bi].ic); bl[bi].vi=lineSplit(zViClean(tb.vi),bl[bi].n); t=tb; } } finally{ z.pending=false; }
         var its=bl.filter(function(x){ return x.vi; });
         if(!its.length){ zShow(); continue; }
-        z.items=its; t={vi:its.map(function(x){ return x.vi; }).join('\n'),via:t.via};
-      } else { z.items=null; try{ t=await zTranslate(z,text); } finally{ z.pending=false; } }
+        z.items=its; z.ic=null; t={vi:its.map(function(x){ return x.vi; }).join('\n'),via:t.via};
+      } else { z.items=null; z.ic=zic; try{ t=await zTranslate(z,text,zic); } finally{ z.pending=false; } }
       var vt=zViClean(t.vi);
       if(!vt){ zShow(); continue; }
       z.vi=vt; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+vt.replace(/\n/g,' / ').slice(0,120));
-      z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(vt.replace(/\n/g,'. '));   /* read aloud only if this area asks for it */
+      z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(zSay(z).replace(/\n/g,'. '));   /* read aloud only if this area asks for it */
     }
   }catch(e){ log('vùng dịch lỗi: '+(e.cool?'mã hết lượt':e.message)); }
   finally{ S.zBusy=false; }
 }
+/* the area's Vietnamese as plain words (reading aloud): button names stay, icon pictures are left out */
+function zSay(z){ return z.items&&z.items.length?z.items.map(function(it){ return zIcText(it.vi,it.ic,''); }).join('\n'):zIcText(z.vi,z.ic,''); }
 /* the original text is gone: so is the translation (unless a number of seconds was set) */
 function zGone(z){
   if(+z.hold>0){ z.lastText=''; z.doneMask=null; return; }
@@ -2136,9 +2239,9 @@ function zTv(z){
   if(spot){
     tvSend(Object.assign({},base0,{zid:z.id,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
     z.items.forEach(function(it,i){
-      var px=+z.px>0?+z.px:Math.max(6,Math.round(it.lh*zr.h*1080*0.92));
+      var px=+z.px>0?+z.px:Math.max(5,Math.round(it.lh*zr.h*1080*0.92*zSc(z)));
       var lk=(z.look||'auto')!=='dark'&&it.bg?{zbgc:it.bg,zfg:it.fg}:{};   /* "Theo màu game": the colours around the original */
-      tvSend(Object.assign({},base0,lk,{zid:z.id+'_'+i,vi:it.vi,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
+      tvSend(Object.assign({},base0,lk,{zid:z.id+'_'+i,vi:zIcText(it.vi,it.ic,'●'),zv:it.ic&&it.ic.length?it.vi:undefined,zic:it.ic&&it.ic.length?it.ic:undefined,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0||zSc(z)>1?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
     });
   }
   z.tvMax=Math.max(z.tvMax||0,nOld,nNew);
@@ -2149,7 +2252,7 @@ function zTv(z){
     if(z.tvAgainN<2){ z.tvAgainN++; var tok=z.tvTok=(z.tvTok||0)+1; later(function(){ if(!z.vi&&z.tvTok===tok) zTv(z); },z.tvAgainN===1?2500:8000); } }
   else { z.tvAgainN=0; z.tvTok=(z.tvTok||0)+1; }
   if(spot) return;
-  var o={kind:'zone',zid:z.id,vi:z.vi&&z.on&&!z.hide?z.vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfont:zFontKey(z),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
+  var shownV=z.vi&&z.on&&!z.hide, o={kind:'zone',zid:z.id,vi:shownV?zIcText(z.vi,z.ic,'●'):'',zv:shownV&&z.ic&&z.ic.length?z.vi:undefined,zic:shownV&&z.ic&&z.ic.length?z.ic:undefined,zsc:Math.round(zSc(z)*100),x:zr.x,y:zr.y,w:zr.w,h:zr.h,hold:+z.hold||0,name:zName(z),zs:z.size||'m',zpx:+z.px||0,zal:zAlign(z),zbg:z.bg==null?90:+z.bg,font:subFontKey(),zfont:zFontKey(z),speak:!!(z.speak&&z.vi&&!z.hide&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn())}; z.fresh=false;
   tvSend(o).catch(function(){});
 }
 /* Hóng Sub stopped, or the game picture went away (PS5 off, Remote Play closed): nothing of the areas stays on the TV.
@@ -2190,10 +2293,10 @@ function zHold(z){
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
   if(PH){ try{ var pl=[]; S.zones.filter(function(z){return z.on;}).forEach(function(z){
-      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:it.vi,size:+z.px>0?Math.round(+z.px/2):Math.max(5,Math.round(it.lh*z.h*1080*0.46)),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
-      else pl.push({id:z.id,vi:z.hide?'':(z.vi||''),size:+z.px>0?Math.round(+z.px/2):(ZSIZE[z.size]||17),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x,y:z.y,w:z.w,h:z.h}); });
+      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:zIcText(it.vi,it.ic,'●'),size:+z.px>0?Math.round(+z.px/2):Math.max(4,Math.round(it.lh*z.h*1080*0.46*zSc(z))),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
+      else pl.push({id:z.id,vi:z.hide?'':zIcText(z.vi||'',z.ic,'●'),size:+z.px>0?Math.round(+z.px/2):Math.round((ZSIZE[z.size]||17)*zSc(z)),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x,y:z.y,w:z.w,h:z.h}); });
     PH.zones(JSON.stringify(pl)); }catch(e){} }
-  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:zFont(z),fontUrl:fontUrl(zFontKey(z)),x:z.x,y:z.y,w:z.w,h:z.h};})); }
+  if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),ic:z.ic||null,sc:zSc(z),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,ic:it.ic||null,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:zFont(z),fontUrl:fontUrl(zFontKey(z)),x:z.x,y:z.y,w:z.w,h:z.h};})); }
 zList();
 
 /* ---------- frame grab + change detection ---------- */

@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><title>Hóng Sub vùng dịch</title>
 <style>
+.key{display:inline-block;height:1.08em;width:1.08em;vertical-align:-.2em;margin:0 .08em;border-radius:.2em}
+span.key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.25;border:.1em solid currentColor;border-radius:.35em;vertical-align:.05em}
 html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Be Vietnam Pro",system-ui,sans-serif;user-select:none}
 #card{position:absolute;inset:0;box-sizing:border-box;background:rgba(8,9,12,.92);border-radius:4px;border:2px solid transparent;padding:3px 7px;color:#fff;display:flex;flex-direction:column;overflow:hidden}
 body:not(.move) #card{border-color:transparent!important}
@@ -45,30 +47,33 @@ body.move #tx:empty::before{content:"Bản dịch vùng này hiện ở đây. K
     s.background=rgba(it.bg,a); s.color=it.fg||'#fff'; s.boxShadow='0 0 '+fe+'px '+Math.round(fe/2)+'px '+rgba(it.bg,a); s.textShadow='0 0 3px '+rgba(it.bg,.9); s.borderRadius=Math.round(fe/2)+'px'; }
   /* largest font (up to the chosen size) that fits the window */
   /* "Đúng chỗ từng đoạn": every paragraph of the original gets its own box at its own place in the window */
+  /* the Vietnamese with the game's button icons ({{1}}...) and button names */
+  function esc(t){ return String(t||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function icHtml(t,ic){ return esc(t).replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; if(!v) return ''; return v.indexOf('t:')===0?'<span class="key">'+esc(v.slice(2))+'</span>':(/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(v)?'<img class="key" src="'+v+'" alt="">':''); }); }
   function spots(){
     var its=document.getElementById('its'), d=cur, on=!!(d&&d.items&&d.items.length&&d.vi);
     tx.style.visibility=on?'hidden':''; card.style.background=on?'transparent':(d&&d.bg!=null?'rgba(8,9,12,'+d.bg+')':'');
     if(!on){ its.innerHTML=''; return; }
     var H=window.innerHeight, bg='rgba(8,9,12,'+(d.bg!=null?d.bg:.9)+')';
     its.innerHTML=d.items.map(function(it){
-      var f=+d.px>0?(+d.px*screen.height/1080):Math.max(6,it.lh*H*0.92);
-      return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+String(it.vi).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</div>';
+      var f=+d.px>0?(+d.px*screen.height/1080):Math.max(5,it.lh*H*0.92*(+d.sc||1));
+      return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+(d.al||'left')+';background:'+bg+'">'+icHtml(it.vi,it.ic)+'</div>';
     }).join('');
     if(d.font) its.style.fontFamily=d.font;
-    [].forEach.call(its.children,function(el,i){ spotFit(el,d.items[i],window.innerWidth,H,d.al||'left',!(+d.px>0)); look(el,d.items[i],d.bg!=null?d.bg:.9,parseFloat(el.style.fontSize)||14); });   /* the same rules as on the TV */
+    [].forEach.call(its.children,function(el,i){ spotFit(el,d.items[i],window.innerWidth,H,d.al||'left',!(+d.px>0)&&(+d.sc||1)<=1); look(el,d.items[i],d.bg!=null?d.bg:.9,parseFloat(el.style.fontSize)||14); });   /* the same rules as on the TV */
   }
   function fit(){
     if(!cur) return;
     /* as big as the area allows (up to the chosen size), smaller for long text, never spilling out of the area */
-    var lines=(tx.textContent||'').split('\n').length, cap=Math.round((cur.size||17)*1.6);
-    var f=+cur.px>0?Math.round(+cur.px*screen.height/1080):Math.max(9,Math.min(cap,Math.floor(tx.clientHeight/lines*0.7))); tx.style.fontSize=f+'px';   /* a chosen size, or as big as fits */
+    var lines=(tx.textContent||'').split('\n').length, cap=Math.round((cur.size||17)*1.6*(+cur.sc||1));
+    var f=+cur.px>0?Math.round(+cur.px*screen.height/1080):Math.max(7,Math.min(cap,Math.floor(tx.clientHeight/lines*0.7*(+cur.sc||1)))); tx.style.fontSize=f+'px';   /* a chosen size, or as big as fits */
     while(f>8&&(tx.scrollHeight>tx.clientHeight+1||tx.scrollWidth>tx.clientWidth+1)){ f--; tx.style.fontSize=f+'px'; }
   }
   D.onZone(function(d){
     cur=d; card.style.borderColor=d.c; nm.style.color=d.c;
     if(d.bg!=null) card.style.background='rgba(8,9,12,'+d.bg+')'; if(d.font) tx.style.fontFamily=d.font; if(d.fontUrl&&!document.querySelector('link[href="'+d.fontUrl+'"]')){ var l=document.createElement('link'); l.rel='stylesheet'; l.href=d.fontUrl; document.head.appendChild(l); }
     nm.textContent=d.name+(d.kind?' · '+d.kind:'');
-    tx.textContent=d.vi||''; tx.style.textAlign=d.al||''; fit(); spots();
+    tx.innerHTML=icHtml(d.vi||'',d.ic); tx.style.textAlign=d.al||''; fit(); spots();
   });
   D.onOverlay(function(st){ document.body.classList.toggle('move',!!st.move); fit(); });
   window.addEventListener('resize',function(){ fit(); spots(); });
