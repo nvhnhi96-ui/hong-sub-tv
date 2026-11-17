@@ -211,6 +211,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** once: let Hóng Sub run with the screen off (Android's battery saver would cut its network after a while) */
+    private void askBattery() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            if (pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+            android.content.SharedPreferences sp = getSharedPreferences("hs", MODE_PRIVATE);
+            if (sp.getBoolean("askedBattery", false)) return;
+            sp.edit().putBoolean("askedBattery", true).apply();
+            Toast.makeText(this, "Cho phép Hóng Sub chạy khi tắt màn hình: bấm Cho phép.", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) { }
+    }
+
     private void goBack() {
         if (web != null && web.canGoBack()) { web.goBack(); return; }
         moveTaskToBack(true);   // keep Hóng Sub running behind the game
@@ -223,6 +237,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (current.get() == this) current = new WeakReference<>(null);
+        AwakeService.set(this, false);
         if (web != null) { web.destroy(); web = null; }
         super.onDestroy();
     }
@@ -242,6 +257,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void state(String json) { CaptureService.post("state", json); }
         @JavascriptInterface public void openUrl(String url) { main.post(() -> MainActivity.this.openUrl(url)); }
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }
+        /* "Dịch khi tắt màn hình": on while translating, off when it stops */
+        @JavascriptInterface public void awake(boolean on) { AwakeService.set(MainActivity.this, on); if (on) main.post(MainActivity.this::askBattery); }
         /* PS5 / PS4 inside Hóng Sub: where the Remote Play core listens, and the Sony sign-in */
         @JavascriptInterface public String rp() { return Hsrp.info(); }
         @JavascriptInterface public void nat(String cmd, String id) { main.post(() -> nativeCall(cmd, id)); }

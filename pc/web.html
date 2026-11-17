@@ -1636,11 +1636,14 @@ function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.st
 zList();
 
 /* ---------- frame grab + change detection ---------- */
+/* where the game picture is read from: the PS5 picture inside Hóng Sub straight from its canvas (keeps coming with
+   the phone screen off, when the page is hidden), else the video */
+function frameSrc(){ if(typeof PS!=='undefined'&&PS.cvs&&PS.stream&&S.stream===PS.stream&&PS.cvs.width>2) return {el:PS.cvs,w:PS.cvs.width,h:PS.cvs.height}; return {el:video,w:video.videoWidth,h:video.videoHeight}; }
 function grab(R,maxW,minW){
-  var vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
+  var fs0=frameSrc(), vw=fs0.w, vh=fs0.h; if(!vw) return null;
   var sx=R.x*vw, sy=R.y*vh, sw=R.w*vw, sh=R.h*vh;
   var sc=Math.min(1,maxW/sw); if(minW&&sw<minW) sc=Math.min(2.5,minW/sw); cap.width=Math.round(sw*sc); cap.height=Math.round(sh*sc);
-  capx.drawImage(video,sx,sy,sw,sh,0,0,cap.width,cap.height);
+  capx.drawImage(fs0.el,sx,sy,sw,sh,0,0,cap.width,cap.height);
   return true;
 }
 function diff(a,b){if(!a||!b) return 255; var t=0; for(var i=0;i<a.length;i++){t+=Math.abs(a[i]-b[i]);} return t/a.length;}
@@ -3328,10 +3331,22 @@ function startRun(){
   S.sents=[]; OCR.miss=0;
   S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0; GUARD.kind=''; GUARD.neg=0; GUARD.next=0;
   restartTimer(); later(tick,30);
-  phState(true);
+  phState(true); awakeSync();
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
-function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''});}
+function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''}); awakeSync();}
+/* "Dịch khi tắt màn hình" (Android phone): while translating, the phone may sleep and the translation goes on
+   (subtitles and areas to the TV, reading aloud). The phone keeps the processor and Wi-Fi awake for it. */
+function awakeOk(){ return !!(PH&&PH.awake); }
+function awakeSync(){
+  if(!awakeOk()) return; var c=$('hsAwake'), on=!!(S.running&&c&&c.checked);
+  if(on!==!!S.awakeOn){ S.awakeOn=on; try{ PH.awake(on); }catch(e){} log(on?'dịch khi tắt màn hình: bật':'dịch khi tắt màn hình: tắt'); }
+}
+(function(){ var c=$('hsAwake'); if(!c) return; var row=c.closest('label');
+  if(row) row.hidden=!awakeOk();
+  c.checked=load('awake',true);
+  c.addEventListener('change',function(){ save('awake',c.checked); awakeSync(); status(S.running?'run':'idle',c.checked?'Tắt màn hình điện thoại vẫn dịch tiếp':'Tắt màn hình là ngừng dịch'); });
+})();
 $('hsRun').addEventListener('click',function(){S.running?stopRun():startRun();});
 
 /* ---------- full-screen translate ---------- */
@@ -3725,6 +3740,7 @@ window.hsPhoneEvt=function(type,data){
   try{ data=typeof data==='string'?JSON.parse(data||'{}'):(data||{}); }catch(e){ data={}; }
   if(type==='capture'){ phoneStream(+data.w,+data.h); status('idle','Đã chia sẻ màn hình. Mở PS Remote Play, rồi bấm nút H nổi để dịch.'); }
   else if(type==='denied'){ status('warn','Chưa cho phép ghi màn hình nên chưa dịch được.'); }
+  else if(type==='awake'){ if(!data.on&&S.awakeOn){ S.awakeOn=false; var ac=$('hsAwake'); if(ac){ ac.checked=false; save('awake',false); } log('dịch khi tắt màn hình: tắt từ thông báo'); } }
   else if(type==='stopped'){ if(WT) WT.clear(S.ph.timer); else clearInterval(S.ph.timer); S.ph.timer=0; if(S.ph.end) S.ph.end(); phState(false); }
   else if(type==='cmd'){
     var k=data.k;
@@ -4296,7 +4312,8 @@ function psDecoder(codec){
     output:function(f){
       /* show at the screen's own pace: keep only the newest frame and draw it on the next refresh (no bunching, no backlog) */
       if(PS.pend) PS.pend.close(); PS.pend=f;
-      if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
+      if(document.hidden){ psPaint(); }   /* screen off / behind another app: no screen refresh to wait for */
+      else if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
       if(++PS.frames===1){ psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!(D&&D.selftest)) startRun(); }
     },
     error:function(e){ psJank(); PS.decErr=(PS.decErr||0)+1; log('PS: giải hình lỗi '+((e&&e.message)||e)); if(PS.decErr>=2) PS.sw=true; PS.dec=null; PS.waitKey=true; psIdr(); }
