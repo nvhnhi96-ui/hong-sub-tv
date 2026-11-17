@@ -1715,7 +1715,8 @@ var zV2=load('zonesV2',false);
 if(!load('zbg90',false)){ S.zones.forEach(function(z){ if(z.bg===0) z.bg=90; }); save('zbg90',true); if(S.zones.length) zSave(); }
 S.zones.forEach(function(z){ if(!z.size) z.size='m'; if(!z.show||(!zV2&&z.show==='app')) z.show='float'; if(z.hold==null) z.hold=0; z.hold=Math.max(0,Math.min(600,Math.round(+z.hold)||0)); if(z.tv==null) z.tv=true; });
 save('zonesV2',true);
-function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'play',speak:!!z.speak};})); }
+if(!load('zWhenGame',false)){ S.zones.forEach(function(z){ if(z.when==='play') z.when='game'; }); save('zWhenGame',true); if(S.zones.length) zSave(); }   /* game menus are translated again; only the PS5's own screens and the map are skipped */
+function zSave(){ save('zones',S.zones.map(function(z){return {id:z.id,name:z.name||'',kind:z.kind,x:z.x,y:z.y,w:z.w,h:z.h,on:z.on,mode:z.mode,hide:z.hide,size:z.size,show:z.show,hold:+z.hold||0,tv:z.tv!==false,bg:z.bg==null?90:+z.bg,px:+z.px||0,al:z.al||'auto',place:z.place||'spot',look:z.look||'auto',when:z.when||'game',speak:!!z.speak};})); }
 var zLayer=document.createElement('div'); zLayer.className='hs-zones'; $('hsStage').appendChild(zLayer);
 function zEl(z){
   if(z.el) return z.el;
@@ -1862,7 +1863,7 @@ function zList(){
       (D?'<label><span>Hiện ở</span><select class="hs-in" data-f="show">'+opt('float',z.show,'Đè lên game')+opt('app',z.show,'Chỉ trong Hóng Sub')+'</select></label>':'')+
       '<label><span>Cách hiện</span><select class="hs-in" data-f="place">'+opt('spot',z.place||'spot','Đúng chỗ')+opt('box',z.place,'Một khung')+'</select></label>'+
       '<label><span>Canh lề</span><select class="hs-in" data-f="al">'+opt('auto',al,'Theo chữ gốc')+opt('l',al,'Trái')+opt('c',al,'Giữa')+opt('r',al,'Phải')+'</select></label>'+
-      '<label title="Đang chơi: vùng này không dịch ở menu, màn hình PS5, cửa hàng, màn hình đứng yên (game không chuyển động). Mọi lúc: dịch cả khi đứng yên, hợp với túi đồ, bảng mô tả vật phẩm."><span>Dịch khi</span><select class="hs-in" data-f="when">'+opt('play',z.when||'play','Đang chơi')+opt('all',z.when||'play','Mọi lúc')+'</select></label>'+
+      '<label title="Trong game: dịch mọi chữ của game (menu, hướng dẫn, túi đồ...), chỉ bỏ qua màn hình của máy PS5 và bản đồ. Chỉ lúc di chuyển: thêm bỏ qua menu và mọi lúc hình đứng yên, hợp với vùng nhiệm vụ ở góc màn hình."><span>Dịch khi</span><select class="hs-in" data-f="when">'+opt('game',z.when==='play'?'play':'game','Trong game')+opt('play',z.when==='play'?'play':'game','Chỉ lúc di chuyển')+'</select></label>'+
       '<label title="Theo màu game: nền và màu chữ lấy đúng màu quanh chữ gốc, viền mờ dần, như chữ của game. Thanh Nền chỉ dùng cho Nền tối"><span>Màu nền</span><select class="hs-in" data-f="look">'+opt('auto',z.look||'auto','Theo màu game')+opt('dark',z.look||'auto','Nền tối')+'</select></label>'+
       '<label class="hs-zs" title="Kéo về 0: chữ tự to nhỏ cho vừa khung"><span>Cỡ chữ <b class="zpxv">'+zpxTxt(px)+'</b></span><input class="hs-range" type="range" min="0" max="64" step="1" data-f="px" value="'+px+'" aria-label="Cỡ chữ của vùng"></label>'+
       '<label class="hs-zs"><span>Nền <b class="zbgv">'+bg+'%</b></span><input class="hs-range" type="range" min="0" max="100" step="5" data-f="bg" value="'+bg+'" aria-label="Độ đậm nền sau chữ của vùng"></label>'+
@@ -3644,7 +3645,7 @@ function motionSample(){
   S.mv.prev=g;
 }
 function playing(){ var h=S.mv.hist.slice(-5); if(h.length<3) return true; return h.filter(function(f){ return f>=0.05; }).length>=3; }
-function zPlayOnly(z){ return guardOn()&&(z.when||'play')==='play'; }
+function zPlayOnly(z){ return guardOn()&&z.when==='play'; }
 /* a list of 4 or more short lines (title-case words, no sentence): a game menu ("Continue Journey / New Journey / Settings") */
 function menuLike(lines){
   var L=(lines||[]).filter(function(l){ return l.conf>=0.55&&String(l.text||'').trim(); }); if(L.length<4) return false;
