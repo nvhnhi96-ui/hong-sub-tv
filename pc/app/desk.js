@@ -57,7 +57,7 @@ function sonyInfo(){
     $('dkSonyOpen').disabled=!sony; $('dkSonyNote').textContent=sony?'Mở app của Sony, Hóng Sub tự đọc cửa sổ đó':'Chưa cài, bấm để tải';
   });
 }
-if((D.web===true)){ TITLES.ketnoi='Kết nối TV'; $('dkSonyNote').textContent='Mở app của Sony rồi chọn cửa sổ đó'; $('dkSrcWin').querySelector('small').textContent='Game trên máy tính, phim, tab khác'; if(A.load('dkPage','choi')==='ketnoi') $('dkTitle').textContent=TITLES.ketnoi; }
+if((D.web===true)){ if(!document.documentElement.classList.contains('hs-mps')) TITLES.ketnoi='Kết nối TV'; $('dkSonyNote').textContent='Mở app của Sony rồi chọn cửa sổ đó'; $('dkSrcWin').querySelector('small').textContent='Game trên máy tính, phim, tab khác'; if(A.load('dkPage','choi')==='ketnoi') $('dkTitle').textContent=TITLES.ketnoi; }
 else sonyInfo();
 function openSony(){
   if((D.web===true)){ A.pick(false); return; }

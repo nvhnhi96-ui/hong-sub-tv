@@ -30,6 +30,17 @@ jobs:
         if: env.HSTV_KEYSTORE_B64 != ''
         run: echo "$HSTV_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/hstv.jks"
 
+      # PS5 / PS4 inside the phone app: the Remote Play core (rp/mobile) is built on chiaki-ng (AGPL-3.0)
+      - name: Get chiaki-ng and Mbed TLS for the phone Remote Play core
+        run: |
+          set -e
+          git clone --depth 1 --branch v1.10.1 https://github.com/streetpea/chiaki-ng.git rp/chiaki-ng
+          (cd rp/chiaki-ng && git submodule update --init --depth 1 third-party/nanopb third-party/jerasure third-party/gf-complete)
+          git clone --depth 1 --branch v2.28.9 https://github.com/Mbed-TLS/mbedtls.git "$RUNNER_TEMP/mbedtls"
+          sudo apt-get install -y protobuf-compiler python3-protobuf >/dev/null
+          echo "HSRP_MBEDTLS_DIR=$RUNNER_TEMP/mbedtls" >> "$GITHUB_ENV"
+          echo "HSRP_PYTHON=/usr/bin/python3" >> "$GITHUB_ENV"
+
       - name: Build APK
         env:
           HSTV_KEYSTORE_B64: ${{ secrets.HSTV_KEYSTORE_B64 }}
@@ -302,8 +313,56 @@ jobs:
             pc/hong-sub-mac-apple.dmg
             pc/hong-sub-mac-intel.dmg
 
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools, chiaki-ng and Mbed TLS for the Remote Play core
+        run: |
+          set -e
+          brew install xcodegen protobuf >/dev/null
+          python3 -m venv "$RUNNER_TEMP/py" && "$RUNNER_TEMP/py/bin/pip" install -q protobuf playwright
+          echo "HSRP_PYTHON=$RUNNER_TEMP/py/bin/python3" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch v1.10.1 https://github.com/streetpea/chiaki-ng.git rp/chiaki-ng
+          (cd rp/chiaki-ng && git submodule update --init --depth 1 third-party/nanopb third-party/jerasure third-party/gf-complete)
+          git clone --depth 1 --branch v2.28.9 https://github.com/Mbed-TLS/mbedtls.git "$RUNNER_TEMP/mbedtls"
+          echo "HSRP_MBEDTLS_DIR=$RUNNER_TEMP/mbedtls" >> "$GITHUB_ENV"
+      - name: The page (same as the Android app)
+        run: cp phone/src/main/assets/app.html ios/web/index.html
+      - name: Remote Play core for iPhone
+        working-directory: ios
+        run: ./build-rp.sh iphoneos
+      - name: Build the iPhone app (not signed)
+        working-directory: ios
+        run: |
+          set -e
+          xcodegen generate
+          xcodebuild -project HongSub.xcodeproj -scheme HongSub -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build MARKETING_VERSION=1.0.${{ github.run_number }} CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -30
+          APP=build/Build/Products/Release-iphoneos/HongSub.app
+          ls -la "$APP" "$APP/web"
+          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+          zip -qr ../hong-sub-ios.ipa Payload
+          ls -la ../hong-sub-ios.ipa
+      - name: Check the page in WebKit with the core (as on the iPhone)
+        continue-on-error: true
+        run: |
+          set -e
+          cmake -S rp/mobile -B rp/build-mac -DHSRP_TEST=ON -DCMAKE_BUILD_TYPE=Release -DCHIAKI_DIR="$PWD/rp/chiaki-ng" \
+            -DFETCHCONTENT_SOURCE_DIR_MBEDTLS="$HSRP_MBEDTLS_DIR" -DPython3_EXECUTABLE="$HSRP_PYTHON" >/dev/null
+          cmake --build rp/build-mac --target hsrp-test -j 4 >/dev/null
+          "$RUNNER_TEMP/py/bin/python3" -m playwright install webkit >/dev/null
+          cd ios/test && "$RUNNER_TEMP/py/bin/python3" webkit_test.py "$GITHUB_WORKSPACE/rp/build-mac/hsrp-test" "$GITHUB_WORKSPACE/ios/web" "$GITHUB_WORKSPACE/ios/test/sample.h264"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: |
+            hong-sub-ios.ipa
+            ios/test/webkit-ios.png
+
   release:
-    needs: [ android, windows, webos, mac ]
+    needs: [ android, windows, webos, mac, ios ]
     if: always() && needs.android.result == 'success' && needs.windows.result == 'success' && needs.webos.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -322,7 +381,8 @@ jobs:
             Bản tự động.
             - hong-sub-pc.exe: phần mềm cho máy tính Windows 10/11.
             - hong-sub-tv.apk: Android TV / Google TV (cài bằng Downloader).
-            - hong-sub-android.apk: app Hóng Sub cho điện thoại Android (đủ chức năng như bản Windows): PS Remote Play trên điện thoại hoặc camera chĩa vào TV.
+            - hong-sub-android.apk: app Hóng Sub cho điện thoại Android (đủ chức năng như bản Windows): chơi PS5/PS4 ngay trong app (không cần app của Sony), PS Remote Play của Sony, hoặc camera chĩa vào TV.
+            - hong-sub-ios.ipa: app Hóng Sub cho iPhone/iPad (iOS 16.4 trở lên), chưa ký: cài bằng Sideloadly hoặc AltStore với Apple ID.
             - hong-sub-android-play.aab: cùng app đó, gói để nộp lên Google Play.
             - hong-sub-lg.ipk: TV LG (webOS), cài bằng Developer Mode.
             - hong-sub-samsung.wgt: TV Samsung (Tizen), cài bằng Tizen Studio với chứng chỉ Samsung.
@@ -336,6 +396,8 @@ jobs:
             out/hong-sub-samsung.wgt
             out/hong-sub-mac-apple.dmg
             out/hong-sub-mac-intel.dmg
+            out/hong-sub-ios.ipa
+          fail_on_unmatched_files: false
           make_latest: true
 
       # Samsung TVs open the newest app page from the tv-live branch (the installed app is only a fallback),

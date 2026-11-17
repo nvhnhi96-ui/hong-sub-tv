@@ -1,0 +1,57 @@
+# Hóng Sub for iPhone / iPad. Generate the Xcode project with XcodeGen (the CI does it):
+#   ./build-rp.sh iphoneos   (the Remote Play core, needs ../rp/chiaki-ng)
+#   cp ../phone/src/main/assets/app.html web/index.html
+#   xcodegen generate && xcodebuild ...
+name: HongSub
+options:
+  bundleIdPrefix: store.honggame
+  deploymentTarget:
+    iOS: "16.4"
+targets:
+  HongSub:
+    type: application
+    platform: iOS
+    sources:
+      - path: HongSub
+      - path: web
+        type: folder
+        buildPhase: resources
+    info:
+      path: HongSub/Info.plist
+      properties:
+        CFBundleDisplayName: "Hóng Sub"
+        CFBundleName: HongSub
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: ""
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSLocalNetworkUsageDescription: "Hóng Sub tìm và kết nối máy PS5 / PS4 và TV trong mạng nhà để nhận hình game và hiện phụ đề."
+        NSCameraUsageDescription: "Hóng Sub dùng camera khi bạn chĩa điện thoại vào TV để đọc phụ đề game."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoadsInWebContent: true
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: store.honggame.hongsub
+        PRODUCT_NAME: HongSub
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SWIFT_OBJC_BRIDGING_HEADER: HongSub/HongSub-Bridging-Header.h
+        HEADER_SEARCH_PATHS: $(SRCROOT)/../rp/mobile
+        LIBRARY_SEARCH_PATHS: $(SRCROOT)/build-rp/$(PLATFORM_NAME)
+        OTHER_LDFLAGS: -lhsrp_all
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_BITCODE: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""

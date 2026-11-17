@@ -233,5 +233,20 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void state(String json) { CaptureService.post("state", json); }
         @JavascriptInterface public void openUrl(String url) { main.post(() -> MainActivity.this.openUrl(url)); }
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }
+        /* PS5 / PS4 inside Hóng Sub: where the Remote Play core listens, and the Sony sign-in */
+        @JavascriptInterface public String rp() { return Hsrp.info(); }
+        @JavascriptInterface public void nat(String cmd, String id) { main.post(() -> nativeCall(cmd, id)); }
+    }
+
+    private void nativeCall(String cmd, String id) {
+        if ("psnLogin".equals(cmd)) PsnLogin.show(this, json -> reply(id, json));
+        else if ("psnCancel".equals(cmd)) { PsnLogin.cancel(); reply(id, "{\"ok\":true}"); }
+        else reply(id, "{\"ok\":false,\"err\":\"unknown\"}");
+    }
+
+    private void reply(String id, String json) {
+        if (web == null) return;
+        String js = "window.hsNat&&window.hsNat(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(json) + ")";
+        main.post(() -> { try { if (web != null) web.evaluateJavascript(js, null); } catch (Exception ignored) { } });
     }
 }
