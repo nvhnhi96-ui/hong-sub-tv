@@ -19,6 +19,8 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 find_program(PROTOC protoc REQUIRED)
 
 # ---- Mbed TLS 2.28 (what chiaki-lib's mbedtls code is written for) ----
+# its CMakeLists asks for a very old CMake, which CMake 4 refuses unless told the oldest policies it may assume
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 include(FetchContent)
 set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
