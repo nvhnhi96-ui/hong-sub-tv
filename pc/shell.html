@@ -27,6 +27,7 @@ html,body{height:100%;overflow:hidden}
 body:not(.desk) .dk-only{display:none!important}
 /* Mac: PS5 through Sony's PS Remote Play for Mac; the built-in player, AI voice pack and Windows firewall are Windows only */
 html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiCard,html.hs-mac .hs-win-only{display:none!important}
+.hs-vometer{height:6px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden;margin:10px 0 2px}.hs-vometer i{display:block;height:100%;width:0;background:#3ecf8e;transition:width .12s linear}.hs-vometer.talk i{background:#f5c542}
 /* phone apps with Remote Play inside (Android, iPhone): the PS5 / PS4 parts of the desktop app */
 html.hs-mps #hsPsSec{display:block!important}html.hs-mps #hsPsGo,html.hs-mps #hsPsEnd{display:inline-flex!important}html.hs-mps #hsPsEnd.hs-off,html.hs-mps #hsPsFull{display:none!important}
 html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .dk-nav span.hs-web{display:none!important}
@@ -328,6 +329,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .dk-nav span.h
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
+                <label class="hs-sw">Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
               </div>
             </div>
             <div class="dk-card">
@@ -591,6 +593,20 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .dk-nav span.h
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
+            </div>
+            <div class="dk-card" id="dkTalkCard">
+              <h2>Dịch lời nhân vật nói</h2>
+              <p class="hs-note">Dịch cả những câu nhân vật nói mà game không có phụ đề, như người qua đường, cuộc gọi, radio trong GTA. Hóng Sub nghe tiếng trong game, chép ra chữ tiếng Anh rồi dịch như phụ đề.</p>
+              <p class="hs-note"><b>Tiếng trong game</b>: khi chơi PS5 ngay trong Hóng Sub, hoặc cửa sổ game trên máy tính. <b>Micro</b>: đặt máy gần loa TV, dùng được với mọi cách chơi.</p>
+              <label class="hs-sw dk-sw">Dịch lời nhân vật nói <input type="checkbox" id="hsTalk"></label>
+              <div class="dk-set"><label class="lab" for="hsTalkSrc">Nghe từ</label>
+                <select class="hs-in" id="hsTalkSrc">
+                  <option value="game">Tiếng trong game</option>
+                  <option value="mic">Micro (nghe loa TV)</option>
+                </select></div>
+              <div class="hs-vometer" aria-hidden="true"><i id="hsTalkLvl"></i></div>
+              <p class="hs-note" id="hsTalkSt">Đang tắt.</p>
+              <p class="hs-note">Cần mã Groq (miễn phí, nghe nhanh và chuẩn nhất) hoặc mã Gemini. Mỗi câu nói dùng 1 lượt. Câu nào game đã có phụ đề thì không dịch lại.</p>
             </div>
             <div class="dk-card">
               <h2>Ngôn ngữ và cách đọc chữ</h2>

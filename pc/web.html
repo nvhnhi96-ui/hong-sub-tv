@@ -2301,6 +2301,7 @@ function show(res){
   if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:+$('hsSize').value});
   phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent});
   tvPush(vi,en,who,false);
+  if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
   speak(vi,res);
   clearTimeout(S.holdT);
   if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); },S.hold*1000);
@@ -2761,6 +2762,12 @@ function textPrompt(t,nl){
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
     (nl>1?'6. The original subtitle is shown on '+nl+' lines. Write "vi" on exactly '+nl+' lines too, separated by \\n, breaking where the original breaks.\n':'')+context();
 }
+/* a line heard rather than read (speech recognition): the same rules, other mistakes to expect */
+function voicePrompt(t){
+  return textPrompt(t,1).replace(/On-device OCR read the text between <<< and >>> from the subtitle area of the game screen\. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD\./,
+    'Speech recognition wrote down the text between <<< and >>> from what a character says in the game (there was no subtitle). It may have misheard words, especially names, and may miss punctuation.')
+    .replace('1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY','1. Fix obvious misheard words and keep ONLY');
+}
 /* the Vietnamese on as many lines as the original subtitle, broken between words, lines about the same length */
 function lineSplit(vi,n){
   vi=String(vi||'').trim(); if(!vi||n<=1) return vi.replace(/\s*\n\s*/g,' ');
@@ -2979,10 +2986,10 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(textPrompt(j.text,j.nl),j.text);
+      res=await askText(j.voice?voicePrompt(j.text):textPrompt(j.text,j.nl),j.text);
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
-        tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
+        if(!j.voice) tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
     if(res&&res.vi){ tmPlayed(); S.recent.push({raw:j.text,res:res,at:Date.now()}); if(S.recent.length>40) S.recent.shift(); }
     S.perf.t=Math.round(performance.now()-t1);
@@ -3812,6 +3819,197 @@ function hotkey(e){
 document.addEventListener('keydown',hotkey);
 
 if(!PH&&(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||/Android|iPhone|iPad/i.test(navigator.userAgent))){$('hsMobile').style.display='block';}
+/* ---------- spoken lines: what characters say without a subtitle (people in the street, phone calls, radio in GTA...) ----------
+   The game's sound (the PS5 inside Hóng Sub, the shared game window, or the microphone listening to the TV) is cut into
+   phrases where someone speaks; each phrase is written down by Whisper (Groq) or Gemini, then translated like a subtitle. */
+var VO={ctx:null,node:null,mute:null,stream:null,ownCtx:false,src:'',frames:[],pre:[],talk:false,sp:0,sil:0,voiced:0,noise:0.003,lvl:0,busy:0,muteUntil:0,heard:0,sent:0,err:'',acc:null,accN:0,ratio:3,keep:null};
+var VO_FR=320, VO_SR=16000;   /* 20 ms frames at 16 kHz, what speech recognition wants */
+function voOn(){ var c=$('hsTalk'); return !!(c&&c.checked); }
+function voSrc(){ return ($('hsTalkSrc')&&$('hsTalkSrc').value)||'game'; }
+function voSt(t,lvlTalk){ var el=$('hsTalkSt'); if(el&&el.textContent!==t) el.textContent=t; }
+function voLevel(){ var m=$('hsTalkLvl'); if(!m) return; m.style.width=Math.min(100,Math.round(Math.sqrt(VO.lvl)*260))+'%'; m.parentNode.classList.toggle('talk',VO.talk); }
+async function voStop(){
+  if(VO.node){ try{ VO.node.disconnect(); }catch(e){} VO.node.onaudioprocess=null; }
+  if(VO.mute){ try{ VO.mute.disconnect(); }catch(e){} }
+  if(VO.srcNode){ try{ VO.srcNode.disconnect(); }catch(e){} }
+  if(VO.stream&&VO.stream!==S.stream){ VO.stream.getTracks().forEach(function(t){ t.stop(); }); }
+  if(VO.ownCtx&&VO.ctx){ try{ await VO.ctx.close(); }catch(e){} }
+  VO.ctx=null; VO.node=null; VO.mute=null; VO.srcNode=null; VO.hist=[]; VO.stream=null; VO.ownCtx=false; VO.src=''; VO.talk=false; VO.frames=[]; VO.pre=[]; VO.lvl=0; voLevel();
+}
+/* where the sound comes from */
+async function voStart(){
+  await voStop();
+  if(!voOn()){ voSt('Đang tắt.'); return; }
+  var want=voSrc(), inPs=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;
+  try{
+    if(want==='game'&&inPs){
+      /* PS5 / PS4 inside Hóng Sub: its sound, before it reaches the speaker (Hóng Sub's own voice is not in it) */
+      if(!PS.actx||!PS.adec){ if(PS.lastAh) psAudioHeader(PS.lastAh); }
+      if(!PS.actx){ voSt('Đang chờ tiếng từ máy PS...'); setTimeout(function(){ if(voOn()&&!VO.node) voStart(); },2000); return; }
+      if(!PS.vtap) PS.vtap=PS.actx.createGain();
+      VO.ctx=PS.actx; VO.ownCtx=false; VO.srcNode=PS.vtap; VO.src='ps';
+    }else{
+      var st=null;
+      if(want==='game'){
+        st=S.stream&&S.stream.getAudioTracks().length?S.stream:null;
+        if(!st){
+          if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||PH||IOS){ voSt('Thiết bị này không lấy được tiếng của game. Chọn Nghe từ: Micro để nghe loa TV.'); return; }
+          voSt(D?'Đang lấy tiếng của game...':'Chọn lại cửa sổ game và tích "Chia sẻ âm thanh" để Hóng Sub nghe được tiếng game.');
+          var ds=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
+          ds.getVideoTracks().forEach(function(t){ t.stop(); });
+          if(!ds.getAudioTracks().length){ voSt('Chưa có tiếng: lần chọn tới nhớ tích "Chia sẻ âm thanh hệ thống". Hoặc chọn Nghe từ: Micro.'); return; }
+          st=new MediaStream(ds.getAudioTracks()); VO.src='loop';
+        }else VO.src='shared';
+      }else{
+        st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
+        VO.src='mic';
+      }
+      VO.stream=st; VO.ctx=new AudioContext(); VO.ownCtx=true;
+      VO.srcNode=VO.ctx.createMediaStreamSource(st);
+      st.getAudioTracks()[0].addEventListener('ended',function(){ if(VO.stream===st){ voStop(); voSt('Đã ngừng nghe tiếng game.'); } });
+    }
+    VO.ratio=VO.ctx.sampleRate/VO_SR; VO.acc=new Float32Array(VO_FR); VO.accN=0; VO.pos=0;
+    VO.node=VO.ctx.createScriptProcessor(4096,1,1);
+    VO.mute=VO.ctx.createGain(); VO.mute.gain.value=0;
+    VO.node.onaudioprocess=function(e){ voFeed(e.inputBuffer); };
+    VO.srcNode.connect(VO.node); VO.node.connect(VO.mute); VO.mute.connect(VO.ctx.destination);
+    if(VO.ctx.state==='suspended') VO.ctx.resume().catch(function(){});
+    voSt(voReadyText());
+    log('lời nói: nghe từ '+VO.src+' ('+VO.ctx.sampleRate+' Hz)');
+  }catch(e){
+    log('lời nói: không nghe được: '+(e&&e.message));
+    voSt(want==='mic'?'Chưa được dùng micro. Cho phép Hóng Sub dùng micro rồi bật lại.':'Chưa lấy được tiếng game ('+String(e&&e.message||e).slice(0,60)+'). Thử Nghe từ: Micro.');
+    await voStop();
+  }
+}
+function voReadyText(){
+  var how=groqKeys().length?'Groq':keys().length?'Gemini':'';
+  if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).';
+  return 'Đang nghe '+(VO.src==='ps'?'tiếng từ máy PS':VO.src==='mic'?'qua micro':'tiếng game')+', chép lời bằng '+how+(VO.sent?' · đã dịch '+VO.sent+' câu nói':'')+'.';
+}
+/* 16 kHz mono frames, then a simple speaking / quiet detector that follows the background sound of the game */
+function voFeed(buf){
+  var ch=buf.numberOfChannels, n=buf.length, a=buf.getChannelData(0), b=ch>1?buf.getChannelData(1):null, r=VO.ratio;
+  var selfVoice=VO.src!=='ps'&&(Date.now()<VO.muteUntil||(typeof speechSynthesis!=='undefined'&&speechSynthesis.speaking)||(spAudio&&!spAudio.paused));
+  for(var p=VO.pos; p<n; p+=r){
+    var i=p|0, v=b?(a[i]+b[i])*0.5:a[i];
+    VO.acc[VO.accN++]=v;
+    if(VO.accN===VO_FR){ voFrame(VO.acc,selfVoice); VO.acc=new Float32Array(VO_FR); VO.accN=0; }
+  }
+  VO.pos=p-n;
+}
+function voFrame(f,selfVoice){
+  var e=0; for(var i=0;i<f.length;i++) e+=f[i]*f[i]; var rms=Math.sqrt(e/f.length);
+  VO.lvl=VO.lvl*0.7+rms*0.3; VO.sm=(VO.sm||0)*0.6+rms*0.4;
+  /* the background (music, engine, wind): the quieter part of the last 3 seconds */
+  VO.hist=VO.hist||[]; VO.hist.push(rms); if(VO.hist.length>150) VO.hist.shift();
+  if(VO.hist.length%10===0||VO.hist.length<20){ var so=VO.hist.slice().sort(function(a,b){return a-b;}); VO.noise=Math.max(0.0008,so[Math.floor(so.length*0.3)]); }
+  if(selfVoice){ VO.talk=false; VO.frames=[]; VO.pre=[]; VO.sp=0; return; }   /* Hóng Sub itself is talking: do not listen to it */
+  var speech=VO.sm>Math.max(VO.noise*(VO.talk?2.2:3),0.006);
+  if(!VO.talk){
+    VO.pre.push(f); if(VO.pre.length>15) VO.pre.shift();
+    VO.sp=speech?VO.sp+1:0;
+    if(VO.sp>=4){ VO.talk=true; VO.frames=VO.pre.slice(); VO.pre=[]; VO.sil=0; VO.voiced=VO.sp; }
+    return;
+  }
+  VO.frames.push(f);
+  if(speech){ VO.sil=0; VO.voiced++; } else VO.sil++;
+  if(VO.sil>=35||VO.frames.length>=750){   /* 0.7 s quiet ends a phrase; a phrase is at most 15 s */
+    var fr=VO.frames, voiced=VO.voiced; VO.talk=false; VO.frames=[]; VO.sp=0; VO.voiced=0;
+    if(voiced>=20) voPhrase(fr);
+  }
+}
+setInterval(function(){ if(VO.node) voLevel(); },150);
+function voWav(frames){
+  var n=frames.length*VO_FR, b=new ArrayBuffer(44+n*2), d=new DataView(b), o=44, peak=0;
+  frames.forEach(function(f){ for(var i=0;i<f.length;i++){ var v=Math.abs(f[i]); if(v>peak) peak=v; } });
+  var g=peak>0.001?Math.min(8,0.9/peak):1;   /* quiet voices louder, for the recogniser */
+  function s(off,t){ for(var i=0;i<t.length;i++) d.setUint8(off+i,t.charCodeAt(i)); }
+  s(0,'RIFF'); d.setUint32(4,36+n*2,true); s(8,'WAVE'); s(12,'fmt '); d.setUint32(16,16,true); d.setUint16(20,1,true); d.setUint16(22,1,true);
+  d.setUint32(24,VO_SR,true); d.setUint32(28,VO_SR*2,true); d.setUint16(32,2,true); d.setUint16(34,16,true); s(36,'data'); d.setUint32(40,n*2,true);
+  frames.forEach(function(f){ for(var i=0;i<f.length;i++){ var v=Math.max(-1,Math.min(1,f[i]*g)); d.setInt16(o,v<0?v*0x8000:v*0x7fff,true); o+=2; } });
+  return new Blob([b],{type:'audio/wav'});
+}
+/* what recognisers write when there is only music or noise */
+var VO_JUNK=/^(?:(?:thank you|thanks)(?: (?:so much|very much))?(?: for watching| for listening)?|you|bye|okay|oh|uh|um|hmm|ah|music|applause|laughter|silence|subtitles? by.*|transcri.*|\W*)[.!?…]*$/i;
+async function voPhrase(frames){
+  if(VO.busy>=3) return;   /* far behind: skip this one rather than pile up */
+  VO.busy++; VO.heard++;
+  var secs=(frames.length*0.02).toFixed(1);
+  try{
+    var wav=voWav(frames), text=await voStt(wav);
+    text=String(text||'').replace(/\s+/g,' ').trim();
+    if(!text||VO_JUNK.test(text)||text.replace(/[^A-Za-zÀ-ɏЀ-ӿ぀-ヿ一-鿿가-힯]/g,'').length<3){ log('lời nói ('+secs+'s): không có câu nói'); return; }
+    /* the game already showed this line as a subtitle: it is translated already */
+    var now=Date.now(), dup=S.recent.some(function(r){ return now-r.at<20000&&dice(r.raw,text)>=0.5; })||(S.lastRaw&&now-S.lastShownAt<8000&&dice(S.lastRaw,text)>=0.5);
+    if(dup){ log('lời nói trùng phụ đề, bỏ qua: '+text.slice(0,80)); return; }
+    log('lời nói ('+secs+'s): '+text.slice(0,160));
+    VO.sent++; voSt(voReadyText());
+    S.q.push({seq:++S.seq,text:text,nl:1,voice:true}); if(S.q.length>4) S.q.splice(0,S.q.length-4); pump();
+  }catch(e){
+    var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
+    log('lời nói: '+m); voSt(m);
+  }finally{ VO.busy--; }
+}
+/* speech -> text: Whisper on Groq (fast, free), else Gemini */
+async function voStt(wav){
+  var lang=LG(), last=null;
+  if(groqKeys().length){
+    for(var t=0;t<groqKeys().length+1;t++){
+      var key=groqPick(); if(!key) break;
+      var fd=new FormData(); fd.append('file',wav,'speech.wav'); fd.append('model','whisper-large-v3-turbo'); fd.append('response_format','verbose_json'); fd.append('temperature','0');
+      if(/^(en|ja|ko|zh|ru|fr|de|es|it|pt)$/.test(lang)) fd.append('language',lang);
+      var gn=$('hsGame')&&$('hsGame').value.trim(); if(gn) fd.append('prompt','Dialogue from the video game '+gn+'.');
+      var r,j;
+      try{ r=await fetch(GROQ+'/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd}); j=await r.json().catch(function(){return {};}); }
+      catch(e){ last=new Error('Mất kết nối mạng'); continue; }
+      if(r.ok){
+        count(key,'q');
+        var segs=(j.segments||[]).filter(function(s){ return !(s.no_speech_prob>0.6&&s.avg_logprob<-0.5)&&!(s.avg_logprob<-1.2); });
+        return j.segments?segs.map(function(s){return s.text;}).join(' '):(j.text||'');
+      }
+      var msg=(j.error&&j.error.message)||('HTTP '+r.status); last=new Error(msg);
+      if(r.status===429){ var m=msg.match(/try again in ([\d.]+)(ms|s|m)/i); S.gcool[key]=Date.now()+(m?parseFloat(m[1])*(m[2]==='ms'?1:m[2]==='m'?60000:1000):20000); continue; }
+      if(r.status===401||r.status===403){ S.gcool[key]=Date.now()+3600e3; continue; }
+      if(r.status>=500) continue;
+      break;
+    }
+    if(!keys().length){ if(last) throw last; var c=new Error('cool'); c.cool=true; throw c; }
+  }
+  if(!keys().length) throw new Error('nokey');
+  var b64=await new Promise(function(ok,no){ var fr=new FileReader(); fr.onload=function(){ ok(String(fr.result).split(',')[1]); }; fr.onerror=no; fr.readAsDataURL(wav); });
+  var models=(S.models&&S.models.length?S.models:FALLBACK);
+  for(var k=0;k<keys().length+1;k++){
+    var gk=pickKey(); if(!gk){ var c2=new Error('cool'); c2.cool=true; throw c2; }
+    var model=fastOrder(models)[0];
+    var body={contents:[{parts:[{text:'This is a short clip of a video game\'s sound. Write down exactly the words a character speaks, in the language spoken ('+LN()+' expected). Leave out music, sound effects and noises. If nobody speaks, reply with nothing at all.'},{inline_data:{mime_type:'audio/wav',data:b64}}]}],generationConfig:{temperature:0}};
+    var rr,jj;
+    try{ rr=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':gk},body:JSON.stringify(body)}); jj=await rr.json().catch(function(){return {};}); }
+    catch(e){ last=new Error('Mất kết nối mạng'); continue; }
+    if(rr.ok){ count(gk,'g'); return ((jj.candidates&&jj.candidates[0]&&jj.candidates[0].content&&jj.candidates[0].content.parts)||[]).map(function(p){return p.text||'';}).join(' '); }
+    var gm=(jj.error&&jj.error.message)||('HTTP '+rr.status); last=new Error(gm);
+    if(rr.status===429){ S.cool[gk]=Date.now()+45000; continue; }
+    if(rr.status===400||rr.status===403){ S.cool[gk]=Date.now()+3600e3; continue; }
+    if(rr.status>=500) continue;
+    break;
+  }
+  throw last||new Error('Không chép được lời nói');
+}
+(function(){
+  var c=$('hsTalk'), s=$('hsTalkSrc'); if(!c) return;
+  c.checked=!!load('talk',false); if(s) s.value=load('talkSrc','game');
+  c.addEventListener('change',function(){ save('talk',c.checked); voStart(); });
+  if(s) s.addEventListener('change',function(){ save('talkSrc',s.value); if(voOn()) voStart(); });
+  /* sources come and go: start listening when there is something to hear */
+  setInterval(function(){
+    if(!voOn()){ return; }
+    var inPs=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;
+    if(VO.src==='ps'&&!inPs) voStart();
+    else if(!VO.node&&voSrc()==='game'&&inPs) voStart();
+    else if(VO.node) voSt(voReadyText());
+  },3000);
+  if(c.checked) setTimeout(function(){ if(voSrc()==='mic'||(typeof PS!=='undefined'&&PS.stream)) voStart(); else voSt('Bật rồi. Hóng Sub nghe khi có hình game: PS5 trong Hóng Sub, hoặc chọn Micro để nghe loa TV.'); },1500);
+})();
 /* ---------- PlayStation player (desktop app, and the phone apps through their Remote Play core) ---------- */
 function psDev(){ return DPS&&typeof DPS.mobile==='string'?'điện thoại':'máy tính'; }
 /* the phone apps (Android, iPhone) carry a Remote Play core (rp/mobile, built on chiaki-ng): the page talks to it
@@ -4143,7 +4341,9 @@ function psVideo(payload){
 }
 /* --- sound --- */
 function psAudioHeader(h){
-  if(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked) return;   /* phone only watching: the sound stays on the TV */
+  PS.lastAh=h;
+  var quiet=DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked;   /* phone only watching: the sound stays on the TV */
+  if(quiet&&!voOn()) return;
   try{
     if(!PS.actx) PS.actx=new AudioContext({sampleRate:h.rate||48000,latencyHint:'interactive'});
     if(PS.adec){ try{PS.adec.close();}catch(e){} }
@@ -4153,7 +4353,7 @@ function psAudioHeader(h){
         var n=ad.numberOfFrames, ch=ad.numberOfChannels, buf=PS.actx.createBuffer(ch,n,ad.sampleRate);
         for(var c=0;c<ch;c++){ var tmp=new Float32Array(n); ad.copyTo(tmp,{planeIndex:c,format:'f32-planar'}); buf.copyToChannel(tmp,c); }
         ad.close();
-        var src=PS.actx.createBufferSource(); src.buffer=buf; src.connect(PS.actx.destination);
+        var src=PS.actx.createBufferSource(); src.buffer=buf; if(!(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked)) src.connect(PS.actx.destination); if(PS.vtap) src.connect(PS.vtap);
         var now=PS.actx.currentTime; if(PS.anext<now+0.02||PS.anext>now+0.3) PS.anext=now+0.05;
         src.start(PS.anext); PS.anext+=buf.duration;
       },

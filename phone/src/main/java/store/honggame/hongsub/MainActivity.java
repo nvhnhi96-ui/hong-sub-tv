@@ -69,15 +69,19 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Bridge(), "HSPhone");
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onConsoleMessage(ConsoleMessage m) { return true; }
-            /* the camera, for "Camera chĩa vào TV" (the page asks, Android asks the person once) */
+            /* the camera ("Camera chĩa vào TV") and the microphone ("Dịch lời nhân vật nói" listening to the TV):
+               the page asks, Android asks the person once */
             @Override public void onPermissionRequest(PermissionRequest r) {
                 main.post(() -> {
-                    boolean cam = false;
-                    for (String s : r.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(s)) cam = true;
-                    if (!cam) { r.deny(); return; }
-                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) { r.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE}); return; }
+                    java.util.ArrayList<String> want = new java.util.ArrayList<>(), perms = new java.util.ArrayList<>();
+                    for (String s : r.getResources()) {
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(s)) { want.add(s); if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.CAMERA); }
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(s)) { want.add(s); if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.RECORD_AUDIO); }
+                    }
+                    if (want.isEmpty()) { r.deny(); return; }
+                    if (perms.isEmpty()) { r.grant(want.toArray(new String[0])); return; }
                     camAsk = r;
-                    requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAM);
+                    requestPermissions(perms.toArray(new String[0]), REQ_CAM);
                 });
             }
         });
@@ -196,8 +200,13 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
         if (req == REQ_CAM && camAsk != null) {
-            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camAsk.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
-            else camAsk.deny();
+            /* grant what Android allowed: the camera, the microphone, or both */
+            java.util.ArrayList<String> ok = new java.util.ArrayList<>();
+            for (String s : camAsk.getResources()) {
+                String need = PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(s) ? Manifest.permission.CAMERA : PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(s) ? Manifest.permission.RECORD_AUDIO : null;
+                if (need != null && checkSelfPermission(need) == PackageManager.PERMISSION_GRANTED) ok.add(s);
+            }
+            if (ok.isEmpty()) camAsk.deny(); else camAsk.grant(ok.toArray(new String[0]));
             camAsk = null;
         }
     }

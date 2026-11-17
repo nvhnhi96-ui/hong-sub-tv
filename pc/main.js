@@ -413,7 +413,8 @@ function setupCapture() {
       const s = srcs.find(x => x.id === chosenId) || srcs.find(x => /remote play/i.test(x.name)) || srcs.find(x => x.id.startsWith('screen'));
       if (s && s.id !== capturedId) { capturedId = s.id; capRect = null; rectBusy = false; rectAsk(); zonesFollow(); }
       if (!rectTimer) rectTimer = setInterval(rectAsk, 1500);
-      cb(s ? { video: s } : {});
+      /* the game's sound too when the page asks for it ("Dịch lời nhân vật nói"): Windows plays it back to us (loopback) */
+      cb(s ? (req.audioRequested && process.platform === 'win32' ? { video: s, audio: 'loopback' } : { video: s }) : {});
     } catch (e) { cb({}); }
   });
 }
