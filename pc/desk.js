@@ -20,8 +20,8 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Dịch và mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề và độ trễ',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
-var SETP=['game','dich','vung','giong','phude','nhanvat','phim'];
+var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
+var SETP=['dich','game','phude','loinoi','vung','giong','nhanvat','phim'];
 function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
   if(!TITLES[p]) p='choi';
@@ -349,7 +349,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       var seen=A.load('seenGames',null);
       if(seen===null){ A.save('seenGames',names); return; }
       var fresh=names.filter(function(n){return seen.indexOf(n)<0;});
-      if(fresh.length){ add({id:'games-'+fresh.join('|').slice(0,80),title:'Có '+fresh.length+' game mới trong danh sách',body:fresh.slice(0,6).join(', ')+(fresh.length>6?'...':'')+'. Chọn game để dịch đúng tên và xưng hô.',go:'dich',btn:'Chọn game'}); A.save('seenGames',names); }
+      if(fresh.length){ add({id:'games-'+fresh.join('|').slice(0,80),title:'Có '+fresh.length+' game mới trong danh sách',body:fresh.slice(0,6).join(', ')+(fresh.length>6?'...':'')+'. Chọn game để dịch đúng tên và xưng hô.',go:'game',btn:'Chọn game'}); A.save('seenGames',names); }
     }).catch(function(){});
     /* AI voices not downloaded yet */
     if(D.aiv) D.aiv.state().then(function(st){ if(st&&!st.ready&&!st.installing) add({id:'aiv-pack-1',title:'Có bộ 25 giọng đọc AI tiếng Việt',body:'Mỗi nhân vật một giọng riêng, đọc tự nhiên, chạy ngay trên máy. Tải một lần khoảng 510 MB.',go:'giong',btn:'Tải bộ giọng'}); }).catch(function(){});

@@ -545,7 +545,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <p>Chơi PS5 / PS4 ngay trong Hóng Sub, hoặc dùng kèm app PS Remote Play của Sony. Phụ đề Việt nổi đè lên phụ đề gốc, đọc bằng giọng AI, tự cập nhật bản mới.</p>
         <ol class="hg-steps">
           <li>Tải <a class="hg-ui" href="https://honggame.store/hongsubpc">Hóng Sub cho Windows</a> và mở file vừa tải. Windows hiện bảng xanh thì bấm <b>More info</b> rồi <b>Run anyway</b>.</li>
-          <li><span class="hg-ui">Cài đặt › Dịch và mã AI</span>: dán mã Gemini. <span class="hg-ui">Cài đặt › Game đang chơi</span>: chọn đúng game.</li>
+          <li><span class="hg-ui">Cài đặt › Mã AI</span>: dán mã Gemini. <span class="hg-ui">Cài đặt › Game đang chơi</span>: chọn đúng game.</li>
           <li><span class="hg-ui">Kết nối PS5/PS4 và TV</span>: bấm <b>Đăng nhập PSN</b>, <b>Tìm máy</b>, <b>Ghép máy</b>, nhập mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> trên PS5. Chỉ làm một lần.</li>
           <li><span class="hg-ui">Màn hình chơi</span>: bấm <b>Chơi PS5 / PS4</b> (hoặc <b>Chọn cửa sổ game</b> nếu dùng app của Sony), bấm <b>Vùng phụ đề</b> và kéo khung quanh dòng phụ đề, rồi bấm <span class="hg-ui">Bắt đầu dịch</span> (phím <b>F7</b>).</li>
           <li><span class="hg-ui">Cài đặt › Giọng đọc</span>: bấm <b>Tải bộ giọng AI</b> một lần để có 25 giọng nam, nữ ba miền. Bật tắt đọc bằng nút <b>Đọc phụ đề</b> trên thanh trên cùng.</li>
@@ -570,7 +570,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <div class="hg-t" role="heading" aria-level="3">Dùng ngay trên trình duyệt</div>
         <p>Không cần cài gì, dùng kèm app PS Remote Play của Sony trên máy tính.</p>
         <ol class="hg-steps">
-          <li>Mở <span class="hg-ui">Cài đặt › Dịch và mã AI</span>, dán mã Gemini rồi bấm <b>Kiểm tra mã</b>.</li>
+          <li>Mở <span class="hg-ui">Cài đặt › Mã AI</span>, dán mã Gemini rồi bấm <b>Kiểm tra mã</b>.</li>
           <li>Mở app <a href="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/" target="_blank" rel="noopener">PS Remote Play</a>, đăng nhập và kết nối PS5. Để cửa sổ đó hiện trên màn hình.</li>
           <li>Ở <span class="hg-ui">Màn hình chơi</span> bấm <b>Chọn cửa sổ game</b>, chọn <b>PS Remote Play</b>, bấm <b>Chia sẻ</b>.</li>
           <li>Bấm <b>Vùng phụ đề</b>, kéo khung quanh dòng phụ đề, rồi bấm <span class="hg-ui">Bắt đầu dịch</span>.</li>
@@ -629,7 +629,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <div class="hg-t" role="heading" aria-level="3">Các tính năng</div>
 
         <div class="hg-sub">Chữ Việt đè lên chữ gốc</div>
-        <p class="hg-p"><span class="hg-ui">Cài đặt › Phụ đề và độ trễ</span>: chọn cỡ chữ, <b>kiểu chữ</b> (9 kiểu đủ dấu tiếng Việt), <b>màu chữ</b> (14 màu), độ đậm nền và độ rộng khung. Bật <b>Đè chữ Việt lên đúng chỗ phụ đề gốc</b> để chữ Việt che phụ đề gốc trên hình, trên phụ đề nổi và trên TV; bật <b>Chữ Việt xuống dòng giống phụ đề gốc</b> để có cùng số dòng. TV đổi theo ngay khi bạn chỉnh.</p>
+        <p class="hg-p"><span class="hg-ui">Cài đặt › Phụ đề</span>: chọn cỡ chữ, <b>kiểu chữ</b> (9 kiểu đủ dấu tiếng Việt), <b>màu chữ</b> (14 màu), độ đậm nền và độ rộng khung. Bật <b>Đè chữ Việt lên đúng chỗ phụ đề gốc</b> để chữ Việt che phụ đề gốc trên hình, trên phụ đề nổi và trên TV; bật <b>Chữ Việt xuống dòng giống phụ đề gốc</b> để có cùng số dòng. TV đổi theo ngay khi bạn chỉnh.</p>
 
         <div class="hg-sub">Vùng dịch thêm: nhiệm vụ, vật phẩm, bản đồ, menu</div>
         <ol class="hg-steps">
@@ -3945,7 +3945,7 @@ async function voStart(){
 }
 function voReadyText(){
   var how=groqKeys().length?'Groq':keys().length?'Gemini':'';
-  if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).';
+  if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (Cài đặt › Mã AI).';
   return 'Đang nghe '+(VO.src==='ps'?'tiếng từ máy PS':VO.src==='mic'?'qua micro':'tiếng game')+', chép lời bằng '+how+(VO.sent?' · đã dịch '+VO.sent+' câu nói':'')+(VO.skipSub?' · bỏ qua '+VO.skipSub+' câu đã có phụ đề':'')+'.';
 }
 /* 16 kHz mono frames, then a simple speaking / quiet detector that follows the background sound of the game */
@@ -4056,7 +4056,7 @@ async function voPhrase(frames,t0,t1){
     VO.lines.push({t:text,at:now}); if(VO.lines.length>20) VO.lines.shift();
     voTranslate(text,t1);
   }catch(e){
-    var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
+    var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (Cài đặt › Mã AI).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
     log('lời nói: '+m); voSt(m);
   }finally{ VO.busy--; }
 }

@@ -406,7 +406,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
 .dk-set .hs-note{margin-top:2px}
 .dk-sw{margin-top:12px}
 .dk-colors{display:flex;gap:8px;flex-wrap:wrap}
-.dk-h3{font-size:15px;font-weight:700;margin:18px 0 6px;color:var(--ink)}
+.dk-cols.dk-one{grid-template-columns:minmax(0,1fr)}
 .hs-tabs{display:flex;gap:6px;flex-wrap:wrap}
 .hs-tabs button{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line2);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;cursor:pointer}
 .hs-tabs button[aria-selected="true"]{background:var(--brand);border-color:var(--brand);color:#111}
@@ -604,11 +604,12 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
       <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg><span class="dk-only">Kết nối PS và TV</span><span class="hs-web">Kết nối TV</span></button>
       <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="dk-sub" id="dkSub">
+        <button type="button" data-p="dich">Mã AI</button>
         <button type="button" data-p="game">Game đang chơi</button>
-        <button type="button" data-p="dich">Dịch và mã AI</button>
+        <button type="button" data-p="phude">Phụ đề</button>
+        <button type="button" data-p="loinoi">Lời nhân vật nói</button>
         <button type="button" data-p="vung">Vùng dịch</button>
         <button type="button" data-p="giong">Giọng đọc</button>
-        <button type="button" data-p="phude">Phụ đề và độ trễ</button>
         <button type="button" data-p="nhanvat">Nhân vật</button>
         <button type="button" data-p="phim">Phím tắt</button>
       </div>
@@ -959,71 +960,21 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <div class="hs-keystat" id="hsKeyStat"></div>
               <p class="hs-note" style="margin-top:6px">Muốn thêm lượt: tạo mã ở <b>dự án khác</b> hoặc tài khoản Google khác. Các mã chung một dự án dùng chung lượt.</p>
             </div>
+            <div class="dk-card">
+              <h2>Mã Groq</h2>
+              <p class="hs-note">Miễn phí. Dịch nhanh khi mã Gemini hết lượt, và chép lời nhân vật nói nhanh, chuẩn nhất. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
+              <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
+            </div>
+          </div>
+          <div>
             <div class="dk-card" id="hsOrSec">
               <h2>AI dịch thông minh</h2>
               <p class="hs-note">Không bắt buộc. Thêm model lớn (DeepSeek, Gemma, Nemotron) qua OpenRouter để dịch hay hơn, nhất là nhiệm vụ và mô tả vật phẩm. <button class="dk-link" type="button" data-url="https://openrouter.ai/keys">Lấy mã OpenRouter</button></p>
               <textarea class="hs-in" id="hsOr" rows="1" spellcheck="false" autocomplete="off" placeholder="sk-or-..." aria-label="Mã OpenRouter"></textarea>
               <div class="dk-set"><label class="lab" for="hsOrModel">Model</label><select class="hs-in" id="hsOrModel"><option value="">Tự chọn (khuyên dùng)</option></select></div>
-              <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
-                <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsOrCheck" type="button">Kiểm tra mã</button></div>
               <div class="hs-msg" id="hsOrMsg" hidden></div>
-              <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
-            </div>
-          </div>
-          <div>
-            <div class="dk-card">
-              <h2>Mã Groq dự phòng</h2>
-              <p class="hs-note">Dùng khi mã Gemini hết lượt. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
-              <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
-              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
-              <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
-            </div>
-            <div class="dk-card" id="dkTalkCard">
-              <h2>Dịch lời nhân vật nói</h2>
-              <p class="hs-note">Dịch cả những câu nhân vật nói mà game không có phụ đề, như người qua đường, cuộc gọi, radio trong GTA. Hóng Sub nghe tiếng trong game, chép ra chữ tiếng Anh rồi dịch như phụ đề.</p>
-              <p class="hs-note"><b>Tiếng trong game</b>: khi chơi PS5 ngay trong Hóng Sub, hoặc cửa sổ game trên máy tính. <b>Micro</b>: đặt máy gần loa TV, dùng được với mọi cách chơi.</p>
-              <label class="hs-sw dk-sw">Dịch lời nhân vật nói <input type="checkbox" id="hsTalk"></label>
-              <div class="dk-set"><label class="lab" for="hsTalkSrc">Nghe từ</label>
-                <select class="hs-in" id="hsTalkSrc">
-                  <option value="game">Tiếng trong game</option>
-                  <option value="mic">Micro (nghe loa TV)</option>
-                </select></div>
-              <div class="hs-vometer" aria-hidden="true"><i id="hsTalkLvl"></i></div>
-              <p class="hs-note" id="hsTalkSt">Đang tắt.</p>
-              <p class="hs-note">Cần mã Groq (miễn phí, nghe nhanh và chuẩn nhất) hoặc mã Gemini. Mỗi câu nói dùng 1 lượt. Câu nào game đã có phụ đề thì không dịch lại.</p>
-              <h3 class="dk-h3">Chữ của lời nói</h3>
-              <label class="hs-sw dk-sw">Lời nói dùng cỡ chữ, kiểu chữ và nền riêng (không theo khung phụ đề) <input type="checkbox" id="hsVoOn" checked></label>
-              <div class="dk-prev" id="hsVoPrev"><div><b id="hsVoPrevVi">Này anh bạn, lên xe đi, ta phải đi ngay.</b></div></div>
-              <div class="dk-set" data-vo-set><label class="lab" for="hsVoPos">Chỗ hiện trên hình game</label>
-                <select class="hs-in" id="hsVoPos">
-                  <option value="bottom">Dưới cùng hình game</option>
-                  <option value="top">Trên cùng hình game</option>
-                  <option value="sub">Chỗ vùng phụ đề</option>
-                </select></div>
-              <div class="dk-set" data-vo-set>
-                <div class="lab"><label for="hsVoSize">Cỡ chữ lời nói</label><output><span id="hsVoSizeV">26</span> px</output></div>
-                <input class="hs-range" id="hsVoSize" type="range" min="10" max="56" step="1" value="26">
-              </div>
-              <div class="dk-set" data-vo-set><span class="lab">Màu chữ lời nói</span><div class="dk-colors" id="hsVoColor" role="group" aria-label="Màu chữ lời nói"></div></div>
-              <div class="dk-set" data-vo-set><div class="lab"><label for="hsVoFont">Kiểu chữ lời nói</label></div><select class="hs-in" id="hsVoFont"></select></div>
-              <div class="dk-set" data-vo-set>
-                <div class="lab"><label for="hsVoBg">Độ đậm nền sau chữ lời nói</label><output id="hsVoBgV">60%</output></div>
-                <input class="hs-range" id="hsVoBg" type="range" min="0" max="100" step="2" value="60">
-              </div>
-              <p class="hs-note">Áp dụng cho chữ trên hình game, dưới hình, phụ đề nổi, điện thoại và TV. Phụ đề có sẵn của game vẫn theo mục Hiển thị phụ đề.</p>
-            </div>
-            <div class="dk-card">
-              <h2>Ngôn ngữ và cách đọc chữ</h2>
-              <div class="dk-set"><label class="lab" for="hsLang">Ngôn ngữ chữ trong game</label><select class="hs-in" id="hsLang"></select>
-                <p class="hs-note">Tiếng Anh và tiếng Trung đọc được ngay. Tiếng Nhật, Hàn, Nga và Pháp, Đức, Tây Ban Nha, Ý, Bồ Đào Nha tải thêm bộ đọc chữ khoảng 10 MB ở lần đầu chọn.</p></div>
-              <div class="dk-set"><label class="lab" for="hsRead">Cách đọc chữ</label>
-              <select class="hs-in" id="hsRead" aria-label="Cách đọc phụ đề">
-                <option value="local">Đọc ngay trên máy (nhanh, đỡ tốn lượt)</option>
-                <option value="ai">Gửi ảnh cho AI đọc (đọc được chữ kiểu cách, chậm hơn)</option>
-              </select>
-              <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
-              </div>
+              <p class="hs-note" id="hsOrNote"<p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
           </div>
         </div>
@@ -1031,7 +982,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
           <h2>Mua mã dịch AI</h2>
           <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
           <div class="dk-buy">
-            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" bên dưới.</p>
+            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" ở trên.</p>
               <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
             <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
               <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
@@ -1048,12 +999,15 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <p class="hs-note">Chọn đúng game để AI dịch đúng tên nhân vật, địa danh và cách xưng hô. Đổi game thì đổi ở đây.</p>
               <div class="dk-set"><label class="lab" for="hsPreset">Chọn game</label><select class="hs-in" id="hsPreset"><option value="">Chọn game</option></select></div>
               <div class="dk-set"><label class="lab" for="hsGame">Game khác thì gõ tên</label><input class="hs-in" id="hsGame" type="text" list="hsGameList" autocomplete="off" placeholder="VD: Ghost of Tsushima"><datalist id="hsGameList"></datalist></div>
+              <div class="dk-set"><label class="lab" for="hsLang">Ngôn ngữ chữ trong game</label><select class="hs-in" id="hsLang"></select>
+                <p class="hs-note">Tiếng Anh và tiếng Trung đọc được ngay. Tiếng Nhật, Hàn, Nga và Pháp, Đức, Tây Ban Nha, Ý, Bồ Đào Nha tải thêm bộ đọc chữ khoảng 10 MB ở lần đầu chọn.</p></div>
               <div class="dk-set"><label class="lab" for="hsNotes">Nhân vật và cách xưng hô</label><textarea class="hs-in" id="hsNotes" rows="5" placeholder="VD: Kratos là cha, Atreus là con. Kratos xưng ta, gọi con."></textarea></div>
               <div class="dk-set"><label class="lab" for="hsStyle">Phong cách dịch</label>
                 <select class="hs-in" id="hsStyle">
                   <option value="">Tự chọn theo game</option><option value="modern">Đời thường, hiện đại</option><option value="street">Giang hồ, đường phố</option><option value="military">Quân đội, bắn súng</option><option value="wuxia">Cổ trang Trung Hoa, kiếm hiệp</option><option value="japan">Cổ trang Nhật, samurai</option><option value="fantasy">Giả tưởng phương Tây</option><option value="myth">Thần thoại</option><option value="scifi">Khoa học viễn tưởng</option><option value="horror">Kinh dị</option><option value="anime">Anime, học đường</option><option value="western">Cao bồi miền Tây</option>
                 </select></div>
-              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Để AI viết ghi chú</button></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Để AI viết ghi chú</button><button class="hs-btn" type="button" data-go="nhanvat">Nhân vật và giọng đọc</button></div>
+              <p class="hs-note" style="margin-top:6px">Game chưa có trong danh sách: gõ tên rồi bấm <b>Để AI viết ghi chú</b>, đọc lại và sửa chỗ sai.</p>
               <div class="hs-msg" id="hsNotesMsg" hidden></div>
             </div>
           </div>
@@ -1068,16 +1022,6 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <div class="hs-chips" id="hsPlayed"></div>
               <div class="lab" style="margin-top:14px">Game đã có nhiều câu dịch sẵn</div>
               <div class="hs-chips" id="hsTmGames"></div>
-            </div>
-            <div class="dk-card">
-              <h2>Vì sao cần chọn game</h2>
-              <ul class="dk-steps">
-                <li>Tên nhân vật, kỹ năng, địa danh giữ đúng như trong game, không bị dịch lung tung.</li>
-                <li>Xưng hô đúng quan hệ: cha con, sư đồ, kẻ thù, đồng đội.</li>
-                <li>Giọng đọc của từng nhân vật được nhớ riêng cho mỗi game.</li>
-              </ul>
-              <p class="hs-note" style="margin-top:8px">Game chưa có trong danh sách: gõ tên rồi bấm <b>Để AI viết ghi chú</b>, đọc lại và sửa chỗ sai.</p>
-              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-go="nhanvat">Xem nhân vật và giọng đọc</button></div>
             </div>
           </div>
         </div>
@@ -1113,7 +1057,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             <div class="hs-row" style="margin-top:12px"><button class="dk-link" type="button" id="dkAiRemove">Gỡ bộ giọng AI khỏi máy</button></div>
           </div>
         </div>
-        <div class="dk-cols">
+        <div class="dk-cols dk-one">
           <div class="dk-card">
             <h2>Đọc to phụ đề</h2>
             <label class="hs-sw dk-sw">Đọc to phụ đề tiếng Việt <input type="checkbox" id="hsSpeak" checked></label>
@@ -1144,15 +1088,10 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             </div>
             <p class="hs-note" id="hsVoiceTip" hidden></p>
           </div>
-          <div class="dk-card dk-only">
-            <h2>Thêm giọng tiếng Việt</h2>
-            <p class="hs-note">Hóng Sub có sẵn một giọng nữ tiếng Việt. Muốn thêm giọng nam "An" của Windows: bấm nút dưới, chọn <b>Thêm giọng nói</b>, tìm <b>Tiếng Việt</b> rồi cài, xong mở lại Hóng Sub.</p>
-            <div id="hsVoiceTipD"><button class="hs-btn" id="hsVoiceSet" type="button">Mở cài đặt giọng nói của Windows</button></div>
-          </div>
         </div>
       </section>
 
-      <!-- ============ Phụ đề và độ trễ ============ -->
+      <!-- ============ Phụ đề ============ -->
       <section class="dk-page" id="p-phude">
         <div class="dk-cols">
           <div class="dk-card">
@@ -1161,12 +1100,10 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
             <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
-            <label class="hs-sw dk-sw">Đè chữ Việt lên đúng chỗ phụ đề gốc (trên hình, phụ đề nổi và TV) <input type="checkbox" id="hsCover" checked></label>
-            <label class="hs-sw dk-sw">Đè đúng chỗ từng dòng chữ gốc (khung ôm sát chữ tiếng Anh; Cỡ chữ 28 là bằng chữ gốc, kéo lên xuống để to nhỏ hơn) <input type="checkbox" id="hsSubSpot" checked></label>
+            <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình, phụ đề nổi và TV) <input type="checkbox" id="hsCover" checked></label>
+            <label class="hs-sw dk-sw">Khung ôm sát từng dòng chữ gốc (Cỡ chữ 28 là bằng chữ gốc) <input type="checkbox" id="hsSubSpot" checked></label>
             <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng) <input type="checkbox" id="hsLines" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
-            <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi: tự ngừng ở màn hình PS5 và khi mở bản đồ game <input type="checkbox" id="hsGuard" checked></label>
-            <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
               <input class="hs-range" id="hsSize" type="range" min="10" max="56" step="1" value="28">
@@ -1209,26 +1146,89 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             </div>
             <div class="hs-row dk-only" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
           </div>
-          <div class="dk-card">
-            <h2>Độ trễ dịch</h2>
-            <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
-            <div class="dk-set">
-              <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
-              <input class="hs-range" id="dkScan" type="range" min="200" max="1500" step="50" value="300">
-              <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1000">Tiết kiệm</button><button type="button" data-v="300" class="on">Vừa</button><button type="button" data-v="200">Nhanh</button></div>
+          <div>
+            <div class="dk-card">
+              <h2>Đọc và dịch phụ đề</h2>
+              <div class="dk-set"><label class="lab" for="hsRead">Cách đọc chữ</label>
+              <select class="hs-in" id="hsRead" aria-label="Cách đọc phụ đề">
+                <option value="local">Đọc ngay trên máy (nhanh, đỡ tốn lượt)</option>
+                <option value="ai">Gửi ảnh cho AI đọc (đọc được chữ kiểu cách, chậm hơn)</option>
+              </select>
+              <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
+              </div>
+              <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
+              <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
+              <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
+                <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
+              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
+              <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
-            <div class="dk-set">
-              <div class="lab"><label for="dkWait">Chờ chữ hiện đủ trước khi dịch</label><output id="dkWaitV">0,9 giây</output></div>
-              <input class="hs-range" id="dkWait" type="range" min="300" max="2000" step="100" value="900">
-              <p class="hs-note">Game hiện chữ từ từ từng chữ thì tăng lên để không dịch câu dở dang.</p>
+            <div class="dk-card">
+              <h2>Tốc độ và thời gian</h2>
+              <p class="hs-note">Nhanh thì phụ đề hiện sớm hơn nhưng tốn lượt mã và máy làm việc nhiều hơn.</p>
+              <div class="dk-set">
+                <div class="lab"><label for="dkScan">Kiểm tra phụ đề mới mỗi</label><output id="dkScanV">0,7 giây</output></div>
+                <input class="hs-range" id="dkScan" type="range" min="200" max="1500" step="50" value="300">
+                <div class="hs-seg" id="hsSpeed" hidden><button type="button" data-v="1000">Tiết kiệm</button><button type="button" data-v="300" class="on">Vừa</button><button type="button" data-v="200">Nhanh</button></div>
+              </div>
+              <div class="dk-set">
+                <div class="lab"><label for="dkWait">Chờ chữ hiện đủ trước khi dịch</label><output id="dkWaitV">0,9 giây</output></div>
+                <input class="hs-range" id="dkWait" type="range" min="300" max="2000" step="100" value="900">
+                <p class="hs-note">Game hiện chữ từ từ từng chữ thì tăng lên để không dịch câu dở dang.</p>
+              </div>
+              <div class="dk-set">
+                <div class="lab"><label for="dkHold">Giữ phụ đề trên màn hình</label><output id="dkHoldV">10 giây</output></div>
+                <input class="hs-range" id="dkHold" type="range" min="0" max="30" step="1" value="10">
+                <p class="hs-note">Kéo về 0 để giữ tới khi có câu mới.</p>
+              </div>
+              <div class="hs-row" style="margin-top:14px"><button class="hs-btn" type="button" id="dkDefaults">Về mặc định</button></div>
             </div>
-            <div class="dk-set">
-              <div class="lab"><label for="dkHold">Giữ phụ đề trên màn hình</label><output id="dkHoldV">10 giây</output></div>
-              <input class="hs-range" id="dkHold" type="range" min="0" max="30" step="1" value="10">
-              <p class="hs-note">Kéo về 0 để giữ tới khi có câu mới.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Lời nhân vật nói ============ -->
+      <section class="dk-page" id="p-loinoi">
+        <div class="dk-cols">
+          <div>
+            <div class="dk-card" id="dkTalkCard">
+              <h2>Dịch lời nhân vật nói</h2>
+              <p class="hs-note">Dịch cả những câu nhân vật nói mà game không có phụ đề, như người qua đường, cuộc gọi, radio trong GTA. Hóng Sub nghe tiếng trong game, chép ra chữ tiếng Anh rồi dịch như phụ đề.</p>
+              <p class="hs-note"><b>Tiếng trong game</b>: khi chơi PS5 ngay trong Hóng Sub, hoặc cửa sổ game trên máy tính. <b>Micro</b>: đặt máy gần loa TV, dùng được với mọi cách chơi.</p>
+              <label class="hs-sw dk-sw">Dịch lời nhân vật nói <input type="checkbox" id="hsTalk"></label>
+              <div class="dk-set"><label class="lab" for="hsTalkSrc">Nghe từ</label>
+                <select class="hs-in" id="hsTalkSrc">
+                  <option value="game">Tiếng trong game</option>
+                  <option value="mic">Micro (nghe loa TV)</option>
+                </select></div>
+              <div class="hs-vometer" aria-hidden="true"><i id="hsTalkLvl"></i></div>
+              <p class="hs-note" id="hsTalkSt">Đang tắt.</p>
+              <p class="hs-note">Cần mã Groq (miễn phí, nghe nhanh và chuẩn nhất) hoặc mã Gemini ở trang Mã AI. Mỗi câu nói dùng 1 lượt. Câu nào game đã có phụ đề thì không dịch lại.</p>
             </div>
-            <label class="hs-sw dk-sw">Hiện thời gian đọc và dịch dưới phụ đề <input type="checkbox" id="hsPerf"></label>
-            <div class="hs-row" style="margin-top:14px"><button class="hs-btn" type="button" id="dkDefaults">Về mặc định</button></div>
+          </div>
+          <div>
+            <div class="dk-card" id="dkVoLook">
+              <h2>Chữ của lời nói</h2>
+              <label class="hs-sw dk-sw">Lời nói dùng cỡ chữ, kiểu chữ và nền riêng (không theo khung phụ đề) <input type="checkbox" id="hsVoOn" checked></label>
+              <div class="dk-prev" id="hsVoPrev"><div><b id="hsVoPrevVi">Này anh bạn, lên xe đi, ta phải đi ngay.</b></div></div>
+              <div class="dk-set" data-vo-set><label class="lab" for="hsVoPos">Chỗ hiện trên hình game</label>
+                <select class="hs-in" id="hsVoPos">
+                  <option value="bottom">Dưới cùng hình game</option>
+                  <option value="top">Trên cùng hình game</option>
+                  <option value="sub">Chỗ vùng phụ đề</option>
+                </select></div>
+              <div class="dk-set" data-vo-set>
+                <div class="lab"><label for="hsVoSize">Cỡ chữ lời nói</label><output><span id="hsVoSizeV">26</span> px</output></div>
+                <input class="hs-range" id="hsVoSize" type="range" min="10" max="56" step="1" value="26">
+              </div>
+              <div class="dk-set" data-vo-set><span class="lab">Màu chữ lời nói</span><div class="dk-colors" id="hsVoColor" role="group" aria-label="Màu chữ lời nói"></div></div>
+              <div class="dk-set" data-vo-set><div class="lab"><label for="hsVoFont">Kiểu chữ lời nói</label></div><select class="hs-in" id="hsVoFont"></select></div>
+              <div class="dk-set" data-vo-set>
+                <div class="lab"><label for="hsVoBg">Độ đậm nền sau chữ lời nói</label><output id="hsVoBgV">60%</output></div>
+                <input class="hs-range" id="hsVoBg" type="range" min="0" max="100" step="2" value="60">
+              </div>
+              <p class="hs-note">Dùng cho chữ trên hình game, dưới hình, phụ đề nổi, điện thoại và TV. Phụ đề có sẵn của game vẫn theo trang Phụ đề.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -1304,6 +1304,8 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
       </section>
     </div>
   </div>
+
+  <div hidden aria-hidden="true"><input type="checkbox" id="hsPerf"><div id="hsVoiceTipD"><button type="button" id="hsVoiceSet"></button></div></div>   <!-- retired settings: the engine still looks them up -->
 
   <div class="hs-modal" id="hsSrcModal" role="dialog" aria-modal="true" aria-labelledby="hsSrcT">
     <div class="box" style="max-width:860px">
@@ -4623,7 +4625,7 @@ async function voStart(){
 }
 function voReadyText(){
   var how=groqKeys().length?'Groq':keys().length?'Gemini':'';
-  if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).';
+  if(!how) return 'Cần mã Groq hoặc mã Gemini để chép lời nói (Cài đặt › Mã AI).';
   return 'Đang nghe '+(VO.src==='ps'?'tiếng từ máy PS':VO.src==='mic'?'qua micro':'tiếng game')+', chép lời bằng '+how+(VO.sent?' · đã dịch '+VO.sent+' câu nói':'')+(VO.skipSub?' · bỏ qua '+VO.skipSub+' câu đã có phụ đề':'')+'.';
 }
 /* 16 kHz mono frames, then a simple speaking / quiet detector that follows the background sound of the game */
@@ -4734,7 +4736,7 @@ async function voPhrase(frames,t0,t1){
     VO.lines.push({t:text,at:now}); if(VO.lines.length>20) VO.lines.shift();
     voTranslate(text,t1);
   }catch(e){
-    var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (mục Mã Groq dự phòng).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
+    var m=e&&e.cool?'Mã tạm hết lượt chép lời nói, đang chờ...':e&&e.message==='nokey'?'Cần mã Groq hoặc mã Gemini để chép lời nói (Cài đặt › Mã AI).':'Chưa chép được lời nói: '+String(e&&e.message||e).slice(0,80);
     log('lời nói: '+m); voSt(m);
   }finally{ VO.busy--; }
 }
@@ -5485,8 +5487,8 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Dịch và mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề và độ trễ',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
-var SETP=['game','dich','vung','giong','phude','nhanvat','phim'];
+var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ'};
+var SETP=['dich','game','phude','loinoi','vung','giong','nhanvat','phim'];
 function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
   if(!TITLES[p]) p='choi';
@@ -5814,7 +5816,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
       var seen=A.load('seenGames',null);
       if(seen===null){ A.save('seenGames',names); return; }
       var fresh=names.filter(function(n){return seen.indexOf(n)<0;});
-      if(fresh.length){ add({id:'games-'+fresh.join('|').slice(0,80),title:'Có '+fresh.length+' game mới trong danh sách',body:fresh.slice(0,6).join(', ')+(fresh.length>6?'...':'')+'. Chọn game để dịch đúng tên và xưng hô.',go:'dich',btn:'Chọn game'}); A.save('seenGames',names); }
+      if(fresh.length){ add({id:'games-'+fresh.join('|').slice(0,80),title:'Có '+fresh.length+' game mới trong danh sách',body:fresh.slice(0,6).join(', ')+(fresh.length>6?'...':'')+'. Chọn game để dịch đúng tên và xưng hô.',go:'game',btn:'Chọn game'}); A.save('seenGames',names); }
     }).catch(function(){});
     /* AI voices not downloaded yet */
     if(D.aiv) D.aiv.state().then(function(st){ if(st&&!st.ready&&!st.installing) add({id:'aiv-pack-1',title:'Có bộ 25 giọng đọc AI tiếng Việt',body:'Mỗi nhân vật một giọng riêng, đọc tự nhiên, chạy ngay trên máy. Tải một lần khoảng 510 MB.',go:'giong',btn:'Tải bộ giọng'}); }).catch(function(){});
