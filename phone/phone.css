@@ -1,0 +1,115 @@
+/* ================= Hóng Sub on the phone (Android, iPhone) =================
+   A real phone app instead of the Windows layout squeezed into a column:
+   - a slim top bar (page title, state, voice, notices), content that scrolls under it
+   - a tab bar at the bottom within thumb reach (Chơi, Kết nối, Cài đặt, Hỗ trợ), the settings pages as chips
+   - one big yellow "Bắt đầu dịch" button above the tab bar
+   - rounder cards, bigger touch targets, tools as a 2-column grid of tiles
+   Graphite night theme, Hóng yellow only where it matters. Everything is scoped to html.hs-phone. */
+html.hs-phone,html.hs-phone body{height:100%;overflow:hidden;background:#0E1115!important;-webkit-tap-highlight-color:transparent}
+html.hs-phone .hs{--page:#0E1115;--panel:#161A20;--panel2:#1D222A;--sunk:#12161B;--line:#232931;--line2:#323944;
+  --tab:64px;display:flex!important;flex-direction:column;height:100%!important;min-height:0!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;font-size:15px}
+
+/* ---------- top bar ---------- */
+html.hs-phone .dk-main{order:1;flex:1;min-height:0;display:flex;flex-direction:column}
+html.hs-phone .dk-top{display:grid;grid-template-columns:1fr auto auto;grid-template-rows:auto auto;column-gap:8px;row-gap:2px;align-items:center;
+  padding:10px 14px 9px;min-height:0;background:rgba(14,17,21,.97);border-bottom:1px solid var(--line);position:relative;z-index:30}
+html.hs-phone .dk-top h1{grid-column:1;grid-row:1;font-size:19px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.hs-phone .dk-top .sp{display:none}
+html.hs-phone .dk-top .hs-pill{grid-column:1;grid-row:2;justify-self:start;max-width:100%!important;background:none;border:0;padding:0;font-size:12.5px;font-weight:600;gap:6px}
+html.hs-phone .dk-top .hs-pill .hs-dot{width:7px;height:7px}
+html.hs-phone .dk-chip{grid-column:2;grid-row:1/3;width:42px;height:42px;padding:0;justify-content:center;border-radius:50%;background:var(--panel2);border-color:var(--line2)}
+html.hs-phone #dkSpeakTx{display:none}
+html.hs-phone .dk-chip svg{width:20px;height:20px}
+html.hs-phone .dk-chip[aria-pressed=true]{color:#000;background:var(--brand);border-color:var(--brand)}
+html.hs-phone .dk-bell{grid-column:3;grid-row:1/3;width:42px;height:42px;background:var(--panel2);border-color:var(--line2)}
+html.hs-phone #dkUpdBtn{grid-column:1/4;grid-row:3;margin-top:6px}
+html.hs-phone .dk-noti{position:fixed;left:10px;right:10px;top:64px;width:auto;max-height:65vh;border-radius:16px}
+
+/* ---------- the one big button: Bắt đầu dịch / Tạm dừng ---------- */
+html.hs-phone #hsRun{position:fixed;left:14px;right:14px;bottom:calc(var(--tab) + 10px + env(safe-area-inset-bottom));z-index:40;height:52px;border-radius:16px;
+  font-size:16.5px;font-weight:800;letter-spacing:-.01em;box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.25);justify-content:center}
+html.hs-phone #hsRun:disabled{opacity:1;background:#2A2F37;color:#7D8693!important;border-color:#2A2F37;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+html.hs-phone #hsRun kbd{display:none}
+
+/* ---------- content ---------- */
+html.hs-phone .hs-upd{margin:10px 12px 0}
+html.hs-phone .dk-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:12px 12px calc(var(--tab) + 84px + env(safe-area-inset-bottom))}
+html.hs-phone .dk-page{max-width:640px;margin:0 auto}
+html.hs-phone .dk-play,html.hs-phone .dk-cols{display:block!important}
+html.hs-phone .dk-play>*,html.hs-phone .dk-cols>*{min-width:0}
+html.hs-phone .dk-card{border-radius:18px;padding:16px;margin-bottom:12px;background:var(--panel);border-color:var(--line)}
+html.hs-phone .dk-card h2{font-size:16.5px;letter-spacing:-.01em;margin-bottom:6px}
+html.hs-phone .hs-note{font-size:13.5px;line-height:1.5}
+html.hs-phone .hs-btn{min-height:44px;border-radius:12px;padding:10px 14px}
+html.hs-phone .hs-in{min-height:44px;border-radius:12px;font-size:16px}
+html.hs-phone textarea.hs-in{min-height:0}
+html.hs-phone .hs-sw{min-height:44px;align-items:center}
+html.hs-phone .dk-quick .hs-sw{padding:10px 0}
+html.hs-phone .dk-steps{padding-left:20px}
+html.hs-phone .dk-steps li{margin-bottom:6px}
+
+/* the picture and the Vietnamese line under it */
+html.hs-phone .hs-stage{border-radius:18px 18px 0 0;box-shadow:0 0 0 1px var(--line)}
+html.hs-phone .hs-stage:has(#hsEmpty:not([hidden])){aspect-ratio:auto;min-height:250px;border-radius:18px 18px 0 0}
+html.hs-phone .hs-stage:has(#hsEmpty:not([hidden])) #hsVideo{display:none}
+html.hs-phone .hs-empty{position:relative;inset:auto;padding:26px 18px 22px;place-items:center;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(255,196,0,.14),rgba(255,196,0,0) 60%),#0B0D10}
+html.hs-phone .hs-empty b{font-size:21px}
+html.hs-phone .hs-empty p{font-size:14px;line-height:1.55;margin-top:8px}
+html.hs-phone .hs-empty .hs-row{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:320px;margin:16px auto 0}
+html.hs-phone .hs-empty .hs-row .hs-btn{width:100%;justify-content:center;height:48px;font-weight:700}
+html.hs-phone .hs-sub{border-radius:0 0 18px 18px;min-height:96px;padding:16px 16px 18px}
+html.hs-phone .hs-sub .lbl{display:none}
+html.hs-phone #hsVi{font-size:var(--subsize,22px)}
+html.hs-phone #hsVi.placeholder{font-size:15px;padding-top:12px}
+
+/* tools: a grid of tiles */
+html.hs-phone .dk-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0;margin-top:12px;background:none;border:0}
+html.hs-phone .dk-tg{display:contents}
+html.hs-phone .dk-tools .hs-btn{min-height:52px;border-radius:14px;justify-content:flex-start;gap:10px;padding:10px 12px;font-size:14px;font-weight:600;
+  background:var(--panel);border:1px solid var(--line);text-align:left;line-height:1.25}
+html.hs-phone .dk-tools .hs-btn svg{width:20px;height:20px;flex:none}
+html.hs-phone .dk-tools .hs-btn:disabled{opacity:.42}
+html.hs-phone .dk-tools .hs-btn kbd{display:none}
+html.hs-phone details.hs-hist,html.hs-phone .dk-play details{border-radius:18px}
+
+/* ---------- tab bar ---------- */
+html.hs-phone .dk-rail{order:2;flex:none;display:block;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#0B0D11;border-top:1px solid #1D2229;border-right:0;position:relative;z-index:35}
+html.hs-phone .dk-logo,html.hs-phone .dk-railinfo{display:none!important}
+html.hs-phone .dk-nav{display:flex;flex-direction:row;align-items:stretch;justify-content:space-around;gap:4px;overflow:visible}
+html.hs-phone .dk-nav>button{flex:1 1 0;min-width:0;height:var(--tab);margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:4px 2px;border-radius:14px;font-size:11.5px;font-weight:600;color:#7F8895;background:none!important;white-space:nowrap;text-align:center}
+html.hs-phone .dk-nav>button svg{display:block!important;width:24px;height:24px;stroke-width:1.9}
+html.hs-phone .dk-nav>button .chev,html.hs-phone .dk-nav>button .badge{display:none!important}
+html.hs-phone .dk-nav>button span{overflow:hidden;text-overflow:ellipsis;max-width:100%}
+html.hs-phone .dk-nav>button::before{display:none!important}
+html.hs-phone .dk-nav>button.on,html.hs-phone .dk-nav>button.open,html.hs-phone .dk-nav>button[aria-expanded=true]{color:var(--brand)}
+html.hs-phone .dk-nav>button.on svg,html.hs-phone .dk-nav>button.open svg,html.hs-phone .dk-nav>button[aria-expanded=true] svg{filter:drop-shadow(0 0 8px rgba(255,196,0,.35))}
+html.hs-phone .dk-nav>button[data-p=ketnoi] span{display:none!important}
+html.hs-phone .dk-nav>button[data-p=ketnoi]::after{content:"Kết nối"}
+/* the settings pages: chips under the top bar */
+html.hs-phone .dk-sub{display:none!important}
+html.hs-phone .dk-sub.open{display:flex!important;position:fixed;left:0;right:0;top:var(--hs-topH,64px);z-index:29;flex-direction:row;gap:8px;margin:0;padding:10px 12px;border:0;
+  overflow-x:auto;scrollbar-width:none;background:linear-gradient(#0E1115 75%,rgba(14,17,21,0))}
+html.hs-phone .dk-sub.open::-webkit-scrollbar{display:none}
+html.hs-phone .dk-sub button{flex:none;width:auto;height:36px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:600;color:#C4CAD3;background:var(--panel2);border:1px solid var(--line2)}
+html.hs-phone .dk-sub button::before{display:none!important}
+html.hs-phone .dk-sub button.on{background:var(--brand);border-color:var(--brand);color:#000}
+html.hs-phone .hs:has(.dk-sub.open) .dk-body{padding-top:66px}
+
+/* small screens */
+@media (max-width:360px){
+  html.hs-phone .dk-tools{grid-template-columns:1fr}
+  html.hs-phone .dk-nav>button{font-size:10.5px}
+}
+
+/* notices slide in under the top bar instead of over the big button */
+html.hs-phone .dk-toast{left:12px;right:12px;bottom:auto;top:calc(var(--hs-topH,64px) + 8px);max-width:none;border-radius:14px}
+/* subtitle look preview: as tall as the sample needs */
+html.hs-phone .dk-prev{height:auto;min-height:130px;border-radius:14px}
+html.hs-phone .dk-prev b{font-size:clamp(15px,5vw,21px)!important}
+/* sliders and lists easier to hit with a thumb */
+html.hs-phone input[type=range]{height:28px}
+html.hs-phone .hs-zrow{border-radius:16px}
+html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}

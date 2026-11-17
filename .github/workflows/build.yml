@@ -41,6 +41,9 @@ jobs:
           echo "HSRP_MBEDTLS_DIR=$RUNNER_TEMP/mbedtls" >> "$GITHUB_ENV"
           echo "HSRP_PYTHON=/usr/bin/python3" >> "$GITHUB_ENV"
 
+      - name: The phone page (same as the Windows app, phone design)
+        run: python3 pc/sync_web.py && python3 phone/build_app.py
+
       - name: Build APK
         env:
           HSTV_KEYSTORE_B64: ${{ secrets.HSTV_KEYSTORE_B64 }}
@@ -328,7 +331,7 @@ jobs:
           git clone --depth 1 --branch v2.28.9 https://github.com/Mbed-TLS/mbedtls.git "$RUNNER_TEMP/mbedtls"
           echo "HSRP_MBEDTLS_DIR=$RUNNER_TEMP/mbedtls" >> "$GITHUB_ENV"
       - name: The page (same as the Android app)
-        run: cp phone/src/main/assets/app.html ios/web/index.html
+        run: python3 pc/sync_web.py && python3 phone/build_app.py && cp phone/src/main/assets/app.html ios/web/index.html
       - name: Remote Play core for iPhone
         working-directory: ios
         run: ./build-rp.sh iphoneos
