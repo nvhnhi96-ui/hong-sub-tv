@@ -3939,11 +3939,12 @@ async function tmLoad(name){
 /* a line read now that is in the store: the same words, or almost (the reader missed a letter) */
 /* a line from the shared store: the whole line, or without the speaker's name in front, or sentence by sentence
    (the screen often shows two lines of the store together). Every line found here costs no AI call. */
-function tmFind(text){
+function tmFind(text,strict){
   if(!S.tm.n||!text) return null;
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{4,})$/.exec(String(text).trim());   /* "NAME: line": the name on screen wins */
-  var r=tmFind1(text); if(r){ if(m) r.speaker=m[1]; return tmHit(r); }
-  if(m&&(r=tmFind1(m[2]))){ r.speaker=m[1]; r.en=text; return tmHit(r); }
+  var r=tmFind1(text,strict); if(r){ if(m) r.speaker=m[1]; return tmHit(r); }
+  if(m&&(r=tmFind1(m[2],strict))){ r.speaker=m[1]; r.en=text; return tmHit(r); }
+  if(strict) return null;
   var parts=String(text).replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…。！？])\s+(?=[A-Z"'“(¿¡]|$)/).map(function(s){return s.trim();}).filter(function(s){return s.length>1;});
   if(parts.length>=2&&parts.length<=6){
     var vi=[], who='', gd='';
@@ -3965,10 +3966,10 @@ function nearRecent(text){
 }
 /* the store of the game is still coming down: wait for it (a few seconds) rather than spend an AI call */
 function tmWait(ms){ return new Promise(function(ok){ var t0=Date.now(); (function w(){ if(!S.tm.loading||Date.now()-t0>ms) ok(true); else setTimeout(w,150); })(); }); }
-function tmFind1(text){
+function tmFind1(text,strict){
   var k=trKey(text), e=S.tm.map[k];
-  if(!e&&k.length>=10){
-    var b=Math.round(k.length/6), best=0, need=k.length>=18?0.78:0.86;
+  if(!e&&k.length>=(strict?14:10)){
+    var b=Math.round(k.length/6), best=0, need=strict?0.92:k.length>=18?0.78:0.86;
     for(var d=-2;d<=2;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>6000) continue;
       for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(!c) continue; var sc=dice(c.en,text); if(sc>best){ best=sc; if(sc>=need) e=c; } } }
   }
@@ -4334,6 +4335,8 @@ function motionSample(){
   if(p){ S.mv.hist.push(n/g.length); if(S.mv.hist.length>6) S.mv.hist.shift(); }
   S.mv.prev=g;
 }
+/* the picture has not moved at all for about two seconds: a still screen (console off, a paused menu), not a game being played */
+function stillScreen(){ var h=S.mv.hist.slice(-5); return h.length>=5&&h.every(function(f){ return f<0.004; }); }
 function playing(){ var h=S.mv.hist.slice(-5); if(h.length<3) return true; return h.filter(function(f){ return f>=0.05; }).length>=3; }
 function zPlayOnly(z){ return guardOn()&&z.when==='play'; }
 /* a list of 4 or more short lines (title-case words, no sentence): a game menu ("Continue Journey / New Journey / Settings") */
@@ -5222,6 +5225,11 @@ function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.n
 VO.lines=[];
 async function voPhrase(frames,t0,t1){
   if(VO.busy>=5){ log('lời nói: đang chép 5 câu, bỏ câu này'); return; }   /* far behind: skip this one rather than pile up */
+  /* only while a game is being played: translating is on, the picture is not a PS5 screen or the map, and the game is
+     moving. Otherwise the sound (menu music, a video, the room) would bring up lines of the chosen game's store */
+  if(!S.running){ return; }
+  if(typeof GUARD!=='undefined'&&GUARD.kind){ log('lời nói: đang ở màn hình PS5 / bản đồ, không dịch'); return; }
+  if(S.stream&&stillScreen()){ log('lời nói: hình đứng yên hẳn (không có game chạy), không dịch'); return; }
   VO.busy++; VO.heard++;
   var secs=(frames.length*0.02).toFixed(1);
   try{
@@ -5253,7 +5261,7 @@ async function voTranslate(text,heardAt,saidAt){
   if(VO.tr>=3){ log('lời nói: đang dịch 3 câu, bỏ câu này'); return; }
   VO.tr++;
   try{
-    var res=tmFind(text);
+    var res=tmFind(text,true);   /* heard words: only a line of the store that is nearly the same, never a loose match */
     if(res) log('lời nói có sẵn trong kho dịch chung');
     else res=await askText(voicePrompt(text),text,null,null,false,'fast');   /* the first answer wins: a spoken line is late already */
     res=res&&splitSpeaker(res,text);
