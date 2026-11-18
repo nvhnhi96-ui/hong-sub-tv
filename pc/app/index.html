@@ -596,7 +596,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
-                <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs" checked></label>
+                <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <label class="hs-sw">Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
                 <label class="hs-sw" hidden title="Điện thoại tắt màn hình vẫn dịch tiếp: phụ đề vẫn lên TV, vẫn đọc to (khi chơi PS5 ngay trong Hóng Sub)">Dịch khi tắt màn hình điện thoại <input type="checkbox" id="hsAwake" checked></label>
               </div>
@@ -1118,7 +1118,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
               </div>
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
-              <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto" checked></label>
+              <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
@@ -4722,7 +4722,8 @@ $('hsRead').addEventListener('change',function(){ save('read',this.value); if(th
 $('hsPsWatch').checked=load('psWatch',null)===null?!!(load('tvip','')||load('tv','')):load('psWatch',false);
 $('hsPsWatch').addEventListener('change',function(){ save('psWatch',this.checked); });
 $('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
-$('hsFsAuto').checked=load('fsauto',true); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
+if(!load('fsautoOff1',false)){ save('fsauto',false); save('fsautoOff1',true); }   /* off by default (11/2026): everyone starts with it off once, turning it on is remembered */
+$('hsFsAuto').checked=load('fsauto',false); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
