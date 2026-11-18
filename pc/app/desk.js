@@ -138,7 +138,7 @@ function castEmpty(){ $('dkCastEmpty').hidden=!$('hsCastBox').hidden; }
 new MutationObserver(castEmpty).observe($('hsCastBox'),{attributes:true,attributeFilter:['hidden']}); castEmpty();
 
 /* ---------- shortcuts ---------- */
-var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
+var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',move:'Di chuyển khung vùng dịch nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
 var KEYS={}, KST={}, rec=null;
 function keysDraw(){
   $('dkKeys').innerHTML=Object.keys(KEYN).map(function(id){

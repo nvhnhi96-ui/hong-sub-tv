@@ -294,7 +294,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <button class="hs-btn" id="dkZoneAdd2" type="button" title="Thêm một vùng dịch (nhiệm vụ, vật phẩm...). Kéo và xóa vùng ngay trên hình."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" stroke-dasharray="3 2"/><path d="M19 15v6M16 18h6"/></svg><span>Thêm vùng</span><b class="dk-cnt" id="dkZoneCnt" hidden>0</b></button>
               </div>
               <div class="dk-tg dk-only">
-                <button class="hs-btn" id="hsOvShow" type="button" title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
+                <button class="hs-btn" id="hsOvShow" type="button" hidden title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
                 <button class="hs-btn" id="hsOvMove" type="button" title="Kéo phụ đề nổi và các khung vùng dịch tới chỗ khác (F10)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg><span>Di chuyển phụ đề nổi</span></button>
               </div>
               <div class="dk-tg">
@@ -327,7 +327,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <h2>Bật nhanh</h2>
               <div class="dk-quick">
                 <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
-                <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
@@ -396,7 +396,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <li>Về <b>Màn hình chơi</b>, bấm <b>App PS Remote Play của Sony</b>, chọn cửa sổ PS Remote Play rồi bấm <b>Chia sẻ</b>.</li>
                 <li>Chơi trên TV qua capture card thì chọn <b>Capture card</b>.</li>
               </ol>
-              <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và phụ đề nổi trên game.</p>
+              <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và gửi phụ đề lên TV.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
             </div>
             <div class="dk-card hs-dk" id="hsPsSec">
@@ -795,11 +795,11 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         <div class="dk-cols">
           <div class="dk-card">
             <h2>Hiển thị phụ đề</h2>
-            <p class="hs-note dk-only">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
+            <p class="hs-note dk-only" hidden>Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
             <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
-            <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
-            <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình, phụ đề nổi và TV) <input type="checkbox" id="hsCover" checked></label>
+            <label class="hs-sw dk-sw dk-only" hidden>Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
+            <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình game và TV) <input type="checkbox" id="hsCover" checked></label>
             <label class="hs-sw dk-sw">Khung ôm sát từng dòng chữ gốc (Cỡ chữ 28 là bằng chữ gốc) <input type="checkbox" id="hsSubSpot" checked></label>
             <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng) <input type="checkbox" id="hsLines" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
@@ -843,7 +843,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <input class="hs-range" id="dkHgt" type="range" min="40" max="300" step="10" value="100">
               <p class="hs-note" style="margin-top:4px">100% là bằng dòng phụ đề gốc. Kéo lên để nền đen to hơn, che kín chữ gốc; kéo xuống cho nền gọn lại.</p>
             </div>
-            <div class="hs-row dk-only" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
+            <div class="hs-row dk-only" style="margin-top:12px" hidden><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
           </div>
           <div>
             <div class="dk-card">
@@ -926,7 +926,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <div class="lab"><label for="hsVoBg">Độ đậm nền sau chữ lời nói</label><output id="hsVoBgV">60%</output></div>
                 <input class="hs-range" id="hsVoBg" type="range" min="0" max="100" step="2" value="60">
               </div>
-              <p class="hs-note">Dùng cho chữ trên hình game, dưới hình, phụ đề nổi, điện thoại và TV. Phụ đề có sẵn của game vẫn theo trang Phụ đề.</p>
+              <p class="hs-note">Dùng cho chữ trên hình game, dưới hình, điện thoại và TV. Phụ đề có sẵn của game vẫn theo trang Phụ đề.</p>
             </div>
           </div>
         </div>
@@ -989,7 +989,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
             </div>
             <div class="dk-card hs-web">
               <h2>Phần mềm Hóng Sub cho Windows</h2>
-              <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phụ đề nổi trên game, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
+              <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải cho Windows</button><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubtv">App Hóng Sub TV</button></div>
             </div>
             <div class="dk-card dk-only">

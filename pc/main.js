@@ -113,6 +113,9 @@ function overlayBounds() {
   }
   return def;
 }
+/* "Phụ đề nổi trên game" (the subtitle window over other apps) has been taken out: the window is still made for the
+   areas' move mode, but the subtitle in it is never shown. Subtitles show in Hóng Sub and on the TV. */
+const SUB_FLOAT = false;
 function createOverlay() {
   overlay = new BrowserWindow({
     ...overlayBounds(),
@@ -126,7 +129,7 @@ function createOverlay() {
   overlay.setIgnoreMouseEvents(true);
   overlay.setContentProtection(true); // never captured, so it cannot be read back as a subtitle
   overlay.loadURL('app://hongsub/overlay.html');
-  overlay.once('ready-to-show', () => { if (!cfg.overlayHidden) overlay.showInactive(); sendOverlayState(); });
+  overlay.once('ready-to-show', () => { if (SUB_FLOAT && !cfg.overlayHidden) overlay.showInactive(); sendOverlayState(); });
   overlay.on('moved', () => { cfg.overlay = overlay.getBounds(); saveCfg(); });
 }
 /* ---------- one floating window per extra area ("Vùng 1", "Vùng 2"...) ----------
@@ -329,6 +332,7 @@ function sendOverlayState() {
 function overlayCmd(cmd) {
   if (!overlay) return;
   if (cmd === 'toggle') {
+    if (!SUB_FLOAT) { sendOverlayState(); return; }
     cfg.overlayHidden = !cfg.overlayHidden; saveCfg();
     if (cfg.overlayHidden) { if (moveMode) setMove(false); overlay.hide(); } else overlay.showInactive();
   } else if (cmd === 'move') {
@@ -344,13 +348,13 @@ function setMove(on) {
   moveMode = on;
   if (on) {
     if (cfg.overlayHidden) { cfg.overlayHidden = false; saveCfg(); }
-    overlay.setIgnoreMouseEvents(false); overlay.setFocusable(true); overlay.show();
+    overlay.setIgnoreMouseEvents(false); overlay.setFocusable(true); if (SUB_FLOAT) overlay.show();
     for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(false); z.win.setFocusable(true); }
   } else {
     overlay.setIgnoreMouseEvents(true); overlay.setFocusable(false);
     for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(true); z.win.setFocusable(false); }
     if (!subPlace) { cfg.overlay = overlay.getBounds(); saveCfg(); } else applyPlace();   /* over the game's subtitle: its place comes from the subtitle area */
-    if (!cfg.overlayHidden) overlay.showInactive();
+    if (SUB_FLOAT && !cfg.overlayHidden) overlay.showInactive(); else if (!SUB_FLOAT) overlay.hide();
   }
 }
 
@@ -360,7 +364,7 @@ function buildTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Mở Hóng Sub', click: showMain },
     { label: 'Bật/tắt dịch (' + keys().toggle + ')', click: () => hotkey('toggle') },
-    { label: cfg.overlayHidden ? 'Hiện phụ đề nổi (' + keys().ovl + ')' : 'Ẩn phụ đề nổi (' + keys().ovl + ')', click: () => overlayCmd('toggle') },
+    ...(SUB_FLOAT ? [{ label: cfg.overlayHidden ? 'Hiện phụ đề nổi (' + keys().ovl + ')' : 'Ẩn phụ đề nổi (' + keys().ovl + ')', click: () => overlayCmd('toggle') }] : []),
     { label: moveMode ? 'Xong di chuyển phụ đề (' + keys().move + ')' : 'Di chuyển phụ đề (' + keys().move + ')', click: () => overlayCmd('move') },
     { label: 'Đưa phụ đề về chỗ cũ', click: () => overlayCmd('reset') },
     { type: 'separator' },

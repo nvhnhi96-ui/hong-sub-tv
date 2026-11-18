@@ -679,7 +679,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <button class="hs-btn" id="dkZoneAdd2" type="button" title="Thêm một vùng dịch (nhiệm vụ, vật phẩm...). Kéo và xóa vùng ngay trên hình."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" stroke-dasharray="3 2"/><path d="M19 15v6M16 18h6"/></svg><span>Thêm vùng</span><b class="dk-cnt" id="dkZoneCnt" hidden>0</b></button>
               </div>
               <div class="dk-tg dk-only">
-                <button class="hs-btn" id="hsOvShow" type="button" title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
+                <button class="hs-btn" id="hsOvShow" type="button" hidden title="Ẩn hoặc hiện phụ đề nổi trên game (F9)">Ẩn phụ đề nổi</button>
                 <button class="hs-btn" id="hsOvMove" type="button" title="Kéo phụ đề nổi và các khung vùng dịch tới chỗ khác (F10)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg><span>Di chuyển phụ đề nổi</span></button>
               </div>
               <div class="dk-tg">
@@ -712,7 +712,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <h2>Bật nhanh</h2>
               <div class="dk-quick">
                 <label class="hs-sw">Đọc to phụ đề <input type="checkbox" id="dkQSpeak" checked></label>
-                <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
+                <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
@@ -781,7 +781,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <li>Về <b>Màn hình chơi</b>, bấm <b>App PS Remote Play của Sony</b>, chọn cửa sổ PS Remote Play rồi bấm <b>Chia sẻ</b>.</li>
                 <li>Chơi trên TV qua capture card thì chọn <b>Capture card</b>.</li>
               </ol>
-              <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và phụ đề nổi trên game.</p>
+              <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và gửi phụ đề lên TV.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
             </div>
             <div class="dk-card hs-dk" id="hsPsSec">
@@ -1180,11 +1180,11 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
         <div class="dk-cols">
           <div class="dk-card">
             <h2>Hiển thị phụ đề</h2>
-            <p class="hs-note dk-only">Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
+            <p class="hs-note dk-only" hidden>Phụ đề nổi nằm trên game, kể cả khi chơi trong app của Sony hoặc toàn màn hình.</p>
             <p class="hs-note hs-web">Phụ đề hiện dưới hình game. Bấm <b>Cửa sổ nổi</b> ở Màn hình chơi để có cửa sổ phụ đề nhỏ luôn nằm trên game (Chrome, Edge).</p>
             <div class="dk-prev" id="dkPrev"><div><b id="dkPrevVi">Chúng ta phải rời khỏi đây trước khi trời sáng.</b><small id="dkPrevEn">We need to get out of here before sunrise.</small></div></div>
-            <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
-            <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình, phụ đề nổi và TV) <input type="checkbox" id="hsCover" checked></label>
+            <label class="hs-sw dk-sw dk-only" hidden>Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
+            <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình game và TV) <input type="checkbox" id="hsCover" checked></label>
             <label class="hs-sw dk-sw">Khung ôm sát từng dòng chữ gốc (Cỡ chữ 28 là bằng chữ gốc) <input type="checkbox" id="hsSubSpot" checked></label>
             <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng) <input type="checkbox" id="hsLines" checked></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
@@ -1228,7 +1228,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <input class="hs-range" id="dkHgt" type="range" min="40" max="300" step="10" value="100">
               <p class="hs-note" style="margin-top:4px">100% là bằng dòng phụ đề gốc. Kéo lên để nền đen to hơn, che kín chữ gốc; kéo xuống cho nền gọn lại.</p>
             </div>
-            <div class="hs-row dk-only" style="margin-top:12px"><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
+            <div class="hs-row dk-only" style="margin-top:12px" hidden><button class="hs-btn" type="button" id="dkMove">Kéo phụ đề tới chỗ khác</button><button class="hs-btn" type="button" id="dkReset">Đưa về giữa dưới màn hình</button></div>
           </div>
           <div>
             <div class="dk-card">
@@ -1311,7 +1311,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <div class="lab"><label for="hsVoBg">Độ đậm nền sau chữ lời nói</label><output id="hsVoBgV">60%</output></div>
                 <input class="hs-range" id="hsVoBg" type="range" min="0" max="100" step="2" value="60">
               </div>
-              <p class="hs-note">Dùng cho chữ trên hình game, dưới hình, phụ đề nổi, điện thoại và TV. Phụ đề có sẵn của game vẫn theo trang Phụ đề.</p>
+              <p class="hs-note">Dùng cho chữ trên hình game, dưới hình, điện thoại và TV. Phụ đề có sẵn của game vẫn theo trang Phụ đề.</p>
             </div>
           </div>
         </div>
@@ -1374,7 +1374,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             </div>
             <div class="dk-card hs-web">
               <h2>Phần mềm Hóng Sub cho Windows</h2>
-              <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phụ đề nổi trên game, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
+              <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải cho Windows</button><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubtv">App Hóng Sub TV</button></div>
             </div>
             <div class="dk-card dk-only">
@@ -5961,6 +5961,7 @@ function psStartView(){
   PS.ctx.fillStyle='#000'; PS.ctx.fillRect(0,0,PS.cvs.width,PS.cvs.height);
   var stage=$('hsStage'); if(PS.cvs.parentNode!==stage) stage.insertBefore(PS.cvs,$('hsOv'));
   PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now(); PS.jank=[]; PS.jankSaid=false;
+  PS.aIn=0; PS.aOut=0; PS.aErr=0; PS.aChecked=false; PS.vAt=0;
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
   psWatchStop(); if(!(D&&D.selftest)){ PS.watch=setInterval(psWatchTick,1000); psWaitDraw(0,'Đang nối với máy'); }
   PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
@@ -5973,7 +5974,7 @@ function psStopView(){
   psWatchStop(); psPadStop();
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
   if(PS.pend){ try{PS.pend.close();}catch(e){} PS.pend=null; }
-  if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; }
+  if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; } PS.lastAh=null;
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
   ['hsPsFull','hsPsEnd'].forEach(function(id){$(id).classList.add('hs-off');});
@@ -5987,7 +5988,7 @@ function psDecoder(codec){
       if(PS.pend) PS.pend.close(); PS.pend=f; PS.lastFr=Date.now();
       if(document.hidden){ psPaint(); }   /* screen off / behind another app: no screen refresh to wait for */
       else if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
-      if(++PS.frames===1){ psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!(D&&D.selftest)) startRun(); }
+      if(++PS.frames===1){ PS.vAt=Date.now(); psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!(D&&D.selftest)) startRun(); }
     },
     error:function(e){ psJank(); PS.decErr=(PS.decErr||0)+1; log('PS: giải hình lỗi '+((e&&e.message)||e)); if(PS.decErr>=2) PS.sw=true; PS.dec=null; PS.waitKey=true; psIdr(); }
   });
@@ -6031,32 +6032,54 @@ function psVideo(payload){
   catch(e){ PS.waitKey=true; psIdr(); }
 }
 /* --- sound --- */
+/* The game's sound: the PS sends Opus packets; they are decoded here and played on this computer's speakers.
+   A broken packet used to stop the decoder for the rest of the game (no sound until reconnecting): now it starts again
+   by itself. If no sound comes within 15 s of the picture, the log says why and a report goes to the shop. */
 function psAudioHeader(h){
-  PS.lastAh=h;
+  var first=!PS.lastAh; PS.lastAh=h;
+  if(first||PS.aSaid!==JSON.stringify(h)){ PS.aSaid=JSON.stringify(h); log('PS: âm thanh '+(h.channels||2)+' kênh '+(h.rate||48000)+' Hz, '+(h.frame_size||480)+' mẫu/gói'); }
   var quiet=DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked;   /* phone only watching: the sound stays on the TV */
   if(quiet&&!voOn()) return;
   try{
+    if(PS.actx&&PS.actx.state==='closed') PS.actx=null;
     if(!PS.actx) PS.actx=new AudioContext({sampleRate:h.rate||48000,latencyHint:'interactive'});
+    if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
     if(PS.adec){ try{PS.adec.close();}catch(e){} }
     PS.aframe=h.frame_size||480; PS.arate=h.rate||48000; PS.ats=0; PS.anext=0;
     PS.adec=new AudioDecoder({
       output:function(ad){
         var n=ad.numberOfFrames, ch=ad.numberOfChannels, buf=PS.actx.createBuffer(ch,n,ad.sampleRate);
         for(var c=0;c<ch;c++){ var tmp=new Float32Array(n); ad.copyTo(tmp,{planeIndex:c,format:'f32-planar'}); buf.copyToChannel(tmp,c); }
-        ad.close();
+        ad.close(); if(++PS.aOut===1) log('PS: đã có tiếng game ('+PS.actx.state+')');
+        if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
         var src=PS.actx.createBufferSource(); src.buffer=buf; if(!(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked)) src.connect(PS.actx.destination); if(PS.vtap) src.connect(PS.vtap);
         var now=PS.actx.currentTime; if(PS.anext<now+0.02||PS.anext>now+0.3) PS.anext=now+0.05;
         src.start(PS.anext); PS.anext+=buf.duration;
       },
-      error:function(){ PS.adec=null; }
+      error:function(e){ PS.adec=null; PS.aErr=(PS.aErr||0)+1; if(PS.aErr<=3||PS.aErr%50===0) log('PS: giải tiếng lỗi ('+PS.aErr+'): '+((e&&e.message)||e)+', mở lại'); }
     });
     PS.adec.configure({codec:'opus',sampleRate:PS.arate,numberOfChannels:h.channels||2});
-  }catch(e){ PS.adec=null; }
+  }catch(e){ PS.adec=null; log('PS: không mở được bộ giải tiếng: '+e.message); }
 }
 function psAudio(pkt){
+  if(++PS.aIn===1) log('PS: gói tiếng đầu tiên');
+  if((!PS.adec||PS.adec.state!=='configured')&&PS.lastAh&&Date.now()-(PS.aRe||0)>1000){ PS.aRe=Date.now(); psAudioHeader(PS.lastAh); }   /* the decoder stopped: start it again */
   if(!PS.adec||PS.adec.state!=='configured') return;
+  if(!pkt||!pkt.length) return;
   try{ PS.adec.decode(new EncodedAudioChunk({type:'key',timestamp:(PS.ats+=Math.round(PS.aframe/PS.arate*1e6)),data:pkt})); }catch(e){}
 }
+/* no sound 15 s after the picture came: say so in the log and send a report, so it can be fixed from the shop */
+setInterval(function(){
+  if(typeof PS==='undefined'||!PS.host||!(PS.frames>0)||PS.aChecked||Date.now()-(PS.vAt||Date.now())<15000) return;
+  if(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked) return;
+  PS.aChecked=true;
+  if(PS.aOut>0) return;
+  var why=!PS.lastAh?'máy PS chưa gửi thông tin tiếng':!PS.aIn?'chưa nhận gói tiếng nào':!PS.adec?'bộ giải tiếng không mở được':'có gói tiếng nhưng chưa giải ra tiếng';
+  var ctx=PS.actx?PS.actx.state:'chưa có';
+  log('PS: chưa có tiếng game: '+why+' (gói tiếng: '+(PS.aIn||0)+', lỗi giải: '+(PS.aErr||0)+', loa: '+ctx+')');
+  autoReport('ps-noaudio','Không có tiếng game: '+why+' | goi tieng: '+(PS.aIn||0)+', loi giai: '+(PS.aErr||0)+', loa: '+ctx+', AudioDecoder: '+(typeof AudioDecoder));
+  if(PS.actx&&PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
+},3000);
 /* --- controller --- */
 var PAD_BTN=[1,2,4,8,256,512,0,0,8192,4096,1024,2048,64,128,16,32,32768,16384];
 var KEY_BTN={ArrowUp:64,ArrowDown:128,ArrowLeft:16,ArrowRight:32,Enter:1,Backspace:2,KeyP:32768,KeyO:4096};
@@ -6902,7 +6925,7 @@ function castEmpty(){ $('dkCastEmpty').hidden=!$('hsCastBox').hidden; }
 new MutationObserver(castEmpty).observe($('hsCastBox'),{attributes:true,attributeFilter:['hidden']}); castEmpty();
 
 /* ---------- shortcuts ---------- */
-var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',ovl:'Ẩn / hiện phụ đề nổi',move:'Di chuyển phụ đề nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
+var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',move:'Di chuyển khung vùng dịch nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
 var KEYS={}, KST={}, rec=null;
 function keysDraw(){
   $('dkKeys').innerHTML=Object.keys(KEYN).map(function(id){
