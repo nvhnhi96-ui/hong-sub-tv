@@ -221,7 +221,13 @@ public class MainActivity extends Activity {
             if (sp.getBoolean("askedBattery", false)) return;
             sp.edit().putBoolean("askedBattery", true).apply();
             Toast.makeText(this, "Cho phép Hóng Sub chạy khi tắt màn hình: bấm Cho phép.", Toast.LENGTH_LONG).show();
-            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+            /* the Google Play build does not ask directly (Play limits that permission): it opens the battery list instead */
+            if (checkSelfPermission("android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS") == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+            else {
+                Toast.makeText(this, "Chọn Hóng Sub trong danh sách, chọn Không tối ưu hóa (Không giới hạn).", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            }
         } catch (Exception ignored) { }
     }
 
