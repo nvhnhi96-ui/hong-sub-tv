@@ -967,9 +967,27 @@ var FONTS={
   quicksand:{n:'Quicksand (mảnh, nhẹ)',g:'Quicksand',css:'"Quicksand",system-ui,sans-serif'},
   oswald:{n:'Oswald (cao, hẹp)',g:'Oswald',css:'"Oswald","Arial Narrow",sans-serif'},
   notoserif:{n:'Noto Serif (có chân)',g:'Noto+Serif',css:'"Noto Serif",Georgia,serif'},
+  firasans:{n:'Fira Sans (rõ, khỏe)',g:'Fira+Sans',css:'"Fira Sans",system-ui,sans-serif'},
+  robotocond:{n:'Roboto Condensed (hẹp, chứa nhiều chữ)',g:'Roboto+Condensed',css:'"Roboto Condensed","Arial Narrow",sans-serif'},
+  kanit:{n:'Kanit (đậm, hiện đại)',g:'Kanit',css:'"Kanit",system-ui,sans-serif'},
+  josefin:{n:'Josefin Sans (thanh lịch)',g:'Josefin+Sans',css:'"Josefin Sans",system-ui,sans-serif'},
+  exo:{n:'Exo 2 (kiểu game, tương lai)',g:'Exo+2',css:'"Exo 2",system-ui,sans-serif'},
+  chakra:{n:'Chakra Petch (kiểu game, góc cạnh)',g:'Chakra+Petch',css:'"Chakra Petch",system-ui,sans-serif'},
+  saira:{n:'Saira (kiểu game, gọn)',g:'Saira',css:'"Saira",system-ui,sans-serif'},
+  comfortaa:{n:'Comfortaa (tròn, dễ thương)',g:'Comfortaa',css:'"Comfortaa",system-ui,sans-serif'},
+  baloo:{n:'Baloo 2 (tròn, vui)',g:'Baloo+2',css:'"Baloo 2",system-ui,sans-serif'},
+  robotoslab:{n:'Roboto Slab (có chân, khỏe)',g:'Roboto+Slab',css:'"Roboto Slab",Georgia,serif'},
+  lora:{n:'Lora (có chân, mềm)',g:'Lora',css:'"Lora",Georgia,serif'},
+  merriweather:{n:'Merriweather (có chân, dày, dễ đọc)',g:'Merriweather',css:'"Merriweather",Georgia,serif'},
+  playfair:{n:'Playfair Display (sang, cổ điển)',g:'Playfair+Display',css:'"Playfair Display",Georgia,serif'},
+  dancing:{n:'Dancing Script (viết tay, bay bổng)',g:'Dancing+Script',css:'"Dancing Script",cursive'},
+  pacifico:{n:'Pacifico (viết tay, cách điệu)',g:'Pacifico',w:'400',css:'"Pacifico",cursive'},
+  patrick:{n:'Patrick Hand (chữ viết tay)',g:'Patrick+Hand',w:'400',css:'"Patrick Hand",cursive'},
+  itim:{n:'Itim (viết tay, tròn)',g:'Itim',w:'400',css:'"Itim",cursive'},
+  bangers:{n:'Bangers (truyện tranh)',g:'Bangers',w:'400',css:'"Bangers",Impact,sans-serif'},
   arial:{n:'Arial (chữ hệ thống)',g:'',css:'Arial,"Helvetica Neue",sans-serif'}
 };
-function fontUrl(k){ var f=FONTS[k]; return f&&f.g?'https://fonts.googleapis.com/css2?family='+f.g+':wght@500;600;700&display=swap':''; }
+function fontUrl(k){ var f=FONTS[k]; return f&&f.g?'https://fonts.googleapis.com/css2?family='+f.g+':wght@'+(f.w||'500;600;700')+'&display=swap':''; }
 function fontLoad(k){ var u=fontUrl(k); if(!u||document.querySelector('link[data-hsfont="'+k+'"]')) return; var l=document.createElement('link'); l.rel='stylesheet'; l.href=u; l.setAttribute('data-hsfont',k); document.head.appendChild(l); }
 function subFontKey(){ var k=(load('ovStyle',{})||{}).font; return FONTS[k]?k:'bevn'; }
 function subFont(){ var k=subFontKey(); fontLoad(k); return FONTS[k].css; }
@@ -1230,7 +1248,7 @@ video.addEventListener('loadedmetadata',showRegion);
       showRegion();
     }
     function up(){ tgt.removeEventListener('pointermove',mv); tgt.removeEventListener('pointerup',up); tgt.removeEventListener('pointercancel',up); reg.classList.remove('drag');
-      save('region',S.region); save('regionSet',true); S.lastSig=null; S.subBox=null; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; coverHide(); steps(); status(S.running?'run':'idle','Đã đổi chỗ vùng phụ đề'); }
+      save('region',S.region); save('regionSet',true); S.lastSig=null; S.subBox=null; S.lhs=[]; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; coverHide(); steps(); status(S.running?'run':'idle','Đã đổi chỗ vùng phụ đề'); }
     tgt.addEventListener('pointermove',mv); tgt.addEventListener('pointerup',up); tgt.addEventListener('pointercancel',up);
   }
   var lab=reg.querySelector('span'), rs=reg.querySelector('.rs');
@@ -2618,11 +2636,12 @@ function coverShow(html,vl){
   var sk=Math.max(.4,Math.min(2.5,(+$('hsSize').value||28)/28));   /* "Cỡ chữ": 28 = the original letters' size over the original line */
   var fs=r.spot?Math.max(8,r.lh*b.h*0.82*sk):Math.max(8,(+$('hsSize').value||28)*1.7*b.h/1080); d.style.fontSize=fs+'px';   /* the original letters' size, or "Cỡ chữ" (on a 1080-line picture) */ c.style.padding=(w<360||r.spot?'2px 6px':'');
   d.style.whiteSpace=lineMatch()||r.spot?'nowrap':''; d.style.textAlign=r.spot?({l:'left',c:'center',r:'right'}[r.al]||'center'):''; c.style.justifyContent=r.spot?({l:'flex-start',c:'center',r:'flex-end'}[r.al]||'center'):'';
-  if(r.spot){ var need=d.scrollWidth+16, maxW=Math.min(1,lw/100)*b.w; if(need>w){ var nw=Math.max(w,Math.min(maxW,need)), left0=parseFloat(c.style.left)-ox; var nl=r.al==='l'?left0:r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(b.l,Math.min(b.l+b.w-nw,nl)); c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; } }   /* same lines as the original: no extra wrapping, smaller letters instead */
+  if(r.spot){ var need=d.scrollWidth+16, maxW=Math.min(1,lw/100)*b.w; if(need>w){ var nw=Math.max(w,Math.min(maxW,need)), left0=parseFloat(c.style.left)-ox; var nl=r.al==='l'?left0:r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(b.l,Math.min(b.l+b.w-nw,nl)); c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; } }   /* wider first, up to "Độ rộng khung phụ đề" */
+  if(d.scrollWidth>c.clientWidth-8){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); }   /* still too long: one more line, the letters keep their size (every subtitle the same size) */
   /* bigger letters make the box taller (still centred on the original line, never smaller than it); letters only shrink
      when a line is too wide or the box would take almost half the picture */
   c.style.height='auto'; var maxH=Math.max(h,b.h*0.45);
-  for(var i=0;i<16&&(c.offsetHeight>maxH+1||d.scrollWidth>c.clientWidth-8)&&fs>8;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }
+  for(var i=0;i<16&&c.offsetHeight>maxH+1&&fs>8;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }   /* smaller only when it would cover almost half the picture */
   var top=oy+cy-c.offsetHeight/2; c.style.top=top+'px';
   var over=top+c.offsetHeight-st.height; if(over>0) c.style.top=Math.max(0,top-over)+'px';   /* keep it inside the picture (small phone screens) */
   S.coverHtml=html;
@@ -3113,6 +3132,10 @@ function subBoxFrom(o,W,H){
   var x1=Math.min.apply(null,L.map(function(l){return l.x;})), y1=Math.min.apply(null,L.map(function(l){return l.y;}));
   var x2=Math.max.apply(null,L.map(function(l){return l.x+l.w;})), y2=Math.max.apply(null,L.map(function(l){return l.y+l.h;}));
   var lh=L.reduce(function(a,l){return a+l.h;},0)/L.length;
+  /* the letters of one game's subtitles are one size; each reading measures them a little differently (capitals, tails
+     of g/y, a short line), so the size used is the middle of the last readings: every line comes out the same size */
+  S.lhs=(S.lhs||[]).concat([lh/H]).slice(-24); var srt=S.lhs.slice().sort(function(a,b){ return a-b; });
+  if(srt.length>=3) lh=srt[srt.length>>1]*H;
   S.subBox={x:x1/W,y:y1/H,w:(x2-x1)/W,h:(y2-y1)/H,lh:lh/H,n:L.length,al:linesAlign(L,W)||'c',at:Date.now()};
 }
 /* the place of the Vietnamese line on the picture: the original text with a little room around it, or the drawn area */
@@ -5002,7 +5025,7 @@ function psFind(ip){
 }
 function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms);});}
 async function psPlay(h,opt){
-  PS.last=h; PS.retrying=false;
+  PS.last=h; PS.retrying=false; PS.q=opt||null; PS.frz=0; PS.lastFr=0; PS.lastPk=0;
   if(h.state!=='ready'){
     psMsg('','Đang bật '+h.name+'...'); await DPS.wake(h.id);
     for(var i=0;i<20;i++){ await sleepMs(2500); var l=await DPS.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) DPS.wake(h.id); }
@@ -5040,6 +5063,29 @@ function psWatchTick(){
   if(s===12&&!PS.pk){ log('PS: 12 giây chưa nhận gói hình nào (đã nối: '+(PS.conn?'có':'chưa')+')'); psFwCheck(true); }
   if(s>=30) psRetry('30 giây chưa có hình ('+PS.pk+' gói)');
 }
+/* the picture froze while playing (the game goes on on the TV, the picture here stands still): ask the PS for a fresh
+   whole picture, then start the picture decoder again, and if nothing comes back, connect again by itself */
+S.frzLog=[];
+function psFreezeTick(){
+  if(typeof PS==='undefined'||!PS.host||!PS.cvs||!(PS.frames>0)||PS.retrying||(D&&D.selftest)){ if(typeof PS!=='undefined') PS.frz=0; return; }
+  var now=Date.now(), fr=now-(PS.lastFr||now), pk=now-(PS.lastPk||now);
+  if(fr<2500){ if(PS.frz) log('PS: hình chạy lại'); PS.frz=0; return; }
+  PS.frz=(PS.frz||0)+1;
+  if(PS.frz===1){ log('PS: hình đứng '+Math.round(fr/100)/10+' giây (gói hình gần nhất: '+Math.round(pk/100)/10+' giây trước), xin hình mới'); PS.lastIdr=0; psIdr(); status('busy','Hình từ máy PS bị đứng, đang lấy lại hình...'); }
+  if(PS.frz===3){ log('PS: mở lại bộ giải hình'); if(PS.dec){ try{PS.dec.close();}catch(e){} } PS.dec=null; PS.waitKey=true; if(pk<1500) PS.sw=!PS.sw; PS.lastIdr=0; psIdr(); }
+  if(PS.frz>=7){
+    PS.frz=0; var h=PS.last; if(!h) return;
+    S.frzLog=S.frzLog.filter(function(t){ return now-t<600000; });
+    if(S.frzLog.length>=3){ var t='Hình từ máy PS bị đứng nhiều lần. Kiểm tra mạng (nên cắm dây mạng cho PS5 và '+psDev()+'), chọn Chất lượng hình thấp hơn, rồi bấm Kết nối lại.'; psMsg('err',t); status('err',t); return; }
+    S.frzLog.push(now);
+    var snap=' | goi hinh: '+(PS.pk||0)+', khung: '+(PS.frames||0)+', goi cuoi: '+Math.round(pk/1000)+'s, ma hinh: '+(PS.codec||'')+(PS.sw?' (phan mem)':'');
+    autoReport('ps-freeze','Hình đứng giữa chừng, tự kết nối lại'+snap);
+    log('PS: hình đứng 7 giây, tự kết nối lại'); status('busy','Hình bị đứng, đang tự kết nối lại máy PS...'); tvNotice('Hình bị đứng, Hóng Sub đang kết nối lại...');
+    PS.retrying=true; try{ DPS.stop(false); }catch(e){} psStopView(); PS.retrying=true;
+    setTimeout(function(){ psPlay(h,PS.q||null); },2500);
+  }
+}
+setInterval(psFreezeTick,1000);
 function psRetry(why){
   psWatchStop(); log('PS: '+why);
   var h=PS.last; if(PS.retrying) return;
@@ -5116,7 +5162,7 @@ function psDecoder(codec){
   PS.dec=new VideoDecoder({
     output:function(f){
       /* show at the screen's own pace: keep only the newest frame and draw it on the next refresh (no bunching, no backlog) */
-      if(PS.pend) PS.pend.close(); PS.pend=f;
+      if(PS.pend) PS.pend.close(); PS.pend=f; PS.lastFr=Date.now();
       if(document.hidden){ psPaint(); }   /* screen off / behind another app: no screen refresh to wait for */
       else if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
       if(++PS.frames===1){ psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!(D&&D.selftest)) startRun(); }
@@ -5143,6 +5189,7 @@ function psJank(){
 function psIdr(){ var n=Date.now(); if(n-PS.lastIdr>1000){ PS.lastIdr=n; DPS.input('i'); } }
 function psVideo(payload){
   if(!PS.cvs) return;
+  PS.lastPk=Date.now();
   if(++PS.pk===1) log('PS: gói hình đầu tiên sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây');
   var data=payload.subarray(5), info=nalInfo(data), key=info.types.indexOf(5)>=0;
   var slice=info.types.indexOf(1)>=0||key;

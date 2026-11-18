@@ -647,8 +647,24 @@ public class OverlayService extends Service {
         if (avail <= 0) return;
         float widest = 0;
         for (String line : viView.getText().toString().split("\n")) widest = Math.max(widest, viView.getPaint().measureText(line));
-        if (widest > avail) viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.max(dp(9), viView.getTextSize() * avail / widest * 0.96f));
+        // too long for the original's lines: the words go on another line and the letters keep their size,
+        // so every subtitle is the same size (they only get smaller if the box would cover almost half the screen)
+        if (widest > avail) {
+            CharSequence t = viView.getText();
+            if (t.toString().indexOf('\n') >= 0) viView.setText(t.toString().replace('\n', ' '));
+            int sh = getResources().getDisplayMetrics().heightPixels;
+            for (int i = 0; i < 12 && wrapLines(avail) * viView.getLineHeight() > sh * 0.42f && viView.getTextSize() > dp(9); i++)
+                viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, viView.getTextSize() * 0.9f);
+        }
         coverHeight();
+    }
+
+    /* how many lines the Vietnamese takes in this width (its own line breaks, plus words wrapped onto a new line) */
+    private int wrapLines(int w) {
+        String t = viView.getText().toString();
+        if (w <= 0) return Math.max(1, t.split("\n").length);
+        android.text.StaticLayout l = new android.text.StaticLayout(t, viView.getPaint(), w, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false);
+        return Math.max(1, l.getLineCount());
     }
 
     /* over the original subtitle: the box is at least as tall as the Vietnamese lines (never cuts the letters), centred on the original */
@@ -657,7 +673,7 @@ public class OverlayService extends Service {
         viView.setIncludeFontPadding(false);
         DisplayMetrics dm = new DisplayMetrics();
         wm.getDefaultDisplay().getRealMetrics(dm);
-        int lines = Math.max(1, viView.getText().toString().split("\n").length);
+        int lines = Math.max(1, wrapLines(lp.width > 0 ? lp.width - box.getPaddingLeft() - box.getPaddingRight() - dp(4) : 0));
         int need = (int) (lines * viView.getLineHeight() * 1.08f) + box.getPaddingTop() + box.getPaddingBottom() + (enView.getVisibility() == View.VISIBLE ? (int) (enView.getLineHeight() * 1.3f) : 0);
         int want = Math.max((int) (cov[3] * dm.heightPixels * prefs.boxH() / 100f), need);
         if (want != lp.height) {
