@@ -651,6 +651,14 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note">Miễn phí. Dịch nhanh khi mã Gemini hết lượt, và chép lời nhân vật nói nhanh, chuẩn nhất. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
             </div>
+            <div class="dk-card" id="dkAzCard">
+              <h2>Giọng Azure</h2>
+              <p class="hs-note">Giọng đọc tiếng Việt tự nhiên của Microsoft (Hoài My, Nam Minh), trả lời rất nhanh. Gói miễn phí 0,5 triệu ký tự mỗi tháng, hết thì Hóng Sub tự đọc bằng giọng có sẵn. Tạo tài nguyên "Speech" trong Azure, chọn gói Free F0, rồi lấy KEY 1 và Location/Region ở mục Keys and Endpoint. <button class="dk-link" type="button" data-url="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices">Tạo Speech trên Azure</button></p>
+              <input class="hs-in" id="hsAzKey" type="password" spellcheck="false" autocomplete="off" placeholder="Dán mã Azure Speech (KEY 1)" aria-label="Mã Azure Speech">
+              <div class="dk-set"><label class="lab" for="hsAzRegion">Vùng (Location/Region)</label><select class="hs-in" id="hsAzRegion"><option value="southeastasia">Southeast Asia (Singapore) - khuyên dùng</option><option value="eastasia">East Asia (Hồng Kông)</option><option value="japaneast">Japan East</option><option value="koreacentral">Korea Central</option><option value="australiaeast">Australia East</option><option value="centralindia">Central India</option><option value="eastus">East US</option><option value="westus2">West US 2</option><option value="westeurope">West Europe</option><option value="northeurope">North Europe</option></select></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsAzCheck" type="button">Lưu và thử giọng</button></div>
+              <div class="hs-msg" id="hsAzMsg" hidden></div>
+            </div>
           </div>
           <div>
             <div class="dk-card" id="hsOrSec">
@@ -660,7 +668,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="dk-set"><label class="lab" for="hsOrModel">Model</label><select class="hs-in" id="hsOrModel"><option value="">Tự chọn (khuyên dùng)</option></select></div>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsOrCheck" type="button">Kiểm tra mã</button></div>
               <div class="hs-msg" id="hsOrMsg" hidden></div>
-              <p class="hs-note" id="hsOrNote"<p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
+              <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
           </div>
         </div>

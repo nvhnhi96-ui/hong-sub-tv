@@ -116,6 +116,11 @@ const api = {
     enqueue({ text, ai: v.startsWith('ai:'), voice: v.startsWith('ai:') ? v.slice(3) : v, rate: rate || 1, pitch: pitch || 1, boost: 1 }, queue);
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
+  az: {
+    set: (key, region) => ipcRenderer.invoke('az-set', key, region),
+    state: () => ipcRenderer.invoke('az-state'),
+    test: () => ipcRenderer.invoke('az-test')
+  },
   netInfo: () => ipcRenderer.invoke('net-info'),
   voiceClip: (text, voice) => ipcRenderer.invoke('voice-clip', text, voice),
   /* play a clip made by voiceClip here too (same queue as the subtitles read aloud) */

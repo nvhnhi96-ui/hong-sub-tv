@@ -1036,6 +1036,14 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <p class="hs-note">Miễn phí. Dịch nhanh khi mã Gemini hết lượt, và chép lời nhân vật nói nhanh, chuẩn nhất. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
             </div>
+            <div class="dk-card" id="dkAzCard">
+              <h2>Giọng Azure</h2>
+              <p class="hs-note">Giọng đọc tiếng Việt tự nhiên của Microsoft (Hoài My, Nam Minh), trả lời rất nhanh. Gói miễn phí 0,5 triệu ký tự mỗi tháng, hết thì Hóng Sub tự đọc bằng giọng có sẵn. Tạo tài nguyên "Speech" trong Azure, chọn gói Free F0, rồi lấy KEY 1 và Location/Region ở mục Keys and Endpoint. <button class="dk-link" type="button" data-url="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices">Tạo Speech trên Azure</button></p>
+              <input class="hs-in" id="hsAzKey" type="password" spellcheck="false" autocomplete="off" placeholder="Dán mã Azure Speech (KEY 1)" aria-label="Mã Azure Speech">
+              <div class="dk-set"><label class="lab" for="hsAzRegion">Vùng (Location/Region)</label><select class="hs-in" id="hsAzRegion"><option value="southeastasia">Southeast Asia (Singapore) - khuyên dùng</option><option value="eastasia">East Asia (Hồng Kông)</option><option value="japaneast">Japan East</option><option value="koreacentral">Korea Central</option><option value="australiaeast">Australia East</option><option value="centralindia">Central India</option><option value="eastus">East US</option><option value="westus2">West US 2</option><option value="westeurope">West Europe</option><option value="northeurope">North Europe</option></select></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsAzCheck" type="button">Lưu và thử giọng</button></div>
+              <div class="hs-msg" id="hsAzMsg" hidden></div>
+            </div>
           </div>
           <div>
             <div class="dk-card" id="hsOrSec">
@@ -1045,7 +1053,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <div class="dk-set"><label class="lab" for="hsOrModel">Model</label><select class="hs-in" id="hsOrModel"><option value="">Tự chọn (khuyên dùng)</option></select></div>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsOrCheck" type="button">Kiểm tra mã</button></div>
               <div class="hs-msg" id="hsOrMsg" hidden></div>
-              <p class="hs-note" id="hsOrNote"<p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
+              <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
           </div>
         </div>
@@ -3443,12 +3451,38 @@ $('hsVoice').addEventListener('change',function(){save('voice',this.value); cast
 if($('hsTvVoice')) $('hsTvVoice').addEventListener('change',function(){ save('tvVoice',this.value); tvVoiceUi(); });
 if($('hsSpeakWhere')) $('hsSpeakWhere').addEventListener('change',function(){ tvVoiceUi(); });
 /* "Bộ đọc": one tap picks the reading engine; the list below then holds its voices */
-function engines(){ if(MAC) return [{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng của Mac',s:'Linh'}]; return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
+function engines(){ var az={k:'az',n:'Azure',s:'nhanh, tự nhiên'}; if(MAC) return [az,{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng của Mac',s:'Linh'}]; return [{k:'ai',n:'Giọng AI VieNeu',s:'25 giọng'},{k:'aifast',n:'VieNeu nhanh',s:'ít CPU'},az,{k:'piper',n:'Hóng Sub',s:'có sẵn'},{k:'gg',n:'Google',s:'online'},{k:'win',n:'Giọng Windows'}]; }   /* a function: loadVoices may run before this line */
+/* ---------- Azure voice: key and region pasted here are kept by the desktop app, not on any server ---------- */
+function azUi(st){
+  var k=$('hsAzKey'), r=$('hsAzRegion'), n=$('hsAzMsg'); if(!k||!D||!D.az) return;
+  if(st&&st.on){ k.placeholder='Đã lưu mã '+st.key+' (dán mã mới để thay)'; if(st.region) r.value=st.region; }
+  else k.placeholder='Dán mã Azure Speech (KEY 1)';
+}
+async function azSave(){
+  if(!D||!D.az) return; var k=$('hsAzKey').value.trim(), r=$('hsAzRegion').value;
+  var st=await D.az.state(); if(!k&&st.on&&r!==st.region) { $('hsAzMsg').hidden=false; $('hsAzMsg').className='hs-msg warn'; $('hsAzMsg').textContent='Đổi vùng thì dán lại mã.'; return; }
+  if(!k) return;
+  await D.az.set(k,r); $('hsAzKey').value=''; azUi(await D.az.state());
+  D.voices().then(function(v){ winVoices=v||[]; dVoices=winVoices.slice(); aiMerge(AIV.ready?{ready:true,voices:AIV.list}:null); loadVoices(); engineUi(); }).catch(function(){});
+  azTest();
+}
+async function azTest(){
+  var m=$('hsAzMsg'); m.hidden=false; m.className='hs-msg'; m.textContent='Đang thử giọng Azure...';
+  var r=await D.az.test();
+  if(r&&r.ok){ m.className='hs-msg ok'; m.textContent='Giọng Azure dùng được (trả lời sau '+r.ms+' ms). Chọn "Azure" ở trang Giọng đọc để dùng.'; try{ var a=new Audio('data:'+r.mime+';base64,'+r.b64); a.play().catch(function(){}); }catch(e){} log('Azure: thử giọng '+r.ms+'ms'); }
+  else { m.className='hs-msg err'; m.textContent=r&&(r.status===401||r.status===403)?'Mã Azure sai hoặc không đúng vùng. Kiểm tra lại mã (KEY 1) và vùng (Location/Region) trong trang Azure.':r&&r.status===429?'Mã Azure tạm hết lượt (gói miễn phí 0,5 triệu ký tự mỗi tháng).':'Chưa thử được giọng Azure: '+((r&&r.err)||'')+'. Kiểm tra mạng.'; }
+}
+if(D&&D.az&&$('hsAzKey')){
+  D.az.state().then(azUi).catch(function(){});
+  $('hsAzKey').addEventListener('change',azSave);
+  $('hsAzRegion').addEventListener('change',azSave);
+  $('hsAzCheck').addEventListener('click',function(){ if($('hsAzKey').value.trim()) azSave(); else azTest(); });
+}
 function engineNow(){
   var v=$('hsVoice').value||'auto';
   if(!D) return /^gg:/.test(v)?'gg':'browser';
   if(v==='auto'||/^ai:/.test(v)) return AIV.ready&&!AIV.off?(AIV.fast?'aifast':'ai'):(v==='auto'?'auto':'ai');
-  if(v==='hs:piper') return 'piper'; if(/^gg:/.test(v)) return 'gg'; if(/^win:/.test(v)) return 'win'; return '';
+  if(v==='hs:piper') return 'piper'; if(/^gg:/.test(v)) return 'gg'; if(/^az:/.test(v)) return 'az'; if(/^win:/.test(v)) return 'win'; return '';
 }
 function engineUi(){
   var box=$('hsEngine'); if(!box) return;
@@ -3471,6 +3505,7 @@ function engineSet(k){
     pick='auto';
   } else if(k==='piper') pick=(dv.filter(function(v){return v.id==='hs:piper';})[0]||{}).id||'';
   else if(k==='gg') pick=(dv.filter(function(v){return /^gg:/.test(v.id||'');})[0]||{}).id||'';
+  else if(k==='az'){ pick=(dv.filter(function(v){return /^az:/.test(v.id||'');})[0]||{}).id||''; if(!pick){ say('Chưa có mã Azure. Dán mã ở Cài đặt › Mã AI, khung "Giọng Azure", rồi bấm lại.'); return; } }
   else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ say(MAC?'Mac chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng đọc của Mac" ở dưới, tải giọng Linh (Tiếng Việt), rồi mở lại Hóng Sub.':'Windows chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng nói của Windows" ở dưới, thêm giọng Tiếng Việt (Microsoft An), rồi mở lại Hóng Sub.'); return; } }
   if(!pick){ say('Bộ đọc này chưa sẵn sàng trên máy.'); return; }
   sel.value=pick; sel.dispatchEvent(new Event('change'));
@@ -3654,6 +3689,7 @@ function castAuto(who,g){
 }
 function devPick(mode,g,who){
   if((mode==='auto'||mode==='ai')&&AIV.ready&&!AIV.off&&AIV.list.length){ var a=who?castAuto(who,g):(g&&!who?((aiVoices(g)[0]||{}).id||narrator()):narrator()); if(a) return 'ai:'+a; }
+  if(/^az:/.test(mode||'')&&g){ var azg=(dVoices||[]).filter(function(v){ return /^az:/.test(v.id||'')&&v.g===g; })[0]; if(azg) return azg.id; }   /* Azure: a man's line in the man's voice */
   if(mode!=='auto'&&mode!=='ai') return mode;
   var dv=(dVoices||[]).filter(function(v){return /^vi/i.test(v.lang);});
   var piper=dv.filter(function(v){return v.id==='hs:piper';})[0], win=dv.filter(function(v){return v.id!=='hs:piper'&&!/^gg:/.test(v.id||'');});

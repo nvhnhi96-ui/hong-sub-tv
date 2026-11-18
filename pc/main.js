@@ -585,6 +585,28 @@ function piperSpeak(text, rate) {
   });
 }
 
+/* ---------- Azure voice (Microsoft Azure AI Speech): natural Vietnamese voices, answer in a fraction of a second.
+   The key and region the player pasted stay on this computer (hongsub-window.json). ---------- */
+const AZ_VOICES = [{ id: 'az:vi-VN-HoaiMyNeural', name: 'Azure Hoài My (nữ)', g: 'female' }, { id: 'az:vi-VN-NamMinhNeural', name: 'Azure Nam Minh (nam)', g: 'male' }];
+const azOn = () => !!(cfg.az && cfg.az.key && cfg.az.region);
+const xmlEsc = (t) => String(t).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+async function azSpeak(text, voice) {
+  if (!azOn()) throw new Error('no key');
+  const name = String(voice || '').replace(/^az:/, '') || 'vi-VN-HoaiMyNeural';
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await net.fetch('https://' + cfg.az.region + '.tts.speech.microsoft.com/cognitiveservices/v1', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'Ocp-Apim-Subscription-Key': cfg.az.key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'HongSub' },
+      body: "<speak version='1.0' xml:lang='vi-VN'><voice name='" + name + "'>" + xmlEsc(String(text).replace(/[\r\n]+/g, ' ').slice(0, 1500)) + '</voice></speak>'
+    });
+    if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 200) throw new Error('empty');
+    return buf;
+  } finally { clearTimeout(t); }
+}
+
 /* ---------- AI voices (VieNeu-TTS v3 Turbo pack, downloaded once) ---------- */
 const AIV_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/download/voices-1/hong-sub-voices.zip';
 const aivClips = new Map();
@@ -789,6 +811,7 @@ function setupIpc() {
     (r.voices || []).forEach(v => list.push({ name: v.name, lang: v.lang, id: 'win:' + v.name }));
     /* online voice: no key, no download; used while the computer is online */
     onlineTts.GG_VOICES.forEach(v => list.push({ name: v.name, lang: 'vi-VN', id: v.id, g: v.gender, online: true }));
+    if (azOn()) AZ_VOICES.forEach(v => list.push({ name: v.name, lang: 'vi-VN', id: v.id, g: v.g, online: true }));
     return list;
   });
   const onlineFails = {}, onlineOff = {};
@@ -796,6 +819,14 @@ function setupIpc() {
     if (!text) return { stop: true };
     voice = voice || '';
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
+    if (voice.startsWith('az:') && Date.now() > (onlineOff.az || 0)) {
+      try { const mp3 = await azSpeak(text, voice); onlineFails.az = 0; return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: true }; }
+      catch (err) {
+        onlineFails.az = (onlineFails.az || 0) + 1;
+        if (err.status === 401 || err.status === 403 || onlineFails.az >= 3) { onlineOff.az = Date.now() + 10 * 60 * 1000; onlineFails.az = 0; }   /* wrong key, out of quota or offline: the voice on this computer for 10 minutes */
+        console.warn('azure voice: ' + (err && err.message));
+      }
+    }
     if (voice.startsWith('gg:') && Date.now() > (onlineOff[voice.slice(0, 3)] || 0)) {
       try {
         const mp3 = await onlineTts.gg(text, (u, o) => net.fetch(u, o));
@@ -811,6 +842,17 @@ function setupIpc() {
     if (r.wav || voice === 'hs:piper') return r;
     return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
   });
+  ipcMain.handle('az-set', (e, key, region) => {
+    key = String(key || '').trim(); region = String(region || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key && region) cfg.az = { key, region }; else delete cfg.az;
+    saveCfg(); delete onlineOff.az; onlineFails.az = 0; return { ok: true, on: azOn() };
+  });
+  ipcMain.handle('az-state', () => ({ on: azOn(), region: azOn() ? cfg.az.region : '', key: azOn() ? cfg.az.key.slice(0, 4) + '…' + cfg.az.key.slice(-4) : '' }));
+  ipcMain.handle('az-test', async () => {
+    const t0 = Date.now();
+    try { const b = await azSpeak('Xin chào, đây là giọng Azure của Hóng Sub.', 'az:vi-VN-HoaiMyNeural'); return { ok: true, ms: Date.now() - t0, b64: b.toString('base64'), mime: 'audio/mpeg' }; }
+    catch (err) { return { ok: false, status: err.status || 0, err: String(err && err.message || err) }; }
+  });
   ipcMain.on('voice-settings', () => shell.openExternal(IS_MAC ? 'x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent' : 'ms-settings:speech'));
   /* Mac: reading another app's window needs the "Screen Recording" permission */
   ipcMain.handle('mac-screen', () => { try { return systemPreferences.getMediaAccessStatus('screen'); } catch (e) { return 'unknown'; } });
@@ -824,6 +866,7 @@ function setupIpc() {
       let buf = null, mime = 'audio/wav';
       if (voice.startsWith('ai:')) buf = await aivClip(text, voice.slice(3));
       else if (voice.startsWith('gg:')) { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; }
+      else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
       else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
       if (!buf) { const r = await piperSpeak(text, 1); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
       if (!buf) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
