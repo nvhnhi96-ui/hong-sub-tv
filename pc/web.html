@@ -1754,7 +1754,7 @@ async function zoneTick(force,only){
         z.items=null; z.ic=null; z.vi=v; z.hide=false; z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(v.replace(/\n/g,'. ')); continue;
       }
       if(!text){                                             /* only hints or nothing readable left */
-        if(!force){ z.miss=(z.miss||0)+1; if(z.miss>=2&&(z.vi||z.lastText)) zGone(z); }
+        if(!force){ z.miss=(z.miss||0)+1; if(z.miss>=2&&(z.vi||z.lastText)) zGone(z); else z.doneMask=null; }   /* read again next time to be sure, then take it off */
         continue;
       }
       z.miss=0;
@@ -2612,6 +2612,15 @@ function show(res){
   speak(vi,res);
   clearTimeout(S.holdT);
   if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); },S.hold*1000);
+}
+/* the game's own subtitle is gone from the screen: the Vietnamese goes too (computer, floating window, phone, TV).
+   A line that only just came up stays a moment (it was late), so it can still be read. Spoken lines (no subtitle) keep their time. */
+function subGone(){
+  if(!S.lastHtml||S.voCur||S.goneT) return;
+  var wait=Math.max(0,1500-(Date.now()-(S.lastShownAt||0)));
+  S.goneT=setTimeout(function(){ S.goneT=null; if(!S.lastHtml||S.voCur) return; if(S.subLive&&Date.now()-S.lastShownAt>200) return;
+    clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''});
+    if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); },wait);
 }
 /* the Vietnamese line drawn over the original subtitle, right on the game picture */
 function coverOn(){ var c=$('hsCover'); return !!(c&&c.checked); }
@@ -3575,7 +3584,7 @@ function send(force){ return sendImage(); }   /* kept for older callers */
 /* on-device reading: read again whenever the subtitle area changes, translate when the text is new and complete */
 async function ocrStep(m,force){
   var noKey=!keys().length&&!groqKeys().length;
-  if(m.ink<MW*MH*0.003){ S.subLive=false; S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(S.coverHtml&&!S.coverVl&&Date.now()-S.noInkAt>700) coverHide(); return; }   /* no text on screen */
+  if(m.ink<MW*MH*0.003){ S.subLive=false; S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(Date.now()-S.noInkAt>600) subGone(); return; }   /* no text on screen */
   S.noInkAt=0;
   var again=S.forceOcr; S.forceOcr=false;
   if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
@@ -3588,6 +3597,7 @@ async function ocrStep(m,force){
   var txt=capsSpeaker(ocrText(o));
   S.subLive=!!(txt&&subLike(txt));
   if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
+  if(!txt){ S.subMiss=(S.subMiss||0)+1; if(S.subMiss>=2) subGone(); else S.forceOcr=true; } else S.subMiss=0;   /* the original subtitle went away: check once more, then the Vietnamese goes too */
   if(!txt){
     S.cand=null;
     var nowI=Date.now();
@@ -4197,7 +4207,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';

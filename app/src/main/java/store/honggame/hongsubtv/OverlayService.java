@@ -792,6 +792,7 @@ public class OverlayService extends Service {
         }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("hb")) { /* only "still here" */ }
+        else if (kind.equals("clr")) { main.removeCallbacks(hideRunnable); main.post(hideRunnable); }   // the game's own subtitle is gone: so is the Vietnamese
         else if (kind.equals("zone") && j.optInt("zclr", 0) == 1) zonesClear();   // Hóng Sub stopped: every area box off
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
