@@ -1097,10 +1097,13 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <p class="hs-msg ok" id="hsTmState" style="margin-top:8px">Chọn game để dùng kho dịch chung.</p>
               <label class="hs-sw" style="margin-top:10px">Góp câu tôi dịch vào kho chung <input type="checkbox" id="hsTmShare" checked></label>
               <p class="hs-note" style="margin-top:4px">Chỉ gửi câu thoại của game và bản dịch, không gửi mã AI hay thông tin của bạn.</p>
-              <div class="lab" style="margin-top:14px">Game đã chơi trên máy này</div>
-              <div class="hs-chips" id="hsPlayed"></div>
-              <div class="lab" style="margin-top:14px">Game đã có nhiều câu dịch sẵn</div>
-              <div class="hs-chips" id="hsTmGames"></div>
+              <!-- hidden (11/2026): the lists of games played here and games with many lines in the store -->
+              <div hidden>
+                <div class="lab" style="margin-top:14px">Game đã chơi trên máy này</div>
+                <div class="hs-chips" id="hsPlayed"></div>
+                <div class="lab" style="margin-top:14px">Game đã có nhiều câu dịch sẵn</div>
+                <div class="hs-chips" id="hsTmGames"></div>
+              </div>
             </div>
           </div>
         </div>
