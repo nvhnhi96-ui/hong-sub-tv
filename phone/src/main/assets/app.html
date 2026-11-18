@@ -4694,15 +4694,29 @@ $('hsFsAuto').checked=load('fsauto',true); $('hsFsAuto').addEventListener('chang
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
-$('hsReport').addEventListener('click',function(){
-  var ver=(D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần mềm Windows ')+S.appVer):('Trang web');
+function reportVer(){ return (D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần mềm Windows ')+S.appVer):('Trang web'); }
+function reportText(){
+  var ver=reportVer();
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
     'Game: '+$('hsGame').value, 'Mã Gemini: '+keys().length+' mã, mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
     'TV: '+JSON.stringify({loai:S.tvType,ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
-  info=info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
+  return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
+}
+/* a PS connection that fails sends its log to the shop by itself (AI keys hidden), so support can see why without the customer doing anything */
+var REPAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/report';
+function autoReport(kind,head){
+  try{
+    S.repT=S.repT||{}; var now=Date.now(); if(S.repT[kind]&&now-S.repT[kind]<10*60000) return false; S.repT[kind]=now;
+    fetch(REPAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind,ver:reportVer().slice(0,60),head:String(head||'').replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]').slice(0,200),text:reportText().slice(-150000)})}).catch(function(){});
+    return true;
+  }catch(e){ return false; }
+}
+window.hsRep={send:autoReport,text:reportText};
+$('hsReport').addEventListener('click',function(){
+  var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
   try{ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([info],{type:'text/plain;charset=utf-8'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},2000); }catch(e){}
   try{ navigator.clipboard.writeText(info).catch(function(){}); }catch(e){}
@@ -5531,7 +5545,7 @@ async function psPlay(h,opt){
   if(h.state!=='ready'){
     psMsg('','Đang bật '+h.name+'...'); await DPS.wake(h.id);
     for(var i=0;i<20;i++){ await sleepMs(2500); var l=await DPS.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) DPS.wake(h.id); }
-    if(h.state!=='ready'){ PS.err='máy chưa bật lên được'; psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); status('err','Chưa bật được '+h.name+'. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); tvNotice('Chưa bật được '+h.name+'. Hãy bật máy bằng tay cầm.'); return; }
+    if(h.state!=='ready'){ PS.err='máy chưa bật lên được'; autoReport('ps-wake','Chưa bật được '+h.name+' ('+h.addr+')'); psMsg('err','Chưa bật được máy. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); status('err','Chưa bật được '+h.name+'. Bật máy bằng tay cầm rồi bấm Kết nối lại.'); tvNotice('Chưa bật được '+h.name+'. Hãy bật máy bằng tay cầm.'); return; }
   }
   var q=opt?[opt.res,opt.fps,opt.br]:($('hsPsQ').value||'1080/60/15000').split('/');
   log('PS: kết nối '+h.name+' '+h.addr+' '+q[0]+'p '+q[1]+' hình/giây'+(q[2]?' '+Math.round(q[2]/1000)+' Mbps':''));
@@ -5543,7 +5557,7 @@ async function psPlay(h,opt){
     log('kết nối PS lần '+(tries+1)+' lỗi: '+((r&&r.err)||''));
     if(tries<2){ psMsg('','Kết nối chưa được, thử lại lần '+(tries+2)+'...'); await DPS.wake(h.id); await sleepMs(3000); }
   }
-  if(!r||!r.ok){ PS.err=psErrText((r&&r.err)||''); psMsg('err','Không kết nối được '+h.name+': '+PS.err); status('err','Không kết nối được '+h.name+': '+PS.err); tvNotice('Không kết nối được '+h.name+'.'); return; }
+  if(!r||!r.ok){ PS.err=psErrText((r&&r.err)||''); autoReport('ps-connect','Không kết nối được '+h.name+': '+PS.err+' ['+((r&&r.err)||'')+']'); psMsg('err','Không kết nối được '+h.name+': '+PS.err); status('err','Không kết nối được '+h.name+': '+PS.err); tvNotice('Không kết nối được '+h.name+'.'); return; }
   PS.host=h; PS.conn=false; psStartView(); tvNotice('Đang nối '+h.name+' với Hóng Sub...');
 }
 /* until the first picture: show what is happening on the play screen, and recover by itself */
@@ -5574,9 +5588,11 @@ function psRetry(why){
     psStopView(); PS.retrying=true;
     setTimeout(function(){ psPlay(h,{res:720,fps:30,br:8000}); },2500);
   } else {
+    var snap=' | da noi: '+(PS.conn?'co':'chua')+', goi hinh: '+(PS.pk||0)+', khung: '+(PS.frames||0)+', ma hinh: '+(PS.codec||'')+', lan thu: '+(PS.retry||0);
     DPS.stop(false); psStopView();
     PS.err=PS.fwNeed?'tường lửa Windows đang chặn hình':'máy không gửi hình về';
     var t='Đã nối '+((h&&h.name)||'máy PS')+' nhưng không nhận được hình. '+(PS.fwNeed?'Bấm "Cho phép qua tường lửa" ở trang Kết nối PS và TV.':'Tắt hẳn PS5 rồi bật lại, kiểm tra '+psDev()+' và PS5 cùng mạng (nên cắm dây mạng), rồi bấm Kết nối lại.');
+    if(autoReport('ps-nopic',t.slice(0,140)+snap)) t+=' (Đã tự gửi nhật ký lỗi cho shop Hóng Game để kiểm tra.)';
     psMsg('err',t); status('err',t); tvNotice('Chưa nhận được hình từ máy PS.');
   }
 }
@@ -5750,7 +5766,7 @@ function psEvent(ev){
     if(PS.host&&!PS.frames&&!/already in use/i.test(t)&&ev.reason!==1){ psRetry('máy ngắt khi chưa có hình: '+t+' '+(ev.str||'')); return; }
     PS.err=QUIT_TXT[t]||t||''; psMsg(ev.reason===1||ev.reason===12?'':'err',msg); if(ev.reason!==1&&ev.reason!==12) status('err',msg);
   }
-  else if(ev.ev==='closed'){ if(!PS.retrying&&PS.host&&!PS.frames&&!PS.err){ PS.err='kết nối đóng khi chưa có hình'; psMsg('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại.'); status('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại ở trang Kết nối PS và TV.'); } psStopView(); }
+  else if(ev.ev==='closed'){ if(!PS.retrying&&PS.host&&!PS.frames&&!PS.err){ PS.err='kết nối đóng khi chưa có hình'; autoReport('ps-closed','Kết nối đóng khi chưa có hình ('+(ev.code)+') '+String(ev.err||'').slice(0,120)); psMsg('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại.'); status('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại ở trang Kết nối PS và TV.'); } psStopView(); }
 }
 function psInit(){
   if(!DPS) return;
