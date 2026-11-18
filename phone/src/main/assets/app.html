@@ -609,7 +609,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
         <button type="button" data-p="dich">Mã AI</button>
         <button type="button" data-p="game">Game đang chơi</button>
         <button type="button" data-p="phude">Phụ đề</button>
-        <button type="button" data-p="loinoi">Lời nhân vật nói</button>
+        <button type="button" data-p="loinoi" hidden>Lời nhân vật nói</button>
         <button type="button" data-p="vung">Vùng dịch</button>
         <button type="button" data-p="giong">Giọng đọc</button>
         <button type="button" data-p="nhanvat">Nhân vật</button>
@@ -716,7 +716,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
-                <label class="hs-sw">Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
+                <label class="hs-sw" hidden>Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
                 <label class="hs-sw" hidden title="Điện thoại tắt màn hình vẫn dịch tiếp: phụ đề vẫn lên TV, vẫn đọc to (khi chơi PS5 ngay trong Hóng Sub)">Dịch khi tắt màn hình điện thoại <input type="checkbox" id="hsAwake" checked></label>
               </div>
             </div>
@@ -5235,7 +5235,7 @@ if(!PH&&(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||/Andr
    phrases where someone speaks; each phrase is written down by Whisper (Groq) or Gemini, then translated like a subtitle. */
 var VO={skipSub:0,t0:0,ctx:null,node:null,mute:null,stream:null,ownCtx:false,src:'',frames:[],pre:[],talk:false,sp:0,sil:0,voiced:0,noise:0.003,lvl:0,busy:0,muteUntil:0,heard:0,sent:0,err:'',acc:null,accN:0,ratio:3,keep:null};
 var VO_FR=320, VO_SR=16000;   /* 20 ms frames at 16 kHz, what speech recognition wants */
-function voOn(){ var c=$('hsTalk'); return !!(c&&c.checked); }
+function voOn(){ return false; }   /* "Dịch lời nhân vật nói" has been taken out: only subtitles are translated */
 function voSrc(){ return ($('hsTalkSrc')&&$('hsTalkSrc').value)||'game'; }
 function voSt(t,lvlTalk){ var el=$('hsTalkSt'); if(el&&el.textContent!==t) el.textContent=t; }
 function voLevel(){ var m=$('hsTalkLvl'); if(!m) return; m.style.width=Math.min(100,Math.round(Math.sqrt(VO.lvl)*260))+'%'; m.parentNode.classList.toggle('talk',VO.talk); }
@@ -5576,6 +5576,7 @@ async function voStt(wav){
 })();
 (function(){
   var c=$('hsTalk'), s=$('hsTalkSrc'); if(!c) return;
+  c.checked=false; c.disabled=true; save('talk',false); return;   /* taken out: never listens to the game's voice */
   c.checked=!!load('talk',false); if(s) s.value=load('talkSrc','game');
   c.addEventListener('change',function(){ save('talk',c.checked); voStart(); });
   if(s) s.addEventListener('change',function(){ save('talkSrc',s.value); if(voOn()) voStart(); });
