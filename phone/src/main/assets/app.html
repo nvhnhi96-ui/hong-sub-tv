@@ -1273,7 +1273,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
           <div>
             <div class="dk-card" id="dkTalkCard">
               <h2>Dịch lời nhân vật nói</h2>
-              <p class="hs-note">Dịch cả những câu nhân vật nói mà game không có phụ đề, như người qua đường, cuộc gọi, radio trong GTA. Hóng Sub nghe tiếng trong game, chép ra chữ tiếng Anh rồi dịch như phụ đề.</p>
+              <p class="hs-note">Dịch cả những câu nhân vật nói mà game không có phụ đề, như người qua đường, cuộc gọi, radio trong GTA. Hóng Sub nghe tiếng trong game, chép ra chữ tiếng Anh rồi dịch như phụ đề. Đoạn nào game có phụ đề thì Hóng Sub luôn dịch theo phụ đề (nhanh và đúng hơn), không dịch tiếng nói.</p>
               <p class="hs-note"><b>Tiếng trong game</b>: khi chơi PS5 ngay trong Hóng Sub, hoặc cửa sổ game trên máy tính. <b>Micro</b>: đặt máy gần loa TV, dùng được với mọi cách chơi.</p>
               <label class="hs-sw dk-sw">Dịch lời nhân vật nói <input type="checkbox" id="hsTalk"></label>
               <div class="dk-set"><label class="lab" for="hsTalkSrc">Nghe từ</label>
@@ -4001,14 +4001,40 @@ function subPrompt(){
     '5. If there is no readable '+LN()+' subtitle, return "en":"" and "vi":"".\n'+context();
 }
 function coverBack(){ if(S.coverHtml&&S.coverHtml.indexOf('class="wait"')>=0){ if(S.lastHtml) coverShow(S.lastHtml); else coverHide(); } }   /* nothing new to show: put back the last line */
+/* Lines are translated side by side, and a later line can come back first. It used to win, and the earlier line
+   was dropped (never shown, never read). Now every line is shown in the order it appeared: a finished line waits
+   (up to 1.5 s) for the lines before it, and when several are ready at once each stays on screen a moment. */
+S.live={}; S.ready=[]; S.gate=0; S.readyT=null;
+function liveAdd(seq){ S.live[seq]=Date.now(); }
+function liveDone(seq){ if(S.live[seq]){ delete S.live[seq]; flushReady(); } }
 function takeResult(res,seq,raw){
+  delete S.live[seq];
+  S.ready.push({res:res,seq:seq,raw:raw,at:Date.now()}); S.ready.sort(function(a,b){ return a.seq-b.seq; });
+  flushReady();
+}
+function flushReady(){
+  clearTimeout(S.readyT); S.readyT=null;
+  var now=Date.now();
+  Object.keys(S.live).forEach(function(k){ if(now-S.live[k]>15000) delete S.live[k]; });
+  while(S.ready.length){
+    var r=S.ready[0];
+    var older=Object.keys(S.live).some(function(k){ return +k<r.seq; });
+    if(older&&now-r.at<1500){ S.readyT=setTimeout(flushReady,120); return; }      /* an earlier line is still being translated */
+    if(now<S.gate){ S.readyT=setTimeout(flushReady,S.gate-now+5); return; }        /* the line before is on screen a moment */
+    S.ready.shift();
+    var shown=takeOne(r.res,r.seq,r.raw);
+    if(shown&&S.ready.length) S.gate=Date.now()+Math.min(1400,700+String(r.res&&r.res.vi||'').length*8);
+  }
+}
+function takeOne(res,seq,raw){
   res=splitSpeaker(res,raw);
-  if(!res||!res.en||!res.vi){ coverBack(); return; }
-  if(similar(res.en,S.lastEn)){ coverBack(); return; }
+  if(!res||!res.en||!res.vi){ coverBack(); return false; }
+  if(similar(res.en,S.lastEn)){ coverBack(); return false; }
   var rawT=raw||res.en;
-  if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return; }
-  if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return; } /* an older line finished late: keep it in history only */
+  if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return false; }
+  if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return false; } /* waited too long for it: history only */
   S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.lastTm=!!res._tm; show(res);
+  return true;
 }
 /* ---- translating one line of text (from the on-device reader) ---- */
 S.q=[]; S.qActive=0; S.ocrBusy=false; S.ocrMask=null; S.cand=null; S.forceOcr=false;
@@ -4161,8 +4187,8 @@ function trKey(t){ return norm(t).replace(/ /g,''); }
 function enqueue(text){
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
-  S.q.push({seq:++S.seq,text:text,nl:Math.max(1,Math.min(4,S.ocrLines||1))});
-  if(S.q.length>4) S.q.splice(0,S.q.length-4);           /* far behind: keep the newest lines */
+  S.q.push({seq:++S.seq,text:text,nl:Math.max(1,Math.min(4,S.ocrLines||1))}); liveAdd(S.seq);
+  if(S.q.length>4) S.q.splice(0,S.q.length-4).forEach(function(j){ liveDone(j.seq); });   /* far behind: keep the newest lines */
   pump();
 }
 function pump(){
@@ -4201,7 +4227,7 @@ async function translateText(j){
     if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
     else status('err',errVi(e));
     S.lastOcr=''; coverBack();
-  }finally{ var bi=S.busyTexts.indexOf(j.text); if(bi>=0) S.busyTexts.splice(bi,1); }
+  }finally{ var bi=S.busyTexts.indexOf(j.text); if(bi>=0) S.busyTexts.splice(bi,1); liveDone(j.seq); }
 }
 /* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
    the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
@@ -4250,7 +4276,7 @@ function askText(prompt,text,schema,shape,plain,prefer){
 }
 /* picture of the subtitle area sent to the AI (when the on-device reader is off or sees nothing) */
 async function sendImage(seq,probe){
-  seq=seq||++S.seq; S.inflight++;
+  seq=seq||++S.seq; S.inflight++; liveAdd(seq);
   try{
     if(S.inflight===1) status('busy','Đang dịch...');
     var t1=performance.now();
@@ -4263,7 +4289,7 @@ async function sendImage(seq,probe){
     log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
     if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
     else status('err',errVi(e));
-  }finally{ S.inflight--; }
+  }finally{ S.inflight--; liveDone(seq); }
 }
 function send(force){ return sendImage(); }   /* kept for older callers */
 /* on-device reading: read again whenever the subtitle area changes, translate when the text is new and complete */
@@ -4312,7 +4338,7 @@ function ocrTake(txt,force){
   S.hintAt=0;
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
-    var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*($('hsSpeak').checked&&fitOn()?1:2);
+    var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
     if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},200); return; }
   }
   S.cand=null; S.lastOcr=txt;
@@ -4870,7 +4896,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={rate:fitRate,spw:spwNow,prefer:speakPrefer};
+window.hsFitT={rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
@@ -5339,6 +5365,12 @@ function subDuring(t0,t1){
   return S.subLines.some(function(L){ return L.to-L.from<45000&&L.from<=t1+1200&&L.to>=t0-600; });
 }
 function subOnScreen(){ var L=S.subLines[S.subLines.length-1], now=Date.now(); return !!(L&&now-L.to<1500&&L.to-L.from<45000); }
+/* the game shows its own subtitles (two or more real lines in the last 90 s, one in the last 30 s): subtitles first */
+function subGame(){
+  if(!subWatching()) return false;
+  var now=Date.now(), L=S.subLines.filter(function(x){ return now-x.to<90000&&x.to-x.from<45000&&subLike(x.t); });
+  return L.length>=2&&now-L[L.length-1].to<30000;
+}
 function subWatching(){ return !!(S.running&&S.stream&&S.subLines.length&&Date.now()-S.lastTickAt<3000); }
 /* the words were heard: tell the subtitle reader, which then skips the same line (no second AI call) */
 VO.lines=[];
@@ -5349,6 +5381,7 @@ async function voPhrase(frames,t0,t1){
   if(!S.running){ return; }
   if(typeof GUARD!=='undefined'&&GUARD.kind){ log('lời nói: đang ở màn hình PS5 / bản đồ, không dịch'); return; }
   if(S.stream&&stillScreen()){ log('lời nói: hình đứng yên hẳn (không có game chạy), không dịch'); return; }
+  if(subGame()){ VO.skipSub++; voSt(voReadyText()); return; }   /* this game shows subtitles: they are translated, the voice is not */
   VO.busy++; VO.heard++;
   var secs=(frames.length*0.02).toFixed(1);
   try{
