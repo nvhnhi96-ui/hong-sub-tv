@@ -1,7 +1,9 @@
 """Hóng Sub: Vietnamese AI voices (VieNeu-TTS v3 Turbo, Apache-2.0 code) running on the CPU.
 Reads one JSON command per line on stdin, writes one JSON message per line on stdout.
   {"cmd":"speak","id":7,"text":"...","voice":"Trúc Ly"}  -> {"type":"audio","id":7,"i":0,"last":false,"wav":"<base64>"}...
-  {"cmd":"stop"}  /  {"cmd":"quit"}"""
+  {"cmd":"stop"}  /  {"cmd":"quit"}  /  {"cmd":"drop","id":7}
+Lines are made in the order asked; several can wait, so the next line is ready while one is playing.
+"stop" forgets every waiting line, "drop" forgets one."""
 import sys, os, json, io, base64, time, threading, queue, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +54,7 @@ def main():
     sr = getattr(tts, 'sample_rate', 48000)
     send({'type': 'ready', 'ms': int((time.time() - t0) * 1000), 'voices': voices, 'sr': sr, 'prec': prec})
 
-    cur = {'id': None}
+    want = set()                                   # ids still wanted (a line being played, or waiting)
     jobs = queue.Queue()
 
     def reader():
@@ -66,9 +68,11 @@ def main():
                 continue
             c = m.get('cmd')
             if c == 'speak':
-                cur['id'] = m.get('id'); jobs.put(m)
+                want.add(m.get('id')); jobs.put(m)
+            elif c == 'drop':
+                want.discard(m.get('id'))
             elif c == 'stop':
-                cur['id'] = None
+                want.clear()
             elif c == 'quit':
                 os._exit(0)
         os._exit(0)
@@ -76,25 +80,27 @@ def main():
 
     while True:
         m = jobs.get()
-        if m.get('id') != cur['id']:
+        mid = m.get('id')
+        if mid not in want:
             continue
         parts = split_text(m.get('text', ''))
         for i, p in enumerate(parts):
-            if m.get('id') != cur['id']:
+            if mid not in want:
                 break
             t1 = time.time()
             try:
                 wav = tts.infer(p, voice=m.get('voice') or None)
             except Exception as e:
-                send({'type': 'error', 'id': m.get('id'), 'err': str(e)[:300]}); break
-            if m.get('id') != cur['id']:
+                send({'type': 'error', 'id': mid, 'err': str(e)[:300]}); break
+            if mid not in want:
                 break
             wav = np.asarray(wav, dtype=np.float32)
             buf = io.BytesIO()
             sf.write(buf, wav, sr, format='WAV', subtype='PCM_16')
-            send({'type': 'audio', 'id': m.get('id'), 'i': i, 'last': i == len(parts) - 1,
+            send({'type': 'audio', 'id': mid, 'i': i, 'last': i == len(parts) - 1,
                   'ms': int((time.time() - t1) * 1000), 'sec': round(len(wav) / sr, 2),
                   'wav': base64.b64encode(buf.getvalue()).decode('ascii')})
+        want.discard(mid)
 
 if __name__ == '__main__':
     try:

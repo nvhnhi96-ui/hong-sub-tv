@@ -598,6 +598,9 @@ function aivStart() {
   const py = aivPy();
   if (!py || aiv.proc) return !!aiv.proc;
   aiv.ready = false; aiv.err = ''; aiv.buf = ''; const t0 = Date.now();
+  /* the voice pack was downloaded once; the server script that comes with this version of the app replaces its copy */
+  try { const src = path.join(resDir('voices'), 'hs_voice.py'), dst = path.join(aivDir(), 'hs_voice.py');
+    if (fs.existsSync(src) && !fs.readFileSync(src).equals(fs.readFileSync(dst))) fs.copyFileSync(src, dst); } catch (e) { /* keep the pack's own copy */ }
   const env = Object.assign({}, process.env, { HS_VOICE_PREC: cfg.aivFast ? 'int8' : 'fp32', PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1', HS_VOICE_THREADS: String(Math.max(2, Math.min(6, os.cpus().length - 2))) });
   const proc = spawn(py, ['-u', path.join(aivDir(), 'hs_voice.py')], { cwd: aivDir(), windowsHide: true, env });
   aiv.proc = proc;
@@ -708,6 +711,7 @@ function setupIpc() {
   ipcMain.handle('aiv-fast', (e, on) => { cfg.aivFast = !!on; saveCfg(); aivStop(); setTimeout(aivStart, 1600); return aivState(); });
   ipcMain.handle('aiv-remove', () => { aivStop(); setTimeout(() => { try { fs.rmSync(aivDir(), { recursive: true, force: true }); } catch (e) { /* ignore */ } aivNotify(); }, 1800); return true; });
   ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart(); if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
+  ipcMain.on('aiv-drop', (e, id) => { if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'drop', id }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-stop', () => { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"stop"}\n'); } catch (x) { /* ignore */ } } });
   ipcMain.handle('sources', async () => (await listSources(true)).map(s => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL() })));
   ipcMain.handle('windows', async () => (await listSources(false)).map(s => ({ id: s.id, name: s.name })));

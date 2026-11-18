@@ -197,6 +197,8 @@ jobs:
           Invoke-WebRequest "$hf/vi_VN-vais1000-medium.onnx.json" -OutFile voices\vi_VN-vais1000-medium.onnx.json
           try { Invoke-WebRequest https://raw.githubusercontent.com/rhasspy/piper/master/LICENSE.md -OutFile voices\PIPER-LICENSE-MIT.txt } catch { }
           "Giọng đọc: Piper (MIT, https://github.com/rhasspy/piper)`r`nGiọng tiếng Việt: vi_VN-vais1000-medium, huấn luyện từ VAIS-1000 Vietnamese Speech Synthesis Corpus, giấy phép CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).`r`nNguồn: https://huggingface.co/rhasspy/piper-voices" | Out-File voices\NGUON-GIONG-DOC.txt -Encoding utf8
+          # the AI voice server script: the app copies it over the one in the downloaded voice pack when it changes
+          Copy-Item ..\voices\hs_voice.py voices\hs_voice.py -Force
           Get-ChildItem voices | ForEach-Object { Write-Host "voice file: $($_.Name) $($_.Length)" }
 
       - name: Set version
