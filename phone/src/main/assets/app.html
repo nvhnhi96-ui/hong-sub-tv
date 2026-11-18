@@ -4098,6 +4098,8 @@ function tmFind(text,strict){
   }
   return null;
 }
+function tmJunk(e){ var a=String(e.en||''), b=String(e.vi||''); return deTone(a)===deTone(b)||/viet ?hoa|red team/i.test(deTone(b))&&!/viet ?hoa|red team/i.test(deTone(a)); }   /* not translated, or a modder's credit put in place of a line */
+function deTone(x){ return String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
 function tmHit(r){ S.tm.hits++; return r; }
 /* the reader may read the same words a little differently each time (stylised fonts, titles): a line this close to one
    translated in the last 2 minutes is that line again, so it reuses that translation instead of a new AI call */
@@ -4113,12 +4115,13 @@ function nearRecent(text){
 function tmWait(ms){ return new Promise(function(ok){ var t0=Date.now(); (function w(){ if(!S.tm.loading||Date.now()-t0>ms) ok(true); else setTimeout(w,150); })(); }); }
 function tmFind1(text,strict){
   var k=trKey(text), e=S.tm.map[k];
+  if(e&&tmJunk(e)) e=null;
   if(!e&&k.length>=(strict?14:10)){
     var b=Math.round(k.length/6), best=0, need=strict?0.92:k.length>=18?0.78:0.86;
     for(var d=-2;d<=2;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>6000) continue;
       for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(!c) continue; var sc=dice(c.en,text); if(sc>best){ best=sc; if(sc>=need) e=c; } } }
   }
-  if(!e) return null;
+  if(!e||tmJunk(e)) return null;
   return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true};
 }
 function tmAdd(kind,en,vi,who,gd,via){
@@ -4344,6 +4347,8 @@ function ocrTake(txt,force){
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
+  if(!force&&uiLike(part)){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
+  if(!force&&tmStrict()&&shortLine(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
   if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
   if(!force&&voHeard(part)){ log('phụ đề trùng lời nói vừa dịch, không dịch lại: '+part.slice(0,80)); S.saved++; return; }
   log('đọc được: '+part);
@@ -4351,6 +4356,23 @@ function ocrTake(txt,force){
   coverWait();
   enqueue(part);
 }
+/* ---------- only subtitles in the subtitle area ----------
+   Titles, menu items and button labels ("BLACK MYTH", "Press Any Button", "Customize Controls", "Tùy chọn") are not
+   what a character says. A subtitle is a sentence: it ends with . ! ? … or has ordinary lower-case words.
+   A label is a few words that all start with a capital (or all capitals), with no sentence ending. */
+var SMALLW=/^(of|the|a|an|and|to|in|on|for|or|by|at|with|from|de|la|le|des|du|von|der)$/i;
+function uiLike(t){
+  var s=String(t||'').replace(/\s+/g,' ').trim(); if(!s) return true;
+  if(/^[A-Z][A-Za-z0-9' .\-]{1,24}:\s+\S/.test(s)) return false;                 /* "NAME: line" */
+  if(/[.!?…。！？]["”'’)\]]?$/.test(s)||/[,;—–-]$/.test(s)) return false;         /* a sentence, or one going on */
+  var w=s.split(' ').filter(function(x){ return /[A-Za-zÀ-ỹ]/.test(x); }); if(!w.length) return true;
+  if(w.length<=3&&w.every(function(x){ return !/[a-zà-ỹ]/.test(x); })) return true;        /* ALL CAPS title */
+  if(w.length<=5&&w.every(function(x){ return /^[^A-Za-zÀ-ỹ]*[A-ZÀ-Ỹ0-9]/.test(x)||SMALLW.test(x); })&&w.some(function(x){ return !SMALLW.test(x); })) return true;   /* Title Case label */
+  return false;
+}
+/* a game with a big shared store (the game's own lines): a short line that is not in it and is not a sentence is not dialogue */
+function tmStrict(){ return S.tm&&S.tm.n>=3000&&!S.tm.loading; }
+function shortLine(t){ var s=String(t||'').trim(); return s.split(/\s+/).length<3&&!/[.!?…,;—–-]["”'’)\]]?$/.test(s); }
 /* ---------- games already in Vietnamese: read the subtitle aloud as it is ----------
    The on-device reader drops the Vietnamese tone marks, so the picture of the subtitle goes to the AI, which writes
    the line exactly as shown (with its marks, not translated). Lines are read in the order they appeared. */
@@ -4425,7 +4447,7 @@ function viSet(on,auto){
    by itself a few seconds after the game picture is back. Only short pieces of text count, so a dialogue line that talks
    about a map never stops anything. */
 var GUARD={kind:'',neg:0,next:0,at:0,st:0,busy:false};
-var PS_STRONG=/\b(control cent(er|re)|game base|playstation store|ps store|game library|enter rest mode|turn off ps5|restart ps5|power options|remote play|playstation plus|ps plus|media gallery|game help|your collection|add to library|recently played|trophy progress|activity goals?|officially launched)\b/;
+var PS_STRONG=/\b(control cent(er|re)|game base|playstation store|ps store|game library|enter rest mode|turn off ps5|restart ps5|power options|remote play|playstation plus|ps plus|media gallery|game help|your collection|add to library|recently played|trophy progress|activity goals?|officially launched|track your progress|recently created|new video clip)\b/;
 var PS_WEAK={games:/^games?$/,media:/^media$/,explore:/^explore$/,library:/^library$/,store:/^store$/,settings:/^settings$/,notif:/\bnotifications?\b/,
   friends:/\bfriends\b/,party:/^part(y|ies)$/,acc:/\baccessories\b/,power:/^power$/,sound:/^sound$/,network:/^network$/,mic:/^mic$/,switcher:/\bswitcher\b/,
   trophy:/\btroph(y|ies)\b/,act:/\bactivit(y|ies)\b/,profile:/^profile$/,wish:/\bwishlist\b/,installed:/^installed$/,purchased:/^purchased$/,captures:/^captures$/,
@@ -4435,12 +4457,14 @@ var MAP_W={zoom:/\bzoom( in| out)?\b/,legend:/\blegends?\b/,waypoint:/\bwaypoint
 var MAP_ONLY={zoom:1,legend:1,waypoint:1,travel:1,marker:1,pin:1,beacon:1};
 function guardOn(){ var c=$('hsGuard'); return c?c.checked:load('guard',true); }
 /* what kind of screen these pieces of text say: 'ps' (the console's own screens), 'map', or '' (the game) */
-var PS_VI=/\b(choi tro choi|ban be cung choi|mot nguoi choi|nhieu nguoi choi|tro choi da cai dat|da phuong tien|tiep tuc tai vi tri|hoat dong hien tai|xem chi tiet hoat dong|thu vien tro choi|trung tam dieu khien|che do nghi|tat ps5|khoi dong lai ps5|bo suu tap cua ban|da choi gan day|cua hang playstation)\b/;
+var PS_VI=/\b(choi tro choi|ban be cung choi|mot nguoi choi|nhieu nguoi choi|tro choi da cai dat|da phuong tien|tiep tuc tai vi tri|hoat dong hien tai|xem chi tiet hoat dong|thu vien tro choi|trung tam dieu khien|che do nghi|tat ps5|khoi dong lai ps5|bo suu tap cua ban|da choi gan day|cua hang playstation|da ket noi choi tu xa|de dang su dung|theo doi tien do cua ban|xem cac muc tieu|video clip moi|da tao gan day)\b/;
+var PS_WEAK_VI={opt:/^tuy chon$/,act:/^hoat dong$/,troph:/^danh hieu$/,notif:/^thong bao$/,sound:/^am thanh$/,power:/^nguon$/,friends:/^ban be$/,lib:/^thu vien$/,set:/^cai dat$/,games:/^tro choi$/,media:/^(da )?phuong tien$/,search:/^tim kiem$/,store:/^cua hang$/,create:/^tao$/};
 function guardKind(texts){
   var weak={}, mp={}, strong=false;
   (texts||[]).forEach(function(t0){
     var sv=String(t0||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ');
     if(PS_VI.test(sv)) strong=true;   /* the PS5's own screens in Vietnamese */
+    if(sv.trim().split(' ').length<=3) Object.keys(PS_WEAK_VI).forEach(function(k){ if(PS_WEAK_VI[k].test(sv.trim())) weak['vi_'+k]=1; });
     var s=String(t0||'').toLowerCase().replace(/[^a-z0-9&+\- ]+/g,' ').replace(/\s+/g,' ').trim(); if(!s) return;
     if(PS_STRONG.test(s)) strong=true;
     if(s.split(' ').length>4) return;                                       /* only short pieces: menu words and button hints */
@@ -4896,7 +4920,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
