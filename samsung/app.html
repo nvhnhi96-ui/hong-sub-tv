@@ -210,7 +210,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.155';
+var VERSION='1.0.156';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -535,6 +535,7 @@ function handle(j){
   if(changed){ applyLook(); if(cov) coverPlace(); }
   if(kind==='say'){ if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
   if(kind==='hello'||kind==='ctl'||kind==='hb') return;
+  if(kind==='clr'){ clearTimeout(hideT); $('sub').className=(P.pos==='top'?'top':'')+(cov?' cov':''); return; }   /* the game's own subtitle is gone: so is the Vietnamese */
   if(kind==='zone'&&+j.zclr===1){ zonesClear(); return; }   /* Hóng Sub stopped: every area box off */
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
   if(kind==='zone'){ zoneShow(j,vi); if(vi&&!pcOff&&j.speak) say(vi.replace(/\n/g,'. ').replace(/●/g,'')); return; }   /* read aloud only when the area asks for it on the computer */
