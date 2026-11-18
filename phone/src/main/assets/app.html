@@ -6037,6 +6037,7 @@ function psAudioHeader(h){
   if(quiet&&!voOn()) return;
   try{
     if(!PS.actx) PS.actx=new AudioContext({sampleRate:h.rate||48000,latencyHint:'interactive'});
+    if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
     if(PS.adec){ try{PS.adec.close();}catch(e){} }
     PS.aframe=h.frame_size||480; PS.arate=h.rate||48000; PS.ats=0; PS.anext=0;
     PS.adec=new AudioDecoder({
@@ -6054,6 +6055,10 @@ function psAudioHeader(h){
   }catch(e){ PS.adec=null; }
 }
 function psAudio(pkt){
+  /* a lost sound packet arrives as an empty frame (the PS core asks to cover the gap): decoding it breaks the sound decoder
+     and the game went silent for the rest of the session. Skip it, and if the decoder did stop, start it again. */
+  if(!pkt||!pkt.byteLength) return;
+  if((!PS.adec||PS.adec.state!=='configured')&&PS.lastAh&&Date.now()-(PS.adecT||0)>1000){ PS.adecT=Date.now(); psAudioHeader(PS.lastAh); }
   if(!PS.adec||PS.adec.state!=='configured') return;
   try{ PS.adec.decode(new EncodedAudioChunk({type:'key',timestamp:(PS.ats+=Math.round(PS.aframe/PS.arate*1e6)),data:pkt})); }catch(e){}
 }
