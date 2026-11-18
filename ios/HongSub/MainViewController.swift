@@ -62,8 +62,19 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
         case "psnCancel":
             PsnLogin.cancel()
             reply(id, ["ok": true])
+        case "samsungClose":
+            SamsungLogin.close()
+            reply(id, ["ok": true])
         default:
-            reply(id, ["ok": false, "err": "unknown"])
+            /* TV Samsung: the account sign-in window, and requests to Samsung's certificate service */
+            if cmd.hasPrefix("samsungLogin:") {
+                SamsungLogin.present(from: self, url: String(cmd.dropFirst(13))) { [weak self] res in self?.reply(id, res) }
+            } else if cmd.hasPrefix("http:"), let data = String(cmd.dropFirst(5)).data(using: .utf8),
+                      let a = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                NatHttp.run(a) { [weak self] res in self?.reply(id, res) }
+            } else {
+                reply(id, ["ok": false, "err": "unknown"])
+            }
         }
     }
 

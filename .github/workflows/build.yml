@@ -85,7 +85,7 @@ jobs:
         run: |
           V=1.0.${{ github.run_number }}
           python3 tizen/build.py "$V"
-          (cd tizen/app && zip -qr ../../hong-sub-samsung.wgt .)
+          (cd tizen/app && zip -0 -X -qr ../../hong-sub-samsung.wgt .)   # stored, so the phone apps read it without unpacking
           cp tizen/app/app.html samsung-app.html
           ls -la hong-sub-samsung.wgt
       - uses: actions/upload-artifact@v4

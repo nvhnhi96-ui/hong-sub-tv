@@ -561,13 +561,19 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
                   <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
                   <details class="tvd" id="mpTz">
-                    <summary>TV chưa có app Hóng Sub: cài lên TV Samsung</summary>
-                    <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng <b>chứng chỉ Samsung</b> làm riêng cho từng TV, và chỉ làm được bằng phần mềm Tizen Studio trên máy tính. Vì vậy điện thoại không tự cài được. Cài một lần (khoảng 20 phút), sau đó app trên TV tự cập nhật và điện thoại chỉ cần gõ Mã TV:</p>
+                    <summary id="mpTzSum">TV chưa có app Hóng Sub: cài lên TV Samsung từ điện thoại</summary>
+                    <p class="hs-note">Cài thẳng từ điện thoại, khoảng 3 phút, không cần máy tính. Điện thoại và TV dùng chung Wi-Fi.</p>
                     <ol class="dk-steps">
-                      <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV Samsung, làm theo 4 bước (bật Developer Mode trên TV, cài Tizen Studio, tạo chứng chỉ, bấm Cài).</li>
-                      <li>Hoặc nhờ cửa hàng cài giúp.</li>
+                      <li>Trên TV mở <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> trên remote (remote không có số: bấm nút <b>123</b> để hiện bàn số).</li>
+                      <li>Bật <b>Developer mode: On</b>. Ô <b>Host PC IP</b> gõ IP của điện thoại này: <b id="mpTzMyIp">...</b>, bấm OK rồi <b>tắt TV và bật lại</b>.</li>
+                      <li>Bấm <b>Tìm TV Samsung trong nhà</b> ở trên (hoặc gõ IP của TV dưới đây), rồi bấm <b>Cài app lên TV</b>. Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b> (miễn phí, dùng email và mật khẩu) để Samsung cấp chứng chỉ cho TV.</li>
                     </ol>
-                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                    <div class="dk-set">
+                      <label class="lab" for="mpTzIpIn">IP của TV Samsung</label>
+                      <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
+                    </div>
+                    <p class="hs-note" style="margin-top:8px">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng chứng chỉ làm riêng cho từng TV. Hóng Sub tự xin chứng chỉ bằng tài khoản Samsung của bạn và giữ trong điện thoại; lần sau cài lại không cần đăng nhập. App trên TV tự cập nhật.</p>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng hướng dẫn (Zalo)</button></div>
                   </details>
                   <div class="hs-msg" id="mpTzMsg" hidden></div>
                   <p class="hs-note" id="mpTzNet" style="margin-top:8px"></p>

@@ -4,6 +4,7 @@
  */
 #include "hsrp.h"
 #include "hslan.h"
+#include "hsnet.h"
 
 #include <chiaki/common.h>
 #include <chiaki/log.h>
@@ -812,6 +813,12 @@ static void command(char *line)
 	else if(!strcmp(c, "wake") && ac >= 4) cmd_wake(av[1], atoi(av[2]), av[3]);
 	else if(!strcmp(c, "tvfind")) { pthread_t th; if(pthread_create(&th, NULL, tvfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 1800)) == 0) pthread_detach(th); }
 	else if(!strcmp(c, "lanon")) cmd_lanon(ac > 1 ? av[1] : NULL);
+	/* TV Samsung from the phone: sdb over TCP, spoken by the page; the Samsung sign-in callback (hsnet.c) */
+	else if(!strcmp(c, "tcpopen") && ac >= 4) { static bool init; if(!init) { hsnet_init(emit_event); init = true; } hsnet_tcp_open(av[1], av[2], atoi(av[3])); }
+	else if(!strcmp(c, "tcpsend") && ac >= 3) hsnet_tcp_send(av[1], av[2]);
+	else if(!strcmp(c, "tcpclose") && ac >= 2) hsnet_tcp_close(av[1]);
+	else if(!strcmp(c, "catchon")) { hsnet_init(emit_event); hsnet_catch_on(ac > 1 ? atoi(av[1]) : 4794); }
+	else if(!strcmp(c, "catchoff")) hsnet_catch_off();
 	else if(!strcmp(c, "lanseen") && ac >= 2) cmd_lanseen(av[1]);
 	else if(!strcmp(c, "lanfind")) { pthread_t th; if(pthread_create(&th, NULL, lanfind_thread, (void *)(intptr_t)(ac > 1 ? atoi(av[1]) : 3500)) == 0) pthread_detach(th); }
 	else if(!strcmp(c, "ping")) emit_event("{\"ev\":\"pong\",\"core\":\"hsrp 2\"}");

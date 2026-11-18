@@ -267,6 +267,16 @@ public class MainActivity extends Activity {
     private void nativeCall(String cmd, String id) {
         if ("psnLogin".equals(cmd)) PsnLogin.show(this, json -> reply(id, json));
         else if ("psnCancel".equals(cmd)) { PsnLogin.cancel(); reply(id, "{\"ok\":true}"); }
+        else if (cmd != null && cmd.startsWith("samsungLogin:")) SamsungTv.login(this, cmd.substring(13), json -> reply(id, json));
+        else if ("samsungClose".equals(cmd)) { SamsungTv.close(); reply(id, "{\"ok\":true}"); }
+        else if (cmd != null && cmd.startsWith("http:")) {   /* TV Samsung: Samsung's certificate service */
+            new Thread(() -> {
+                String r;
+                try { r = SamsungTv.http(new org.json.JSONObject(cmd.substring(5))); }
+                catch (Throwable e) { r = "{\"ok\":false,\"err\":" + org.json.JSONObject.quote(String.valueOf(e.getMessage())) + "}"; }
+                reply(id, r);
+            }, "http").start();
+        }
         else if (cmd != null && cmd.startsWith("lg:")) {   /* TV LG: install / open / update the TV app over the home network */
             final android.content.Context ctx = getApplicationContext();
             new Thread(() -> {

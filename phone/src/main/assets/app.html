@@ -946,13 +946,19 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                   <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
                   <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
                   <details class="tvd" id="mpTz">
-                    <summary>TV chưa có app Hóng Sub: cài lên TV Samsung</summary>
-                    <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng <b>chứng chỉ Samsung</b> làm riêng cho từng TV, và chỉ làm được bằng phần mềm Tizen Studio trên máy tính. Vì vậy điện thoại không tự cài được. Cài một lần (khoảng 20 phút), sau đó app trên TV tự cập nhật và điện thoại chỉ cần gõ Mã TV:</p>
+                    <summary id="mpTzSum">TV chưa có app Hóng Sub: cài lên TV Samsung từ điện thoại</summary>
+                    <p class="hs-note">Cài thẳng từ điện thoại, khoảng 3 phút, không cần máy tính. Điện thoại và TV dùng chung Wi-Fi.</p>
                     <ol class="dk-steps">
-                      <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV Samsung, làm theo 4 bước (bật Developer Mode trên TV, cài Tizen Studio, tạo chứng chỉ, bấm Cài).</li>
-                      <li>Hoặc nhờ cửa hàng cài giúp.</li>
+                      <li>Trên TV mở <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> trên remote (remote không có số: bấm nút <b>123</b> để hiện bàn số).</li>
+                      <li>Bật <b>Developer mode: On</b>. Ô <b>Host PC IP</b> gõ IP của điện thoại này: <b id="mpTzMyIp">...</b>, bấm OK rồi <b>tắt TV và bật lại</b>.</li>
+                      <li>Bấm <b>Tìm TV Samsung trong nhà</b> ở trên (hoặc gõ IP của TV dưới đây), rồi bấm <b>Cài app lên TV</b>. Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b> (miễn phí, dùng email và mật khẩu) để Samsung cấp chứng chỉ cho TV.</li>
                     </ol>
-                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                    <div class="dk-set">
+                      <label class="lab" for="mpTzIpIn">IP của TV Samsung</label>
+                      <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
+                    </div>
+                    <p class="hs-note" style="margin-top:8px">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng chứng chỉ làm riêng cho từng TV. Hóng Sub tự xin chứng chỉ bằng tài khoản Samsung của bạn và giữ trong điện thoại; lần sau cài lại không cần đăng nhập. App trên TV tự cập nhật.</p>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhờ cửa hàng hướng dẫn (Zalo)</button></div>
                   </details>
                   <div class="hs-msg" id="mpTzMsg" hidden></div>
                   <p class="hs-note" id="mpTzNet" style="margin-top:8px"></p>
@@ -5384,6 +5390,10 @@ function hsMobilePs(){
   function b64bytes(b){ var s=atob(b), o=new Uint8Array(s.length); for(var i=0;i<s.length;i++) o[i]=s.charCodeAt(i); return o; }
   return {
     mobile:nat.os,
+    /* plain access for the TV Samsung installer: native calls, core events, core commands */
+    raw:{ call:callNat, ask:ask,
+      on:function(f){ H.ev.push(f); return function(){ var i=H.ev.indexOf(f); if(i>=0) H.ev.splice(i,1); }; },
+      send:function(line){ return open().then(function(w){ w.send(line); return true; },function(){ return false; }); } },
     state:function(){ return Promise.resolve({helper:true,loggedIn:!!cfg.account,onlineId:cfg.onlineId||'',hosts:Object.keys(cfg.hosts).map(function(k){ var h=cfg.hosts[k]; return {id:h.id,name:h.name,ps5:h.ps5,addr:h.addr}; })}); },
     login:function(){ return callNat('psnLogin').then(function(r){ if(r&&r.ok&&r.account){ cfg.account=r.account; cfg.onlineId=r.onlineId||''; keep(); return {ok:true,onlineId:cfg.onlineId}; } return r&&r.ok?{ok:false,err:'account'}:(r||{ok:false}); }); },
     loginCancel:function(){ callNat('psnCancel'); return Promise.resolve(true); },
@@ -5927,7 +5937,7 @@ function mpPick(k,t){
   save(k==='lg'?'mpLgIp':'mpTzIp',t.ip);
   if(k==='lg'){ var ip=$('mpLgIp'); if(ip) ip.value=t.ip;
     mpTvMsg('lg','ok','Đã chọn '+t.name+' ('+t.ip+').'+(t.dev&&PH?' TV đang bật Developer Mode: gõ Passphrase rồi bấm Cài app lên TV.':' Mở app Hóng Sub trên TV rồi gõ Mã TV đang hiện vào ô dưới.')); }
-  else { mpTvMsg('samsung','ok','Đã chọn '+t.name+(t.model?' ('+t.model+')':'')+', IP '+t.ip+'. Bấm Mở Hóng Sub trên TV, rồi gõ Mã TV đang hiện vào ô dưới.'); mpTzReady(); }
+  else { var ti=$('mpTzIpIn'); if(ti) ti.value=t.ip; mpTvMsg('samsung','ok','Đã chọn '+t.name+(t.model?' ('+t.model+')':'')+', IP '+t.ip+'. TV đã có app: bấm Mở Hóng Sub trên TV. Chưa có: mở mục cài ở dưới, bấm Cài app lên TV.'); mpTzReady(); }
 }
 /* TV Samsung: opened through its remote-control service on port 8001 (the TV may ask once to allow the phone) */
 function mpTzOpen(){
@@ -5936,7 +5946,10 @@ function mpTzOpen(){
   /* the code and this phone's address go with the launch: the TV app takes them, so nothing has to be typed */
   return (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return DPS.lan.get(ip+':8001','/api/v2/applications/HongSubTv1.HongSub',{code:mpCode('samsung'),pc:pc||''}); }).then(function(r){
     if(r&&r.ok){ mpTvMsg('samsung','ok','Đã bảo TV mở Hóng Sub. Nếu TV hỏi cho phép điện thoại thì chọn Cho phép. Mã TV trên TV khác '+tvCodeFor('samsung')+' thì gõ mã đang hiện trên TV vào ô dưới.'); later(mpCodeLearn,6000); }
-    else mpTvMsg('samsung','err','TV chưa mở được ('+((r&&(r.err||r.status))||'lỗi')+'). Trên remote bấm Home › Ứng dụng › Hóng Sub. TV chưa có app thì xem mục cài ở dưới.');
+    else return TZI.launch(ip).then(function(x){   /* the remote-control service said no: through the developer service, if it is on */
+      if(x.ok) mpTvMsg('samsung','ok','Đã mở Hóng Sub trên TV. Gõ Mã TV đang hiện vào ô dưới nếu khác '+tvCodeFor('samsung')+'.');
+      else mpTvMsg('samsung','err','TV chưa mở được ('+((r&&(r.err||r.status))||'lỗi')+'). Trên remote bấm Home › Ứng dụng › Hóng Sub. TV chưa có app thì mở mục cài ở dưới.');
+      tvState(); return x; });
     tvState(); return r||{ok:false};
   });
 }
@@ -5978,6 +5991,20 @@ function mpTvInit(){
   $('mpLgOpen').addEventListener('click',function(){ mpLgOpen(); });
   $('mpLgIp').value=load('mpLgIp','');
   mpTzReady();
+  /* TV Samsung: install from the phone (both phones) */
+  $('mpTzIpIn').value=load('mpTzIp','');
+  setInterval(function(){ var e=$('mpTzMyIp'); if(e) e.textContent=S.lanPc?S.lanPc.split(':')[0]:'(bật Wi-Fi rồi mở lại mục này)'; },2000);
+  if(load('tzInstalled',null)) $('mpTzSum').textContent='Cài lại app Hóng Sub lên TV Samsung';
+  $('mpTzGo').addEventListener('click',function(){
+    var b=$('mpTzGo'), ip=($('mpTzIpIn').value||'').trim();
+    if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ mpTvMsg('samsung','err','Bấm Tìm TV Samsung trong nhà, hoặc gõ IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP).'); return; }
+    save('mpTzIp',ip); mpTzReady(); b.disabled=true;
+    var say=function(t){ mpTvMsg('samsung','',t); };
+    (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return TZI.install(ip,mpCode('samsung'),pc||'',say); }).then(function(r){
+      b.disabled=false; save('tzInstalled',{ip:ip,duid:r.duid,at:Date.now()}); $('mpTz').open=false; $('mpTzSum').textContent='Cài lại app Hóng Sub lên TV Samsung';
+      mpTvMsg('samsung','ok','Đã cài và mở Hóng Sub trên TV Samsung, mã TV '+tvCodeFor('samsung')+'. Có thể tắt Developer mode trên TV. Bấm Gửi thử để xem chữ trên TV.'); tvState();
+    },function(e){ b.disabled=false; mpTvMsg('samsung','err',String(e&&e.message||e)); log('cài app TV Samsung lỗi: '+String(e&&e.message||e)); });
+  });
   if(andr){
     var prevNat=window.hsNat;   /* answers from the app for the TV LG part come back here */
     window.hsNat=function(id,res){ var cbs=window.hsNatCbs||{}; if(cbs[id]){ var f=cbs[id]; delete cbs[id]; if(typeof res==='string'){ try{ res=JSON.parse(res); }catch(e){ res={ok:false,err:res}; } } f(res||{}); return; } if(prevNat) prevNat(id,res); };
@@ -6012,6 +6039,324 @@ function mpTvInit(){
   }
   setInterval(net,4000); net();
 }
+/* ---------- TV Samsung: put the Hóng Sub app on the TV from the phone (Android and iPhone) ----------
+   What Samsung's Tizen Studio does on a computer, done here:
+   1. the phone talks to the TV's developer service (sdb, port 26101) once the TV's Developer Mode names this phone
+   2. reads the TV's id (DUID); asks Samsung's certificate service, signed in with the person's Samsung account, for
+      an author certificate and a distributor certificate for that TV (the key never leaves the phone)
+   3. signs the app (Tizen's widget signature: author-signature.xml + signature1.xml), copies it to the TV, installs
+      it and opens it with this phone's code, so the TV connects by itself.
+   The phone's core opens the TCP connection and catches Samsung's sign-in (hsnet.c); the app's native side shows the
+   sign-in page and sends the requests to Samsung (a web page may not). */
+var TZI=(function(){
+  var TE=new TextEncoder(), TD=new TextDecoder();
+  var APP='HongSubTv1.HongSub', PKG='HongSubTv1';
+  var WGT='https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/download/hong-sub-samsung.wgt';
+  var SIGNIN='https://account.samsung.com/accounts/be1dce529476c1a6d407c4c7578c31bd/signInGate?locale=&clientId=v285zxnl3h&redirect_uri='+encodeURIComponent('http://localhost:4794/signin/callback')+'&state=accountcheckdogeneratedstatetext&tokenType=TOKEN';
+  var SVDCA='https://svdca.samsungqbe.com/apis/';
+  /* Samsung's certificate authorities: author (Samsung VD Author CA) and distributor (VD DEVELOPER Public CA Class) */
+  var CA_AUTHOR='MIIEfzCCA2egAwIBAgIEaFN6QzANBgkqhkiG9w0BAQ0FADBeMRowGAYDVQQKDBFUaXplbiBBc3NvY2lhdGlvbjEaMBgGA1UECwwRVGl6ZW4gQXNzb2NpYXRpb24xJDAiBgNVBAMMG1RpemVuIERldmVsb3BlcnMgUm9vdCBDbGFzczAeFw0yNTA2MTkwNDI2MzhaFw00MDA2MTkwNDI2MzhaMIGSMQswCQYDVQQGEwJLUjEaMBgGA1UECAwRUmVwdWJsaWMgb2YgS29yZWExEzARBgNVBAcMClN1d29uIENpdHkxJjAkBgNVBAoMHVNhbXN1bmcgRWxlY3Ryb25pY3MgQ28uLCBMdGQuMQswCQYDVQQLDAJWRDEdMBsGA1UEAwwUU2Ftc3VuZyBWRCBBdXRob3IgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCNLJUDeRdCsRgFNc0VW3Jwx1V/H9EcNmuA0RwLqyJyurv0pRyClBShiPBBnJP+rt91k9zhqpTp5r/8xUnIWyyuCd7PassOp4po3ZiLv/0yFclSjIpYIOHYyIHZkamCm6+L5fSmOzXnzwRId/1rb2LKuz9AP3Hk9I0TSYxlSFbz0jkbAxvcGgrZA6siohXUwKRxWfhZTpPQsWd9ZtNRQmg6XYouK9h06TxJ8mYHIpvaDwfnxFPtYdAjljCAjUr/UdNPKnC13JCWTCDQXK5ZPSbLxQZD5tDbZSw7kjXFGIHts8bQDN2knMqal1dzZjpa5pvrRiWeimg59duMMKzs8l96Hap+13ND6+sN+0gvFc4JuzBUoqRaQqW/WHl7d1+ySC0z2KUhc4bRUK28rT8fWJ0YkDpxjTvxuM6qdaDnraPnJO6Cze1MoD7yCDcLkWUmMOv8yxD1cpZcWN7ZMlUzKt73TqHce9zxkvo5QB3VsXPC8H5LP32vRB03XBhqL6yDDejioyEtpgn3WOdkHz6sJqTvoKe8fSoEa+S6SXctsVBI5RMToq9q20rNjCSVGur56WVc8jkXuc3RSxgFzMx3RVunfy12hQnbFTWPwfPFS+YO/eHC2w6O9nB9sm7lHsm+PPc5Nrxty7AS/qVvwLPlkgDwPF7U4LT90ycz+wYHC8LIRwIDAQABoxAwDjAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBDQUAA4IBAQBNSFmmWl9AjcxAyNWQBlO8/Wrc70MlB2JpZ55Vuw2e8rQvWmBC5SjNRHmIu57HgMMGuj0oudCjH/fUkIIk4XC8DMAj82wUMPKHaihDzylEtj4Otti1SNNjdCIvVPJg3FzcqWR/8xxrYrfoAWsS2eTTFpx2Ogc3n4XevbwfDPQiWZhE88cbuzWcHIBbwRVU4kjEdFXcsuj6hLijMXkd/BFgtUOhpo+5H3OnLKdl9yjovOP9A4H3/Ip1ptM7QskVNjLdgJ8wSzZvFSVrYL7Oft82Jy86eKrQ9kDg46qaDbBfUzRs8akbSfImsskYO97EB+GXbtx92EBhBSHFKe/GAM0p';
+  var CA_PUBLIC='MIIEvDCCA6SgAwIBAgIQEFcJZvLWjnZy2s9RsDWhmTANBgkqhkiG9w0BAQ0FADCBkTELMAkGA1UEBhMCS1IxFDASBgNVBAgMC1NvdXRoIEtvcmVhMQ4wDAYDVQQHDAVTdXdvbjEmMCQGA1UECgwdU2Ftc3VuZyBFbGVjdHJvbmljcyBDby4sIEx0ZC4xCzAJBgNVBAsMAlZEMScwJQYDVQQDDB5WRCBERVZFTE9QRVIgUHVibGljIFJvb3QgQ2xhc3MwHhcNMjUwNjE3MTAyMDEyWhcNMjkwNjE2MjEwMDAwWjCBjzELMAkGA1UEBhMCS1IxFDASBgNVBAgMC1NvdXRoIEtvcmVhMQ4wDAYDVQQHDAVTdXdvbjEmMCQGA1UECgwdU2Ftc3VuZyBFbGVjdHJvbmljcyBDby4sIEx0ZC4xCzAJBgNVBAsMAlZEMSUwIwYDVQQDDBxWRCBERVZFTE9QRVIgUHVibGljIENBIENsYXNzMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAymA8xOpycAu11WBrw4n2+mIdXfA9jzgEI3wYdn7o2o4H5o22jihR8aEpsrhW+GTgi+90GxUGwO+o/Nwp5IFp2alNyunF251uVmsj1WtHBdWy31ex811H6dR0EfJeK5Ksb0XoOLbQP0+K6UM6ojXpYk1Q0aWBoIYDImgu4zsB75Q30KGVlYqvvUtr0KVNao9LhPLWda3hqe2qwFZSwd1d9N+hHO6xPrtnjO2cx63kPeWJ3GLmO/0phb+UdMQcGJ2KBpApb/WhN+uDjucvAOwbMFOU3NymS7BWZzS6/Rca8WEJkY0XBGndUaniYiqOUisQ5aP8I5HIP9EoM/wtk/ldy1CVckX1DyI1o/ZUQWPXzPsb0/cmKOB1N33CFvejvsrJDipIMUW8TgB5qw/WHbiOlyxPDc+G8LjJ2ww1wFw9dGVIYpAslcXGyk7r0gHW939mJhUIwP9xZYwGdPKSgjHgjAZrWWrE4D1KqEayHVLRhLdhYisHPuqmtuEdbXg32yxCeONdSEz0Z7I2CYn9RKIwBzkuWGjwtCyrvocp0AKANve64h0AV1ttlt4hwLbbnLrFtlF1RMFv6mcnz8pg6sLHLcKoqVJ50X9ZvMCCj22rlO0FUZ36M1CiV9HJIxH/WoPjftHHuwF+CuJv2kNZuwjTB8dtYpg5PK2sEimB4oJomS8CAwEAAaMQMA4wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQ0FAAOCAQEADtwJOvOAbqqgiLzR9cD6HQ2Fofjcoyj69XjduhL5syzx82ASu2GeZDYOApG9Uwmb1w1hXl/UHUFHp0Ob/6SV2wXJTZbBMQlOaYEYwB1crToTfSMTJ5t6LuR+mRQvdBHLFM94fRQjQz3ZZOtMsq2WvcWN7ZEUDK1KMh+RP5e7z1GlHCJ00lGqNMrqVf0AMRm3iYfT+46/+CL3IY3iWbn2g3e8mPr0U4ZBpAdWawfHRX21oTCU3b5rJ/s1G7dcvkqkvu74HrY4f0dpiRCctgdcVuQnWOPFIlLJEkYOiQV1c5Ro/cWUMCo0oR4icvHXb4dPFy+35NUwLfcmza3lFdLgrQ==';
+  function cat(a){ var n=0; a.forEach(function(x){ n+=x.length; }); var o=new Uint8Array(n), k=0; a.forEach(function(x){ o.set(x,k); k+=x.length; }); return o; }
+  function u8(x){ return x instanceof Uint8Array?x:new Uint8Array(x); }
+  function b64(u){ var s='', i; u=u8(u); for(i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
+  function unb64(s){ var t=atob(String(s||'').replace(/[^A-Za-z0-9+/=]/g,'')), o=new Uint8Array(t.length); for(var i=0;i<t.length;i++) o[i]=t.charCodeAt(i); return o; }
+  function wrap(s,n){ var o=[]; for(var i=0;i<s.length;i+=n) o.push(s.slice(i,i+n)); return o.join('\n'); }
+  function sha(alg,d){ return crypto.subtle.digest(alg,d).then(function(h){ return new Uint8Array(h); }); }
+  /* ---- zip: read (stored or deflated), write (stored) ---- */
+  var CRC=(function(){ var t=new Uint32Array(256); for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+  function crc32(d){ var c=0xFFFFFFFF; for(var i=0;i<d.length;i++) c=CRC[(c^d[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+  function inflate(d){
+    if(typeof DecompressionStream==='undefined') return Promise.reject(new Error('Máy này chưa giải nén được gói app (cần iOS 16.4 / Android mới hơn).'));
+    var ds=new DecompressionStream('deflate-raw'), w=ds.writable.getWriter(); w.write(d); w.close();
+    return new Response(ds.readable).arrayBuffer().then(function(b){ return new Uint8Array(b); });
+  }
+  function unzip(z){
+    var v=new DataView(z.buffer,z.byteOffset,z.byteLength), e=-1;
+    for(var i=z.length-22;i>=Math.max(0,z.length-70000);i--) if(v.getUint32(i,true)===0x06054b50){ e=i; break; }
+    if(e<0) return Promise.reject(new Error('Gói app hỏng (zip).'));
+    var n=v.getUint16(e+10,true), p=v.getUint32(e+16,true), out=[];
+    for(var k=0;k<n;k++){
+      if(v.getUint32(p,true)!==0x02014b50) return Promise.reject(new Error('Gói app hỏng (zip).'));
+      var meth=v.getUint16(p+10,true), csz=v.getUint32(p+20,true), nl=v.getUint16(p+28,true), xl=v.getUint16(p+30,true), cl=v.getUint16(p+32,true), lo=v.getUint32(p+42,true);
+      var name=TD.decode(z.subarray(p+46,p+46+nl)); p+=46+nl+xl+cl;
+      if(/\/$/.test(name)) continue;
+      var ds=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true), data=z.subarray(ds,ds+csz);
+      out.push({name:name,meth:meth,data:data});
+    }
+    return out.reduce(function(pr,f){ return pr.then(function(){ if(f.meth===0) return; if(f.meth!==8) throw new Error('Gói app nén kiểu lạ.'); return inflate(f.data).then(function(d){ f.data=d; f.meth=0; }); }); },Promise.resolve()).then(function(){ return out; });
+  }
+  function zip(files){
+    var parts=[], cd=[], off=0;
+    files.forEach(function(f){
+      var nm=TE.encode(f.name), d=u8(f.data), c=crc32(d), h=new Uint8Array(30), dv=new DataView(h.buffer);
+      dv.setUint32(0,0x04034b50,true); dv.setUint16(4,20,true); dv.setUint16(6,0x0800,true); dv.setUint16(8,0,true); dv.setUint16(10,0,true); dv.setUint16(12,0x21,true);
+      dv.setUint32(14,c,true); dv.setUint32(18,d.length,true); dv.setUint32(22,d.length,true); dv.setUint16(26,nm.length,true); dv.setUint16(28,0,true);
+      var ch=new Uint8Array(46), cv=new DataView(ch.buffer);
+      cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true); cv.setUint16(8,0x0800,true); cv.setUint16(10,0,true); cv.setUint16(12,0,true); cv.setUint16(14,0x21,true);
+      cv.setUint32(16,c,true); cv.setUint32(20,d.length,true); cv.setUint32(24,d.length,true); cv.setUint16(28,nm.length,true); cv.setUint32(42,off,true);
+      parts.push(h,nm,d); cd.push(ch,nm); off+=30+nm.length+d.length;
+    });
+    var cdb=cat(cd), e=new Uint8Array(22), ev=new DataView(e.buffer);
+    ev.setUint32(0,0x06054b50,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true); ev.setUint32(12,cdb.length,true); ev.setUint32(16,off,true);
+    return cat(parts.concat([cdb,e]));
+  }
+  /* ---- DER, for the certificate requests ---- */
+  function dlen(n){ if(n<128) return [n]; var b=[]; while(n){ b.unshift(n&255); n=Math.floor(n/256); } return [0x80|b.length].concat(b); }
+  function tlv(t,b){ b=u8(b); return cat([new Uint8Array([t].concat(dlen(b.length))),b]); }
+  function SEQ(a){ return tlv(0x30,cat(a)); }
+  function SET(a){ return tlv(0x31,cat(a)); }
+  function OID(s){ var p=s.split('.').map(Number), b=[40*p[0]+p[1]]; p.slice(2).forEach(function(x){ var t=[x&127]; x=Math.floor(x/128); while(x){ t.unshift((x&127)|128); x=Math.floor(x/128); } b=b.concat(t); }); return tlv(6,b); }
+  function RDN(oid,val){ return SET([SEQ([OID(oid),val])]); }
+  function STR(t,s){ return tlv(t,TE.encode(s)); }
+  function pem(der,label){ return '-----BEGIN '+label+'-----\n'+wrap(b64(der),64)+'\n-----END '+label+'-----\n'; }
+  function unpem(x){ var t=TD.decode(x); if(/-----BEGIN/.test(t)){ var m=/-----BEGIN [^-]+-----([\s\S]+?)-----END/.exec(t); return unb64(m?m[1]:''); } return u8(x); }
+  function keyFor(pkcs8,hash){ return crypto.subtle.importKey('pkcs8',unb64(pkcs8),{name:'RSASSA-PKCS1-v1_5',hash:hash},false,['sign']); }
+  function rsaSign(pkcs8,hash,data){ return keyFor(pkcs8,hash).then(function(k){ return crypto.subtle.sign('RSASSA-PKCS1-v1_5',k,data); }).then(function(s){ return new Uint8Array(s); }); }
+  function newKey(){
+    return crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']).then(function(kp){
+      return Promise.all([crypto.subtle.exportKey('pkcs8',kp.privateKey),crypto.subtle.exportKey('spki',kp.publicKey),crypto.subtle.exportKey('jwk',kp.publicKey)]); })
+      .then(function(a){ return {pkcs8:b64(new Uint8Array(a[0])),spki:b64(new Uint8Array(a[1])),n:a[2].n,e:a[2].e}; });
+  }
+  function csr(key,rdns,attrs){
+    var cri=SEQ([tlv(2,[0]),SEQ(rdns),unb64(key.spki),tlv(0xA0,attrs?cat(attrs):new Uint8Array(0))]);
+    return rsaSign(key.pkcs8,'SHA-256',cri).then(function(sig){
+      return TE.encode(pem(SEQ([cri,SEQ([OID('1.2.840.113549.1.1.11'),new Uint8Array([5,0])]),tlv(3,cat([new Uint8Array([0]),sig]))]),'CERTIFICATE REQUEST'));
+    });
+  }
+  function authorCsr(key){
+    return csr(key,[RDN('2.5.4.6',STR(0x13,'')),RDN('2.5.4.8',STR(0x0c,'')),RDN('2.5.4.7',STR(0x0c,'')),RDN('2.5.4.10',STR(0x0c,'')),RDN('2.5.4.11',STR(0x0c,'')),RDN('2.5.4.3',STR(0x0c,'HongSub'))],null);
+  }
+  function distCsr(key,duid,email){
+    var san=SEQ([STR(0x86,'URN:tizen:packageid='),STR(0x86,'URN:tizen:deviceid='+duid)]);
+    var ext=SEQ([OID('1.2.840.113549.1.9.14'),SET([SEQ([SEQ([OID('2.5.29.17'),tlv(4,san)])])])]);
+    return csr(key,[RDN('2.5.4.3',STR(0x0c,'TizenSDK')),RDN('2.5.4.11',STR(0x0c,'')),RDN('2.5.4.10',STR(0x0c,'')),RDN('2.5.4.7',STR(0x0c,'')),RDN('2.5.4.8',STR(0x0c,'')),RDN('2.5.4.6',STR(0x13,'')),RDN('1.2.840.113549.1.9.1',STR(0x16,email||''))],[ext]);
+  }
+  /* ---- the widget signature (XML-DSig as Tizen checks it: SHA-512, exclusive c14n of SignedInfo, C14N 1.1 of #prop) ---- */
+  var DS='http://www.w3.org/2000/09/xmldsig#', DSP='http://www.w3.org/2009/xmldsig-properties';
+  function xmlAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function uriOf(n){ return n.split('/').map(function(p){ return encodeURIComponent(p).replace(/[!'()*]/g,function(c){ return '%'+c.charCodeAt(0).toString(16).toUpperCase(); }); }).join('/'); }
+  function sigXml(id,files,pkcs8,chain){
+    var role=id==='AuthorSignature'?'author':'distributor';
+    var prop=function(pid,el,uri){ return '<SignatureProperty Id="'+pid+'" Target="#'+id+'"><dsp:'+el+(uri?' URI="'+uri+'"':'')+'></dsp:'+el+'></SignatureProperty>'; };
+    var inner='<SignatureProperties xmlns:dsp="'+DSP+'">'+prop('profile','Profile','http://www.w3.org/ns/widgets-digsig#profile')+prop('role','Role','http://www.w3.org/ns/widgets-digsig#role-'+role)+prop('identifier','Identifier','')+'</SignatureProperties>';
+    var refs=[];
+    return files.reduce(function(pr,f){ return pr.then(function(){ return sha('SHA-512',f.data).then(function(h){
+        refs.push('<Reference URI="'+xmlAttr(uriOf(f.name))+'"><DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod><DigestValue>'+b64(h)+'</DigestValue></Reference>'); }); }); },Promise.resolve())
+      .then(function(){ return sha('SHA-512',TE.encode('<Object xmlns="'+DS+'" Id="prop">'+inner+'</Object>')); })
+      .then(function(h){
+        refs.push('<Reference URI="#prop"><Transforms><Transform Algorithm="http://www.w3.org/2006/12/xml-c14n11"></Transform></Transforms><DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod><DigestValue>'+b64(h)+'</DigestValue></Reference>');
+        var si='<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></CanonicalizationMethod><SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha512"></SignatureMethod>'+refs.join('');
+        return rsaSign(pkcs8,'SHA-512',TE.encode('<SignedInfo xmlns="'+DS+'">'+si+'</SignedInfo>')).then(function(sig){
+          var ki='<KeyInfo><X509Data>'+chain.map(function(c){ return '<X509Certificate>\n'+wrap(b64(c),76)+'\n</X509Certificate>'; }).join('')+'</X509Data></KeyInfo>';
+          return {name:id==='AuthorSignature'?'author-signature.xml':'signature1.xml',data:TE.encode('<Signature xmlns="'+DS+'" Id="'+id+'"><SignedInfo>'+si+'</SignedInfo><SignatureValue>'+b64(sig)+'</SignatureValue>'+ki+'<Object Id="prop">'+inner+'</Object></Signature>')};
+        });
+      });
+  }
+  function signWgt(files,cert){
+    var orig=files.filter(function(f){ return !/(^|\/)(author-signature|signature\d*)\.xml$/i.test(f.name); });
+    return sigXml('AuthorSignature',orig,cert.key.pkcs8,[unb64(cert.author),unb64(CA_AUTHOR)]).then(function(a){
+      return sigXml('DistributorSignature',[a].concat(orig),cert.key.pkcs8,[unb64(cert.dist),unb64(CA_PUBLIC)]).then(function(d){ return zip([a,d].concat(orig)); });
+    });
+  }
+  /* ---- talking to the app's native side and the phone's core ---- */
+  function nat(cmd){ return DPS.raw.call(cmd).then(function(r){ return r||{ok:false}; }); }
+  function http(a){ return nat('http:'+JSON.stringify(a)).then(function(r){ if(!r.ok) throw new Error('Không gửi được tới '+String(a.url).split('/')[2]+(r.err?' ('+r.err+')':'')+'. Kiểm tra mạng.'); r.data=unb64(r.b64||''); return r; }); }
+  /* ---- sdb: the TV's developer service ---- */
+  var SDB={CNXN:0x4E584E43,AUTH:0x48545541,OPEN:0x4E45504F,OKAY:0x59414B4F,WRTE:0x45545257,CLSE:0x45534C43};
+  function Sdb(ip){ this.ip=ip; this.id='z'+(Date.now()%1e7).toString(36); this.buf=new Uint8Array(0); this.q=[]; this.w=[]; this.dead=false; this.max=4096; this.lid=0x60; }
+  Sdb.prototype.on=function(j){
+    if(j.id!==this.id) return;
+    if(j.ev==='tcpclose'){ this.dead=true; this.w.splice(0).forEach(function(x){ x.rej(new Error('closed')); }); return; }
+    if(j.ev!=='tcpdata') return;
+    this.buf=cat([this.buf,unb64(j.b64)]);
+    while(this.buf.length>=24){
+      var v=new DataView(this.buf.buffer,this.buf.byteOffset,24), n=v.getUint32(12,true);
+      if(this.buf.length<24+n) break;
+      var f={cmd:v.getUint32(0,true),a0:v.getUint32(4,true),a1:v.getUint32(8,true),data:this.buf.slice(24,24+n)};
+      this.buf=this.buf.slice(24+n);
+      var k=-1; for(var i=0;i<this.w.length;i++) if(this.w[i].ok(f)){ k=i; break; }
+      if(k>=0) this.w.splice(k,1)[0].res(f); else this.q.push(f);
+    }
+  };
+  Sdb.prototype.next=function(ok,ms){
+    var me=this;
+    for(var i=0;i<this.q.length;i++) if(ok(this.q[i])) return Promise.resolve(this.q.splice(i,1)[0]);
+    if(this.dead) return Promise.reject(new Error('closed'));
+    return new Promise(function(res,rej){ var x={ok:ok,res:function(f){ clearTimeout(t); res(f); },rej:function(e){ clearTimeout(t); rej(e); }};
+      var t=setTimeout(function(){ var i=me.w.indexOf(x); if(i>=0) me.w.splice(i,1); rej(new Error('timeout')); },ms||15000); me.w.push(x); });
+  };
+  Sdb.prototype.send=function(cmd,a0,a1,data){
+    data=data?u8(data):new Uint8Array(0);
+    var h=new Uint8Array(24), v=new DataView(h.buffer), sum=0; for(var i=0;i<data.length;i++) sum+=data[i];
+    v.setUint32(0,cmd,true); v.setUint32(4,a0,true); v.setUint32(8,a1,true); v.setUint32(12,data.length,true); v.setUint32(16,sum>>>0,true); v.setUint32(20,(cmd^0xFFFFFFFF)>>>0,true);
+    return DPS.raw.send('tcpsend '+this.id+' '+b64(cat([h,data])));
+  };
+  Sdb.prototype.connect=function(){
+    var me=this; me.off=DPS.raw.on(function(j){ me.on(j); });
+    return DPS.raw.ask('tcpopen '+me.id+' '+me.ip+' 26101','tcp',12000,me.id).then(function(r){
+      if(!r||!r.ok) throw new Error(r&&r.err==='refused'?'refused':'noconnect');
+      return me.send(SDB.CNXN,0x01000000,me.max,TE.encode('host::sdb-net-client'));
+    }).then(function(){ return me.hello(0); });
+  };
+  /* the TV may ask the phone to prove itself (most do not): sign its token, then offer the key */
+  Sdb.prototype.hello=function(tries){
+    var me=this;
+    return me.next(function(f){ return f.cmd===SDB.CNXN||f.cmd===SDB.AUTH; },tries?30000:12000).then(function(f){
+      if(f.cmd===SDB.CNXN){ if(f.a1) me.max=Math.min(me.max,f.a1); return; }
+      if(f.a0!==1||tries>2) throw new Error('auth');
+      return sdbKey().then(function(k){
+        if(tries===0) return rsaSign(k.pkcs8,'SHA-1',f.data).then(function(sig){ return me.send(SDB.AUTH,2,0,sig); });
+        return me.send(SDB.AUTH,3,0,TE.encode(b64(adbPub(k))+' hongsub@phone\0'));
+      }).then(function(){ return me.hello(tries+1); });
+    });
+  };
+  Sdb.prototype.close=function(){ try{ DPS.raw.send('tcpclose '+this.id); }catch(e){} if(this.off) this.off(); };
+  Sdb.prototype.open=function(svc){
+    var me=this, lid=++me.lid;
+    return me.send(SDB.OPEN,lid,0,TE.encode(svc+'\0')).then(function(){ return me.next(function(f){ return (f.cmd===SDB.OKAY||f.cmd===SDB.CLSE)&&f.a1===lid; },15000); })
+      .then(function(f){ if(f.cmd===SDB.CLSE) throw new Error('TV từ chối lệnh '+svc.split(':')[0]); return {lid:lid,rid:f.a0}; });
+  };
+  /* everything the TV sends on a channel until it closes it */
+  Sdb.prototype.drain=function(ch,ms,onText){
+    var me=this, out=[];
+    function step(){ return me.next(function(f){ return (f.cmd===SDB.WRTE||f.cmd===SDB.CLSE)&&f.a1===ch.lid; },ms||60000).then(function(f){
+      if(f.cmd===SDB.CLSE){ me.send(SDB.CLSE,ch.lid,ch.rid); return cat(out); }
+      out.push(f.data); if(onText) onText(TD.decode(f.data));
+      return me.send(SDB.OKAY,ch.lid,ch.rid).then(step); }); }
+    return step();
+  };
+  Sdb.prototype.write=function(ch,data){
+    var me=this, off=0;
+    function step(){ if(off>=data.length) return Promise.resolve();
+      var c=data.subarray(off,off+me.max); off+=c.length;
+      return me.send(SDB.WRTE,ch.lid,ch.rid,c).then(function(){ return me.next(function(f){ return (f.cmd===SDB.OKAY||f.cmd===SDB.CLSE)&&f.a1===ch.lid; },20000); })
+        .then(function(f){ if(f.cmd===SDB.CLSE) throw new Error('TV ngắt khi đang chép app'); return step(); }); }
+    return step();
+  };
+  Sdb.prototype.shell=function(cmd,ms,onText){ var me=this; return me.open('shell:'+cmd).then(function(ch){ return me.drain(ch,ms,onText); }).then(function(b){ return TD.decode(b); }); };
+  Sdb.prototype.capability=function(){ var me=this; return me.open('capability:').then(function(ch){ return me.drain(ch,15000); }).then(function(b){ return TD.decode(b.subarray(2)); }); };
+  Sdb.prototype.push=function(path,data,prog){
+    var me=this, ch;
+    function pkt(id,d){ var h=new Uint8Array(8); h.set(TE.encode(id),0); new DataView(h.buffer).setUint32(4,d.length,true); return cat([h,d]); }
+    return me.open('sync:').then(function(c){ ch=c;
+      var parts=[pkt('SEND',TE.encode(path))];
+      for(var o=0;o<data.length;o+=65536) parts.push(pkt('DATA',data.subarray(o,o+65536)));
+      var t=new Uint8Array(4); new DataView(t.buffer).setUint32(0,Math.floor(Date.now()/1000),true); parts.push(pkt('DONE',t));
+      var all=cat(parts), done=0;
+      function chunk(){ if(done>=all.length) return Promise.resolve();
+        var n=Math.min(all.length-done,me.max*16), piece=all.subarray(done,done+n); done+=n; if(prog) prog(done/all.length);
+        return me.write(ch,piece).then(chunk); }
+      return chunk();
+    }).then(function(){ return me.next(function(f){ return (f.cmd===SDB.WRTE||f.cmd===SDB.CLSE)&&f.a1===ch.lid; },30000); })
+      .then(function(f){
+        if(f.cmd===SDB.CLSE) throw new Error('TV không nhận file');
+        var id=TD.decode(f.data.subarray(0,4)); me.send(SDB.OKAY,ch.lid,ch.rid); me.send(SDB.CLSE,ch.lid,ch.rid);
+        if(id!=='OKAY') throw new Error('TV không nhận file: '+TD.decode(f.data.subarray(8)));
+      });
+  };
+  /* the key the phone shows the TV if it asks (Android's adb format: words, n0inv, modulus, R^2, exponent; little endian) */
+  function sdbKey(){
+    var k=load('tzSdbKey',null); if(k&&k.pkcs8) return Promise.resolve(k);
+    return newKey().then(function(x){ save('tzSdbKey',x); return x; });
+  }
+  function adbPub(k){
+    var B=BigInt, Z=B(0), nb=unb64(k.n.replace(/-/g,'+').replace(/_/g,'/')+'=='.slice(0,(4-k.n.length%4)%4)), n=Z; nb.forEach(function(b){ n=n*B(256)+B(b); });
+    var r32=B(1)<<B(32), n0=n%r32, t=Z, nt=B(1), r=r32, nr=n0; while(nr!==Z){ var q=r/nr, a=nt; nt=t-q*nt; t=a; a=nr; nr=r-q*nr; r=a; } if(t<Z) t+=r32; var n0inv=r32-t;
+    var rr=((B(1)<<B(2048))*(B(1)<<B(2048)))%n, o=new Uint8Array(4+4+256+256+4), dv=new DataView(o.buffer);
+    dv.setUint32(0,64,true); dv.setUint32(4,Number(n0inv&B(0xFFFFFFFF)),true);
+    for(var i=0;i<256;i++){ o[8+i]=Number((n>>B(8*i))&B(255)); o[264+i]=Number((rr>>B(8*i))&B(255)); }
+    dv.setUint32(520,65537,true); return o;
+  }
+  /* ---- the Samsung account and the certificates ---- */
+  function signIn(say){
+    say('Đăng nhập tài khoản Samsung (chỉ lần đầu)...');
+    var caught=new Promise(function(res){ var off=DPS.raw.on(function(j){ if(j.ev==='catch'){ off(); res(j); } }); });
+    return DPS.raw.ask('catchon 4794','catchon',4000).then(function(r){
+      if(!r||!r.ok) throw new Error('Điện thoại chưa mở được cổng đăng nhập Samsung. Tắt hẳn Hóng Sub rồi mở lại.');
+      var win=nat('samsungLogin:'+SIGNIN);
+      return Promise.race([caught,win.then(function(w){ return w&&w.ok?caught:Promise.reject(new Error('Đã đóng trang đăng nhập Samsung.')); })]);
+    }).then(function(j){
+      nat('samsungClose'); DPS.raw.send('catchoff');
+      var f={}; String(j.body||'').split('&').forEach(function(kv){ var i=kv.indexOf('='); if(i>0) f[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1).replace(/\+/g,' ')); });
+      var a={}; try{ a=JSON.parse(f.code||'{}'); }catch(e){}
+      if(!a.access_token||!a.userId) throw new Error('Samsung chưa trả về đăng nhập. Thử lại.');
+      var auth={token:a.access_token,user:a.userId,email:a.inputEmailID||'',at:Date.now()}; save('tzAuth',auth); return auth;
+    });
+  }
+  function svdca(path,auth,extra,csrBytes,fname){
+    var fields=Object.assign({access_token:auth.token,user_id:auth.user,platform:'VD'},extra||{});
+    return http({url:SVDCA+path,method:'POST',fields:fields,files:[{name:'csr',filename:fname,b64:b64(csrBytes)}]}).then(function(r){
+      if(r.status===401||r.status===403){ var e=new Error('login'); e.login=true; throw e; }
+      if(r.status!==200) throw new Error('Samsung từ chối cấp chứng chỉ ('+r.status+': '+TD.decode(r.data).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,160)+')');
+      return r.data;
+    });
+  }
+  function certsFor(duid,say,again){
+    var C=load('tzCert',null)||{}; C.dist=C.dist||{};
+    if(C.key&&C.author&&C.dist[duid]) return Promise.resolve({key:C.key,author:C.author,dist:C.dist[duid].cert,profile:C.dist[duid].profile});
+    var auth=load('tzAuth',null);
+    var ready=auth&&auth.token&&Date.now()-auth.at<50*60000&&!again?Promise.resolve(auth):signIn(say);
+    return ready.then(function(au){
+      auth=au; say('Đang xin chứng chỉ Samsung cho TV này...');
+      return C.key?C.key:newKey();
+    }).then(function(key){
+      C.key=key;
+      return (C.author?Promise.resolve(null):authorCsr(key).then(function(c){ return svdca('v3/authors',auth,{},c,'author.csr'); }))
+        .then(function(a){ if(a) C.author=b64(unpem(a)); return distCsr(key,duid,auth.email); })
+        .then(function(c){ var ex={privilege_level:'public',developer_type:'Individual'};
+          return svdca('v1/distributors',auth,ex,c,'distributor.csr').then(function(prof){ return svdca('v3/distributors',auth,ex,c,'distributor.csr').then(function(d){ return [prof,d]; }); }); })
+        .then(function(pd){
+          C.dist[duid]={cert:b64(unpem(pd[1])),profile:TD.decode(pd[0])}; save('tzCert',C);
+          return {key:C.key,author:C.author,dist:C.dist[duid].cert,profile:C.dist[duid].profile};
+        });
+    }).catch(function(e){ if(e.login&&!again){ save('tzAuth',null); return certsFor(duid,say,true); } throw e; });
+  }
+  /* ---- the whole install ---- */
+  function install(ip,code,pc,say){
+    if(!window.crypto||!crypto.subtle) return Promise.reject(new Error('Máy này chưa ký được app (thiếu mã hóa trong trang). Cập nhật iOS / Android.'));
+    var tv=new Sdb(ip), cap='', duid='', ver=0, tmp='/opt/usr/apps/tmp', files, cert;
+    say('Đang kết nối TV '+ip+'...');
+    return tv.connect().catch(function(e){
+      var my=(S.lanPc||'').split(':')[0]||'IP của điện thoại';
+      throw new Error(e.message==='refused'||e.message==='noconnect'||e.message==='timeout'||e.message==='closed'
+        ?'TV chưa cho điện thoại kết nối. Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK rồi tắt TV và bật lại. Điện thoại và TV cùng Wi-Fi.'
+        :e.message==='auth'?'TV đòi xác nhận điện thoại: trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':e.message);
+    }).then(function(){ return tv.capability().catch(function(){ return ''; }); })
+    .then(function(c){ cap=c; var m=/platform_version:\s*([\d.]+)/.exec(c); ver=m?parseFloat(m[1]):0; var p=/sdk_toolpath:\s*([^\r\n]+)/.exec(c); if(p) tmp=p[1].trim();
+      say('Đang đọc mã của TV...'); return tv.shell('0 getduid',15000); })
+    .then(function(o){ duid=(o.split(/[\r\n]+/).map(function(x){ return x.trim(); }).filter(function(x){ return /^[A-Za-z0-9]{10,64}$/.test(x); })[0])||'';
+      if(!duid) throw new Error('Không đọc được mã TV (DUID). Tắt TV bật lại rồi thử lại.');
+      return certsFor(duid,say); })
+    .then(function(c){ cert=c; say('Đang tải app Hóng Sub cho TV Samsung...'); return http({url:WGT,method:'GET'}); })
+    .then(function(r){ if(r.status!==200||r.data.length<1000) throw new Error('Không tải được app ('+r.status+').'); return unzip(r.data); })
+    .then(function(fs){
+      files=fs.filter(function(f){ return f.name!=='preset.js'; });
+      files.push({name:'preset.js',data:TE.encode('window.HS_PRESET='+JSON.stringify(code?{code:code,pc:pc||''}:null)+';   /* filled in by Hóng Sub on the phone when it installed the app */\n')});
+      say('Đang ký app bằng chứng chỉ của TV...'); return signWgt(files,cert); })
+    .then(function(pkg){
+      /* TVs up to Tizen 4 also need the device profile next to the package */
+      var permit=ver&&ver<=4&&cert.profile&&/<\?xml|profile/i.test(cert.profile)?tv.push((ver<3?'/home/developer':tmp)+'/device-profile.xml',TE.encode(cert.profile)).catch(function(){}):Promise.resolve();
+      return permit.then(function(){ say('Đang chép app lên TV...'); return tv.push(tmp+'/HongSub.wgt',pkg,function(p){ say('Đang chép app lên TV... '+Math.round(p*100)+'%'); }); });
+    })
+    .then(function run(){
+      say('TV đang cài app...');
+      return tv.shell('0 vd_appinstall '+APP+' '+tmp+'/HongSub.wgt',180000,function(t){ var m=/(\d{1,3})\s*%/.exec(t); if(m) say('TV đang cài app... '+m[1]+'%'); }).then(function(out){
+        if(/install failed\[|val\[fail\]/i.test(out)){
+          if(/same id and different certificate|already installed|different certificate/i.test(out)&&!run.again){ run.again=true; say('TV có bản Hóng Sub cũ khác chứng chỉ, đang gỡ...');
+            return tv.shell('0 vd_appuninstall '+APP,60000).then(function(){ return tv.shell('0 vd_appuninstall '+PKG,60000).catch(function(){}); }).then(run); }
+          var m=/reason:\s*([^\r\n]+)/i.exec(out)||/(install failed[^\r\n]*)/i.exec(out);
+          if(/Check certificate error/i.test(out)){ var C=load('tzCert',null); if(C&&C.dist){ delete C.dist[duid]; save('tzCert',C); } }
+          throw new Error('TV không cài được: '+(m?m[1]:out.slice(-200)));
+        }
+      });
+    })
+    .then(function(){ say('Đang mở Hóng Sub trên TV...'); return tv.shell('0 was_execute '+APP,20000).catch(function(){}); })
+    .then(function(){ tv.close(); return {ok:true,duid:duid,ver:ver}; },function(e){ tv.close(); throw e; });
+  }
+  function launch(ip){ var tv=new Sdb(ip); return tv.connect().then(function(){ return tv.shell('0 was_execute '+APP,20000); }).then(function(){ tv.close(); return {ok:true}; },function(e){ tv.close(); return {ok:false,err:e.message}; }); }
+  return {install:install,launch:launch,_test:{zip:zip,unzip:unzip,sigXml:sigXml,signWgt:signWgt,authorCsr:authorCsr,distCsr:distCsr,newKey:newKey,adbPub:adbPub,crc32:crc32}};
+})();
 /* ---------- phone apps with Remote Play inside (Android, iPhone) ---------- */
 if(!D&&DPS){
   document.documentElement.classList.add('hs-mps');
