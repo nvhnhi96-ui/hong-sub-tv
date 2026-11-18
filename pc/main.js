@@ -590,15 +590,16 @@ function piperSpeak(text, rate) {
 const AZ_VOICES = [{ id: 'az:vi-VN-HoaiMyNeural', name: 'Azure Hoài My (nữ)', g: 'female' }, { id: 'az:vi-VN-NamMinhNeural', name: 'Azure Nam Minh (nam)', g: 'male' }];
 const azOn = () => !!(cfg.az && cfg.az.key && cfg.az.region);
 const xmlEsc = (t) => String(t).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
-async function azSpeak(text, voice) {
+async function azSpeak(text, voice, rate) {
   if (!azOn()) throw new Error('no key');
   const name = String(voice || '').replace(/^az:/, '') || 'vi-VN-HoaiMyNeural';
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
   try {
+    const pr = rate && Math.abs(rate - 1) > 0.02 ? Math.round((Math.min(2.5, Math.max(0.5, rate)) - 1) * 100) : 0;   /* Azure speaks faster itself: clearer than playing the sound faster */
     const r = await net.fetch('https://' + cfg.az.region + '.tts.speech.microsoft.com/cognitiveservices/v1', {
       method: 'POST', signal: ctl.signal,
       headers: { 'Ocp-Apim-Subscription-Key': cfg.az.key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'HongSub' },
-      body: "<speak version='1.0' xml:lang='vi-VN'><voice name='" + name + "'>" + xmlEsc(String(text).replace(/[\r\n]+/g, ' ').slice(0, 1500)) + '</voice></speak>'
+      body: "<speak version='1.0' xml:lang='vi-VN'><voice name='" + name + "'>" + (pr ? "<prosody rate='" + (pr > 0 ? '+' : '') + pr + "%'>" : '') + xmlEsc(String(text).replace(/[\r\n]+/g, ' ').slice(0, 1500)) + (pr ? '</prosody>' : '') + '</voice></speak>'
     });
     if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
     const buf = Buffer.from(await r.arrayBuffer());
@@ -820,7 +821,7 @@ function setupIpc() {
     voice = voice || '';
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
     if (voice.startsWith('az:') && Date.now() > (onlineOff.az || 0)) {
-      try { const mp3 = await azSpeak(text, voice); onlineFails.az = 0; return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: true }; }
+      try { const mp3 = await azSpeak(text, voice, rate); onlineFails.az = 0; return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: false }; }
       catch (err) {
         onlineFails.az = (onlineFails.az || 0) + 1;
         if (err.status === 401 || err.status === 403 || onlineFails.az >= 3) { onlineOff.az = Date.now() + 10 * 60 * 1000; onlineFails.az = 0; }   /* wrong key, out of quota or offline: the voice on this computer for 10 minutes */

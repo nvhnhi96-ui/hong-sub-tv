@@ -457,6 +457,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
           <label for="hsRate">Tốc độ đọc <span id="hsRateV">1.1</span>x</label>
           <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
         </div>
+        <label class="hs-sw" style="margin:6px 0">Đọc kịp lời nhân vật (câu dài thì tự đọc nhanh hơn) <input type="checkbox" id="hsFit" checked></label>
       </section>
 
       <section class="hs-sec">
@@ -2945,8 +2946,9 @@ function webVoice(mode,g){
   var male=vi.filter(function(v){return /NamMinh|Nam Minh|\bAn\b|male/i.test(v.name);})[0], female=vi.filter(function(v){return /HoaiMy|Hoai My|female/i.test(v.name);})[0];
   return (g==='male'?(male||female):(female||male))||vi[0]||null;
 }
-function devSpeak(t,mode,g,who,pitch,queue){
+function devSpeak(t,mode,g,who,pitch,queue,src){
   var rate=parseFloat($('hsRate').value);
+  if(src!=null&&queue) rate=fitRate(t,src,D?devPick(mode,g,castAutoOn()?who:''):'');
   if(pitch==null){ var ce=castOf(who); pitch=ce&&castAutoOn()?(ce.p||1):1; }
   if(D){ D.speak(t,devPick(mode,g,castAutoOn()?who:''),rate,pitch,!!queue); return; }
   var v0=mode==='gg:vi'?null:webVoice(mode,g);
@@ -2969,6 +2971,31 @@ function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.chec
 function speakWhere(){ var w=$('hsSpeakWhere'); return (w&&w.value)||'pc'; }
 /* since when the subtitle on screen has been there (its voice started about then) */
 function subSince(){ var L=S.subLines&&S.subLines[S.subLines.length-1]; return L&&Date.now()-L.from<9000?L.from-600:Date.now()-3500; }
+/* ---------- reading in step with the character ----------
+   A Vietnamese line has more syllables than the English line has words, and it starts late (reading, translating,
+   making the voice). So each line gets its own speed: fast enough to end about when the character stops talking.
+   How long a character talks per word is learnt from how long the subtitles stay on screen in this game. */
+function fitOn(){ var c=$('hsFit'); return !c||c.checked; }
+function wordsOf(t){ return String(t||'').replace(/\[[A-Z0-9]+\]|\uE000/g,' ').split(/\s+/).filter(function(w){ return /[A-Za-zÀ-ỹ0-9]/.test(w); }).length; }
+function spwNow(){                                              /* seconds the character talks per word of the subtitle */
+  var a=(S.subLines||[]).slice(-14,-1).map(function(L){ var w=wordsOf(L.t), d=(L.to-L.from)/1000+0.5; return w>=3&&d>=1&&d<=14?d/w:0; }).filter(Boolean).sort(function(x,y){ return x-y; });
+  var m=a.length>=3?a[a.length>>1]:0.36;
+  return Math.max(0.26,Math.min(0.6,m));
+}
+function fitRate(vi,src,voice){
+  var base=parseFloat($('hsRate').value)||1;
+  if(!fitOn()||!vi) return base;
+  var w=Math.max(1,wordsOf(src)), syl=wordsOf(vi);
+  if(syl<4) return base;
+  var talk=Math.max(1.1,w*spwNow()+0.3);                         /* how long the character says it */
+  var L=S.subLines&&S.subLines[S.subLines.length-1], now=Date.now();
+  var late=L&&now-L.from<9000?(now-L.from)/1000:1.5;             /* the character has been talking this long already */
+  var left=Math.max(1.3,talk*0.55,talk-late+0.5);
+  var sps=/^ai:/.test(voice||'')?3.5:/^az:/.test(voice||'')?4.3:3.9;   /* syllables a second at speed 1 */
+  var need=syl/sps/left;
+  var r=Math.max(base,Math.min(2,need));
+  return Math.round(r*20)/20;
+}
 function speak(t,res){
   if(!$('hsSpeak').checked||!t) return;
   var where=speakWhere(), mode=voiceMode(), who=(res&&(res.speaker||res._vk))||'', g=((res&&res.gender)||'').toLowerCase();
@@ -2977,14 +3004,16 @@ function speak(t,res){
   if(ch){ if(ch.g) g=ch.g; if(ch.v&&mode==='auto') mode=ch.v; }
   var clipTv=where!=='pc'&&tvClipOn();
   if(where==='tv'&&!clipTv) return;            /* the TV reads it with its own voice (said in the subtitle message) */
-  if(!clipTv){ devSpeak(t,mode,g,who,null,true); return; }
+  var src=(res&&(res._src||res.en))||S.lastRaw||'';
+  if(!clipTv){ devSpeak(t,mode,g,who,null,true,src); return; }
   /* the TV plays the voice of this computer: the line is made here once, sent over the home network */
-  var rate=parseFloat($('hsRate').value)||1, ce=castOf(who), pitch=ce&&castAutoOn()?(ce.p||1):1;
+  var ce=castOf(who), pitch=ce&&castAutoOn()?(ce.p||1):1;
   var pcVoice=devPick(mode,g,castAutoOn()?who:''), sel=tvVoiceSel(), tvV=sel==='same'?pcVoice:sel, same=tvV===pcVoice;
-  if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true);
+  var rate=fitRate(t,src,tvV);
+  if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true,src);
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
     return D.voiceClip(t,tvV).then(function(c){
-      if(!c||!c.ok){ if(where==='both'&&same) devSpeak(t,mode,g,who,null,true); return; }
+      if(!c||!c.ok){ if(where==='both'&&same) devSpeak(t,mode,g,who,null,true,src); return; }
       if(where==='both'&&same) D.playClip(c,rate,pitch,true);
       tvSay(c,rate,same?pitch:1);
     });
@@ -3396,7 +3425,7 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(textPrompt(j.text,j.nl),j.text);
+      res=await askText(textPrompt(j.text,j.nl),j.text,null,null,false,speakPrefer());
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
@@ -3420,6 +3449,7 @@ async function translateText(j){
    the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
    can wait a little for the smart AI ("Cân bằng" 0.6s, "Hay nhất" up to 4s). */
 function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'balanced'; }
+function speakPrefer(){ var p=preferMode(); return $('hsSpeak').checked&&fitOn()&&p==='balanced'?'fast':p; }   /* reading aloud: the voice must keep up, take the first good translation */
 function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
 function askText(prompt,text,schema,shape,plain,prefer){
   schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
@@ -3524,7 +3554,7 @@ function ocrTake(txt,force){
   S.hintAt=0;
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
-    var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*2;
+    var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait*($('hsSpeak').checked&&fitOn()?1:2);
     if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},200); return; }
   }
   S.cand=null; S.lastOcr=txt;
@@ -3548,6 +3578,7 @@ function viPrompt(t){
     'If the line starts with a speaker name (e.g. "ATREUS:" or a name in another colour), put that name in "speaker", else "". Put the OCR text in "en".\n'+
     'In "gender" put the speaker\'s gender only when you really know it (a known character of this game, or the line makes it certain), else "". In "age" put "child", "young", "adult" or "old", or "".'+gameNote();
 }
+function viSrc(raw){ var n=wordsOf(raw); return new Array(Math.max(1,Math.round(n*0.78))+1).join('w ').trim(); }   /* a Vietnamese line: about 0.78 English words per syllable */
 function gameNote(){ var g=$('hsGame')&&$('hsGame').value.trim(); return g?'\nGame: '+g+'.':''; }
 function viSay(res,seq,raw){
   if(!res||!String(res.vi||'').trim()) return;
@@ -3562,8 +3593,8 @@ function viSay(res,seq,raw){
   if(speakWhere()==='tv'&&!tvClipOn()&&$('hsSpeak').checked){   /* the TV reads only the subtitles it shows; here nothing is shown, so this computer reads */
     var mode=voiceMode(), g=String(res.gender||'').toLowerCase(), ch=castOf(who); if(mode==='ai') mode='auto';
     if(ch){ if(ch.g) g=ch.g; if(ch.v&&mode==='auto') mode=ch.v; }
-    devSpeak(t,mode,g,who,null,true);
-  } else speak(t,res);
+    devSpeak(t,mode,g,who,null,true,viSrc(raw));
+  } else { res._src=viSrc(raw); speak(t,res); }
   S.lastShownAt=Date.now(); S.lastRaw=raw;
 }
 async function viRead(part){
@@ -4010,6 +4041,7 @@ $('hsPip').addEventListener('click',async function(){
 function bindRange(id,vid,key,fn){var el=$(id),v=load(key,null); if(v!==null) el.value=v; $(vid).textContent=el.value; fn&&fn(el.value);
   el.addEventListener('input',function(){$(vid).textContent=el.value; save(key,el.value); fn&&fn(el.value);});}
 bindRange('hsRate','hsRateV','rate');
+(function(){ var c=$('hsFit'); if(!c) return; c.checked=load('fit',true)!==false; c.addEventListener('change',function(){ save('fit',c.checked); }); })();
 bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
 (function(){
   /* where lines are read aloud: the same choice on the Voice page and in the TV card */
@@ -4077,6 +4109,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
+window.hsFitT={rate:fitRate,spw:spwNow,prefer:speakPrefer};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';

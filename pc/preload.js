@@ -27,7 +27,7 @@ function prepare(L) {
   }).catch(() => { L.ended = true; if (cur === L) playPart(); });
 }
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
-function speedOf(c) { return Math.min(1.6, c.boost * (c.hurry || 1)); }
+function speedOf(c) { return Math.max(1, Math.min(1.6, c.boost * (c.hurry || 1), 2.3 / Math.max(1, c.rate || 1))); }   /* never faster than 2.3x in all */
 function playPart() {
   const c = cur;
   if (!c || c.playing) return;
