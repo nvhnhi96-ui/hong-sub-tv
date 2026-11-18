@@ -716,6 +716,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
+                <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
                 <label class="hs-sw" hidden>Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
                 <label class="hs-sw" hidden title="Điện thoại tắt màn hình vẫn dịch tiếp: phụ đề vẫn lên TV, vẫn đọc to (khi chơi PS5 ngay trong Hóng Sub)">Dịch khi tắt màn hình điện thoại <input type="checkbox" id="hsAwake" checked></label>
               </div>
@@ -2477,7 +2478,7 @@ async function zoneTick(force,only){
   S.zLast=Date.now(); S.zBusy=true;
   try{
     for(var i=0;i<S.zones.length;i++){
-      var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force)) continue;
+      var z=S.zones[i]; if(only&&z!==only) continue; if(!z.on||(z.mode==='key'&&!force&&!micFollowing())) continue;   /* mic areas: also while the menu opened with the mic stays */
       if(GUARD.kind&&!force) break;
       var gate=!force&&zPlayOnly(z)&&!playing();   /* "Dịch khi: Đang chơi" and the game is not moving (menu, PS5, store, pause) */
       if(!grab(z,1280,900)) continue;                       /* small quest text is enlarged so the reader catches it */
@@ -2504,7 +2505,7 @@ async function zoneTick(force,only){
       var text='', bl=null, zic=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h); if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h).filter(function(b){ if(notiLike(b.en)){ log(zName(z)+': bỏ qua bảng thông báo: '+String(b.en).replace(/\n/g,' / ').slice(0,80)); return false; } return true; }); if(notiLike(text)) text=bl.length?bl.map(function(b){ return b.en; }).join('\n'):''; if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
@@ -4394,6 +4395,7 @@ function ocrTake(txt,force){
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
+  if(!force&&notiLike(part)){ log('bỏ qua bảng thông báo: '+part); S.saved++; return; }
   if(!force&&uiLike(part)){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
   if(!force&&tmStrict()&&shortLine(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
   if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
@@ -4561,6 +4563,17 @@ function menuLike(lines){
   var short=L.filter(function(l){ var s=String(l.text).trim(); return s.length<=24&&s.split(/\s+/).length<=3&&!/[.!?,:;]$/.test(s); }).length;
   return short/L.length>=0.75;
 }
+/* ---------- notifications: never translated ----------
+   The PS5's own pop-ups (Remote Play connected, a trophy, a friend online, the mic, downloads) and a game's
+   pop-up cards (daily streaks, rewards, saving) come and go by themselves: they are not what the player reads. */
+var NOTI_EN=/\b(remote play|connected to|trophy|trophies|earned|unlocked|achievement|is (now )?online|went offline|joined (the|your)|left the party|party chat|friend request|invited you|sent you|new message|download(ed)? complete|installation complete|ready to play|update available|playstation plus|ps plus|mic(rophone)? (muted|unmuted|is off|is on)|streak|on a roll|daily (objectives?|rewards?|bonus|challenges?)|login (reward|bonus)|\d+ days? in a row|\d+ ?-?day streak|game saved|autosav(e|ing)|saving\b|checkpoint reached)\b/;
+var NOTI_VI=/\b(da ket noi|choi tu xa|danh hieu|da mo khoa|dang truc tuyen|loi moi|tin nhan moi|tai xuong|cap nhat|micro|tat tieng|ngay lien tiep|phan thuong hang ngay|chuoi ngay)\b/;
+function notiLike(t){
+  var s=String(t||''), lo=s.toLowerCase(); if(!s.trim()) return false;
+  if(NOTI_EN.test(lo)) return true;
+  if(NOTI_VI.test(deTone(s))) return true;
+  return /^\s*\d+\s*(days?|ngay)\s*$/im.test(deTone(s));   /* "7 days" on a line of its own: a streak card */
+}
 /* take an area's translation off (computer and TV), whatever "Hiện ... giây" says */
 function zWipe(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.pending=false; zShow(); zList(); zPush(); if(had) zTv(z); }
 /* ---------- "Khi bấm nút mic": the areas set to it are translated when the controller's mic button is pressed ----------
@@ -4570,12 +4583,39 @@ function zWipe(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null
    - the controller is paired with the PS5: a tap on the mic button makes the PS5 show a small mic icon in the
      top-right corner for a moment. A small new shape there that goes away again within a few seconds is that tap. */
 function micAreas(){ return S.zones.some(function(z){ return z.on&&z.mode==='key'; }); }
-S.micAt=0;
+/* In a menu (inventory, skills, map legend, a letter): one press of the mic button translates it, and while the menu
+   stays open every new page or item the cursor moves to is translated by itself. Back in the game (the picture moves
+   again), or a second press, takes it all off.
+   - areas set to "Khi bấm nút mic": those areas
+   - no such area: the whole screen ("Dịch cả màn hình") */
+S.micAt=0; S.micMenu=null;
+function micFollowing(){ return !!S.micMenu; }
 function micPressed(how){
-  if(!S.stream||!micAreas()||Date.now()-S.micAt<1500) return; S.micAt=Date.now();
-  log('nút mic ('+how+'): dịch các vùng'); status('busy','Đang dịch các vùng (nút mic)...');
-  zoneTick(true); later(function(){ if(S.running) runStatus(); },2500);
+  if(!S.stream||Date.now()-S.micAt<1500) return;
+  var fromIcon=/biểu tượng/.test(how);
+  if(fromIcon&&!S.micMenu&&playing()) return;                   /* the small icon in the corner: only in a menu (a shape in a moving game is not a press) */
+  S.micAt=Date.now();
+  if(S.micMenu){ micMenuEnd('bấm nút mic lần nữa'); return; }
+  S.micMenu={at:Date.now(),moving:0,zones:micAreas()};
+  if(S.micMenu.zones){ log('nút mic ('+how+'): dịch các vùng, tự dịch tiếp khi menu đổi'); status('busy','Đang dịch menu (nút mic). Bấm mic lần nữa để tắt.'); zoneTick(true); }
+  else{ log('nút mic ('+how+'): dịch cả màn hình, tự dịch tiếp khi menu đổi'); S.fs.mic=true; if(!S.fs.on) fullScreen(); else if(!S.fs.busy) fsRun(); }
+  later(function(){ if(S.running&&!S.micMenu) runStatus(); },2500);
 }
+function micMenuEnd(why){
+  var mm=S.micMenu; if(!mm) return; S.micMenu=null; log('dịch menu bằng nút mic: tắt ('+why+')');
+  if(mm.zones) S.zones.forEach(function(z){ if(z.mode==='key'&&(z.vi||z.items)) zWipe(z); });
+  if(S.fs.mic){ S.fs.mic=false; if(S.fs.on) fsStop(); }
+  if(S.running) runStatus();
+}
+/* back in the game: the picture has been moving for about 2 seconds */
+setInterval(function(){
+  var mm=S.micMenu; if(!mm) return;
+  if(!S.stream){ micMenuEnd('không có hình'); return; }
+  if(Date.now()-mm.at<2500) return;
+  mm.moving=playing()?mm.moving+1:0;
+  if(mm.moving>=4) micMenuEnd('đã vào lại game');
+  else if(Date.now()-mm.at>10*60000) micMenuEnd('quá 10 phút');
+},500);
 (function(){
   if(!navigator.hid) return;
   var seen=[], down=false;
@@ -4650,7 +4690,7 @@ async function tick(force){
   var m=textMask(), now=Date.now();
   S.lastTickAt=now; if(m.ink>=MW*MH*0.003) subStill();
   motionSample();
-  if(micAreas()){ micPadPoll(); micIconLook(); }
+  micPadPoll(); micIconLook();   /* the mic button: areas set to it, or the whole screen when in a menu */
   if(guardOn()&&!force){
     if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()) guardProbe();
     if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */
@@ -4757,7 +4797,7 @@ function fsDraw(){
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
-function fsStop(){ S.fs.on=false; S.fs.seq++; WT?WT.clear(S.fs.timer):clearTimeout(S.fs.timer); fsClear(); fsLabel(false); if(S.running) runStatus(); }
+function fsStop(){ S.fs.mic=false; if(S.micMenu&&!S.micMenu.zones) S.micMenu=null; S.fs.on=false; S.fs.seq++; WT?WT.clear(S.fs.timer):clearTimeout(S.fs.timer); fsClear(); fsLabel(false); if(S.running) runStatus(); }
 /* share of small picture points that changed clearly: a new menu page or text changes a few percent */
 function fsMoved(a,b){ if(!a||!b) return 0; var n=0; for(var i=0;i<a.length;i++){ if(Math.abs(a[i]-b[i])>28) n++; } return n/a.length; }
 function fsWatch(){
@@ -4768,7 +4808,7 @@ function fsWatch(){
     S.fs.still=0; S.fs.sig=g;
   } else if(g){
     S.fs.still++;
-    if(!S.fs.items.length&&!S.fs.busy&&S.fs.still>=2&&fsAuto()&&!viMode()) fsRun();
+    if(!S.fs.items.length&&!S.fs.busy&&S.fs.still>=2&&(fsAuto()||S.fs.mic)&&!viMode()) fsRun();
   }
   if(!S.fs.sig) S.fs.sig=g;
   S.fs.timer=later(fsWatch,350);
@@ -4815,7 +4855,7 @@ async function fsBlocks(){
     var dup=keep.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); });
     if(!dup) keep.push(b);
   });
-  return keep.sort(function(a,b){ return a.y-b.y||a.x-b.x; });
+  return keep.filter(function(b){ return !notiLike(b.en); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
 }
 function fsPrompt(list){
   return 'You translate '+LN()+' text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
@@ -4967,7 +5007,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
