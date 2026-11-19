@@ -1081,6 +1081,18 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <div class="hs-msg" id="hsOrMsg" hidden></div>
               <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
+            <div class="dk-card dk-only" id="dkLmCard" hidden>
+              <h2>AI dịch trên máy</h2>
+              <p class="hs-note">Không cần mã, không bao giờ hết lượt, không cần mạng khi dịch. AI (Qwen, của Alibaba) chạy ngay trên máy tính này. Có mã Gemini, Groq thì app vẫn ưu tiên AI trên mạng cho hay hơn, AI trên máy làm dự phòng khi mã hết lượt hoặc mạng chậm. Không có mã thì AI trên máy dịch chính.</p>
+              <p class="hs-note">Máy có card đồ họa rời (NVIDIA, AMD, Intel Arc) hoặc Mac chip M: khoảng 1 giây mỗi câu. Máy chỉ có CPU: vài giây mỗi câu.</p>
+              <div class="hs-msg" id="dkLmState">Đang kiểm tra...</div>
+              <div class="dk-bar" id="dkLmBar" hidden><span></span></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkLmGet">Tải AI dịch trên máy</button></div>
+              <div id="dkLmOpts" hidden>
+                <label class="hs-sw dk-sw" style="margin-top:8px">Dùng AI dịch trên máy <input type="checkbox" id="dkLmOn"></label>
+                <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkLmRemove">Gỡ khỏi máy</button></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -4338,11 +4350,11 @@ function zUnitLines(vi,U,n){
 }
 function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
 function runStatus(){
-  status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
+  status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':S.via==='local'?' bằng AI trên máy':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
 S.perf={o:0,t:0};
 function perfTag(){
-  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='tm'?'Kho dịch chung':S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='smart'?orShort(S.orModel):(S.model||'');
+  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='tm'?'Kho dịch chung':S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='local'?'AI trên máy':S.via==='smart'?orShort(S.orModel):(S.model||'');
   $('hsModelTag').textContent=via+(on&&S.perf.t?' · đọc chữ '+(S.perf.o/1000).toFixed(2)+'s · dịch '+(S.perf.t/1000).toFixed(2)+'s':'');
 }
 
@@ -4665,15 +4677,51 @@ async function translateText(j){
 /* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
    the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
    can wait a little for the smart AI ("Cân bằng" 0.6s, "Hay nhất" up to 4s). */
+/* ---------- AI dịch trên máy (Windows/Mac app): llama.cpp with a small Qwen model, no key and no quota ---------- */
+S.llmSt=null;
+if(D&&D.llm){ try{ D.llm.onState(function(st){ S.llmSt=st; }); D.llm.state().then(function(st){ S.llmSt=st; },function(){}); }catch(e){} }
+function localOk(){ return !!(D&&D.llm&&S.llmSt&&S.llmSt.ready&&S.llmSt.on); }
+/* the same instructions for every line of a game: the program keeps them read, so each line only reads its own words */
+function localSys(){
+  var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim(), st=styleOf();
+  return 'You translate video game subtitles into natural spoken Vietnamese, like a dubbed film.\n'+
+    (g?'Game: '+g+'\n':'')+(n?'Characters and how they address each other in Vietnamese: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+
+    'Rules:\n- Translate only the text after "Translate:". Never write the speaker name.\n'+
+    '- Use the Vietnamese pronouns the notes give for who is speaking to whom, and keep the ones used in the previous lines. Do not use "bạn" unless the notes say so.\n'+
+    '- Keep names, places, game terms and button names in English.\n'+
+    '- Translate everything, in the same order, with the same punctuation. Add nothing, explain nothing.\n'+
+    '- Reply with only the Vietnamese translation.';
+}
+function localClean(v,t){
+  v=String(v||'').replace(/<think>[\s\S]*?<\/think>/g,'').replace(/^\s*(bản dịch|dịch|vietnamese|translation|tiếng việt)\s*:\s*/i,'').trim();
+  var sp=(String(t).match(/^([A-Z][A-Za-z .'\-]{0,24}):\s/)||[])[1];
+  if(sp&&v.toLowerCase().indexOf(sp.toLowerCase()+':')===0) v=v.slice(sp.length+1).trim();
+  v=v.replace(/^(?:Speaker|Người nói)\s*:[^\n]*\n/i,'').replace(/^(?:Translate|Dịch)\s*:\s*/i,'').trim();
+  if(/^["“].*["”]$/.test(v)&&!/^\s*(\w+:\s*)?["“]/.test(t)) v=v.slice(1,-1).trim();
+  return v.split(/\n\s*\n/)[0].trim();
+}
+var LOCAL_SP=/^([A-Z][A-Za-z .'\-]{0,24}):\s+([\s\S]+)$/;
+async function localAsk(text){
+  var t=String(text||'').trim(); if(!t) return null;
+  var m=t.match(LOCAL_SP), sp=m?m[1]:'', body=m?m[2]:t;
+  var hist=S.hist.filter(function(h){ return h.en!==t&&h.en!==body; }).slice(0,2).reverse().map(function(h){ return (h.who?h.who+': ':'')+h.en+' => '+h.vi; });   /* two lines: each one costs time on a computer without a graphics card */
+  var user=(hist.length?'Previous lines:\n'+hist.join('\n')+'\n':'')+(sp?'Speaker: '+sp+'\n':'')+'Translate:\n'+body;
+  var t0=performance.now();
+  var r=await D.llm.chat({messages:[{role:'system',content:localSys()},{role:'user',content:user}],temperature:0.3,top_p:0.8,top_k:20,max_tokens:200});
+  var vi=localClean(r&&r.text,t);
+  log('AI trên máy ('+Math.round(performance.now()-t0)+'ms'+(r&&r.timings?', đọc '+r.timings.prompt_n+' từ, viết '+r.timings.predicted_n+' từ':'')+'): '+vi);
+  if(!vi) return null;
+  return {en:t,vi:vi,speaker:sp,gender:'',age:''};
+}
 function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'fast'; }
 function speakPrefer(){ var p=preferMode(); return $('hsSpeak').checked&&fitOn()&&p==='balanced'?'fast':p; }   /* reading aloud: the voice must keep up, take the first good translation */
 function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
 function askText(prompt,text,schema,shape,plain,prefer,upgrade){
   schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
-  var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady();
+  var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady(), hasL=!!text&&shape===SHAPE_SUB&&localOk();
   return new Promise(function(resolve,reject){
     var done=false, live=0, errs=[], tms=[], held=null, oDead=false, t0=Date.now();
-    var started={g:false,q:false,o:false,f:false}, tookVia='', upgraded=false;
+    var started={g:false,q:false,o:false,l:false,f:false}, tookVia='', upgraded=false;
     function clearAll(){ tms.forEach(function(id){ if(WT) WT.clear(id); else clearTimeout(id); }); tms=[]; }
     function accept(r,via){ if(done) return; done=true; tookVia=via; clearAll(); S.via=via; resolve(r); }
     function got(r,via){
@@ -4686,25 +4734,27 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
     }
     function lose(k,e){
       errs.push(e); live--; if(k==='o') oDead=true;
-      if(done) return;
+      if(done){ if(upgrade&&tookVia==='free'&&!upgraded&&hasL&&!started.l&&k!=='f') run('l',true); return; }   /* the machine translation is up and the online AI failed: the AI on this computer improves it */
       if(held&&(k==='o'||live<=0)) return accept(held.r,held.via);
       if(!startedAll()) startNext();
       else if(live<=0) reject(errs.filter(function(x){return !x.cool;})[0]||errs[0]||new Error('Không dịch được'));
     }
-    function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.o||!hasO)&&(started.f||!S.allowFree); }
-    function run(k){
-      if(started[k]||done) return; started[k]=true; live++;
-      var p=k==='g'?gemini(prompt,null,schema):k==='q'?groq(prompt,null,shape):k==='o'?orAsk(prompt,shape):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
-      p.then(function(r){ if(r&&typeof r==='object') got(r,k==='g'?'gemini':k==='q'?'groq':k==='o'?'smart':'free'); else lose(k,new Error('trống')); },function(e){ lose(k,e); });
+    function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.o||!hasO)&&(started.l||!hasL)&&(started.f||!S.allowFree); }
+    function run(k,force){
+      if(started[k]||(done&&!force)) return; started[k]=true; live++;
+      var p=k==='g'?gemini(prompt,null,schema):k==='q'?groq(prompt,null,shape):k==='o'?orAsk(prompt,shape):k==='l'?localAsk(text):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
+      p.then(function(r){ if(r&&typeof r==='object') got(r,k==='g'?'gemini':k==='q'?'groq':k==='o'?'smart':k==='l'?'local':'free'); else lose(k,new Error('trống')); },function(e){ lose(k,e); });
     }
-    function startNext(){ if(hasG&&!started.g) run('g'); else if(hasO&&!started.o) run('o'); else if(hasQ&&!started.q) run('q'); else if(S.allowFree&&!started.f) run('f'); }
-    if(!hasG&&!hasQ&&!hasO&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
+    function startNext(){ if(hasG&&!started.g) run('g'); else if(hasO&&!started.o) run('o'); else if(hasQ&&!started.q) run('q'); else if(hasL&&!started.l) run('l'); else if(S.allowFree&&!started.f) run('f'); }
+    if(!hasG&&!hasQ&&!hasO&&!hasL&&!S.allowFree){ reject(new Error('Cần nhập mã Gemini hoặc Groq')); return; }
     if(hasG) run('g');
     if(hasO) run('o');
     if(!hasG&&!hasO) startNext();
     /* Groq answers text in ~0.3s; start it at once when Gemini is missing or usually slow here */
     if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(prefer==='fast'||!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
-    if(S.allowFree&&(hasG||hasQ||hasO)){ var fd=upgrade&&prefer==='fast'?(hasQ?450:0):3500; if(fd) tms.push(later(function(){ if(!held) run('f'); },fd)); else run('f'); }   /* "Nhanh nhất": the free translator (~0.6s) races the AI (Gemini ~1.2s); Groq (~0.35s) gets a head start */
+    /* AI on this computer: no quota; the first choice without keys, and a safety net when the online AI is slow */
+    if(hasL&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held) run('l'); },2500));
+    if(S.allowFree&&(hasG||hasQ||hasO||hasL)){ var fd=upgrade&&prefer==='fast'?(hasQ?450:0):3500; if(fd) tms.push(later(function(){ if(!held) run('f'); },fd)); else run('f'); }   /* "Nhanh nhất": the free translator (~0.6s) races the AI (Gemini ~1.2s); Groq (~0.35s) gets a head start */
   });
 }
 /* picture of the subtitle area sent to the AI (when the on-device reader is off or sees nothing) */
@@ -7742,6 +7792,36 @@ if(D.aiv){
   $('dkAiRemove').addEventListener('click',function(){ if(confirm('Gỡ bộ giọng AI khỏi máy? Muốn dùng lại thì phải tải lại.')) D.aiv.remove(); });
 }
 
+/* ---------- AI dịch trên máy: llama.cpp + a small Qwen model, downloaded once ---------- */
+var LM={st:null};
+function gb(n){ return (n/1e9).toFixed(1).replace('.',',')+' GB'; }
+function lmDraw(st){
+  LM.st=st; var m=$('dkLmState'), bar=$('dkLmBar'), dl=st.busy==='bin'||st.busy==='model';
+  bar.hidden=!(dl&&st.total);
+  if(st.total) bar.firstElementChild.style.width=Math.round(st.got/st.total*100)+'%';
+  $('dkLmGet').hidden=st.installed&&!st.busy&&!st.err; $('dkLmGet').disabled=!!st.busy;
+  $('dkLmGet').textContent=st.busy?'Đang tải...':st.got&&!st.installed?'Tải tiếp':'Tải AI dịch trên máy';
+  $('dkLmOpts').hidden=!st.installed||!!st.busy;
+  $('dkLmOn').checked=!!st.on;
+  var low=st.ram&&st.ram<8;
+  if(st.busy==='bin'){ m.className='hs-msg'; m.textContent='Đang tải bộ chạy AI: '+mb(st.got)+(st.total?' / '+mb(st.total):'')+'...'; }
+  else if(st.busy==='model'){ m.className='hs-msg'; m.textContent='Đang tải mô hình AI: '+gb(st.got)+(st.total?' / '+gb(st.total)+' ('+Math.round(st.got/st.total*100)+'%)':'')+'. Vẫn dùng Hóng Sub bình thường trong lúc tải. Tắt máy giữa chừng thì lần sau bấm Tải tiếp.'; }
+  else if(st.busy==='unzip'){ m.className='hs-msg'; m.textContent='Đang giải nén...'; }
+  else if(st.err){ m.className='hs-msg err'; m.textContent='Lỗi: '+st.err+'.'+(st.installed?'':' Bấm Tải lại để thử lại.'); $('dkLmGet').textContent=st.got&&!st.installed?'Tải tiếp':'Tải lại'; }
+  else if(!st.installed){ m.className='hs-msg'+(low?' warn':''); m.textContent='Chưa tải. Cần tải một lần khoảng '+gb((st.size||2.7e9)+6e7)+(low?'. Máy này có '+st.ram+' GB RAM, nên có từ 8 GB trở lên, máy ít RAM sẽ dịch rất chậm.':'.'); }
+  else if(!st.on){ m.className='hs-msg'; m.textContent='Đang tắt. Bật lại để dịch không cần mã.'; }
+  else if(!st.ready){ m.className='hs-msg'; m.textContent='Đang mở AI dịch trên máy (lần đầu mất khoảng nửa phút)...'; }
+  else { m.className='hs-msg ok'; m.textContent='AI dịch trên máy đã sẵn sàng ('+st.model+'), '+(st.gpu?'đang chạy bằng card đồ họa '+st.gpu+'.':'đang chạy bằng CPU vì không thấy card đồ họa nên sẽ dịch chậm (vài giây mỗi câu). Máy có card đồ họa rời dịch nhanh hơn nhiều.'); }
+  if(typeof rail==='function') try{ rail(); }catch(e){}
+}
+if(D.llm&&$('dkLmCard')){
+  $('dkLmCard').hidden=false;
+  D.llm.onState(lmDraw); D.llm.state().then(lmDraw);
+  $('dkLmGet').addEventListener('click',function(){ D.llm.install(); });
+  $('dkLmOn').addEventListener('change',function(){ D.llm.on(this.checked); });
+  $('dkLmRemove').addEventListener('click',function(){ if(confirm('Gỡ AI dịch trên máy? Sẽ xóa khoảng '+gb((LM.st&&LM.st.size)||2.7e9)+' trên ổ đĩa. Muốn dùng lại thì phải tải lại.')) D.llm.remove(); });
+}
+
 /* ---------- cloning a voice: record or pick a short clip, the page turns it into a clean WAV, the voice engine enrolls it ---------- */
 if(D.aiv&&D.aiv.clone&&$('dkClone')){
   var CL={busy:false};
@@ -7822,7 +7902,8 @@ function srcName(){
 function rail(){
   var g=$('hsGame').value.trim()||'chưa chọn', k=$('hsKeys').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length, q=$('hsGroq').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length;
   var o=$('hsOr')?$('hsOr').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length:0;
-  var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'');
+  var lo=!!(LM.st&&LM.st.ready&&LM.st.on);
+  var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':lo?'AI trên máy':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'')+(lo&&(k||q||o)?' + AI trên máy':'');
   var src=srcName(), voice=$('hsSpeak').checked?($('hsVoice').selectedOptions[0]?$('hsVoice').selectedOptions[0].textContent:'bật'):'tắt';
   var lang=$('hsLang')&&$('hsLang').selectedOptions[0]?$('hsLang').selectedOptions[0].textContent:'Tiếng Anh';
   [['dkSrc',src],['dkGame',g],['dkGame2',g],['dkVia',via],['dkVia2',via],['dkVoice2',voice],['dkLang2',lang]].forEach(function(x){ if($(x[0]).textContent!==x[1]) $(x[0]).textContent=x[1]; });

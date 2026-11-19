@@ -3,11 +3,25 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['tools/llm_bench.py']
+    paths: ['tools/llm_bench.py', 'tools/llm_node_test.js', 'pc/llm.js', 'presets/llm.json']
 jobs:
   bench:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'tools/llm_bench.py')
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/llm_bench.py
+  app:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/llm_node_test.js

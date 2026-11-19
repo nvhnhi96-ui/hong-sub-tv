@@ -215,6 +215,36 @@ if(D.aiv){
   $('dkAiRemove').addEventListener('click',function(){ if(confirm('Gỡ bộ giọng AI khỏi máy? Muốn dùng lại thì phải tải lại.')) D.aiv.remove(); });
 }
 
+/* ---------- AI dịch trên máy: llama.cpp + a small Qwen model, downloaded once ---------- */
+var LM={st:null};
+function gb(n){ return (n/1e9).toFixed(1).replace('.',',')+' GB'; }
+function lmDraw(st){
+  LM.st=st; var m=$('dkLmState'), bar=$('dkLmBar'), dl=st.busy==='bin'||st.busy==='model';
+  bar.hidden=!(dl&&st.total);
+  if(st.total) bar.firstElementChild.style.width=Math.round(st.got/st.total*100)+'%';
+  $('dkLmGet').hidden=st.installed&&!st.busy&&!st.err; $('dkLmGet').disabled=!!st.busy;
+  $('dkLmGet').textContent=st.busy?'Đang tải...':st.got&&!st.installed?'Tải tiếp':'Tải AI dịch trên máy';
+  $('dkLmOpts').hidden=!st.installed||!!st.busy;
+  $('dkLmOn').checked=!!st.on;
+  var low=st.ram&&st.ram<8;
+  if(st.busy==='bin'){ m.className='hs-msg'; m.textContent='Đang tải bộ chạy AI: '+mb(st.got)+(st.total?' / '+mb(st.total):'')+'...'; }
+  else if(st.busy==='model'){ m.className='hs-msg'; m.textContent='Đang tải mô hình AI: '+gb(st.got)+(st.total?' / '+gb(st.total)+' ('+Math.round(st.got/st.total*100)+'%)':'')+'. Vẫn dùng Hóng Sub bình thường trong lúc tải. Tắt máy giữa chừng thì lần sau bấm Tải tiếp.'; }
+  else if(st.busy==='unzip'){ m.className='hs-msg'; m.textContent='Đang giải nén...'; }
+  else if(st.err){ m.className='hs-msg err'; m.textContent='Lỗi: '+st.err+'.'+(st.installed?'':' Bấm Tải lại để thử lại.'); $('dkLmGet').textContent=st.got&&!st.installed?'Tải tiếp':'Tải lại'; }
+  else if(!st.installed){ m.className='hs-msg'+(low?' warn':''); m.textContent='Chưa tải. Cần tải một lần khoảng '+gb((st.size||2.7e9)+6e7)+(low?'. Máy này có '+st.ram+' GB RAM, nên có từ 8 GB trở lên, máy ít RAM sẽ dịch rất chậm.':'.'); }
+  else if(!st.on){ m.className='hs-msg'; m.textContent='Đang tắt. Bật lại để dịch không cần mã.'; }
+  else if(!st.ready){ m.className='hs-msg'; m.textContent='Đang mở AI dịch trên máy (lần đầu mất khoảng nửa phút)...'; }
+  else { m.className='hs-msg ok'; m.textContent='AI dịch trên máy đã sẵn sàng ('+st.model+'), '+(st.gpu?'đang chạy bằng card đồ họa '+st.gpu+'.':'đang chạy bằng CPU vì không thấy card đồ họa nên sẽ dịch chậm (vài giây mỗi câu). Máy có card đồ họa rời dịch nhanh hơn nhiều.'); }
+  if(typeof rail==='function') try{ rail(); }catch(e){}
+}
+if(D.llm&&$('dkLmCard')){
+  $('dkLmCard').hidden=false;
+  D.llm.onState(lmDraw); D.llm.state().then(lmDraw);
+  $('dkLmGet').addEventListener('click',function(){ D.llm.install(); });
+  $('dkLmOn').addEventListener('change',function(){ D.llm.on(this.checked); });
+  $('dkLmRemove').addEventListener('click',function(){ if(confirm('Gỡ AI dịch trên máy? Sẽ xóa khoảng '+gb((LM.st&&LM.st.size)||2.7e9)+' trên ổ đĩa. Muốn dùng lại thì phải tải lại.')) D.llm.remove(); });
+}
+
 /* ---------- cloning a voice: record or pick a short clip, the page turns it into a clean WAV, the voice engine enrolls it ---------- */
 if(D.aiv&&D.aiv.clone&&$('dkClone')){
   var CL={busy:false};
@@ -295,7 +325,8 @@ function srcName(){
 function rail(){
   var g=$('hsGame').value.trim()||'chưa chọn', k=$('hsKeys').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length, q=$('hsGroq').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length;
   var o=$('hsOr')?$('hsOr').value.split(/[\s,]+/).filter(function(x){return x.length>20;}).length:0;
-  var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'');
+  var lo=!!(LM.st&&LM.st.ready&&LM.st.on);
+  var via=(k?('Gemini, '+k+' mã'):q?('Groq, '+q+' mã'):o?'AI thông minh':lo?'AI trên máy':(S.allowFree?'máy dịch miễn phí':'chưa có mã'))+(o&&(k||q)?' + AI thông minh':'')+(lo&&(k||q||o)?' + AI trên máy':'');
   var src=srcName(), voice=$('hsSpeak').checked?($('hsVoice').selectedOptions[0]?$('hsVoice').selectedOptions[0].textContent:'bật'):'tắt';
   var lang=$('hsLang')&&$('hsLang').selectedOptions[0]?$('hsLang').selectedOptions[0].textContent:'Tiếng Anh';
   [['dkSrc',src],['dkGame',g],['dkGame2',g],['dkVia',via],['dkVia2',via],['dkVoice2',voice],['dkLang2',lang]].forEach(function(x){ if($(x[0]).textContent!==x[1]) $(x[0]).textContent=x[1]; });

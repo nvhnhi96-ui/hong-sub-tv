@@ -686,6 +686,18 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="hs-msg" id="hsOrMsg" hidden></div>
               <p class="hs-note" id="hsOrNote" style="margin-top:6px">Mã miễn phí: 50 câu mỗi ngày. Nạp 10$ một lần vào OpenRouter: 1000 câu miễn phí mỗi ngày, và dùng được DeepSeek rất rẻ (khoảng 0,05$ cho 1000 câu).</p>
             </div>
+            <div class="dk-card dk-only" id="dkLmCard" hidden>
+              <h2>AI dịch trên máy</h2>
+              <p class="hs-note">Không cần mã, không bao giờ hết lượt, không cần mạng khi dịch. AI (Qwen, của Alibaba) chạy ngay trên máy tính này. Có mã Gemini, Groq thì app vẫn ưu tiên AI trên mạng cho hay hơn, AI trên máy làm dự phòng khi mã hết lượt hoặc mạng chậm. Không có mã thì AI trên máy dịch chính.</p>
+              <p class="hs-note">Máy có card đồ họa rời (NVIDIA, AMD, Intel Arc) hoặc Mac chip M: khoảng 1 giây mỗi câu. Máy chỉ có CPU: vài giây mỗi câu.</p>
+              <div class="hs-msg" id="dkLmState">Đang kiểm tra...</div>
+              <div class="dk-bar" id="dkLmBar" hidden><span></span></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkLmGet">Tải AI dịch trên máy</button></div>
+              <div id="dkLmOpts" hidden>
+                <label class="hs-sw dk-sw" style="margin-top:8px">Dùng AI dịch trên máy <input type="checkbox" id="dkLmOn"></label>
+                <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkLmRemove">Gỡ khỏi máy</button></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

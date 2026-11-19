@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "model": {
+  "id": "qwen3.5-4b-q4",
+  "name": "Qwen3.5 4B",
+  "file": "Qwen3.5-4B-Q4_K_M.gguf",
+  "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf",
+  "size": 2740000000,
+  "ctx": 4096
+ }
+}

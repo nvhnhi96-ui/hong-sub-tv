@@ -17,6 +17,7 @@ const lgModule = require('./lg');
 const onlineTts = require('./onlinetts');
 const tizenModule = require('./tizen');
 const tzRaw = require('./tzraw');
+const llm = require('./llm');
 let lgApi = null;   /* the home-network server for the TV apps (lg.js) */
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
@@ -1196,6 +1197,7 @@ app.whenReady().then(async () => {
   setupIpc();
   try { lgApi = lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
   try { tizenModule.setup({ ipcMain, net, getWin: () => win, cfgDir: app.getPath('userData'), lanAddr: async () => (lgApi && lgApi.myAddr ? lgApi.myAddr('') : '') }); } catch (e) { console.error('samsung', e); }
+  try { llm.setup({ ipcMain, app, net, getWin: () => win, get cfg() { return cfg; }, saveCfg }); } catch (e) { console.error('local ai', e); }
   try { tzRaw.setup({ ipcMain, BrowserWindow, getWin: () => win, lanAddr: async (tvIp) => (lgApi && lgApi.myAddr ? lgApi.myAddr(tvIp || '') : '') }); } catch (e) { console.error('samsung auto', e); }
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
@@ -1215,5 +1217,5 @@ app.on('before-quit', (e) => {
   if (!SELFTEST && byeState !== 2 && win && !win.isDestroyed()) { e.preventDefault(); bye(); return; }   /* Cmd+Q, the tray, an update: tidy the TV first */
   quitting = true;
 });
-app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); for (const p of [tts, piper, rectProc]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (ps) ps.stop(); aivStop(); llm.stop(); for (const p of [tts, piper, rectProc]) { if (p) { try { p.kill(); } catch (e) { /* ignore */ } } } });
 app.on('window-all-closed', () => { if (quitting || SELFTEST) app.quit(); });

@@ -146,6 +146,14 @@ const api = {
     if (!clip || !clip.b64) return;
     enqueue({ text: '', ai: false, pre: { b64: clip.b64, mime: clip.mime }, rate: rate || 1, pitch: pitch || 1, boost: 1 }, queue);
   },
+  llm: {
+    state: () => ipcRenderer.invoke('llm-state'),
+    install: () => ipcRenderer.invoke('llm-install'),
+    on: (v) => ipcRenderer.invoke('llm-on', v),
+    remove: () => ipcRenderer.invoke('llm-remove'),
+    chat: (body) => ipcRenderer.invoke('llm-chat', body),
+    onState: (cb) => ipcRenderer.on('llm-state', (e, s) => cb(s))
+  },
   aiv: {
     state: () => ipcRenderer.invoke('aiv-state'),
     install: () => ipcRenderer.invoke('aiv-install'),
