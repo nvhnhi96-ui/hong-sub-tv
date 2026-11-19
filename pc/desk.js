@@ -201,7 +201,7 @@ function aiDraw(st){
   if(st.ready){
     var cur=A.narrator();
     $('dkNarr').innerHTML=st.voices.map(function(v){return '<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+v.id+' ('+(v.gender==='male'?'nam':'nữ')+', '+v.region+')</option>';}).join('');
-    $('dkAiList').innerHTML=st.voices.map(function(v){return '<button type="button" data-v="'+v.id+'"><svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg><b>'+v.id+'</b><small>'+(v.gender==='male'?'nam':'nữ')+' · '+v.region+'</small></button>';}).join('');
+    $('dkAiList').innerHTML=st.voices.map(function(v){return '<button type="button" data-v="'+v.id+'"><svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg><b>'+v.id+'</b><small>'+(v.gender==='male'?'nam':'nữ')+' · '+(v.clone?'nhân bản':v.region)+'</small></button>';}).join('');
     $('dkAiList').querySelectorAll('button').forEach(function(b){ b.addEventListener('click',function(){ A.sample('ai:'+b.dataset.v,'Xin chào, tôi là '+b.dataset.v+'. Chúng ta phải rời khỏi đây trước khi trời sáng.'); }); });
   }
 }
@@ -213,6 +213,73 @@ if(D.aiv){
   $('dkAiFast').addEventListener('change',function(){ D.aiv.fast(this.checked); });
   $('dkNarr').addEventListener('change',function(){ A.save('narrator',this.value); A.sample('ai:'+this.value,'Đây là giọng đọc lời dẫn và những câu không có tên người nói.'); });
   $('dkAiRemove').addEventListener('click',function(){ if(confirm('Gỡ bộ giọng AI khỏi máy? Muốn dùng lại thì phải tải lại.')) D.aiv.remove(); });
+}
+
+/* ---------- cloning a voice: record or pick a short clip, the page turns it into a clean WAV, the voice engine enrolls it ---------- */
+if(D.aiv&&D.aiv.clone&&$('dkClone')){
+  var CL={busy:false};
+  function clEsc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function clMsg(cls,t){ var m=$('dkClMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+  function clList(st){
+    var box=$('dkClList'), list=((st&&st.voices)||[]).filter(function(v){ return v.clone; });
+    box.innerHTML=list.map(function(v){ return '<span class="dk-clv"><button type="button" data-v="'+clEsc(v.id)+'"><svg viewBox="0 0 10 10"><path d="M2 1l7 4-7 4z"/></svg><b>'+clEsc(v.id)+'</b><small>nhân bản · '+(v.gender==='male'?'nam':'nữ')+'</small></button><button type="button" class="dk-link" data-x="'+clEsc(v.id)+'">Xóa</button></span>'; }).join('');
+    box.querySelectorAll('[data-v]').forEach(function(b){ b.addEventListener('click',function(){ A.sample('ai:'+b.dataset.v,'Xin chào, đây là giọng '+b.dataset.v+'. Chúng ta phải rời khỏi đây trước khi trời sáng.'); }); });
+    box.querySelectorAll('[data-x]').forEach(function(b){ b.addEventListener('click',function(){ if(confirm('Xóa giọng nhân bản "'+b.dataset.x+'"?')) D.aiv.unclone(b.dataset.x); }); });
+  }
+  D.aiv.onState(clList); D.aiv.state().then(clList);
+  /* any audio the browser can open -> mono, 24 kHz, at most 15 s, 16-bit WAV (base64) */
+  async function toWav(buf){
+    var ac=new (window.AudioContext||window.webkitAudioContext)();
+    var a; try{ a=await ac.decodeAudioData(buf); } finally{ try{ ac.close(); }catch(e){} }
+    var sec=Math.min(15,a.duration); if(sec<3) throw new Error('Đoạn âm thanh quá ngắn: cần ít nhất 3 giây giọng nói.');
+    var rate=24000, n=Math.floor(sec*rate), oc=new OfflineAudioContext(1,n,rate), src=oc.createBufferSource();
+    src.buffer=a; src.connect(oc.destination); src.start(0);
+    var r=await oc.startRendering(), x=r.getChannelData(0), peak=0, i;
+    for(i=0;i<x.length;i++) peak=Math.max(peak,Math.abs(x[i]));
+    if(peak<0.01) throw new Error('Đoạn âm thanh gần như im lặng. Nói to, rõ hơn rồi thử lại.');
+    var g=Math.min(4,0.9/peak), out=new DataView(new ArrayBuffer(44+x.length*2));
+    function str(o,s){ for(var k=0;k<s.length;k++) out.setUint8(o+k,s.charCodeAt(k)); }
+    str(0,'RIFF'); out.setUint32(4,36+x.length*2,true); str(8,'WAVE'); str(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true);
+    out.setUint32(24,rate,true); out.setUint32(28,rate*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); str(36,'data'); out.setUint32(40,x.length*2,true);
+    for(i=0;i<x.length;i++) out.setInt16(44+i*2,Math.max(-32767,Math.min(32767,Math.round(x[i]*g*32767))),true);
+    var u=new Uint8Array(out.buffer), s=''; for(i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+    return btoa(s);
+  }
+  async function clDo(getBuf){
+    if(CL.busy) return;
+    var name=$('dkClName').value.trim();
+    if(!name){ clMsg('warn','Đặt tên cho giọng trước, ví dụ: Giọng anh Nhi.'); $('dkClName').focus(); return; }
+    CL.busy=true; $('dkClRec').disabled=$('dkClFile').disabled=true;
+    try{
+      var buf=await getBuf(); if(!buf){ return; }
+      clMsg('','Đang tạo giọng "'+name+'"... Lần đầu máy tải thêm một phần nhỏ của bộ giọng, có thể mất khoảng một phút.');
+      var wav=await toWav(buf);
+      var r=await D.aiv.clone({name:name,gender:$('dkClGender').value,wav:wav});
+      if(r&&r.ok){ clMsg('ok','Đã tạo giọng "'+r.name+'". Bấm tên giọng ở dưới để nghe thử; giọng này cũng có trong danh sách giọng của nhân vật.'); $('dkClName').value=''; A.sample('ai:'+r.name,'Xin chào, đây là giọng '+r.name+' vừa được nhân bản.'); }
+      else clMsg('err','Chưa tạo được giọng: '+((r&&r.err)||'lỗi')+(/connect|network|resolve|offline|internet|timed? ?out/i.test(String(r&&r.err))?' (lần đầu cần mạng để tải thêm phần nhận dạng giọng)':''));
+    }catch(e){ clMsg('err',String(e&&e.message||e)); }
+    finally{ CL.busy=false; $('dkClRec').disabled=$('dkClFile').disabled=false; $('dkClRec').textContent='Thu âm 10 giây'; }
+  }
+  $('dkClFile').addEventListener('click',function(){ $('dkClIn').value=''; $('dkClIn').click(); });
+  $('dkClIn').addEventListener('change',function(){ var f=this.files&&this.files[0]; if(!f) return;
+    if(f.size>40*1048576){ clMsg('warn','File quá lớn. Chọn đoạn ngắn 5 đến 15 giây.'); return; }
+    clDo(function(){ return f.arrayBuffer(); }); });
+  $('dkClRec').addEventListener('click',function(){
+    clDo(async function(){
+      var st;
+      try{ st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:true,autoGainControl:true,channelCount:1}}); }
+      catch(e){ throw new Error('Không mở được micro ('+e.name+'). Kiểm tra micro đã cắm và cho phép Hóng Sub dùng micro.'); }
+      var rec=new MediaRecorder(st), parts=[], left=10;
+      rec.ondataavailable=function(e){ if(e.data&&e.data.size) parts.push(e.data); };
+      var done=new Promise(function(r){ rec.onstop=r; });
+      rec.start();
+      clMsg('','Đang thu âm: hãy đọc tự nhiên một đoạn, ví dụ kể vài câu về trận game vừa chơi...');
+      var tick=setInterval(function(){ left--; $('dkClRec').textContent='Đang thu... '+left+' giây'; if(left<=0){ clearInterval(tick); rec.stop(); } },1000);
+      $('dkClRec').textContent='Đang thu... 10 giây';
+      await done; clearInterval(tick); st.getTracks().forEach(function(t){ t.stop(); });
+      return await new Blob(parts,{type:rec.mimeType||'audio/webm'}).arrayBuffer();
+    });
+  });
 }
 
 /* ---------- left rail summary ---------- */

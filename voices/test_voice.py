@@ -43,4 +43,31 @@ for vi, voice in enumerate(picks):
             if m['last']:
                 break
         print(f'{prec} {voice}: first audio {first:.2f}s, speech {total:.2f}s, all done {time.time()-t1:.2f}s, RTF {(time.time()-t1)/max(total,0.01):.2f}')
+# cloning: enroll one of the samples just made as a new voice, speak with it, then remove it
+# (also puts the voice-print model into the pack, so cloning works without the internet)
+import shutil
+src = os.path.join(out, f'{prec}-0-0.wav')
+cdir = os.path.join(here, 'clones'); os.makedirs(cdir, exist_ok=True)
+dst = os.path.join(cdir, 'test.wav'); shutil.copyfile(src, dst)
+t1 = time.time()
+p.stdin.write(json.dumps({'cmd': 'clone', 'id': 'c1', 'name': 'Thử nhân bản', 'path': dst, 'gender': 'female'}, ensure_ascii=False) + '\n'); p.stdin.flush()
+while True:
+    m = rd()
+    if m.get('type') in ('cloned', 'clonefail'):
+        break
+print('CLONE', m.get('type'), m.get('err', ''), f'{time.time()-t1:.2f}s')
+if m.get('type') != 'cloned':
+    raise SystemExit('clone failed')
+p.stdin.write(json.dumps({'cmd': 'speak', 'id': 999, 'text': 'Đây là giọng vừa nhân bản.', 'voice': 'Thử nhân bản'}, ensure_ascii=False) + '\n'); p.stdin.flush()
+while True:
+    m = rd()
+    if m.get('id') == 999 and (m.get('type') == 'error' or m.get('last')):
+        break
+print('CLONE SPEAK', m.get('type'), m.get('err', ''), m.get('sec'))
+if m.get('type') == 'audio':
+    open(os.path.join(out, f'{prec}-clone.wav'), 'wb').write(base64.b64decode(m['wav']))
+p.stdin.write(json.dumps({'cmd': 'unclone', 'name': 'Thử nhân bản'}, ensure_ascii=False) + '\n'); p.stdin.flush()
+while rd().get('type') != 'voices':
+    pass
+shutil.rmtree(cdir, ignore_errors=True)
 p.stdin.write('{"cmd":"quit"}\n'); p.stdin.flush()

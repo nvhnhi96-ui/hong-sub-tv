@@ -180,6 +180,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
 .dk-voices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;margin-top:8px}
 .dk-voices button{display:flex;align-items:center;gap:8px;text-align:left;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13.5px;font-family:inherit}
 .dk-voices button:hover{border-color:var(--brand)}
+.dk-clv{display:flex;gap:4px;align-items:center}.dk-clv>button:first-child{flex:1;min-width:0}.dk-voices .dk-clv button.dk-link{border:0;background:none;padding:6px;color:var(--muted)}
 .dk-voices button svg{width:14px;height:14px;flex:none;fill:var(--brand)}
 .dk-voices b{font-weight:600}.dk-voices small{color:var(--muted);margin-left:auto;white-space:nowrap}
 .dk-steps{margin:6px 0 0;padding-left:20px;font-size:14px;line-height:1.55}.dk-steps li{margin:5px 0}
@@ -265,11 +266,11 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <div>
                   <b>Chọn nguồn hình game</b>
                   <p class="dk-only">Chơi PS5 / PS4 ngay trong Hóng Sub, dùng app PS Remote Play của Sony, hoặc capture card nếu chơi trên TV. Chọn ở cột bên phải.</p>
-                  <p class="hs-web">Mở app PS Remote Play của Sony (hoặc game trên máy tính) rồi bấm Chọn cửa sổ game. Chơi trên TV qua capture card thì bấm Capture card.</p>
+                  <p class="hs-web">Mở app PS Remote Play của Sony (hoặc game trên máy tính) rồi bấm Chọn cửa sổ game. Chơi trên TV qua capture card thì bấm Card ghi hình HDMI.</p>
                   <div class="hs-row">
                     <button class="hs-btn pri dk-only" id="hsPsGo" type="button">Chơi PS5 / PS4</button>
                     <button class="hs-btn" id="hsPick" type="button">Chọn cửa sổ game</button>
-                    <button class="hs-btn" id="hsCam" type="button">Capture card</button>
+                    <button class="hs-btn" id="hsCam" type="button" title="PS5 cắm qua card ghi hình HDMI (capture card) vào máy tính: lấy cả hình và tiếng game">Card ghi hình HDMI</button>
                     <button class="hs-btn" id="hsDemo" type="button">Xem thử</button>
                   </div>
                 </div>
@@ -320,7 +321,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="dk-src">
                 <button type="button" id="dkSrcPs" class="dk-only"><svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/><path d="M7 11h3M8.5 9.5v3"/></svg><b>Chơi PS5 / PS4 trong Hóng Sub</b><small>Không cần app của Sony</small></button>
                 <button type="button" id="dkSrcSony"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>App PS Remote Play của Sony</b><small id="dkSonyNote">Mở app của Sony, Hóng Sub tự đọc cửa sổ đó</small></button>
-                <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Capture card</b><small>Chơi trên TV, máy tính chỉ nhận hình</small></button>
+                <button type="button" id="dkSrcCam"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 11l6-3v8l-6-3M6 17v3M12 17v3"/></svg><b>Card ghi hình HDMI</b><small>Hình và tiếng game qua card capture, chơi ngay trên máy tính hoặc TV</small></button>
                 <button type="button" id="dkSrcWin"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Cửa sổ khác</b><small>Game trên máy tính, phim, video</small></button>
               </div>
               </div>
@@ -397,7 +398,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>.</li>
                 <li>Cài và mở app <button class="dk-link" type="button" data-url="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">PS Remote Play của Sony</button>, đăng nhập và kết nối PS5.</li>
                 <li>Về <b>Màn hình chơi</b>, bấm <b>App PS Remote Play của Sony</b>, chọn cửa sổ PS Remote Play rồi bấm <b>Chia sẻ</b>.</li>
-                <li>Chơi trên TV qua capture card thì chọn <b>Capture card</b>.</li>
+                <li>Chơi trên TV qua capture card thì chọn <b>Card ghi hình HDMI</b>.</li>
               </ol>
               <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và gửi phụ đề lên TV.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
@@ -753,6 +754,17 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
             </div>
             <div class="lab" style="margin-top:16px;font-size:13.5px;font-weight:600">Nghe thử từng giọng</div>
             <div class="dk-voices" id="dkAiList"></div>
+            <div class="dk-clone" id="dkClone">
+              <div class="lab" style="margin-top:18px;font-size:13.5px;font-weight:600">Nhân bản giọng nói</div>
+              <p class="hs-note">Thu âm hoặc chọn một đoạn 5 đến 15 giây một người nói rõ, ít tiếng ồn. Hóng Sub tạo thêm một giọng AI giống giọng đó, dùng được cho nhân vật và lời dẫn như các giọng khác. Chỉ nhân bản giọng của chính bạn, hoặc của người đã đồng ý.</p>
+              <div class="dk-cols" style="margin-top:6px">
+                <div class="dk-set"><label class="lab" for="dkClName">Tên giọng</label><input class="hs-in" id="dkClName" maxlength="32" placeholder="VD: Giọng anh Nhi"></div>
+                <div class="dk-set"><label class="lab" for="dkClGender">Nam hay nữ</label><select class="hs-in" id="dkClGender"><option value="male">Nam</option><option value="female">Nữ</option></select></div>
+              </div>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkClRec">Thu âm 10 giây</button><button class="hs-btn" type="button" id="dkClFile">Chọn file âm thanh</button><input type="file" id="dkClIn" accept="audio/*,.wav,.mp3,.m4a,.ogg,.flac" hidden></div>
+              <div class="hs-msg" id="dkClMsg" hidden></div>
+              <div class="dk-voices" id="dkClList" style="margin-top:8px"></div>
+            </div>
             <div class="hs-row" style="margin-top:12px"><button class="dk-link" type="button" id="dkAiRemove">Gỡ bộ giọng AI khỏi máy</button></div>
           </div>
         </div>

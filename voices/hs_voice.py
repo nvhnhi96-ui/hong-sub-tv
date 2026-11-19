@@ -2,6 +2,10 @@
 Reads one JSON command per line on stdin, writes one JSON message per line on stdout.
   {"cmd":"speak","id":7,"text":"...","voice":"Trúc Ly"}  -> {"type":"audio","id":7,"i":0,"last":false,"wav":"<base64>"}...
   {"cmd":"stop"}  /  {"cmd":"quit"}  /  {"cmd":"drop","id":7}
+  {"cmd":"clone","id":"c1","name":"Giọng Nhi","path":".../clones/c1.wav","gender":"male"} -> {"type":"cloned",...} or {"type":"clonefail",...}
+  {"cmd":"unclone","name":"Giọng Nhi"} -> {"type":"voices","voices":[...]}
+A cloned voice (a short clip of a person speaking, made by the person with their consent) is kept in clones/ next to
+this file and enrolled again the first time it is used after a restart.
 Lines are made in the order asked; several can wait, so the next line is ready while one is playing.
 "stop" forgets every waiting line, "drop" forgets one."""
 import sys, os, json, io, base64, time, threading, queue, re
@@ -52,7 +56,58 @@ def main():
         meta = tts.get_preset_voice(vid) if hasattr(tts, 'get_preset_voice') else {}
         voices.append({'id': vid, 'gender': meta.get('gender', ''), 'region': meta.get('region', ''), 'desc': meta.get('description', '')})
     sr = getattr(tts, 'sample_rate', 48000)
-    send({'type': 'ready', 'ms': int((time.time() - t0) * 1000), 'voices': voices, 'sr': sr, 'prec': prec})
+
+    # ---- cloned voices ----
+    cdir = os.path.join(HERE, 'clones')
+    clones = {}                                    # name -> {'path','gender','ok'}
+    try:
+        for f in sorted(os.listdir(cdir)):
+            if f.endswith('.json'):
+                try:
+                    meta = json.load(open(os.path.join(cdir, f), encoding='utf-8'))
+                    wav = os.path.join(cdir, f[:-5] + '.wav')
+                    if meta.get('name') and os.path.isfile(wav):
+                        clones[meta['name']] = {'path': wav, 'gender': meta.get('gender', ''), 'ok': False, 'file': f[:-5]}
+                except Exception:
+                    pass
+    except OSError:
+        pass
+
+    def all_voices():
+        return voices + [{'id': n, 'gender': c['gender'], 'region': '', 'desc': 'Giọng nhân bản', 'clone': True} for n, c in clones.items()]
+
+    def speaker_ready():
+        """The voice-print model is only needed to clone: an older voice pack does not have it, fetch it once."""
+        eng = getattr(tts, 'engine', None)
+        if eng is None or getattr(eng, 'speaker_encoder', None) is not None or not hasattr(eng, '_ensure_speaker_encoder'):
+            return
+        try:
+            eng._ensure_speaker_encoder(); return
+        except Exception:
+            pass
+        import huggingface_hub.constants as hc
+        was = hc.HF_HUB_OFFLINE
+        hc.HF_HUB_OFFLINE = False; os.environ['HF_HUB_OFFLINE'] = '0'
+        try:
+            try:
+                from huggingface_hub.utils import _http
+                if hasattr(_http, 'reset_sessions'):
+                    _http.reset_sessions()
+            except Exception:
+                pass
+            eng._ensure_speaker_encoder()
+        finally:
+            hc.HF_HUB_OFFLINE = was; os.environ['HF_HUB_OFFLINE'] = '1' if was else '0'
+
+    def enroll(name):
+        c = clones[name]
+        if c['ok']:
+            return
+        speaker_ready()
+        tts.add_voice(name, c['path'], denoise=True, gender=c.get('gender', ''), description='Giọng nhân bản')
+        c['ok'] = True
+
+    send({'type': 'ready', 'ms': int((time.time() - t0) * 1000), 'voices': all_voices(), 'sr': sr, 'prec': prec})
 
     want = set()                                   # ids still wanted (a line being played, or waiting)
     jobs = queue.Queue()
@@ -69,6 +124,8 @@ def main():
             c = m.get('cmd')
             if c == 'speak':
                 want.add(m.get('id')); jobs.put(m)
+            elif c in ('clone', 'unclone'):
+                jobs.put(m)
             elif c == 'drop':
                 want.discard(m.get('id'))
             elif c == 'stop':
@@ -81,8 +138,50 @@ def main():
     while True:
         m = jobs.get()
         mid = m.get('id')
+        if m.get('cmd') == 'clone':
+            name = str(m.get('name') or '').strip()[:32]
+            path = str(m.get('path') or '')
+            t1 = time.time()
+            if not name or not os.path.isfile(path) or os.path.dirname(os.path.abspath(path)) != os.path.abspath(cdir):
+                send({'type': 'clonefail', 'id': mid, 'err': 'arg'}); continue
+            if name in clones:
+                try:
+                    tts.remove_voice(name)
+                except Exception:
+                    pass
+            clones[name] = {'path': path, 'gender': m.get('gender', ''), 'ok': False, 'file': os.path.basename(path)[:-4]}
+            try:
+                enroll(name)
+                with open(path[:-4] + '.json', 'w', encoding='utf-8') as f:
+                    json.dump({'name': name, 'gender': m.get('gender', '')}, f, ensure_ascii=False)
+                send({'type': 'cloned', 'id': mid, 'name': name, 'ms': int((time.time() - t1) * 1000), 'voices': all_voices()})
+            except Exception as e:
+                clones.pop(name, None)
+                send({'type': 'clonefail', 'id': mid, 'err': str(e)[:300]})
+            continue
+        if m.get('cmd') == 'unclone':
+            name = str(m.get('name') or '')
+            c = clones.pop(name, None)
+            if c:
+                try:
+                    tts.remove_voice(name)
+                except Exception:
+                    pass
+                for ext in ('.wav', '.json'):
+                    try:
+                        os.remove(os.path.join(cdir, c['file'] + ext))
+                    except OSError:
+                        pass
+            send({'type': 'voices', 'voices': all_voices()})
+            continue
         if mid not in want:
             continue
+        v = m.get('voice') or None
+        if v in clones and not clones[v]['ok']:
+            try:
+                enroll(v)
+            except Exception as e:
+                send({'type': 'error', 'id': mid, 'err': 'clone: ' + str(e)[:280]}); want.discard(mid); continue
         parts = split_text(m.get('text', ''))
         for i, p in enumerate(parts):
             if mid not in want:

@@ -308,7 +308,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
             <div class="hs-row">
               <button class="hs-btn pri hs-dk" id="hsPsGo" type="button">Chơi PS5 / PS4</button>
               <button class="hs-btn pri" id="hsPick" type="button">Chọn cửa sổ game</button>
-              <button class="hs-btn" id="hsCam" type="button" title="Chơi trên TV, PS5 cắm qua capture card vào máy tính">Capture card</button>
+              <button class="hs-btn" id="hsCam" type="button" title="PS5 cắm qua card ghi hình HDMI (capture card) vào máy tính: lấy cả hình và tiếng game">Card ghi hình HDMI</button>
               <button class="hs-btn" id="hsDemo" type="button">Xem thử</button>
             </div>
           </div>
@@ -1134,6 +1134,7 @@ async function pick(manual){
 function setStream(st,demo){
   if(S.fs&&S.fs.on) fsStop();
   stopRun();
+  if(S.camSrc&&S.stream!==st){ try{ S.camSrc.disconnect(); }catch(e){} S.camSrc=null; }   /* the capture card's sound stops with its picture */
   if(S.stream&&S.stream!==st){S.stream.getTracks().forEach(function(t){t.stop();});}
   if(S.demo&&S.demo!==demo){S.demo.stop();}
   S.stream=st; S.demo=demo; S.lastSig=null; S.prevSig=null; S.lastEn='';
@@ -1169,13 +1170,44 @@ async function pickCam(){
       dev=devs.length===1?devs[0]:await camChoose(devs,guess[0]);
     }
     if(!dev) return;
-    var st=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:dev.deviceId},width:{ideal:3840},height:{ideal:2160},frameRate:{ideal:30}},audio:false});
-    save('cam',dev.deviceId); log('capture card: '+dev.label);
+    /* 1080p at 60 frames: the game moves smoothly on the computer and the reader still sees every letter */
+    var st=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:dev.deviceId},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60}},audio:false});
+    save('cam',dev.deviceId);
+    var vt=st.getVideoTracks()[0], vs=vt&&vt.getSettings?vt.getSettings():{};
+    log('capture card: '+dev.label+(vs.width?' ('+vs.width+'x'+vs.height+', '+Math.round(vs.frameRate||0)+' hình/giây)':''));
+    var au=await camAudio(dev);
+    if(au) au.getAudioTracks().forEach(function(t){ st.addTrack(t); });
     S.offlineDemo=false; setStream(st,null);
+    camAudioPlay(st);
   }catch(e){
     log('capture card lỗi: '+e.name+' '+e.message);
     status('err',/NotReadable|TrackStart/i.test(e.name)?'Capture card đang bị app khác dùng (OBS, Camera...). Đóng app đó rồi thử lại.':/NotAllowed/i.test(e.name)?'Chưa cho phép dùng capture card. Bấm Cho phép khi trình duyệt hỏi.':'Không mở được capture card: '+e.message);
   }
+}
+/* the game's sound comes through the capture card too (its own audio input): play it on this computer, with very little delay */
+async function camAudio(dev){
+  try{
+    var list=(await navigator.mediaDevices.enumerateDevices()).filter(function(d){ return d.kind==='audioinput'&&d.deviceId!=='default'&&d.deviceId!=='communications'; });
+    var name=String(dev.label||'').replace(/\s*\([^)]*\)\s*$/,'').trim().toLowerCase();
+    var a=list.filter(function(d){ return dev.groupId&&d.groupId===dev.groupId; })[0]
+      ||list.filter(function(d){ var l=String(d.label||'').toLowerCase(); return name.length>=4&&l.indexOf(name)>=0; })[0]
+      ||list.filter(function(d){ return /capture|elgato|avermedia|hdmi|ugreen|cam link|live gamer|mirabox|ezcap|usb3\.0|digital audio interface/i.test(d.label||''); })[0];
+    if(!a){ log('capture card: không thấy cổng tiếng của card, chỉ lấy hình'); return null; }
+    var s=await navigator.mediaDevices.getUserMedia({audio:{deviceId:{exact:a.deviceId},echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:2},sampleRate:{ideal:48000},latency:{ideal:0}}});
+    log('capture card: lấy tiếng game từ '+(a.label||'cổng tiếng của card')); return s;
+  }catch(e){ log('capture card: không lấy được tiếng ('+e.name+')'); return null; }
+}
+function camAudioPlay(st){
+  try{
+    if(S.camSrc){ try{ S.camSrc.disconnect(); }catch(e){} S.camSrc=null; }
+    if(!st||!st.getAudioTracks().length) return;
+    if(!PS.actx) PS.actx=new AudioContext({sampleRate:48000,latencyHint:'interactive'});
+    if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
+    var src=PS.actx.createMediaStreamSource(st); src.connect(psOut());   /* "Tắt tiếng game" works here too */
+    if(PS.vtap) src.connect(PS.vtap);                                     /* the voice reader hears the characters */
+    S.camSrc=src;
+    st.getAudioTracks()[0].addEventListener('ended',function(){ if(S.camSrc===src){ try{ src.disconnect(); }catch(e){} S.camSrc=null; } });
+  }catch(e){ log('capture card: không phát được tiếng ('+e.message+')'); }
 }
 function camChoose(devs,guess){
   return new Promise(function(done){
@@ -2752,7 +2784,7 @@ var winVoices=null, AIV={ready:false,list:[],off:load('aivOff',false)};
 function aiMerge(st){
   AIV.ready=!!(st&&st.ready); AIV.list=AIV.ready?(st.voices||[]):[]; if(st&&st.hasOwnProperty('fast')) AIV.fast=!!st.fast; AIV.installed=!!(st&&st.installed);
   if(winVoices===null) return;
-  dVoices=winVoices.concat(AIV.list.map(function(v){ return {id:'ai:'+v.id,lang:'vi-VN',ai:true,g:v.gender,region:v.region,name:'AI · '+v.id+' ('+(v.gender==='male'?'nam':'nữ')+(v.region?', '+v.region:'')+')'}; }));
+  dVoices=winVoices.concat(AIV.list.map(function(v){ return {id:'ai:'+v.id,lang:'vi-VN',ai:true,g:v.gender,region:v.region,name:'AI · '+v.id+' ('+(v.gender==='male'?'nam':'nữ')+(v.clone?', nhân bản':v.region?', '+v.region:'')+')'}; }));
   loadVoices();
 }
 if(D){ loadVoices(); D.voices().then(function(v){winVoices=v||[]; dVoices=winVoices.slice(); aiMerge(AIV.ready?{ready:true,voices:AIV.list}:null); loadVoices();}).catch(function(){winVoices=[]; dVoices=[]; loadVoices();}); $('hsVoiceSet').addEventListener('click',function(){D.voiceSettings();});
@@ -2985,15 +3017,15 @@ function speakAi(t,voice,fallbackG){
     .catch(function(e){ S.ttsCool=Date.now()+(e&&e.cool?60e3:10*60e3); if(my===spSeq){ status('warn','Giọng AI tạm hết lượt, dùng giọng có sẵn'); devSpeak(t,'auto',fallbackG||''); } });
 }
 /* voices on this device, picked by gender in "auto" mode */
-function aiVoices(g){ return AIV.ready&&!AIV.off?AIV.list.filter(function(v){return !g||v.gender===g;}):[]; }
-function narrator(){ var n=load('narrator',''); if(n&&AIV.list.some(function(v){return v.id===n;})) return n; var f=aiVoices('female')[0]||AIV.list[0]; return f?f.id:''; }
+function aiVoices(g){ return AIV.ready&&!AIV.off?AIV.list.filter(function(v){return !v.clone&&(!g||v.gender===g);}):[]; }   /* cloned voices are only used where the person picks them */
+function narrator(){ var n=load('narrator',''); if(n&&AIV.list.some(function(v){return v.id===n;})) return n; var f=aiVoices('female')[0]||aiVoices('')[0]; return f?f.id:''; }
 /* give each character its own AI voice: same gender, not used by another character of this game */
 function castAuto(who,g){
   var gk=castKey(), c=S.cast[gk]||(S.cast[gk]={}), k=castFind(c,who), e=c[k]||(c[k]={n:who.trim(),g:g||'',auto:true,v:'',c:CAST_COLORS[Object.keys(c).length%CAST_COLORS.length]});
   var sex=e.g||g||'';
   if(e.av&&AIV.list.some(function(v){return v.id===e.av&&(!sex||v.gender===sex);})) return e.av;
   var used=[narrator()]; Object.keys(c).forEach(function(x){ if(x!==k){ if(c[x].av) used.push(c[x].av); if(c[x].v&&c[x].v.indexOf('ai:')===0) used.push(c[x].v.slice(3)); } });
-  var pool=aiVoices(sex); if(!pool.length) pool=AIV.list;
+  var pool=aiVoices(sex); if(!pool.length) pool=aiVoices('');
   var free=pool.filter(function(v){return used.indexOf(v.id)<0;});
   var pick=(free[0]||pool[Object.keys(c).length%pool.length]);
   e.av=pick?pick.id:''; save('cast',S.cast); return e.av;
@@ -3120,6 +3152,7 @@ function ocrWarm(){
   return HsOcr.read(c).then(function(o){ log('làm nóng bộ đọc chữ: '+o.ms+'ms ('+o.text+')'); },function(){}).then(function(){ S.ocrBusy=false; });
 }
 function ocrLoad(){
+  dictLoad();
   if(!window.HsOcr||HsOcr.ready()||OCR.loading||readMode()!=='local'||OCR.fails>=5) return;
   OCR.loading=true; var t0=Date.now(); if(!D) $('hsReadNote').textContent='Đang tải bộ đọc chữ (khoảng 13 MB, chỉ lần đầu)...';
   HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); return ocrWarm(); }).then(function(){ return ocrLang(); })
@@ -3138,6 +3171,61 @@ var LANGS={
 /* a game that already shows Vietnamese subtitles: nothing to translate, Hóng Sub only reads them aloud */
 function viMode(){ return LG()==='vi'; }
 var OCR_LANG=window.HS_OCR_LANG||'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@1417b96b57792dda0270801c2ac01a03a5aceaa1/web/ocr/lang/';
+/* ---------- English dictionary: letters the reader often mixes up (l/I/1, rn/m, 0/O, cl/d...) are fixed before translating,
+   so the AI and the shared store get the right words. Only a word that is not English becomes one that is, and only
+   when one fix fits; names (Capitalised words not in the list) are left alone. Word list: ESDB/SCOWL (see presets/words-en.txt). */
+var DICT={common:null,rare:null,loading:false,fixes:0};
+var DICT_URL='https://raw.githubusercontent.com/nvhnhi96-ui/hong-sub-tv/main/presets/words-en.txt';
+function dictLoad(){
+  if(DICT.common||DICT.loading) return; DICT.loading=true;
+  (async function(){
+    var txt='';
+    try{ var c=window.caches?await caches.open('hs-words-1'):null, hit=c?await c.match(DICT_URL):null;
+      if(hit) txt=await hit.text();
+      else{ var r=await fetch(DICT_URL); if(!r.ok) throw new Error('HTTP '+r.status); if(c) try{ await c.put(DICT_URL,r.clone()); }catch(e){} txt=await r.text(); } }
+    catch(e){ log('từ điển tiếng Anh chưa tải được: '+e.message); DICT.loading=false; setTimeout(dictLoad,120000); return; }
+    var common={}, rare={}, into=common;
+    txt.split('\n').forEach(function(w){ if(!w) return; if(w[0]==='#'){ if(w==='#rare') into=rare; return; } into[w]=1; });
+    DICT.common=common; DICT.rare=rare; DICT.loading=false;
+    log('từ điển tiếng Anh: '+Object.keys(common).length+' từ thường gặp, '+Object.keys(rare).length+' từ ít gặp');
+  })();
+}
+function dictHas(w){ return !!(DICT.common&&(DICT.common[w]||DICT.rare[w])); }
+var DICT_SUB=[['rn','m'],['m','rn'],['cl','d'],['vv','w'],['nn','m'],['ii','u'],['li','h'],['0','o'],['1','l'],['1','i'],['l','i'],['i','l'],['|','l'],['|','i'],['5','s'],['8','b'],['6','b'],['c','e'],['e','c'],['t','l'],['l','t'],['h','b'],['u','v'],['v','u'],['f','t'],['n','u'],['u','n']];
+var DICT_APOS={dont:"don't",doesnt:"doesn't",didnt:"didn't",isnt:"isn't",arent:"aren't",wasnt:"wasn't",werent:"weren't",havent:"haven't",hasnt:"hasn't",couldnt:"couldn't",wouldnt:"wouldn't",shouldnt:"shouldn't",youre:"you're",theyre:"they're",youve:"you've",weve:"we've",theyve:"they've",youll:"you'll",thats:"that's",theres:"there's",whats:"what's",whos:"who's",hes:"he's",shes:"she's",im:"I'm",ive:"I've",itll:"it'll"};
+function dictCands(w){
+  var out={}, i, k;
+  for(k=0;k<DICT_SUB.length;k++){ var a=DICT_SUB[k][0], b=DICT_SUB[k][1];
+    for(i=w.indexOf(a);i>=0;i=w.indexOf(a,i+1)){ var c=w.slice(0,i)+b+w.slice(i+a.length); if(dictHas(c)) out[c]=1; } }
+  /* every digit read for a letter at once ("g0ld", "w1ll") */
+  var d=w.replace(/0/g,'o').replace(/1/g,'l').replace(/5/g,'s').replace(/8/g,'b').replace(/\|/g,'l'); if(d!==w&&dictHas(d)) out[d]=1;
+  return Object.keys(out);
+}
+function dictWord(tok,lineCaps){
+  if(!/[A-Za-z]/.test(tok)||tok.length<2) return tok;
+  var low=tok.toLowerCase();
+  if(/^[Il|1]$/.test(tok)) return tok;
+  if(/^[l|1]('|’)(m|ll|ve|d)$/i.test(tok)) return 'I'+tok.slice(1);   /* "l'm" -> "I'm" */
+  if(dictHas(low.replace(/’/g,"'"))){
+    if(/^[a-z]+[A-Z][a-z]*[A-Z]/.test(tok)) return /^[A-Z]/.test(tok)?low[0].toUpperCase()+low.slice(1):low;   /* "giLbeRt" -> "gilbert" */
+    return tok;
+  }
+  var allCaps=/^[A-Z0-9|']+$/.test(tok)&&(lineCaps||/[A-Z]{2}/.test(tok)), cap=/^[A-Z][a-z0-9|']+$/.test(tok);
+  if(low.length<3&&!/[0-9|]/.test(low)) return tok;
+  if(cap&&!allCaps&&!/[0-9|]/.test(tok)&&!DICT_APOS[low]) return tok;   /* a Capitalised word not in the list is most likely a name */
+  if(DICT_APOS[low]) { var f=DICT_APOS[low]; return allCaps?f.toUpperCase():cap?f[0].toUpperCase()+f.slice(1):f; }
+  var c=dictCands(low); if(!c.length) return tok;
+  var pick=c.filter(function(x){ return DICT.common[x]; }); if(pick.length!==1) pick=c.length===1&&!cap?c:[]; if(!pick.length) return tok;   /* a Capitalised word (maybe a name) only becomes a common word */
+  var w=pick[0]; DICT.fixes++;
+  return allCaps?w.toUpperCase():(/^[A-Z0-9|]/.test(tok)&&/^[A-Z]/.test(tok.replace(/^[0-9|]/,'I')))?w[0].toUpperCase()+w.slice(1):w;
+}
+function dictFix(text){
+  if(!DICT.common||!text||LG()!=='en') return text;
+  var L=String(text).replace(/[^A-Za-z]/g,''), lineCaps=L.length>=4&&L.replace(/[^A-Z]/g,'').length/L.length>0.85;   /* a line in CAPITALS */
+  var out=String(text).replace(/[A-Za-z0-9|][A-Za-z0-9|'’]*[A-Za-z0-9]|[A-Za-z]/g,function(tok){ return dictWord(tok,lineCaps); });
+  if(out!==text&&DICT.fixes<=30) log('sửa chữ đọc sai: '+String(text).replace(/\s+/g,' ').slice(0,90)+' → '+out.replace(/\s+/g,' ').slice(0,90));
+  return out;
+}
 function LG(){ var c=$('hsLang')&&$('hsLang').value; return LANGS[c]?c:'en'; }
 function LN(){ return LANGS[LG()].e; }                 /* name used in the AI prompts */
 var SC={lat:/[A-Za-zÀ-ÖØ-öø-ÿĀ-žẞß]/g, cjk:/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g, kor:/[\uac00-\ud7af\u1100-\u11ff]/g, cyr:/[\u0400-\u04ff]/g};
@@ -3695,7 +3783,7 @@ async function ocrStep(m,force){
   var o;
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
-  var txt=capsSpeaker(ocrText(o));
+  var txt=capsSpeaker(dictFix(ocrText(o)));
   S.subLive=!!(txt&&subLike(txt));
   if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
   if(!txt){ S.subMiss=(S.subMiss||0)+1; if(S.subMiss>=3&&S.maskShown&&maskDiff(m,S.maskShown)>0.25) subGone(); else if(S.subMiss<3) S.forceOcr=true; } else S.subMiss=0;   /* empty readings AND the text area looks different from when the line came: the original is gone (a reader that misses a line now and then no longer takes the Vietnamese away) */
@@ -4349,7 +4437,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); }};
+window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';

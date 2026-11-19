@@ -616,6 +616,7 @@ async function azSpeak(text, voice, rate) {
 /* ---------- AI voices (VieNeu-TTS v3 Turbo pack, downloaded once) ---------- */
 const AIV_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/download/voices-1/hong-sub-voices.zip';
 const aivClips = new Map();
+const aivWait = new Map();   /* answers to clone / unclone */
 const aiv = { proc: null, ready: false, voices: [], err: '', busy: '', got: 0, total: 0, buf: '', startMs: 0 };
 function aivDir() { return path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'HongSub', 'voices'); }   /* short ASCII path: Python and long model paths */
 function aivPy() { const d = aivDir(); const py = path.join(d, 'python', 'python.exe'); return fs.existsSync(py) && fs.existsSync(path.join(d, 'hs_voice.py')) ? py : ''; }
@@ -644,6 +645,10 @@ function aivStart() {
       else if ((m.type === 'audio' || m.type === 'error') && aivClips.has(m.id)) aivClips.get(m.id)(m);   /* a clip for the TV */
       else if (m.type === 'audio' || m.type === 'error') aivSend('aiv-audio', m);
       else if (m.type === 'fatal') { aiv.err = m.err || 'lỗi'; aivNotify(); }
+      else if (m.type === 'cloned' || m.type === 'clonefail' || m.type === 'voices') {   /* a cloned voice added or removed */
+        if (m.voices) { aiv.voices = m.voices; aivNotify(); }
+        const w = aivWait.get(m.id || '_unclone'); if (w) { aivWait.delete(m.id || '_unclone'); w(m); }
+      }
     }
   });
   proc.stderr.on('data', () => {});
@@ -737,6 +742,34 @@ function setupIpc() {
   ipcMain.handle('aiv-install', () => aivInstall());
   ipcMain.handle('aiv-start', () => { aivStart(); return aivState(); });
   ipcMain.handle('aiv-fast', (e, on) => { cfg.aivFast = !!on; saveCfg(); aivStop(); setTimeout(aivStart, 1600); return aivState(); });
+  /* a cloned voice: a short clip the person recorded or picked (WAV made by the page), enrolled by the voice engine */
+  ipcMain.handle('aiv-clone', async (e, o) => {
+    o = o || {};
+    const name = String(o.name || '').replace(/[\u0000-\u001f<>:"/\\|?*]/g, '').trim().slice(0, 32);
+    const wav = Buffer.from(String(o.wav || ''), 'base64');
+    if (!name) return { ok: false, err: 'Đặt tên cho giọng.' };
+    if (wav.length < 44 + 24000 * 2 * 2 || wav.toString('ascii', 0, 4) !== 'RIFF') return { ok: false, err: 'Đoạn ghi âm quá ngắn (cần ít nhất 3 giây).' };
+    if (!aiv.proc) aivStart();
+    if (!aiv.proc) return { ok: false, err: 'Chưa có bộ giọng AI. Tải bộ giọng AI trước.' };
+    for (let i = 0; i < 120 && !aiv.ready && aiv.proc; i++) await new Promise((r) => setTimeout(r, 500));
+    if (!aiv.ready) return { ok: false, err: 'Bộ giọng AI chưa mở xong. Thử lại sau ít giây.' };
+    const dir = path.join(aivDir(), 'clones'); fs.mkdirSync(dir, { recursive: true });
+    const id = 'c' + Date.now().toString(36), file = path.join(dir, id + '.wav');
+    fs.writeFileSync(file, wav);
+    const r = await new Promise((done) => {
+      const t = setTimeout(() => { aivWait.delete(id); done({ type: 'clonefail', err: 'timeout' }); }, 240000);
+      aivWait.set(id, (m) => { clearTimeout(t); done(m); });
+      try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'clone', id, name, path: file, gender: o.gender === 'male' ? 'male' : 'female' }) + '\n'); } catch (x) { clearTimeout(t); aivWait.delete(id); done({ type: 'clonefail', err: String(x.message || x) }); }
+    });
+    if (r.type !== 'cloned') { try { fs.unlinkSync(file); } catch (x) { /* ignore */ } return { ok: false, err: r.err || 'lỗi' }; }
+    return { ok: true, name, ms: r.ms };
+  });
+  ipcMain.handle('aiv-unclone', (e, name) => new Promise((done) => {
+    if (!aiv.proc) { done(false); return; }
+    const t = setTimeout(() => { aivWait.delete('_unclone'); done(false); }, 20000);
+    aivWait.set('_unclone', () => { clearTimeout(t); done(true); });
+    try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'unclone', name: String(name || '') }) + '\n'); } catch (x) { clearTimeout(t); done(false); }
+  }));
   ipcMain.handle('aiv-remove', () => { aivStop(); setTimeout(() => { try { fs.rmSync(aivDir(), { recursive: true, force: true }); } catch (e) { /* ignore */ } aivNotify(); }, 1800); return true; });
   ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart(); if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-drop', (e, id) => { if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'drop', id }) + '\n'); } catch (x) { /* ignore */ } } });

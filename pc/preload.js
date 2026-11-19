@@ -134,6 +134,8 @@ const api = {
     start: () => ipcRenderer.invoke('aiv-start'),
     fast: (on) => ipcRenderer.invoke('aiv-fast', on),
     remove: () => ipcRenderer.invoke('aiv-remove'),
+    clone: (o) => ipcRenderer.invoke('aiv-clone', o),
+    unclone: (name) => ipcRenderer.invoke('aiv-unclone', name),
     onState: (cb) => ipcRenderer.on('aiv-state', (e, s) => cb(s))
   },
   update: () => ipcRenderer.invoke('update'),
