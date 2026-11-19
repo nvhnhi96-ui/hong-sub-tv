@@ -2,7 +2,7 @@
    The translating engine (shared with the web page) runs before this file and exposes window.hsApi. */
 /* On the web page there is no Windows app behind the page: a stand-in answers for it, and the parts only the
    app can do are hidden by the .dk-only class. */
-var UPDTXT=(window.hsDesktop&&window.hsDesktop.platform==='darwin')?'Hóng Sub tải bản mới và mở ra, bạn kéo Hóng Sub vào Applications (chọn Thay thế)':'Hóng Sub tự tải, tự cài và mở lại';
+var UPDTXT='Hóng Sub tự tải, tự cài và mở lại';
 window.hsDeskApi=window.hsDesktop||{
   web:true,
   openUrl:function(u){ window.open(u,'_blank','noopener'); },
@@ -449,6 +449,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
     if(busy||!info) return; busy=true; btn.disabled=true; btn.textContent='Đang tải bản mới...';
     A.status('busy','Đang tải Hóng Sub '+info.version+'...');
     D.updateInstall().then(function(r){
+      if(r&&r.ok&&r.mac&&!r.auto){ btn.textContent='Kéo Hóng Sub vào Applications'; A.status('warn','Chưa tự thay được bản cũ ('+(r.why||'')+'). Cửa sổ cài đặt đã mở: kéo Hóng Sub vào Applications, chọn Thay thế, rồi mở lại Hóng Sub.'); return; }
       if(r&&r.ok){ btn.textContent='Đang cài, Hóng Sub sẽ mở lại...'; A.status('busy','Đang cài bản mới, Hóng Sub sẽ tự mở lại.'); return; }
       busy=false; btn.disabled=false; btn.textContent='Cập nhật lên '+info.version;
       A.status('warn','Chưa tự cập nhật được ('+((r&&r.err)||'lỗi')+'). Đang mở trang tải về.');

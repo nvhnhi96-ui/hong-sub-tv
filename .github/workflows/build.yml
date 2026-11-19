@@ -317,6 +317,22 @@ jobs:
           kill $PID 2>/dev/null || true
           grep -E '^(state-visible|voices|relay test|lg test)' "$HS_SELFTEST_OUT/log.txt" | cut -c1-200 || true
           grep -q '^state-visible' "$HS_SELFTEST_OUT/log.txt" || { echo "Mac app did not start"; tail -40 /tmp/run.txt; exit 1; }
+      - name: Test the Mac self-update (disk image -> copy next to the app -> swap)
+        run: |
+          set -e
+          T=$(mktemp -d); mkdir -p "$T/Apps" "$T/bin"
+          ditto "$(ls -d dist/mac-arm64/*.app | head -1)" "$T/Apps/Hong Sub.app"
+          echo old > "$T/Apps/Hong Sub.app/Contents/old-marker"
+          cp hong-sub-mac-apple.dmg "$T/u.dmg"
+          node -e "require('./macupd').prepare(process.argv[1], process.argv[2]).then(r => { console.log(JSON.stringify(r)); require('fs').writeFileSync(process.argv[3], JSON.stringify(r)); if (!r.ok) process.exit(1); }, e => { console.error(e); process.exit(1); })" "$T/u.dmg" "$T/Apps/Hong Sub.app" "$T/r.json"
+          printf '#!/bin/sh\necho "would open $1"\n' > "$T/bin/open"; chmod +x "$T/bin/open"
+          S=$(node -p "require('$T/r.json').script"); N=$(node -p "require('$T/r.json').stage"); D=$(node -p "require('$T/r.json').dest")
+          PATH="$T/bin:$PATH" sh "$S" 999999 "$N" "$D"
+          test ! -e "$T/Apps/Hong Sub.app/Contents/old-marker" || { echo "old app still there"; exit 1; }
+          codesign --verify --deep "$T/Apps/Hong Sub.app"
+          codesign -d -r- "$T/Apps/Hong Sub.app" 2>&1 | tail -1
+          ls -a "$T/Apps"
+          echo "self-update ok"
       - uses: actions/upload-artifact@v4
         with:
           name: mac

@@ -36,6 +36,7 @@
       "onlinetts.js",
       "tizen.js",
       "tzraw.js",
+      "macupd.js",
       "vendor/**",
       "!node_modules/**"
     ],

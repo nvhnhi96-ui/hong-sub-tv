@@ -294,6 +294,15 @@ function fullShow(d) {
   if (!fullWin.webContents.isLoading()) fullWin.webContents.send('full', fullData);
   if (!fullWin.isVisible()) fullWin.showInactive();
 }
+/* ---------- Mac: replace the app by itself (macupd.js), then close; a small script swaps the two and opens the new one ---------- */
+async function macSelfUpdate(dmg) {
+  const r = await require('./macupd').prepare(dmg, path.resolve(process.execPath, '..', '..', '..'));
+  if (!r.ok) return r;
+  spawn('/bin/sh', [r.script, String(process.pid), r.stage, r.dest], { detached: true, stdio: 'ignore' }).unref();
+  setTimeout(() => { quitting = true; app.quit(); setTimeout(() => app.exit(0), 4000); }, 600);
+  return r;
+}
+
 /* ---------- new versions ---------- */
 async function checkUpdate() {
   try {
@@ -996,10 +1005,14 @@ function setupIpc() {
       await new Promise((ok, bad) => out.end((e) => (e ? bad(e) : ok())));
       if (total && got < total * 0.98) throw new Error('tải chưa đủ');
       if (IS_MAC) {
-        /* Mac: open the new disk image (Finder shows it), the person drags Hóng Sub into Applications to replace the old one */
+        if (win && !win.isDestroyed()) win.webContents.send('update-progress', 1);
+        const done = await macSelfUpdate(file).catch((e) => ({ ok: false, err: String(e.message || e) }));
+        if (done.ok) return { ok: true, mac: true, auto: true };
+        /* could not replace it here (not in a folder Hóng Sub may write to): the disk image opens, the person drags it */
+        console.error('mac self update', done.err);
         await shell.openPath(file);
         setTimeout(() => { quitting = true; app.quit(); }, 2500);
-        return { ok: true, mac: true };
+        return { ok: true, mac: true, why: done.err };
       }
       spawn(file, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
       setTimeout(() => { quitting = true; app.quit(); }, 800);
