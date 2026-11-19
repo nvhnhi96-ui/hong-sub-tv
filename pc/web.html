@@ -1404,6 +1404,17 @@ function zColors(cv,it){
   function hex(c){ return '#'+c.map(function(v){ return ('0'+Math.max(0,Math.min(255,Math.round(v))).toString(16)).slice(-2); }).join(''); }
   return {bg:hex(bg),fg:hex(fg)};
 }
+/* a menu where only the highlight moved: the words are the same, the colours are not. Each check looks at the colours
+   under every box again, so the white of the chosen item moves down with it (small flickers of the picture are ignored) */
+function hexD(a,b){ if(!a||!b) return 999; var x=parseInt(String(a).slice(1),16), y=parseInt(String(b).slice(1),16); return Math.abs((x>>16&255)-(y>>16&255))+Math.abs((x>>8&255)-(y>>8&255))+Math.abs((x&255)-(y&255)); }
+function zRecolor(z){
+  if(!z.items||!z.items.length||z.hide) return false;
+  var ch=false;
+  z.items.forEach(function(it){ if(it.x==null) return; var c={}; try{ c=zColors(zcv,it); }catch(e){} if(!c.fg) return;
+    if(hexD(c.fg,it.fg)>60||hexD(c.bg,it.bg)>60){ it.fg=c.fg; it.bg=c.bg; ch=true; } });
+  if(ch){ zShow(); zPush(); zTv(z); }
+  return ch;
+}
 function rgba(hex,a){ var n=parseInt(String(hex).slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
 /* one Vietnamese box: dark, or in the game's own colours with soft edges */
 function zLook(d,it,z,f){
@@ -1741,6 +1752,7 @@ async function zoneTick(force,only){
           continue;
         }
         z.empty=0;
+        if(z.items&&!z.pending) zRecolor(z);                 /* the highlight moved in a menu: its colours follow at once */
         var changed=!z.doneMask||maskDiff(m,z.doneMask)>0.12, steady=z.prevMask&&maskDiff(m,z.prevMask)<0.06;
         z.prevMask=m;
         if(gate){ if(changed&&(z.vi||z.items)) zWipe(z); continue; }   /* not playing: no new translation, and an old one over other text goes */
@@ -2629,7 +2641,7 @@ function show(res){
 function subGone(){
   if(!S.lastHtml||S.voCur||S.goneT) return;
   var wait=Math.max(0,1500-(Date.now()-(S.lastShownAt||0)));
-  S.goneT=setTimeout(function(){ S.goneT=null; if(!S.lastHtml||S.voCur) return; if(S.subLive&&Date.now()-S.lastShownAt>200) return;
+  S.goneT=setTimeout(function(){ S.goneT=null; if(!S.lastHtml||S.voCur) return; if((S.subLive||S.subMiss===0)&&!S.noInkAt&&Date.now()-S.lastShownAt>200) return;   /* text came back meanwhile: keep it */
     clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''});
     if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); },wait);
 }
@@ -3382,7 +3394,7 @@ function takeOne(res,seq,raw){
   var rawT=raw||res.en;
   if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return false; }
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return false; } /* waited too long for it: history only */
-  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.lastTm=!!res._tm; show(res);
+  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=!!res._tm; show(res);
   return true;
 }
 /* ---- translating one line of text (from the on-device reader) ---- */
@@ -3663,7 +3675,7 @@ async function ocrStep(m,force){
   var txt=capsSpeaker(ocrText(o));
   S.subLive=!!(txt&&subLike(txt));
   if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
-  if(!txt){ S.subMiss=(S.subMiss||0)+1; if(S.subMiss>=2) subGone(); else S.forceOcr=true; } else S.subMiss=0;   /* the original subtitle went away: check once more, then the Vietnamese goes too */
+  if(!txt){ S.subMiss=(S.subMiss||0)+1; if(S.subMiss>=3&&S.maskShown&&maskDiff(m,S.maskShown)>0.25) subGone(); else if(S.subMiss<3) S.forceOcr=true; } else S.subMiss=0;   /* empty readings AND the text area looks different from when the line came: the original is gone (a reader that misses a line now and then no longer takes the Vietnamese away) */
   if(!txt){
     S.cand=null;
     var nowI=Date.now();
@@ -3700,7 +3712,7 @@ function ocrTake(txt,force){
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
-  if(!force&&notiLike(part)){ log('bỏ qua bảng thông báo: '+part); S.saved++; return; }
+  if(!force&&notiSub(part)){ log('bỏ qua bảng thông báo: '+part); S.saved++; return; }
   if(!force&&uiLike(part)){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
   if(!force&&tmStrict()&&shortLine(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
   if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
@@ -3873,6 +3885,8 @@ function menuLike(lines){
    pop-up cards (daily streaks, rewards, saving) come and go by themselves: they are not what the player reads. */
 var NOTI_EN=/\b(remote play|connected to|trophy|trophies|earned|unlocked|achievement|is (now )?online|went offline|joined (the|your)|left the party|party chat|friend request|invited you|sent you|new message|download(ed)? complete|installation complete|ready to play|update available|playstation plus|ps plus|mic(rophone)? (muted|unmuted|is off|is on)|streak|on a roll|daily (objectives?|rewards?|bonus|challenges?)|login (reward|bonus)|\d+ days? in a row|\d+ ?-?day streak|game saved|autosav(e|ing)|saving\b|checkpoint reached)\b/;
 var NOTI_VI=/\b(da ket noi|choi tu xa|danh hieu|da mo khoa|dang truc tuyen|loi moi|tin nhan moi|tai xuong|cap nhat|micro|tat tieng|ngay lien tiep|phan thuong hang ngay|chuoi ngay)\b/;
+var NOTI_SUB=/\b(remote play|you('ve| have) earned a trophy|trophy (earned|unlocked)|is now online|mic(rophone)? (muted|unmuted)|download complete|installation complete|update available)\b/;
+function notiSub(t){ var s=String(t||''); return NOTI_SUB.test(s.toLowerCase())||/\b(da ket noi choi tu xa|danh hieu da mo khoa|dang truc tuyen)\b/.test(deTone(s)); }   /* in the subtitle area: only the PS's own pop-ups (a character may say "saving", "earned", "streak") */
 function notiLike(t){
   var s=String(t||''), lo=s.toLowerCase(); if(!s.trim()) return false;
   if(NOTI_EN.test(lo)) return true;
