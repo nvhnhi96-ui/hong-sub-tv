@@ -689,8 +689,12 @@ refresh();
   }
   /* the screen-recording permission: without it the Mac gives Hóng Sub a black picture */
   var emp=$('hsEmpty'), warn=document.createElement('div'); warn.className='hs-macnote'; warn.hidden=true;
-  warn.innerHTML='<b>Mac chưa cho Hóng Sub ghi màn hình.</b> Bấm nút dưới, bật <b>Hóng Sub</b> trong danh sách, rồi tắt hẳn Hóng Sub (Cmd+Q) và mở lại.<div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button">Mở quyền Ghi màn hình</button></div>';
-  warn.querySelector('button').addEventListener('click',function(){ D.mac.openScreen(); });
+  function plainWarn(){
+    warn.innerHTML='<b>Mac chưa cho Hóng Sub ghi màn hình.</b><ol style="margin:6px 0 0 18px;padding:0"><li>Bấm <b>Cấp quyền</b>. Nếu trong danh sách đã có <b>Hong Sub</b> từ bản trước, Hóng Sub tự xóa dòng cũ đó (dòng cũ bật cũng không còn tác dụng).</li><li>Mac hỏi thì bấm <b>Open System Settings</b>, bật <b>Hong Sub</b> trong danh sách.</li><li>Mac hỏi tiếp thì bấm <b>Quit &amp; Reopen</b> (hoặc bấm <b>Mở lại Hóng Sub</b> ở dưới).</li></ol><div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-mp="fix">Cấp quyền</button><button class="hs-btn" type="button" data-mp="re">Mở lại Hóng Sub</button></div>';
+    warn.querySelector('[data-mp=fix]').onclick=function(){ (D.mac.fix?D.mac.fix():Promise.resolve(D.mac.openScreen())).then(function(){ A.status('warn','Bật Hong Sub trong Ghi màn hình, rồi bấm Quit & Reopen (hoặc Mở lại Hóng Sub).'); }); };
+    warn.querySelector('[data-mp=re]').onclick=function(){ D.mac.relaunch(); };
+  }
+  plainWarn();
   if(emp&&emp.firstElementChild) emp.firstElementChild.appendChild(warn);
   /* the permission is on in the list but does not work (after an update the Mac no longer matches it to the new app):
      clear it, the Mac asks again; then Hóng Sub opens again by itself */

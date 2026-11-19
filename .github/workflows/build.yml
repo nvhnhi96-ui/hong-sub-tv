@@ -292,7 +292,13 @@ jobs:
           pack() {
             APP=$(ls -d "$1"/*.app | head -1)
             codesign --force --deep --sign - "$APP"
+            # the app itself is signed again with a fixed designated requirement (its bundle id): macOS keeps the
+            # "Screen Recording" permission by this requirement, so it still fits after each update. With the plain
+            # ad-hoc signature it was the file's hash, and every update made the old permission useless.
+            ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Contents/Info.plist")
+            codesign --force --sign - -r="designated => identifier \"$ID\"" "$APP"
             codesign --verify --deep "$APP"
+            codesign -d -r- "$APP" 2>&1 | tail -2
             rm -rf stage && mkdir stage && cp -R "$APP" stage/ && ln -s /Applications stage/Applications
             hdiutil create -volname "Hóng Sub" -srcfolder stage -ov -format UDZO "$2"
           }

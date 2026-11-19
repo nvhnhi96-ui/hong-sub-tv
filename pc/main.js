@@ -736,6 +736,19 @@ async function aivInstall() {
   return aivState();
 }
 
+/* Mac: clear Hóng Sub's "Screen Recording" entry (an older version's, which no longer fits) and make the Mac ask again */
+async function macScreenReset(openSettings) {
+  if (!IS_MAC) return { ok: false };
+  const cp = require('child_process');
+  const ids = new Set(['store.honggame.hongsub.pc']);
+  try { const plist = path.resolve(process.execPath, '..', '..', 'Info'); const id = cp.execFileSync('/usr/bin/defaults', ['read', plist, 'CFBundleIdentifier'], { timeout: 4000, encoding: 'utf8' }).trim(); if (id) ids.add(id); } catch (e) { /* ignore */ }
+  let done = 0;
+  for (const id of ids) { try { cp.execFileSync('/usr/bin/tccutil', ['reset', 'ScreenCapture', id], { timeout: 8000 }); done++; } catch (e) { /* ignore */ } }
+  try { await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 64, height: 36 } }); } catch (e) { /* this makes the Mac ask */ }
+  if (openSettings) shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+  return { ok: done > 0, ids: [...ids] };
+}
+
 /* ---------- IPC ---------- */
 function setupIpc() {
   ipcMain.handle('aiv-state', () => aivState());
@@ -906,18 +919,15 @@ function setupIpc() {
     const others = all.filter(s => s.name && !/^H[oó]ng Sub/.test(s.name));
     return { status: st, windows: all.length, named: others.length, sony: others.some(s => /remote play/i.test(s.name)) };
   });
-  ipcMain.handle('mac-screen-fix', async () => {
-    if (!IS_MAC) return { ok: false };
-    const cp = require('child_process');
-    const ids = new Set(['store.honggame.hongsub.pc']);
-    try { const plist = path.resolve(process.execPath, '..', '..', 'Info'); const id = cp.execFileSync('/usr/bin/defaults', ['read', plist, 'CFBundleIdentifier'], { timeout: 4000, encoding: 'utf8' }).trim(); if (id) ids.add(id); } catch (e) { /* ignore */ }
-    let done = 0;
-    for (const id of ids) { try { cp.execFileSync('/usr/bin/tccutil', ['reset', 'ScreenCapture', id], { timeout: 8000 }); done++; } catch (e) { /* ignore */ } }
-    try { await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 64, height: 36 } }); } catch (e) { /* this makes the Mac ask */ }
-    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
-    return { ok: done > 0, ids: [...ids] };
-  });
+  ipcMain.handle('mac-screen-fix', () => macScreenReset(true));
   ipcMain.on('mac-relaunch', () => { quitting = true; app.relaunch(); app.exit(0); });
+  /* once per version: the permission is not working (an older Hóng Sub's entry is in the list, on or off, but it no
+     longer fits this app): clear it so the Mac asks again for this app. Builds from 1.0.177 keep the permission
+     across updates (fixed designated requirement), so this only happens once after the change. */
+  if (IS_MAC && !SELFTEST) setTimeout(() => {
+    let st = 'unknown'; try { st = systemPreferences.getMediaAccessStatus('screen'); } catch (e) { /* ignore */ }
+    if (st !== 'granted' && cfg.tccVer !== app.getVersion()) { cfg.tccVer = app.getVersion(); saveCfg(); macScreenReset(false); }
+  }, 2500);
   /* the whole line as one sound file, read by a voice of this computer, so the TV can play the same voice.
      Read at normal speed: the speed is applied where it is played. */
   ipcMain.handle('voice-clip', async (e, text, voice) => {
