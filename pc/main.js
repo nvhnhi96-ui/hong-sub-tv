@@ -862,6 +862,28 @@ function setupIpc() {
   /* Mac: reading another app's window needs the "Screen Recording" permission */
   ipcMain.handle('mac-screen', () => { try { return systemPreferences.getMediaAccessStatus('screen'); } catch (e) { return 'unknown'; } });
   ipcMain.on('mac-screen-open', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'));
+  /* Mac: without a working "Ghi màn hình" permission the Mac hides other apps' windows and their names, so the PS Remote
+     Play window is never found. The app is not signed by Apple, so after each update the old permission no longer fits
+     (the list shows it on, but it does not work): it is cleared here and the Mac asks again. */
+  ipcMain.handle('mac-capture-check', async () => {
+    if (!IS_MAC) return { ok: true };
+    let st = 'unknown'; try { st = systemPreferences.getMediaAccessStatus('screen'); } catch (e) { /* ignore */ }
+    let all = []; try { all = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 1, height: 1 } }); } catch (e) { /* ignore */ }
+    const others = all.filter(s => s.name && !/^H[oó]ng Sub/.test(s.name));
+    return { status: st, windows: all.length, named: others.length, sony: others.some(s => /remote play/i.test(s.name)) };
+  });
+  ipcMain.handle('mac-screen-fix', async () => {
+    if (!IS_MAC) return { ok: false };
+    const cp = require('child_process');
+    const ids = new Set(['store.honggame.hongsub.pc']);
+    try { const plist = path.resolve(process.execPath, '..', '..', 'Info'); const id = cp.execFileSync('/usr/bin/defaults', ['read', plist, 'CFBundleIdentifier'], { timeout: 4000, encoding: 'utf8' }).trim(); if (id) ids.add(id); } catch (e) { /* ignore */ }
+    let done = 0;
+    for (const id of ids) { try { cp.execFileSync('/usr/bin/tccutil', ['reset', 'ScreenCapture', id], { timeout: 8000 }); done++; } catch (e) { /* ignore */ } }
+    try { await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 64, height: 36 } }); } catch (e) { /* this makes the Mac ask */ }
+    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+    return { ok: done > 0, ids: [...ids] };
+  });
+  ipcMain.on('mac-relaunch', () => { quitting = true; app.relaunch(); app.exit(0); });
   /* the whole line as one sound file, read by a voice of this computer, so the TV can play the same voice.
      Read at normal speed: the speed is applied where it is played. */
   ipcMain.handle('voice-clip', async (e, text, voice) => {

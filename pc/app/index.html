@@ -6015,6 +6015,7 @@ function psAudio(pkt){
 /* no sound 15 s after the picture came: say so in the log and send a report, so it can be fixed from the shop */
 setInterval(function(){
   if(typeof PS==='undefined'||!PS.host||!(PS.frames>0)||PS.aChecked||Date.now()-(PS.vAt||Date.now())<15000) return;
+  if((PS.host&&PS.host.name==='test')||(D&&D.selftest)) return;   /* the built-in test picture has no sound */
   if(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked) return;
   PS.aChecked=true;
   if(PS.aOut>0) return;

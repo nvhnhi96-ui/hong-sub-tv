@@ -69,11 +69,13 @@ function openSony(){
     }
     if(!sony) sonyInfo();
     A.status('busy','Đang chờ cửa sổ PS Remote Play... Đăng nhập và kết nối PS5 trong app của Sony.');
-    var t0=Date.now();
+    var t0=Date.now(), macSaid=false;
     (function wait(){
       D.windows().then(function(w){
         if(w.some(function(x){return /remote play/i.test(x.name);})){ setTimeout(function(){ A.pick(false); },1500); return; }
-        if(Date.now()-t0<60000) setTimeout(wait,1500); else A.status('warn','Chưa thấy cửa sổ PS Remote Play. Mở xong thì bấm Đổi nguồn hình.');
+        /* Mac: the Sony app is open but no window of another app can be seen: the "Ghi màn hình" permission is missing or stale */
+        if(D.mac&&D.mac.check&&!macSaid&&Date.now()-t0>6000){ D.mac.check().then(function(c){ if(c&&!c.sony&&c.named===0){ macSaid=true; if(window.hsMacPerm) window.hsMacPerm(c); } }).catch(function(){}); }
+        if(Date.now()-t0<60000) setTimeout(wait,1500); else A.status('warn',D.mac?'Chưa thấy cửa sổ PS Remote Play. Kiểm tra quyền Ghi màn hình của Hóng Sub (nút ở trên), mở app của Sony rồi bấm Đổi nguồn hình.':'Chưa thấy cửa sổ PS Remote Play. Mở xong thì bấm Đổi nguồn hình.');
       }).catch(function(){});
     })();
   });
@@ -597,8 +599,21 @@ refresh();
   warn.innerHTML='<b>Mac chưa cho Hóng Sub ghi màn hình.</b> Bấm nút dưới, bật <b>Hóng Sub</b> trong danh sách, rồi tắt hẳn Hóng Sub (Cmd+Q) và mở lại.<div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button">Mở quyền Ghi màn hình</button></div>';
   warn.querySelector('button').addEventListener('click',function(){ D.mac.openScreen(); });
   if(emp&&emp.firstElementChild) emp.firstElementChild.appendChild(warn);
+  /* the permission is on in the list but does not work (after an update the Mac no longer matches it to the new app):
+     clear it, the Mac asks again; then Hóng Sub opens again by itself */
+  var stale=false;
+  window.hsMacPerm=function(c){
+    stale=true; warn.hidden=false;
+    warn.innerHTML='<b>Mac đang chặn Hóng Sub xem cửa sổ PS Remote Play.</b> Thường gặp sau khi cập nhật Hóng Sub: quyền <b>Ghi màn hình</b> cũ không còn dùng được.<ol style="margin:6px 0 0 18px;padding:0"><li>Bấm <b>Cấp lại quyền</b>. Mac hỏi thì bấm <b>Mở Cài đặt hệ thống</b> / <b>Cho phép</b>, bật <b>Hóng Sub</b> trong danh sách Ghi màn hình (nếu có 2 dòng Hóng Sub, bật cả hai).</li><li>Bấm <b>Mở lại Hóng Sub</b>.</li></ol><div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-mf="fix">Cấp lại quyền</button><button class="hs-btn" type="button" data-mf="re">Mở lại Hóng Sub</button></div>';
+    warn.querySelector('[data-mf=fix]').onclick=function(){ D.mac.fix().then(function(){ A.status('warn','Bật Hóng Sub trong Ghi màn hình, rồi bấm Mở lại Hóng Sub.'); }); };
+    warn.querySelector('[data-mf=re]').onclick=function(){ D.mac.relaunch(); };
+    A.status('warn','Mac chưa cho Hóng Sub thấy cửa sổ PS Remote Play: bấm Cấp lại quyền.');
+    if(window.hsGo) hsGo('choi');
+  };
+  /* at start: the permission says on, yet no other app's window can be seen */
+  setTimeout(function(){ if(!D.mac.check) return; D.mac.check().then(function(c){ if(c&&c.status==='granted'&&c.windows>0&&c.named===0) window.hsMacPerm(c); }).catch(function(){}); },4000);
   function scr(){ D.mac.screen().then(function(st){
-    var ok=st==='granted'; warn.hidden=ok;
+    var ok=st==='granted'&&!stale; if(!stale) warn.hidden=ok;
     var n=document.getElementById('hs'+'MacScr'); if(n){ n.hidden=false; n.innerHTML=ok?'Quyền Ghi màn hình: đã bật.':'Quyền Ghi màn hình: <b>chưa bật</b>. <button class="dk-link" type="button">Mở cài đặt</button>'; var b=n.querySelector('button'); if(b) b.onclick=function(){ D.mac.openScreen(); }; }
   }).catch(function(){}); }
   scr(); setInterval(scr,5000);

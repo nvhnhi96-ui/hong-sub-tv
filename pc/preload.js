@@ -199,6 +199,9 @@ if (process.platform === 'darwin') {
   api.mac = {
     screen: () => ipcRenderer.invoke('mac-screen'),
     openScreen: () => ipcRenderer.send('mac-screen-open'),
+    check: () => ipcRenderer.invoke('mac-capture-check'),
+    fix: () => ipcRenderer.invoke('mac-screen-fix'),
+    relaunch: () => ipcRenderer.send('mac-relaunch'),
     openVoices: () => ipcRenderer.send('voice-settings')
   };
 }
