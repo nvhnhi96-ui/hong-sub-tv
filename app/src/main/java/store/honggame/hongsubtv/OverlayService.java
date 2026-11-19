@@ -841,6 +841,8 @@ public class OverlayService extends Service {
                 try {
                     JSONObject j = fetch(Prefs.RELAY + prefs.code() + (lastSeq >= 0 ? "&since=" + lastSeq : "") + "&t=" + System.currentTimeMillis());
                     long seq = j.optLong("seq", 0);
+                    Link.relayOkAt = Link.now();
+                    if (lastSeq >= 0 && seq != lastSeq) Link.relayAt = Link.now();
                     if (lastSeq < 0) {
                         lastSeq = seq; // ignore whatever was there before this TV started listening
                     } else if (seq != lastSeq) {
@@ -855,6 +857,7 @@ public class OverlayService extends Service {
                         lastSeq = seq;
                     }
                 } catch (Exception e) {
+                    Link.relayErrAt = Link.now();
                     wait = 2000;
                 }
                 try { Thread.sleep(wait); } catch (InterruptedException ie) { return; }

@@ -125,6 +125,10 @@ final class LanServer {
         }
     }
 
+    private static String from(Socket s) {
+        try { return s.getInetAddress().getHostAddress(); } catch (Exception e) { return ""; }
+    }
+
     private void serve(Socket s) {
         try {
             s.setSoTimeout(5000);
@@ -153,8 +157,9 @@ final class LanServer {
             while (got < body.length) { int n = in.read(body, got, body.length - got); if (n < 0) break; got += n; }
             int code = 200; String out;
             if (method.equals("OPTIONS")) { code = 204; out = ""; }
-            else if (path.startsWith("/ping")) out = info();
+            else if (path.startsWith("/ping")) { Link.pcIp = from(s); Link.pingAt = Link.now(); out = info(); }
             else if (path.startsWith("/sub") && method.equals("POST")) {
+                Link.pcIp = from(s); Link.pingAt = Link.lanAt = Link.now();
                 JSONObject j = new JSONObject(new String(body, 0, got, StandardCharsets.UTF_8));
                 listener.onMessage(j);
                 out = "{\"ok\":true}";

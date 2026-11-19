@@ -820,7 +820,32 @@ function setupIpc() {
       const send = () => { for (const t of targets) sock.send(q, 8766, t, () => {}); };
       send(); setTimeout(send, 400); setTimeout(send, 900);
     });
-    setTimeout(() => { try { sock.close(); } catch (e) { /* ignore */ } resolve(Object.values(found)); }, 1800);
+    setTimeout(() => {
+      try { sock.close(); } catch (e) { /* ignore */ }
+      if (Object.keys(found).length) return resolve(Object.values(found));
+      /* no answer to the broadcast (some modems and Wi-Fi drop broadcasts): ask every address of the home network
+         straight on port 8765, the Hóng Sub TV app answers /ping there */
+      const nets = new Set();
+      for (const [name, list] of Object.entries(os.networkInterfaces())) for (const a of list || []) {
+        if (a.family !== 'IPv4' || a.internal || !/^(192\.168|10)\./.test(a.address) && !/^172\.(1[6-9]|2\d|3[01])\./.test(a.address)) continue;
+        if (/vethernet|virtualbox|vmware|hyper-v|wsl|docker|vpn|tailscale|zerotier|hamachi|radmin/i.test(name)) continue;
+        nets.add(a.address.split('.').slice(0, 3).join('.'));
+      }
+      const ips = []; for (const n of [...nets].slice(0, 3)) for (let i = 1; i < 255; i++) ips.push(n + '.' + i);
+      const mine = new Set(); for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) mine.add(a.address);
+      const netm = require('net'); let next = 0, open = 0;
+      const pump = () => {
+        while (open < 64 && next < ips.length) {
+          const ip = ips[next++]; if (mine.has(ip)) continue; open++;
+          const so = netm.connect({ host: ip, port: 8765, timeout: 700 });
+          const done = (hit) => { so.destroy(); if (hit) tvHttp(ip, '/ping').then((j) => { if (j && j.app === 'hongsubtv') found[ip] = Object.assign(j, { ip }); }); open--; pump(); };
+          so.once('connect', () => done(true)); so.once('timeout', () => done(false)); so.once('error', () => done(false));
+        }
+      };
+      if (!ips.length) return resolve([]);
+      pump();
+      const t0 = Date.now(), wait = setInterval(() => { if ((next >= ips.length && open === 0) || Date.now() - t0 > 9000) { clearInterval(wait); setTimeout(() => resolve(Object.values(found)), 900); } }, 200);
+    }, 1800);
   }));
   function tvHttp(ip, pathname, body) {
     return new Promise((resolve) => {

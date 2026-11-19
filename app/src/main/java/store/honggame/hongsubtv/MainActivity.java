@@ -29,6 +29,8 @@ public class MainActivity extends Activity {
     private TextView codeView, ipView;
     private TextView statusView, verView;
     private Button permBtn, runBtn, testBtn, codeBtn;
+    private final android.os.Handler tick = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable ticker = new Runnable() { @Override public void run() { refresh(); tick.postDelayed(this, 2000); } };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,9 +45,37 @@ public class MainActivity extends Activity {
         // opening the app means the TV should be ready: start listening right away
         if (canOverlay() && !prefs.running()) restartService(null);
         refresh();
+        tick.removeCallbacks(ticker); tick.postDelayed(ticker, 2000);
         if (!canOverlay()) permBtn.requestFocus(); else runBtn.requestFocus();
         // a new build: fetch it and install now (the app is open, so Android may show one "Cập nhật" button)
         Updater.check(this, true, 10 * 60 * 1000L, (t, busy) -> { if (verView != null) verView.setText(t); });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        tick.removeCallbacks(ticker);
+    }
+
+    private static String agoText(long ms) {
+        long s = ms / 1000;
+        return s < 60 ? s + " giây trước" : (s / 60) + " phút trước";
+    }
+
+    /* what reached this TV from the computer: so the person sees right away whether the computer is connected */
+    private String linkText() {
+        long lan = Link.ago(Link.lanAt), rel = Link.ago(Link.relayAt), ping = Link.ago(Link.pingAt);
+        long last = Math.min(lan, rel);
+        String pc = Link.pcIp.isEmpty() ? "" : " " + Link.pcIp;
+        if (last < 10 * 60 * 1000L)
+            return "Đang nhận phụ đề từ máy tính" + (lan <= rel ? pc + " (qua mạng nhà)" : " (qua mã TV " + prefs.code() + ")")
+                    + ", lần cuối " + agoText(last) + ". Có thể chuyển sang cổng HDMI của PS5.";
+        if (ping < 60 * 1000L)
+            return "Máy tính" + pc + " đã nối với TV. Đang chờ phụ đề: trên máy tính bấm Bắt đầu dịch. Có thể chuyển sang cổng HDMI của PS5.";
+        boolean net = Link.relayOkAt != 0 && Link.ago(Link.relayOkAt) < 30 * 1000L;
+        return "Chưa có máy tính nào gửi tới TV này. Trên máy tính: Hóng Sub › Kết nối PS và TV › chọn Android TV, rồi bấm \"Tìm TV\" hoặc gõ mã "
+                + prefs.code() + " vào ô Mã TV."
+                + (net ? "" : " (TV đang không vào được internet: chỉ nối được khi máy tính dùng chung mạng với TV.)");
     }
 
     private int dp(float v) {
@@ -227,8 +257,9 @@ public class MainActivity extends Activity {
             statusView.setTextColor(Color.rgb(255, 159, 67));
             statusView.setText("Chưa có quyền hiển thị trên ứng dụng khác. Bấm \"Cấp quyền\", bật Hóng Sub TV rồi quay lại.");
         } else if (prefs.running()) {
-            statusView.setTextColor(Color.rgb(61, 220, 132));
-            statusView.setText("Đang chờ phụ đề từ máy tính. Có thể chuyển sang cổng HDMI của PS5.");
+            boolean got = Math.min(Link.ago(Link.lanAt), Link.ago(Link.relayAt)) < 10 * 60 * 1000L || Link.ago(Link.pingAt) < 60 * 1000L;
+            statusView.setTextColor(got ? Color.rgb(61, 220, 132) : Color.rgb(255, 159, 67));
+            statusView.setText(linkText());
         } else {
             statusView.setTextColor(Color.WHITE);
             statusView.setText("Bấm \"Bật phụ đề\" để bắt đầu.");
