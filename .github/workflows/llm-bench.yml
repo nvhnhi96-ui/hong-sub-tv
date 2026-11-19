@@ -1,0 +1,13 @@
+name: llm-bench
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tools/llm_bench.py']
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/llm_bench.py
