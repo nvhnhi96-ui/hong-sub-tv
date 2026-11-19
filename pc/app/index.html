@@ -3476,7 +3476,7 @@ function voApply(el,vl){
 function voWrap(html){ return '<span class="vo-line">'+html+'</span>'; }
 function show(res,quiet){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
-  vi=lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
+  vi=lineMatch()&&res._enl&&res._enl.length>1?alignVi(vi,res._enl):lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var pv=res._voice?ptVoice((res._t0||Date.now()-3000)-200,(res._t1||Date.now())+200):ptVoice(subSince(),Date.now());
   var orig=quiet?null:JSON.parse(JSON.stringify(res));
   var wm=S.whoMem[trKey(en)]; if(!who&&!res.who&&wm){ res.who=wm.who; res.role=wm.role; res.sure=wm.sure; if(!res.gender) res.gender=wm.gender; res._whoDone=true; }
@@ -4195,7 +4195,7 @@ function ocrText(o){
     .map(function(l){ var t=l.text; if((t.match(/[A-Za-z,.]-(?=[A-Za-z])/g)||[]).length>=2) t=t.replace(/([A-Za-z,.])-(?=[A-Za-z])/g,'$1 ').replace(/(^|\s)-(?=[A-Za-z])/g,'$1');   /* small text: gaps read as "-" */
       return t.replace(/([.!?,;])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim(); });
   /* lines of one subtitle are joined; a new speaker ("NAME: ...") starts a new line */
-  S.ocrLines=ls.length;
+  S.ocrLines=ls.length; S.ocrLineTexts=ls.slice(0,4);
   return ls.reduce(function(a,l){ return a?(a+(/^[A-Z][\w .'-]{0,24}:\s/.test(l)?'\n':' ')+l):l; },'');
 }
 /* rolling 2-line subtitles: the old sentence stays on top when a new one appears; only translate the new part */
@@ -4209,7 +4209,7 @@ function freshPart(text){
   return fresh.length===parts.length?text:fresh.join(' ');
 }
 function rememberSents(text){ var now=Date.now(); splitSents(text).forEach(function(p){ S.sents.push({s:p,t:now}); }); }
-function textPrompt(t,nl){
+function textPrompt(t,nl,enl){
   return 'You translate video game subtitles from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
     '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the '+LN()+' dialogue/subtitle text in "en" (in the original language). Ignore HUD, button prompts and labels like "DEMO".\n'+
@@ -4217,7 +4217,7 @@ function textPrompt(t,nl){
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender only when you really know it: from the speaker name (a known character of this game or of the notes) or because the line itself makes it certain; otherwise "". Do not guess from the topic of the line. In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
-    (nl>1?'6. The original subtitle is shown on '+nl+' lines. Write "vi" on exactly '+nl+' lines too, separated by \\n, breaking where the original breaks.\n':'')+whoRule()+context();
+    (nl>1?'6. The original subtitle is shown on '+nl+' lines'+(enl&&enl.length===nl?':\n'+enl.map(function(l,i){ return '   line '+(i+1)+': '+l; }).join('\n')+'\n  ':'. ')+'Write "vi" on exactly '+nl+' lines too, separated by \\n, each Vietnamese line carrying the meaning of the same original line: where an original line ends a sentence, end the Vietnamese line there; where a sentence goes on to the next line, break the Vietnamese sentence at the matching place.\n':'')+whoRule()+context();
 }
 /* a line heard rather than read (speech recognition): the same rules, other mistakes to expect */
 function voicePrompt(t){
@@ -4238,6 +4238,56 @@ function lineSplit(vi,n){
     else cur=next;
   });
   out.push(cur);
+  return out.join('\n');
+}
+/* the English lines of the subtitle being translated, when the text is still exactly those lines joined
+   (a rolling subtitle whose old sentence was dropped is not) */
+function enLinesFor(text,nl){
+  var L=S.ocrLineTexts; if(!L||L.length<2||L.length!==nl) return null;
+  var wc=L.map(function(l){ return l.trim().split(/\s+/).filter(Boolean).length; }), tw=String(text||'').trim().split(/\s+/).filter(Boolean);
+  if(wc.reduce(function(x,y){ return x+y; },0)!==tw.length) return null;   /* words fixed one for one keep the lines; anything else does not */
+  var out=[], at=0; wc.forEach(function(c){ out.push(tw.slice(at,at+c).join(' ')); at+=c; });
+  return out;
+}
+/* the Vietnamese broken where the English subtitle breaks. A break after the end of an English sentence goes after
+   the same Vietnamese sentence; a sentence that runs on to the next line is cut at the same share of its length,
+   on a space, preferring a comma close by. When the sentences do not pair up, the break goes at the same share of
+   the whole text. */
+var VI_START=/^(ở|tại|và|nhưng|mà|thì|là|khi|nếu|vì|để|của|cho|với|trong|ngoài|trên|dưới|từ|đến|tới|rằng|hay|hoặc|cùng|bằng|sau|trước|rồi|nên|còn|chứ|kẻo|lúc|giờ|bây|hãy|đừng|phải|cũng|vẫn|đã|đang|sẽ|chưa|không|chẳng)$/;
+var VI_PRON=/^(tôi|ta|tao|mày|anh|em|chị|con|cha|bố|mẹ|chúng|họ|nó|ông|bà|cô|chú|ngươi|ngài|cậu|tớ|mình|ai|cái|những|các|một|mọi)$/;
+var VI_TAIL=/^(lại|qua|ra|vào|lên|xuống|đi|được|nữa|thôi|đó|này|kia|ấy|nhé|nha|chứ|hả|vậy|thế|lắm|quá|xong|mất|luôn)$/;
+function alignVi(vi,enl){
+  var n=enl.length; vi=String(vi||'').trim(); if(!vi||n<2) return vi;
+  var have=vi.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+  if(have.length===n) return have.join('\n');
+  var flat=have.join(' '), en=enl.map(function(l){ return l.trim(); }), ej=en.join(' ');
+  function spans(t,parts){ var out=[], at=0; parts.forEach(function(p){ var i=t.indexOf(p,at); if(i<0) i=at; out.push([i,i+p.length]); at=i+p.length; }); return out; }
+  var es=splitSents(ej), vs=viSents(flat), esp=spans(ej,es), vsp=spans(flat,vs), pair=es.length===vs.length&&es.length>0;
+  var spaces=[]; for(var i=0;i<flat.length;i++) if(flat[i]===' ') spaces.push(i);
+  if(spaces.length<n-1) return lineSplitS(vi,n);
+  var cuts=[], pos=0, min=0;
+  for(var b=0;b<n-1;b++){
+    pos+=en[b].length+(b?1:0);                                   /* where line b ends in the joined English */
+    var endS=/[.!?…:;]["”’)\]]*$/.test(en[b]), endC=/[,—–-]$/.test(en[b]), target;
+    if(pair){
+      var k=0; while(k<esp.length-1&&pos>esp[k][1]) k++;
+      var f=(pos-esp[k][0])/Math.max(1,esp[k][1]-esp[k][0]);
+      target=f>=0.97?vsp[k][1]:f<=0.03?vsp[k][0]:vsp[k][0]+f*(vsp[k][1]-vsp[k][0]);
+    } else target=flat.length*pos/Math.max(1,ej.length);
+    var best=-1, bs=1e9, win=flat.length*0.18;
+    spaces.forEach(function(sp){
+      if(sp<=min) return;
+      var d=Math.abs(sp-target), prev=flat[sp-1];
+      if(endS&&/[.!?…:;"”’)\]]/.test(prev)) d-=win; else if((endS||endC)&&/[,;—–]/.test(prev)) d-=win*0.5; else if(!endS&&!endC&&/[.!?…]/.test(prev)) d+=win*0.3;
+      var nx=(flat.slice(sp+1).match(/^[^\s,.!?…]+/)||[''])[0].toLowerCase();   /* Vietnamese words have several syllables: break before a word that starts a phrase, not inside "quay lại" */
+      if(VI_START.test(nx)) d-=win*0.35; else if(VI_PRON.test(nx)) d-=win*0.2; else if(VI_TAIL.test(nx)) d+=win*0.4;
+      if(d<bs){ bs=d; best=sp; }
+    });
+    if(best<0) return lineSplitS(vi,n);
+    cuts.push(best); min=best;
+  }
+  var out=[], st=0; cuts.forEach(function(c){ out.push(flat.slice(st,c).trim()); st=c+1; }); out.push(flat.slice(st).trim());
+  if(out.some(function(x){ return !x; })) return lineSplitS(vi,n);
   return out.join('\n');
 }
 /* the sentences of a translation */
@@ -4559,7 +4609,8 @@ function trKey(t){ return norm(t).replace(/ /g,''); }
 function enqueue(text){
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
-  S.q.push({seq:++S.seq,text:text,nl:Math.max(1,Math.min(4,S.ocrLines||1))}); liveAdd(S.seq);
+  var nl=Math.max(1,Math.min(4,S.ocrLines||1)), el=enLinesFor(text,nl);
+  S.q.push({seq:++S.seq,text:text,nl:el?el.length:nl,enl:el}); liveAdd(S.seq);
   if(S.q.length>4) S.q.splice(0,S.q.length-4).forEach(function(j){ liveDone(j.seq); });   /* far behind: keep the newest lines */
   pump();
 }
@@ -4573,14 +4624,14 @@ function pump(){
    there, waiting in line, the cache and the shared store), without reading it aloud again */
 function aiUpgrade(j,ck,r2,via2){
   if(!r2||!String(r2.vi||'').trim()) return;
-  r2._nl=j.nl||1;
+  r2._nl=j.nl||1; r2._enl=j.enl||null;
   S.trCache[ck]=r2; tmAdd('s',j.text,r2.vi,r2.speaker||'',(r2.gender||'').toLowerCase(),via2);
   S.recent.forEach(function(x){ if(x.raw===j.text) x.res=r2; });
   var w=S.ready.filter(function(x){ return x.seq===j.seq; })[0];
   if(w){ w.res=r2; return; }
   if(S.shownSeq!==j.seq||!S.lastHtml||S.voCur) return;
   var res=splitSpeaker(JSON.parse(JSON.stringify(r2)),j.text); if(!res||!res.vi) return;
-  res.vi=punctFix(res.en||j.text,res.vi); res._nl=r2._nl;
+  res.vi=punctFix(res.en||j.text,res.vi); res._nl=r2._nl; res._enl=r2._enl;
   S.via=via2; log('AI sửa lại câu vừa hiện ('+via2+'): '+res.vi); show(res,true); perfTag();
 }
 async function translateText(j){
@@ -4595,7 +4646,7 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(textPrompt(j.text,j.nl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); });
+      res=await askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); });
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
@@ -4605,7 +4656,7 @@ async function translateText(j){
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(res) res._nl=j.nl||1;
+    if(res){ res._nl=j.nl||1; res._enl=j.enl||null; }
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -5539,7 +5590,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
