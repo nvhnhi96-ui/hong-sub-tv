@@ -115,7 +115,7 @@ public class OverlayService extends Service {
             if (data.length < 200) return;
             File f = new File(getCacheDir(), "clip" + (++clipSeq % 8) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
             try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
-            main.post(() -> {
+            safePost(() -> {
                 if (clips.size() >= 2) clips.pollFirst();   // far behind: drop the oldest waiting line
                 clips.add(new Object[]{f, clipPlayer != null || !clips.isEmpty() ? rate * 1.12f : rate});
                 if (clipPlayer == null) clipNext();
@@ -139,11 +139,11 @@ public class OverlayService extends Service {
             if (Math.abs(r - 1f) > 0.01f) { try { mp.setPlaybackParams(new PlaybackParams().setSpeed(r)); } catch (Exception ignored) { } }
             clipPlayer = mp;
             mp.start();
-        } catch (Exception e) { clipPlayer = null; main.post(this::clipNext); }
+        } catch (Exception e) { clipPlayer = null; safePost(this::clipNext); }
     }
 
     private void clipStop() {
-        main.post(() -> {
+        safePost(() -> {
             clips.clear();
             if (clipPlayer != null) { try { clipPlayer.stop(); } catch (Exception ignored) { } try { clipPlayer.release(); } catch (Exception ignored) { } clipPlayer = null; }
         });
@@ -156,9 +156,18 @@ public class OverlayService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
+    static volatile boolean alive = false;
+
+    /* a message the TV cannot draw must not stop the subtitles: kept for "Báo lỗi", the service goes on */
+    private void safePost(Runnable r) {
+        main.post(() -> { try { r.run(); } catch (Throwable e) { Crash.note(this, e); } });
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        Crash.install(this);
+        alive = true;
         prefs = new Prefs(this);
         startAsForeground();
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
@@ -184,6 +193,7 @@ public class OverlayService extends Service {
         main.postDelayed(watch, 4000);
         lan = new LanServer(this, prefs, this::handle);
         lan.start();
+        Watchdog.arm(this);
         String ip = LanServer.ip();
         showLine("", "Hóng Sub TV đang chờ phụ đề · Mã " + prefs.code() + (ip.isEmpty() ? "" : " · IP " + ip), null, 8000, false);
     }
@@ -206,6 +216,7 @@ public class OverlayService extends Service {
 
     @Override
     public void onDestroy() {
+        alive = false;
         polling = false;
         main.removeCallbacks(updLook);
         clipStop();
@@ -365,7 +376,7 @@ public class OverlayService extends Service {
         final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
         final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
         final String zbgc = j.optString("zbgc", ""), zfgc = j.optString("zfg", "");   // "Theo màu game": colours around the original
-        main.post(() -> {
+        safePost(() -> {
             if (zoneLayer == null) return;
             Runnable old = zoneOff.remove(id);
             if (old != null) main.removeCallbacks(old);
@@ -684,7 +695,7 @@ public class OverlayService extends Service {
     }
 
     private void showLine(String who, String vi, String en, long holdMs, boolean speakIt) {
-        main.post(() -> {
+        safePost(() -> {
             if (box == null) return;
             SpannableStringBuilder sb = new SpannableStringBuilder();
             if (who != null && !who.isEmpty()) {
@@ -723,7 +734,7 @@ public class OverlayService extends Service {
 
     /** every area box off the TV (on the main thread) */
     private void zonesClear() {
-        main.post(() -> {
+        safePost(() -> {
             for (Runnable r : zoneOff.values()) main.removeCallbacks(r);
             zoneOff.clear();
             if (zoneLayer != null) zoneLayer.removeAllViews();
@@ -733,6 +744,10 @@ public class OverlayService extends Service {
 
     /** one message from the computer (through honggame.store or straight over the home network) */
     void handle(JSONObject j) {
+        try { handleOne(j); } catch (Throwable e) { Crash.note(this, e); }
+    }
+
+    private void handleOne(JSONObject j) {
         pcAt = android.os.SystemClock.elapsedRealtime();
         if (j.has("hb")) hbOn = true;
         String mid = j.optString("mid", "");
@@ -776,7 +791,7 @@ public class OverlayService extends Service {
         if (j.has("wid")) { int w = j.optInt("wid", 0); if (w >= 20 && w <= 100 && w != prefs.width()) { prefs.width(w); changed = true; } }
         if (pos.equals("top") && !prefs.top()) { prefs.top(true); changed = true; }
         if (pos.equals("bottom") && prefs.top()) { prefs.top(false); changed = true; }
-        if (changed) main.post(this::applyStyle);
+        if (changed) safePost(this::applyStyle);
         String kind = j.optString("kind", "sub");
         // Hóng Sub on the computer says whether the TV reads aloud (off, or read on the computer instead)
         // "Đọc phụ đề" turned off on the computer (rd:false) always wins
@@ -792,7 +807,7 @@ public class OverlayService extends Service {
         }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
         else if (kind.equals("hb")) { /* only "still here" */ }
-        else if (kind.equals("clr")) { main.removeCallbacks(hideRunnable); main.post(hideRunnable); }   // the game's own subtitle is gone: so is the Vietnamese
+        else if (kind.equals("clr")) { main.removeCallbacks(hideRunnable); safePost(hideRunnable); }   // the game's own subtitle is gone: so is the Vietnamese
         else if (kind.equals("zone") && j.optInt("zclr", 0) == 1) zonesClear();   // Hóng Sub stopped: every area box off
         else if (kind.equals("zone")) {
             zoneShow(j, vi);   // read aloud only when the area asks for it on the computer
@@ -809,12 +824,25 @@ public class OverlayService extends Service {
     }
 
     /** tells the computer that this TV is on: Hóng Sub on the computer then wakes the PS5 and answers */
-    private void hello() {
+    private void hello() { tell("hello", ""); }
+
+    /* "still listening" every 30 s on the TV's own room: Hóng Sub on the computer knows the TV app is on (and gets a crash report) */
+    private long aliveAt = 0;
+    private void alive() {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - aliveAt < 30000) return;
+        aliveAt = now;
+        tell("alive", Crash.take(this));
+    }
+
+    private void tell(String kind, String crash) {
         try {
             HttpURLConnection c = (HttpURLConnection) new URL(Prefs.RELAY.replace("pull?room=", "push")).openConnection();
             c.setConnectTimeout(5000); c.setReadTimeout(5000); c.setDoOutput(true); c.setRequestMethod("POST");
             c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            String body = new JSONObject().put("room", prefs.code() + "T").put("kind", "hello").put("vi", "tv").toString();
+            JSONObject o = new JSONObject().put("room", prefs.code() + "T").put("kind", kind).put("vi", "tv " + Updater.current(this)).put("ip", LanServer.ip());
+            if (crash != null && !crash.isEmpty()) o.put("en", "crash " + crash);
+            String body = o.toString();
             try (java.io.OutputStream os = c.getOutputStream()) { os.write(body.getBytes(StandardCharsets.UTF_8)); }
             c.getResponseCode(); c.disconnect();
         } catch (Exception ignored) { }
@@ -834,10 +862,13 @@ public class OverlayService extends Service {
         main.postDelayed(updLook, 90 * 1000L);
         polling = true;
         poller = new Thread(() -> {
-            hello();
+            aliveAt = android.os.SystemClock.elapsedRealtime();
+            String cr = Crash.take(this);
+            if (cr.isEmpty()) hello(); else tell("hello", cr);
             long lastSeq = -1;
             while (polling) {
                 long wait = POLL_MS;
+                alive();
                 try {
                     JSONObject j = fetch(Prefs.RELAY + prefs.code() + (lastSeq >= 0 ? "&since=" + lastSeq : "") + "&t=" + System.currentTimeMillis());
                     long seq = j.optLong("seq", 0);

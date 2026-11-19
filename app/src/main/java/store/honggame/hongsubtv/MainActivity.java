@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Crash.install(this);
         prefs = new Prefs(this);
         setContentView(buildUi());
     }
@@ -43,7 +44,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         // opening the app means the TV should be ready: start listening right away
-        if (canOverlay() && !prefs.running()) restartService(null);
+        if (canOverlay() && (!prefs.running() || !OverlayService.alive)) restartService(null);
         refresh();
         tick.removeCallbacks(ticker); tick.postDelayed(ticker, 2000);
         if (!canOverlay()) permBtn.requestFocus(); else runBtn.requestFocus();

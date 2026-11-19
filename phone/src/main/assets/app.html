@@ -3172,6 +3172,8 @@ function tvStatus(){
     if(ip){
       if(S.tvOk&&tvOld()) return {bad:true,t:'TV '+(S.tvName?S.tvName+' ':'')+'đang chạy app Hóng Sub TV bản cũ'+(S.tvVer&&S.tvVer!=='old'?' ('+S.tvVer+')':'')+', chưa có các sửa lỗi mới. Trên TV mở app Hóng Sub TV, TV hỏi cập nhật thì bấm Cập nhật (làm một lần).'};
       if(S.tvOk) return {ok:true,t:'Đã nối TV '+(S.tvName?S.tvName+' ':'')+'('+ip+') qua mạng nhà'+(S.tvVer&&S.tvVer!=='old'?', app TV bản '+S.tvVer:'')+'.'};
+      if(S.tvOk===false&&c.length>=4&&seen) return {ok:true,t:'TV '+ip+' không nối được qua mạng nhà, phụ đề đi bằng mã '+c+' (qua internet), TV đang nhận.'};
+      if(S.tvOk===false&&c.length>=4) return {bad:true,t:'Không thấy app Hóng Sub TV đang chạy: TV '+ip+' không trả lời qua mạng nhà, và TV có mã '+c+' cũng chưa báo qua internet. Trên TV mở app Hóng Sub TV (app tự cập nhật), kiểm tra mã trên TV đúng là '+c+'; mã khác thì gõ mã trên TV vào ô Mã TV.',a:'Tìm lại TV',f:function(){ tvFindUi(false); }};
       if(S.tvOk===false) return c.length>=4?{ok:true,t:'TV '+ip+' không nối được qua mạng nhà, phụ đề đi bằng mã '+c+' (qua internet).'}:{bad:true,t:(D?tvWhyText(ip):'TV '+ip+' chưa trả lời. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'),html:!!D,a:'Tìm lại TV',f:function(){ tvFindUi(false); }};
       return {t:'Đang kiểm tra TV '+ip+'...'};
     }
@@ -3356,10 +3358,18 @@ function tvListen(){
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
     }).catch(function(){ tvLan(false); });
-  } else if(c.length>=4) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65;
-    if(S.tvHello<0){ S.tvHello=seq; if(fresh&&(j.kind==='hello'||j.kind==='alive')){ S.tvSeen=Date.now(); tvState(); } return; }
-    if(seq!==S.tvHello){ S.tvHello=seq; if(j.kind==='hello'||j.kind==='alive'){ S.tvSeen=Date.now(); tvState(); } if(j.kind==='hello'&&D) tvHello(); }
+  }
+  /* the TV's own room (code + T): the TV app says hello when it starts and "alive" every 30 s (newer builds), with its
+     home-network address and the last crash of the app, if any */
+  if(c.length>=4&&(!ip||S.tvOk!==true)) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65, tv=j.kind==='hello'||j.kind==='alive';
+    var news=S.tvHello<0?(fresh&&tv):(seq!==S.tvHello&&tv), first=S.tvHello<0; S.tvHello=seq;
+    if(!news) return;
+    S.tvSeen=Date.now(); tvState();
+    if(!first&&j.kind==='hello'&&D) tvHello();
+    if(/^crash /.test(j.en||'')&&j.en!==S.tvCrash){ S.tvCrash=j.en; log('app trên TV đã bị lỗi và tự mở lại: '+String(j.en).slice(6,600)); }
+    var tip=String(j.ip||''); if(S.tvType==='android'&&TVD()&&/^\d{1,3}(\.\d{1,3}){3}$/.test(tip)&&tip!==tvIp())
+      TVD().ping(tip).then(function(r){ if(r&&r.ok&&r.app==='hongsubtv'){ log('TV báo địa chỉ mới qua mã '+c+': '+tip); tvUse(tip,r); } }).catch(function(){});
   }).then(function(){ S.relayBad=0; },function(){ S.relayBad=Date.now(); });
   later(tvListen,4000);
 }
