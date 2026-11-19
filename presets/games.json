@@ -1,5 +1,5 @@
 {
- "version": 3,
+ "version": 4,
  "games": [
   {
    "name": "God of War (2018)",
@@ -595,7 +595,13 @@
    "group": "Kinh dị",
    "name": "Resident Evil 7 / Requiem",
    "style": "horror",
-   "notes": "Kinh dị góc nhìn thứ nhất. Gia đình Baker (Jack, Marguerite, Lucas) trong RE7. Requiem: nhân vật chính Grace Ashcroft là nhà phân tích FBI. Văn phong căng thẳng, câu ngắn."
+   "notes": "Kinh dị. RE7 (góc nhìn thứ nhất): Ethan Winters đến Louisiana tìm vợ Mia (\"anh/em\"), bị gia đình Baker (Jack - bố, Marguerite - mẹ, Lucas - con trai, Zoe - con gái) giam giữ; Eveline là cô bé đáng sợ. Requiem: Grace Ashcroft là nhà phân tích tình báo FBI, nhút nhát nhưng kiên cường, con gái của nhà báo Alyssa Ashcroft (\"mẹ/con\"); Leon S. Kennedy là đặc vụ DSO dày dạn, gọi Grace là \"cô\" hoặc \"nhóc\" khi trấn an, xưng \"tôi\". Câu chuyện quay về Raccoon City. Phản diện Victor Gideon. Sherry Birkin, Nathan Dempsey. Giữ nguyên: Umbrella, Raccoon City, DSO, B.O.W. Văn phong căng thẳng, câu ngắn.",
+   "aka": [
+    "RE Requiem",
+    "RE7",
+    "Resident Evil 9",
+    "Resident Evil Requiem"
+   ]
   },
   {
    "group": "Kinh dị",
@@ -704,6 +710,650 @@
    "name": "WWE 2K",
    "style": "street",
    "notes": "Đấu vật giải trí. Đô vật khiêu khích, nói to, tao/mày. Giữ nguyên tên đô vật và chiêu kết liễu."
+  },
+  {
+   "name": "Onimusha: Way of the Sword",
+   "group": "Hành động, phiêu lưu",
+   "style": "japan",
+   "aka": [
+    "Onimusha",
+    "Onimusha Way of the Sword"
+   ],
+   "notes": "Kyoto thời Edo, bị quỷ Genma tàn phá. Miyamoto Musashi là kiếm khách trẻ, ngạo nghễ, đến Kyoto để thử kiếm, mang Găng Tay Quỷ (Oni Gauntlet) hút linh hồn quỷ: xưng \"ta\", gọi kẻ khác \"ngươi\" hoặc \"lão\". Quỷ Nữ (Oni Lady, tên Shizuka) ở trong găng tay dẫn đường cho Musashi, nói như bậc bề trên: xưng \"ta\", gọi Musashi là \"ngươi\". Ono no Takamura là kiếm sĩ lão luyện, Musashi gọi \"lão\" hoặc \"tiền bối\". Izumo no Okuni là vũ nữ đi tìm cách diệt Genma, xưng \"tôi\" hoặc \"thiếp\". Sasaki Ganryu (Kojiro) là đối thủ kiếm thuật định mệnh của Musashi, kiêu ngạo, xưng \"ta\". Giữ nguyên: Genma, Oni, Kyoto. Văn phong cổ trang Nhật: ta, ngươi, ngài, tiền bối."
+  },
+  {
+   "name": "007 First Light",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "007",
+    "James Bond First Light"
+   ],
+   "notes": "Câu chuyện khởi đầu của James Bond: Bond 26 tuổi, tân binh MI6 đang phấn đấu vào chương trình Double 0. M là nữ giám đốc MI6, cấp trên của Bond: M gọi \"Bond\" hoặc \"anh\", xưng \"tôi\"; Bond gọi \"bà\" hoặc \"thưa M\". Q là trưởng phòng Q (chế tạo thiết bị), trẻ hơn bản phim, hay hướng dẫn Bond: \"tôi/anh\". Moneypenny là sĩ quan tình báo kiêm hacker: \"tôi/anh\", hay trêu Bond. John Greenway là người thầy bất đắc dĩ của Bond: gọi Bond là \"cậu\" hoặc \"nhóc\", Bond gọi \"ông\". Đặc vụ Roth (Charlotte Roth), Tiến sĩ Selina Tan. Giữ nguyên: MI6, Double 0, 00, Q Branch. Giọng lịch lãm, hài hước khô kiểu Anh."
+  },
+  {
+   "name": "Marvel's Wolverine",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Wolverine"
+   ],
+   "notes": "Logan (James \"Logan\" Howlett) là người đột biến bất tử, móng vuốt adamantium, cộc cằn, ít lời: xưng \"tao\" với kẻ thù, \"tôi\" với người khác, hay gọi người trẻ là \"nhóc\". Thời chưa có X-Men; Logan từng ở đội đặc nhiệm Team X cùng Sabretooth (Victor Creed, thù địch: \"tao/mày\") và Mystique (Raven Darkhölme, biến hình, quyến rũ, ranh mãnh: \"tôi/anh\"). Jean Grey là người đột biến trẻ có năng lực ngoại cảm, dần thân với Logan: \"tôi/anh\". Nathaniel Essex (về sau là Mister Sinister), Bolivar Trask và Trask Industries bắt cóc người đột biến, Omega Red, bọn Reavers. Địa danh: rừng Canada, Tokyo, Madripoor. Giữ nguyên: mutant (\"người đột biến\"), adamantium, Berserker Rage. Lời thoại thô, có chửi thề."
+  },
+  {
+   "name": "Saros",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Khoa học viễn tưởng u ám. Arjun Devraj là Enforcer (Cưỡng Chế Viên) của tập đoàn Soltari, xuống hành tinh Carcosa dưới nhật thực để tìm vợ là Nitya; mỗi lần chết lại sống lại. Đi cùng đoàn thám hiểm Echelon IV do chỉ huy Sheridan Bouchard (nữ, lớn tuổi) dẫn đầu; các thành viên Tarn, Kayla, Jerome, Stack, Alab dần mất trí vì Carcosa. Giữa đồng đội dùng \"tôi/anh\", \"tôi/cô\"; Sheridan gọi Arjun là \"Devraj\" hoặc \"anh\". Arjun với vợ: \"anh/em\". Giữ nguyên: Carcosa, Soltari, Echelon, Lucenite, Yellow King (\"Vua Vàng\"). Văn phong lạnh, bí ẩn, nhiều nhật ký ghi âm."
+  },
+  {
+   "name": "Crimson Desert",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "notes": "Lục địa Pywel giả tưởng trung cổ (các vùng Hernand, Pailune, Demeniss, Delesyia, Sa Mạc Đỏ). Kliff là thủ lĩnh băng lính đánh thuê Greymanes (Bờm Xám), đi tập hợp lại anh em sau trận phục kích của băng Black Bears (Gấu Đen) do Myurdin cầm đầu. Oongka là chiến binh orc du mục dùng rìu, thẳng tính; Damiane là nữ xạ thủ, thợ súng nhanh nhẹn. Giữa anh em Greymanes: \"tôi/anh\" hoặc \"ta/ngươi\" khi nóng, gọi Kliff là \"thủ lĩnh\"; kẻ thù: \"ta/ngươi\". Giữ nguyên tên vùng, Abyss (\"Vực Thẳm\"). Văn phong trung cổ, mạnh mẽ."
+  },
+  {
+   "name": "Indiana Jones and the Great Circle",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Indiana Jones"
+   ],
+   "notes": "Năm 1937, giữa \"Raiders of the Lost Ark\" và \"The Last Crusade\". Indiana Jones (Indy) là giáo sư khảo cổ, hài hước, lắm mồm khi gặp nguy: xưng \"tôi\", với bạn thân \"tớ/cậu\". Gina Lombardi là nữ nhà báo người Ý đi tìm em gái mất tích, cãi nhau rồi thân với Indy: \"tôi/anh\". Emmerich Voss là nhà khảo cổ của Đức Quốc Xã, lịch sự giả tạo, xưng \"tôi\", gọi \"Tiến sĩ Jones\"; Locus là tay sai to lớn câm lặng. Marcus Brody là bạn già của Indy. Giữ nguyên: Great Circle (\"Đại Vòng Tròn\"), Vatican, Gizeh, Himalaya, Sukhothai. Nazi dịch là \"bọn Phát xít\"."
+  },
+  {
+   "name": "Star Wars Outlaws",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Star Wars, giữa \"Đế chế phản công\" và \"Sự trở lại của Jedi\". Kay Vess là nữ trộm trẻ ở thế giới ngầm, đi cùng sinh vật nhỏ Nix (bạn thân, Kay gọi \"Nix\"), robot ND-5 (giọng trầm, từng là robot chiến đấu): \"tôi/cô\". Sliro Barsha cầm đầu băng Zerek Besh, kẻ thù của Kay. Các băng tội phạm: Hutt Cartel, Pyke Syndicate, Crimson Dawn, Ashiga Clan. Jabba the Hutt. Giữ nguyên: Empire (\"Đế chế\"), Rebel (\"quân Nổi dậy\"), blaster, credits, speeder, Trailblazer (tàu của Kay). Giọng phiêu lưu, lém lỉnh."
+  },
+  {
+   "name": "Uncharted: The Nathan Drake Collection",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Uncharted 1",
+    "Uncharted 2",
+    "Uncharted 3",
+    "Uncharted Collection"
+   ],
+   "notes": "Uncharted 1-3. Nathan Drake (Nate) săn kho báu, hay đùa: xưng \"tôi\" hoặc \"tớ\". Victor Sullivan (Sully) lớn tuổi, như cha nuôi: gọi Nate là \"nhóc\", Nate gọi \"ông\" hoặc \"Sully\". Elena Fisher là nhà báo, người yêu Nate (\"anh/em\" khi thân, \"tôi/anh\" lúc mới quen). Chloe Frazer là tình cũ, ranh mãnh (\"anh/em\" hoặc \"tôi/anh\"). Phản diện: Gabriel Roman, Eddy Raja (Uncharted 1), Zoran Lazarević, Harry Flynn (Uncharted 2), Katherine Marlowe, Talbot (Uncharted 3). Giữ nguyên tên cổ vật, El Dorado, Shambhala, Ubar. Giọng hài hước."
+  },
+  {
+   "name": "Infamous Second Son / First Light",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "inFAMOUS"
+   ],
+   "notes": "Seattle hiện đại. Delsin Rowe là thanh niên nổi loạn có siêu năng lực hấp thụ năng lực người khác (khói, neon, video): xưng \"tôi\" hoặc \"tao\" khi gây gổ, hay đùa. Reggie là anh trai cảnh sát: Delsin gọi \"anh\", xưng \"em\"; Reggie gọi \"Delsin\" hoặc \"em\". Brooke Augustine cầm đầu D.U.P. (Cục Bảo vệ Liên bang) săn \"Conduit\" (người có năng lực, gọi là \"bioterrorist\" - \"khủng bố sinh học\"). Fetch (Abigail Walker) có năng lực neon, nhân vật chính First Light. Giữ nguyên: Conduit, D.U.P."
+  },
+  {
+   "name": "Marvel's Guardians of the Galaxy",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "aka": [
+    "Guardians of the Galaxy"
+   ],
+   "notes": "Vũ trụ Marvel. Peter Quill (Star-Lord) là đội trưởng, hay đùa, mê nhạc thập niên 80: xưng \"tôi\" hoặc \"tớ\". Gamora (nữ sát thủ, lạnh lùng, nghiêm túc), Drax (to xác, nói mọi thứ theo nghĩa đen, xưng \"ta\"), Rocket (gấu mèo cáu kỉnh, mỉa mai, xưng \"tao\"), Groot (chỉ nói \"Ta là Groot\"). Giữa đội: \"tôi/anh\" hoặc \"tao/mày\" khi cãi nhau (Rocket với Peter). Phản diện: Grand Unifier Raker và Giáo hội Universal Church of Truth. Nova Corps, Cosmo (chó vũ trụ). Giọng hài hước, nhiều cãi vã."
+  },
+  {
+   "name": "Star Wars Jedi: Fallen Order",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Star Wars, sau Mệnh lệnh 66. Cal Kestis là Jedi học việc trẻ trốn Đế chế, robot BD-1 đi cùng. Cere Junda (cựu Jedi, như người thầy: \"tôi/cậu\"), Greez Dritus (phi công bốn tay, hay càu nhàu), Merrin (Nightsister, phù thủy Dathomir). Second Sister (Trilla) là Inquisitor săn Cal, Darth Vader. Giữ nguyên: Jedi, Sith, Force (\"Thần Lực\"), lightsaber (\"kiếm ánh sáng\"), Inquisitor, Empire (\"Đế chế\"), Stinger Mantis (tàu)."
+  },
+  {
+   "name": "Avatar: Frontiers of Pandora",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "aka": [
+    "Avatar"
+   ],
+   "notes": "Hành tinh Pandora, Miền Tây Biên Giới. Nhân vật chính là người Na'vi bị RDA (tập đoàn loài người) bắt từ nhỏ, nay trở về với bộ tộc. Bộ tộc Sarentu, Aranahe, Zeswa. Đồng đội loài người phe kháng chiến (Resistance). Na'vi xưng \"ta\", gọi \"ngươi\" khi trang trọng; giữa bạn bè \"tôi/cậu\". Giữ nguyên: Na'vi, Eywa, RDA, ikran (thú bay), Toruk. Câu chào \"I see you\" dịch là \"Ta nhìn thấy ngươi\" hoặc \"Tôi thấy bạn\"."
+  },
+  {
+   "name": "Assassin's Creed Origins",
+   "group": "Hành động, phiêu lưu",
+   "style": "myth",
+   "notes": "Ai Cập cổ đại thời Cleopatra. Bayek xứ Siwa là Medjay (người bảo vệ), vợ là Aya: \"anh/em\" (hoặc \"chàng/nàng\" khi tình cảm). Con trai Khemu đã mất. Cleopatra (xưng \"ta\"), Julius Caesar, Ptolemy XIII. Kẻ thù là Hội Người Xưa (Order of the Ancients), mỗi kẻ đeo mặt nạ và mang biệt danh (Snake - Rắn, Lizard - Thằn Lằn, Scarab - Bọ Hung...). Giữ nguyên tên Ai Cập, Medjay, Hidden Ones (hội Ẩn Mình). Văn phong cổ."
+  },
+  {
+   "name": "Assassin's Creed (Unity / Syndicate / Black Flag)",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "aka": [
+    "Assassin's Creed Unity",
+    "Assassin's Creed Syndicate",
+    "Assassin's Creed Black Flag",
+    "Assassin's Creed IV"
+   ],
+   "notes": "Các phần cũ: Black Flag - Edward Kenway là cướp biển vùng Caribe, thuyền Jackdaw, bạn là Adéwalé; giữa cướp biển dùng \"tao/mày\", gọi thuyền trưởng là \"thuyền trưởng\". Unity - Paris thời Cách mạng Pháp, Arno Dorian và Élise de la Serre (người yêu, \"anh/em\"). Syndicate - London thời Victoria, hai chị em sinh đôi Jacob (em, nghịch ngợm) và Evie Frye (chị, điềm tĩnh): Evie xưng \"chị\", Jacob gọi \"chị\" xưng \"em\". Assassin dịch là \"Sát thủ\" hoặc giữ nguyên Assassin, Templar là \"Hiệp sĩ Đền\" hoặc giữ nguyên."
+  },
+  {
+   "name": "Watch Dogs 2 / Legion",
+   "group": "Hành động, phiêu lưu",
+   "style": "street",
+   "aka": [
+    "Watch Dogs",
+    "Watch Dogs 2",
+    "Watch Dogs Legion"
+   ],
+   "notes": "Hacker hiện đại. Watch Dogs 2: San Francisco, Marcus Holloway là hacker trẻ, nhóm DedSec gồm Sitara, Wrench (đeo mặt nạ biểu tượng cảm xúc, nói tục), Josh (ít nói), Horatio: giữa bạn bè \"tao/mày\" hoặc \"tớ/cậu\". Kẻ thù: Blume, ctOS. Legion: London tương lai, DedSec chiêu mộ người dân, AI Bagley nói giọng Anh hài hước (\"tôi/cậu\"); kẻ thù Albion, Zero Day. Giữ nguyên: DedSec, ctOS, Blume. Nhiều tiếng lóng mạng."
+  },
+  {
+   "name": "Hitman World of Assassination",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Hitman",
+    "Hitman 3"
+   ],
+   "notes": "Agent 47 là sát thủ trọc đầu, mã vạch sau gáy, lạnh lùng, lịch sự, xưng \"tôi\". Diana Burnwood là người điều phối qua tai nghe, giọng Anh điềm tĩnh: gọi 47 là \"47\", xưng \"tôi\". Lucas Grey là bạn cũ thời thơ ấu (\"tôi/anh\"). Providence là tổ chức bí mật, ICA là cơ quan sát thủ. Mục tiêu nói trang trọng. Giữ nguyên: Agent 47, ICA, Providence. Hướng dẫn nhiệm vụ dịch ngắn gọn."
+  },
+  {
+   "name": "Control",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Jesse Faden đến Cục Kiểm soát Liên bang (FBC) ở tòa nhà Oldest House để tìm em trai Dylan, rồi thành Giám đốc. Jesse hay độc thoại nội tâm, nói chuyện với \"Polaris\" trong đầu. Ahti là ông lao công người Phần Lan kỳ lạ (\"tôi/cô\"), Emily Pope là nhà nghiên cứu, Marshall. Kẻ thù: Hiss (\"Tiếng Rít\"). Giữ nguyên: FBC, Oldest House, Hiss, Altered Item (\"Vật Biến Dị\"), Object of Power (\"Vật Quyền Năng\"), Service Weapon. Văn phong kỳ bí, hành chính."
+  },
+  {
+   "name": "Middle-earth: Shadow of War / Mordor",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "aka": [
+    "Shadow of War",
+    "Shadow of Mordor"
+   ],
+   "notes": "Trung Địa (Chúa tể những chiếc nhẫn). Talion là kiểm lâm Gondor bị giết rồi gắn với hồn ma tiên Celebrimbor: Talion xưng \"ta\", Celebrimbor nói như bậc thầy (\"ta/ngươi\"). Bọn Orc nói thô, khoác lác: \"tao/mày\", gọi Talion là \"thằng Kiểm Lâm\" hoặc \"Tarkhan\". Sauron, Nazgûl, Shelob. Giữ nguyên: Mordor, Uruk, Nemesis, Gondor, ring (\"chiếc nhẫn\")."
+  },
+  {
+   "name": "Gotham Knights / Suicide Squad",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Gotham Knights",
+    "Suicide Squad Kill the Justice League"
+   ],
+   "notes": "DC. Gotham Knights: Batman đã chết, bốn người kế tục là Nightwing (Dick Grayson, anh cả), Batgirl (Barbara Gordon), Robin (Tim Drake, trẻ nhất), Red Hood (Jason Todd, nóng tính): \"tôi/anh\", \"tớ/cậu\"; Alfred là quản gia gọi \"cậu chủ/cô chủ\". Court of Owls (Hội Cú). Suicide Squad: Harley Quinn, Deadshot, King Shark, Captain Boomerang (\"tao/mày\" hài hước), Amanda Waller ra lệnh. Giữ nguyên tên siêu anh hùng."
+  },
+  {
+   "name": "Sifu",
+   "group": "Hành động, phiêu lưu",
+   "style": "wuxia",
+   "notes": "Võ thuật Trung Hoa hiện đại. Nhân vật chính học Bạch Mi quyền, trả thù cho cha (sư phụ) bị Yang và bốn đồng bọn giết; mỗi lần chết thì già đi. Dùng \"ta/ngươi\" với kẻ thù; Yang là đồ đệ cũ của cha. Đồng bọn: Fajar, Sean, Kuroki, Jinfeng. Văn phong võ hiệp: sư phụ, đệ tử, võ quán."
+  },
+  {
+   "name": "Ninja Gaiden 4",
+   "group": "Hành động, phiêu lưu",
+   "style": "japan",
+   "notes": "Tokyo tương lai bị Rồng Đen bao phủ. Yakumo là ninja trẻ của phái Quạ (Raven Clan), xưng \"tôi\" hoặc \"ta\", lạnh lùng. Ryu Hayabusa là ninja huyền thoại phái Rồng (Dragon Clan), Yakumo gọi \"Hayabusa\" hoặc \"ngài\". Dùng \"ta/ngươi\" với kẻ thù. Giữ nguyên: Dragon Sword, Hayabusa, Raven Clan, Fiend. Văn phong hành động, ngắn gọn."
+  },
+  {
+   "name": "Devil May Cry 5",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "aka": [
+    "DMC5",
+    "Devil May Cry"
+   ],
+   "notes": "Thợ săn quỷ. Dante (hài hước, kiêu ngạo, xưng \"tôi\" hoặc \"ta\"), Nero (trẻ, nóng tính, \"tôi/tao\", gọi Dante là \"ông già\"), V (bí ẩn, hay đọc thơ William Blake). Vergil là anh sinh đôi của Dante. Nico là nữ thợ chế tạo vũ khí, nói nhanh, tục (\"tôi/anh\"). Trish, Lady. Urizen là chúa quỷ. Giữ nguyên tên vũ khí và chiêu (Devil Trigger, Rebellion, Yamato). Giọng ngầu, nhiều câu đùa."
+  },
+  {
+   "name": "Nioh 2 / Nioh",
+   "group": "Hành động, phiêu lưu",
+   "style": "japan",
+   "aka": [
+    "Nioh",
+    "Nioh 2"
+   ],
+   "notes": "Nhật Bản thời Chiến Quốc có yêu quái (yokai). Nioh 1: William Adams là thủy thủ Anh, hồn hộ mệnh Saoirse, gặp Tokugawa Ieyasu, Hattori Hanzo. Nioh 2: Hide (nửa người nửa yêu) và Tokichiro (sau là Toyotomi Hideyoshi), Mumyo. Dùng tên Nhật, các danh tướng: Oda Nobunaga, Akechi Mitsuhide, Tokugawa Ieyasu. Văn phong cổ trang: ta, ngươi, ngài, chúa công. Giữ nguyên: yokai (\"yêu quái\"), Amrita, Guardian Spirit (\"Hồn Hộ Mệnh\")."
+  },
+  {
+   "name": "Nioh 3",
+   "group": "Hành động, phiêu lưu",
+   "style": "japan",
+   "notes": "Năm 1622 (Genna 8), lâu đài Edo. Tokugawa Takechiyo là cháu nội Tokugawa Ieyasu, người kế vị Shogun (nhân vật tự tạo được, nam hoặc nữ); hồn hộ mệnh là Kusanagi, giúp vượt thời gian qua các thời Chiến Quốc, Heian, Mạc mạt. Em trai là Tokugawa Kunimatsu, ghen ghét vì anh được kế vị, sa vào bóng tối và cầm đầu yêu quái: Takechiyo gọi \"em\" hoặc \"Kunimatsu\", Kunimatsu xưng \"ta\" gọi \"huynh\" hoặc \"ngươi\" khi thù hận. Saito Fuku là nhũ mẫu kiêm thầy âm dương thuật (gọi Takechiyo là \"thiếu chủ\"), Hattori Hanzo, Honda Tadakatsu, nữ vương Himiko, Takeda Shingen. Giữ nguyên tên Nhật, yokai (\"yêu quái\"), Shogun. Văn phong cổ trang: ta, ngươi, ngài, chúa công."
+  },
+  {
+   "name": "Pragmata",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Trạm nghiên cứu trên Mặt Trăng (Cradle) của tập đoàn Delphi, AI điều khiển máy móc nổi loạn. Hugh Williams là phi hành gia kiểm tra hệ thống, người lớn thực tế, điềm đạm. Diana là robot hình bé gái khoảng bảy tuổi (Pragmata D-I-0336-7, Hugh đặt tên Diana), tò mò, hồn nhiên, giỏi hack: Hugh gọi Diana là \"nhóc\" hoặc \"con bé\", xưng \"chú\"; Diana gọi Hugh là \"chú Hugh\", xưng \"cháu\" (hoặc \"Diana\"). Tiến sĩ Neil Higgins và con gái Daisy, robot Eight. Giữ nguyên: Pragmata, Lunafilament, Cradle, Delphi, IDUS. Giọng ấm áp, nhẹ nhàng."
+  },
+  {
+   "name": "Returnal",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "notes": "Selene Vassos là phi hành gia của ASTRA, rơi xuống hành tinh Atropos, kẹt trong vòng lặp chết đi sống lại. Selene độc thoại, ghi âm nhật ký, xưng \"tôi\". Bóng ma \"phi hành gia trắng\" và ngôi nhà thế kỷ 20 của mẹ cô (Theia). Giữ nguyên: Atropos, ASTRA, Xeno-glyph, Helios (tàu). Văn phong u ám, bí ẩn."
+  },
+  {
+   "name": "The Order: 1886",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "notes": "London thời Victoria phiên bản giả tưởng. Grayson (Sir Galahad) là hiệp sĩ của Hội Hiệp Sĩ Bàn Tròn, săn \"Half-breed\" (người lai quái vật, ma cà rồng). Đồng đội: Sir Percival (thầy), Isabeau (Lady Igraine), Marquis de Lafayette. Văn phong Anh cổ, trang trọng: \"ngài\", \"Sir\"."
+  },
+  {
+   "name": "Life is Strange (series)",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Life is Strange",
+    "Life is Strange True Colors",
+    "Life is Strange Double Exposure",
+    "Life is Strange 2"
+   ],
+   "notes": "Phiêu lưu kể chuyện, học đường và đời thường Mỹ. Phần 1: Max Caulfield (quay ngược thời gian) và bạn thân Chloe Price (nổi loạn): \"tớ/cậu\" hoặc \"tao/mày\" thân. Phần 2: hai anh em Sean (anh, 16 tuổi) và Daniel Diaz (em, 9 tuổi, có năng lực): Sean xưng \"anh\", gọi \"em\" hoặc \"Daniel\"; Daniel gọi \"anh\". True Colors: Alex Chen (cảm nhận cảm xúc), anh trai Gabe. Double Exposure: Max trưởng thành, bạn Safi. Lời thoại tuổi teen, tiếng lóng."
+  },
+  {
+   "name": "Heavy Rain / Beyond: Two Souls",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "Heavy Rain",
+    "Beyond Two Souls"
+   ],
+   "notes": "Phim tương tác của Quantic Dream. Heavy Rain: Ethan Mars đi tìm con trai Shaun (\"bố/con\") bị Kẻ Giết Người Origami bắt; Madison Paige (nhà báo), Norman Jayden (đặc vụ FBI), Scott Shelby (thám tử tư). Beyond: Jodie Holmes có liên kết với linh hồn Aiden; Nathan Dawkins nuôi dạy Jodie như cha (Jodie gọi \"ông\" hoặc \"Nathan\"), Ryan Clayton (CIA). Lời thoại đời thường."
+  },
+  {
+   "name": "The Walking Dead (Telltale) / The Wolf Among Us",
+   "group": "Hành động, phiêu lưu",
+   "style": "modern",
+   "aka": [
+    "The Walking Dead",
+    "The Wolf Among Us",
+    "Tales from the Borderlands"
+   ],
+   "notes": "Walking Dead: Lee Everett chăm sóc bé gái Clementine giữa dịch xác sống: Lee xưng \"chú\", gọi \"Clem\" hoặc \"cháu\"; Clementine gọi \"chú Lee\". Mùa sau Clementine lớn lên, chăm AJ (\"chị/em\"). \"Walkers\" dịch là \"xác sống\". The Wolf Among Us: Bigby Wolf (Sói Xám) là cảnh sát trưởng của Fabletown, Snow White (Bạch Tuyết): \"tôi/cô\"; nhân vật cổ tích sống ở New York. Lời thoại đời thường, có chửi thề."
+  },
+  {
+   "name": "Kingdom Come: Deliverance",
+   "group": "Hành động, phiêu lưu",
+   "style": "fantasy",
+   "aka": [
+    "Kingdom Come Deliverance 1"
+   ],
+   "notes": "Bohemia năm 1403, chân thực lịch sử, không phép thuật. Henry là con trai thợ rèn làng Skalitz, cha mẹ bị giết; Henry gọi cha là \"bố\" hoặc \"cha\". Hans Capon là lãnh chúa trẻ kiêu căng, Henry gọi \"ngài\" (sau thân thì \"tôi/anh\"), Hans gọi Henry là \"ngươi\" hoặc \"Henry\". Sir Radzig Kobyla (lãnh chúa, Henry gọi \"ngài\"), Theresa. Kẻ thù: Sigismund và quân Cumans. Văn phong trung cổ: ngài, thưa ngài, ta, ngươi."
+  },
+  {
+   "name": "Prince of Persia: The Lost Crown",
+   "group": "Hành động, phiêu lưu",
+   "style": "myth",
+   "notes": "Ba Tư thần thoại. Sargon là chiến binh trẻ trong đội Bất Tử (Immortals), đi giải cứu hoàng tử Ghassan ở núi Qaf bị thời gian bóp méo. Đồng đội Bất Tử: Anahita, Vahram, Artaban, Orod, Radjen, Menolias: \"tôi/anh\"; với hoàng tộc gọi \"điện hạ\", với nữ hoàng Thomyris gọi \"bệ hạ\". Văn phong thần thoại, hơi cổ."
+  },
+  {
+   "name": "Dead Island 2",
+   "group": "Hành động, phiêu lưu",
+   "style": "horror",
+   "notes": "Los Angeles (\"Hell-A\") bị dịch xác sống. Nhân vật chính là một trong sáu \"Slayer\" miễn nhiễm (Jacob, Amy, Bruno, Carla, Dani, Ryan), nói tục, hài hước kiểu Mỹ: \"tao/mày\" với bạn bè. Các nhân vật phụ là ngôi sao, dân Hollywood lố bịch. \"Zombie\" dịch là \"xác sống\". Giữ nguyên tên địa danh. Nhiều chửi thề, hài đen."
+  },
+  {
+   "name": "Spec Ops / Sniper Elite / Wolfenstein",
+   "group": "Bắn súng, quân đội",
+   "style": "military",
+   "aka": [
+    "Sniper Elite 5",
+    "Sniper Elite Resistance",
+    "Wolfenstein II",
+    "Wolfenstein Youngblood"
+   ],
+   "notes": "Sniper Elite: Karl Fairburne là xạ thủ OSS thời Thế chiến II, xưng \"tôi\", giọng trầm; Nazi dịch là \"Phát xít\". Wolfenstein: B.J. Blazkowicz chiến đấu chống Phát xít ở thế giới thay thế, độc thoại triết lý; vợ Anya (\"anh/em\"), hai con gái sinh đôi Jess và Soph (Youngblood, gọi \"bố\"); Frau Engel là nữ chỉ huy tàn bạo. Văn phong quân đội, mệnh lệnh ngắn."
+  },
+  {
+   "name": "Doom Eternal / The Dark Ages",
+   "group": "Bắn súng, quân đội",
+   "style": "scifi",
+   "aka": [
+    "Doom",
+    "Doom Eternal",
+    "Doom The Dark Ages"
+   ],
+   "notes": "Doom Slayer (Kẻ Diệt Quỷ) gần như không nói, chiến đấu với quỷ Địa Ngục. Samuel Hayden (robot), VEGA (AI tàu). The Dark Ages: Slayer phục vụ các Maykr, chiến đấu bên quân Night Sentinels. Quỷ và thực thể cổ nói kiểu kinh thánh, trang trọng (\"ta/ngươi\"). Giữ nguyên: Slayer, Argent, Maykr, Night Sentinel, Hell (\"Địa Ngục\")."
+  },
+  {
+   "name": "Metro Exodus",
+   "group": "Bắn súng, quân đội",
+   "style": "military",
+   "aka": [
+    "Metro"
+   ],
+   "notes": "Nước Nga hậu tận thế hạt nhân. Artyom là chiến binh im lặng (chỉ nói trong màn chuyển cảnh, xưng \"tôi\"), vợ là Anna (xạ thủ, \"anh/em\"). Colonel Miller (Đại tá Miller) là bố vợ, chỉ huy đội Spartan, Artyom gọi \"Đại tá\" hoặc \"bố\". Đoàn tàu Aurora, đồng đội Damir, Duke, Stepan, Yermak, Sam, Krest. Văn phong lính Nga, gọi nhau bằng tên, có chửi thề."
+  },
+  {
+   "name": "Ghost Recon Breakpoint / Wildlands",
+   "group": "Bắn súng, quân đội",
+   "style": "military",
+   "aka": [
+    "Ghost Recon",
+    "Ghost Recon Breakpoint",
+    "Ghost Recon Wildlands"
+   ],
+   "notes": "Lính đặc nhiệm Mỹ (Ghosts). Breakpoint: Nomad (đội trưởng) kẹt trên đảo Auroa, đối đầu Cole D. Walker cầm đầu nhóm Wolves (Bầy Sói), từng là đồng đội và bạn của Nomad (\"tôi/anh\"). Đồng đội: Fixit, Holt, Vasily, Weaver. Wildlands: Bolivia, cartel Santa Blanca của El Sueño. Văn phong quân đội: mệnh lệnh ngắn, \"rõ\", \"đã hiểu\", mật danh giữ nguyên."
+  },
+  {
+   "name": "The Division 2",
+   "group": "Bắn súng, quân đội",
+   "style": "military",
+   "aka": [
+    "Division 2"
+   ],
+   "notes": "Washington D.C. sau đại dịch. Người chơi là Đặc vụ Division (Agent). Các phe: Hyenas (Linh Cẩu), True Sons, Outcasts, Black Tusk. Đồng minh liên lạc qua radio: Manny Ortega. Văn phong quân đội, mệnh lệnh ngắn, tiếng lóng đường phố với kẻ thù."
+  },
+  {
+   "name": "Dragon's Dogma 2",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "notes": "Giả tưởng trung cổ. Nhân vật chính là Arisen (Người Được Chọn) bị Rồng lấy mất trái tim, được người khác gọi \"Arisen\" hoặc \"ngài\". Pawn (Hầu Cận) là đồng hành không có ý chí riêng, nói lịch sự, gọi chủ là \"chủ nhân\" hoặc \"Arisen\", hay nhắc mẹo chiến đấu. Vương quốc Vermund (thủ đô Vernworth), xứ Battahl của tộc Beastren. Nữ hoàng nhiếp chính Disa, Phân Sứ Brant (Captain Brant). Giữ nguyên: Arisen, Pawn, Wakestone, Rift. Văn phong cổ, trang trọng: ta, ngài, ngươi."
+  },
+  {
+   "name": "Dragon Age: Inquisition",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "Dragon Age Inquisition"
+   ],
+   "notes": "Thedas. Inquisitor (Pháp Quan) lãnh đạo Tòa Pháp Quan (Inquisition) đóng Vết Nứt (Breach) trên trời. Cố vấn: Cassandra (thẳng tính), Leliana (gián điệp), Cullen (chỉ huy), Josephine (ngoại giao) gọi Inquisitor là \"ngài\" hoặc \"Pháp Quan\". Đồng đội: Varric (người lùn hay đùa, đặt biệt danh), Solas (tiên học giả), Dorian, Iron Bull, Sera, Vivienne, Blackwall, Cole. Phản diện Corypheus. Giữ nguyên: Thedas, Chantry (\"Giáo hội\"), Fade, Grey Warden. Văn phong trung cổ."
+  },
+  {
+   "name": "Final Fantasy XV",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "FFXV",
+    "FF15"
+   ],
+   "notes": "Hoàng tử Noctis Lucis Caelum đi đường cùng ba người bạn: Gladiolus (vệ sĩ to con), Ignis (quân sư, đầu bếp, lịch sự), Prompto (bạn thân vui tính). Giữa bốn người: \"tớ/cậu\" hoặc \"tao/mày\" thân mật; Ignis và Gladio gọi Noctis là \"Noct\" hoặc \"hoàng tử\" khi trang trọng. Lunafreya (Luna) là hôn thê (\"anh/em\"). Vua Regis là cha Noctis. Phản diện Ardyn Izunia (lịch sự giả tạo, mỉa mai). Đế quốc Niflheim, vương quốc Lucis, thủ đô Insomnia. Giữ nguyên: Crystal, Astral."
+  },
+  {
+   "name": "Final Fantasy XII The Zodiac Age",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "FFXII",
+    "FF12"
+   ],
+   "notes": "Ivalice. Vaan là cậu bé mồ côi mơ làm không tặc; Balthier (không tặc lịch lãm, tự xem mình là \"vai chính\") và Fran (người Viera). Công chúa Ashe (Ashelia) của Dalmasca: mọi người gọi \"công chúa\" hoặc \"điện hạ\". Basch (hiệp sĩ bị vu oan phản quốc). Đế quốc Archadia, Vayne Solidor. Văn phong cổ điển, trang trọng kiểu Anh."
+  },
+  {
+   "name": "Crisis Core: Final Fantasy VII Reunion",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "Crisis Core"
+   ],
+   "notes": "Tiền truyện FF7. Zack Fair là SOLDIER trẻ nhiệt tình, xưng \"tôi\"/\"tớ\". Angeal là thầy của Zack (\"thầy\" hoặc \"anh\"), Sephiroth (đồng nghiệp lừng danh), Genesis (kẻ phản bội, hay trích thơ LOVELESS). Aerith là người yêu (\"anh/em\"). Cloud là lính bộ binh trẻ, bạn của Zack. Giữ nguyên: SOLDIER, Shinra, Mako, Midgar, Materia."
+  },
+  {
+   "name": "NieR Replicant ver.1.22",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "NieR Replicant",
+    "NieR Gestalt"
+   ],
+   "notes": "Nhân vật chính (tên mặc định Nier) là anh trai chăm em gái Yonah bị bệnh (\"anh/em\"). Grimoire Weiss là quyển sách biết nói, kiêu ngạo, nói văn hoa (\"ta/ngươi\"). Kainé là nữ kiếm sĩ nóng tính, chửi thề nhiều (\"tao/mày\"). Emil là cậu bé mắt hóa đá, lễ phép (\"tớ/cậu\"). Kẻ thù là Shade (\"Bóng Ma\"). Giọng buồn, triết lý."
+  },
+  {
+   "name": "Tales of Berseria",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "notes": "Velvet Crowe là cô gái mang lòng thù hận với Artorius (anh rể, từng như anh trai, gọi \"Arthur\"), em trai Laphicet bị giết. Đồng hành: Rokurou (quỷ kiếm sĩ), Magilou (phù thủy hay đùa), Eizen (cướp biển Malak), Eleanor (thánh kỵ sĩ), Laphicet (\"Phi\", malak nhỏ, gọi Velvet là \"Velvet\"). Velvet xưng \"ta\" với kẻ thù, lạnh lùng. Giữ nguyên: Malak, Daemon, Abbey (\"Giáo Đoàn\")."
+  },
+  {
+   "name": "Scarlet Nexus",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "notes": "Tương lai, Nhật kiểu anime. Yuito Sumeragi và Kasane Randall là học viên Lực lượng Chống Quái Vật Kỳ Dị (OSF) có siêu năng lực, chiến đấu với Others (Kẻ Khác). Đồng đội gọi nhau bằng tên, \"tôi/cậu\" hoặc \"tớ/cậu\"; với cấp trên gọi \"đội trưởng\" hoặc \"chỉ huy\". Giữ nguyên: OSF, Others, Brain Field, SAS."
+  },
+  {
+   "name": "Code Vein / Code Vein II",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Code Vein",
+    "Code Vein 2"
+   ],
+   "notes": "Thế giới hậu tận thế kiểu anime gothic. Nhân vật chính là Revenant (\"Huyết Quỷ\", ma cà rồng bất tử phải uống máu). Code Vein 1: bạn đồng hành Io (dịu dàng, lễ phép), Louis, Yakumo, Mia, Jack. Code Vein II: nhân vật chính là thợ săn Revenant, du hành thời gian với Lou MagMell. Giữa đồng đội: \"tôi/cậu\". Giữ nguyên: Revenant, Lost (\"Kẻ Lạc Lối\"), Blood Code, Ichor, Mist."
+  },
+  {
+   "name": "Octopath Traveler II",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "Octopath Traveler"
+   ],
+   "notes": "Tám nhân vật chính, mỗi người một câu chuyện: Hikari (hoàng tử kiếm sĩ, \"ta\"), Agnea (vũ công vui vẻ), Throné (nữ trộm), Temenos (giáo sĩ điều tra, mỉa mai), Osvald (học giả bị tù oan, trả thù), Partitio (lái buôn hay đùa), Ochette (thợ săn hoang dã), Castti (dược sĩ mất trí nhớ). Văn phong cổ trang, trang trọng: ngài, ta, ngươi; dân thường nói giản dị."
+  },
+  {
+   "name": "Triangle Strategy / Unicorn Overlord",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "Triangle Strategy",
+    "Unicorn Overlord"
+   ],
+   "notes": "Chiến thuật giả tưởng chính trị. Triangle Strategy: Serenoa Wolffort (người kế vị nhà Wolffort), hôn thê Frederica, bạn thân hoàng tử Roland: Serenoa với Roland \"ta/cậu\"; với vua gọi \"bệ hạ\". Unicorn Overlord: hoàng tử Alain đi giành lại vương quốc Cornia, đồng đội gọi \"điện hạ\" hoặc \"hoàng tử\". Văn phong cung đình, quân sự: thần, ngài, bệ hạ."
+  },
+  {
+   "name": "Ni no Kuni II / Ni no Kuni",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Ni no Kuni"
+   ],
+   "notes": "Thế giới cổ tích của Ghibli. Ni no Kuni II: vua nhí Evan (tai mèo) bị cướp ngôi, được Roland (tổng thống từ thế giới khác, như người anh lớn) giúp lập vương quốc mới Evermore. Evan gọi Roland \"anh Roland\" hoặc \"ngài Roland\"; Roland gọi Evan \"bệ hạ\" hoặc \"Evan\". Tani (con gái cướp trời). Ni no Kuni I: Oliver và tiên Drippy (nói giọng xứ Wales, gọi Oliver \"cậu nhóc\"). Giọng dễ thương."
+  },
+  {
+   "name": "Judgment / Lost Judgment",
+   "group": "Anime, Nhật Bản",
+   "style": "street",
+   "aka": [
+    "Judgment",
+    "Lost Judgment"
+   ],
+   "notes": "Kamurocho, thế giới Yakuza. Takayuki Yagami là luật sư thành thám tử tư, thông minh, hay mỉa: xưng \"tôi\". Masaharu Kaito là cựu yakuza, bạn và cộng sự, gọi Yagami là \"Takayuki\" hoặc \"nhóc\", nói \"tao/mày\" thân. Văn phòng luật Genda (luật sư Genda như thầy). Sugiura, Tsukumo. Giữ nguyên: Kamurocho, Tojo Clan, Matsugane."
+  },
+  {
+   "name": "Yakuza Kiwami 3 & Dark Ties",
+   "group": "Anime, Nhật Bản",
+   "style": "street",
+   "aka": [
+    "Yakuza 3",
+    "Yakuza Kiwami 3",
+    "Dark Ties"
+   ],
+   "notes": "Kiryu Kazuma rời giới yakuza, mở trại trẻ mồ côi Morning Glory ở Okinawa cùng con gái nuôi Haruka (gọi Kiryu là \"chú Kiryu\", xưng \"cháu\"; Kiryu gọi \"Haruka\" và xưng \"chú\"); bọn trẻ trong trại gọi Kiryu là \"chú\". Rikiya Shimabukuro (trẻ, bốc đồng, gọi Kiryu \"anh\"), Mine Yoshitaka. Dark Ties: Mine Yoshitaka là doanh nhân bị phản bội, tham vọng, bước vào Tojo Clan năm 2007; Mine nói lạnh lùng, lịch sự (\"tôi/anh\"). Giữ nguyên: Tojo Clan, Okinawa, Ryudo, Kamurocho. Giữa yakuza: \"tao/mày\", đàn em gọi \"đại ca\"."
+  },
+  {
+   "name": "13 Sentinels: Aegis Rim",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "13 Sentinels"
+   ],
+   "notes": "13 học sinh Nhật Bản (thập niên 1980 và nhiều thời đại khác) lái robot Sentinel chống Kaiju. Giữa học sinh: \"tớ/cậu\", với senpai gọi \"tiền bối\" hoặc \"anh/chị\". Nhân vật: Juro Kurabe, Iori Fuyusaka, Takatoshi Hijiyama, Megumi Yakushiji, Shu Amiguchi, Natsuno Minami, Ei Sekigahara, Tomi Kisaragi... Giữ nguyên: Sentinel, Kaiju, Deimos. Lời thoại học đường."
+  },
+  {
+   "name": "Danganronpa (series)",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Danganronpa"
+   ],
+   "notes": "Học viện Hope's Peak; học sinh \"Ultimate\" (Siêu Cấp ...) bị gấu Monokuma bắt chơi trò giết nhau. Monokuma nói giọng chế giễu, hay cười \"Puhuhu\", gọi học sinh \"các em\". Makoto Naegi (lạc quan), Kyoko Kirigiri (lạnh, sắc sảo), Byakuya Togami (kiêu ngạo, \"ta\"). Học sinh với nhau: \"tớ/cậu\". Giữ nguyên: Ultimate (\"Siêu Cấp\"), Class Trial (\"Phiên Tòa Lớp\"), Despair (\"Tuyệt Vọng\")."
+  },
+  {
+   "name": "Granblue Fantasy: Relink",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Granblue Fantasy"
+   ],
+   "notes": "Bầu trời với các hòn đảo bay. Đội trưởng (Gran hoặc Djeeta) cùng Lyria (cô bé có thể triệu hồi Primal Beast), Vyrn (rồng nhỏ, nói \"tao/mày\" hoặc \"ta\" với kẻ khác, gọi đội trưởng là tên), Katalina (hiệp sĩ, như chị lớn, gọi Lyria \"Lyria\"), Rackam (phi công tàu Grandcypher), Io (phù thủy nhỏ), Eugen. Giữ nguyên: Primal Beast, Skydom, Grandcypher, Crew (\"Đoàn\")."
+  },
+  {
+   "name": "Visions of Mana / Trials of Mana",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Visions of Mana",
+    "Trials of Mana"
+   ],
+   "notes": "Thế giới Mana cổ tích. Visions of Mana: Val là Hộ Vệ Linh Hồn (Soul Guard) hộ tống Hinna và các Người Dâng Lễ (Alm) đến Cây Mana. Val và Hinna là bạn thanh mai trúc mã (\"tớ/cậu\"). Careena (cô gái hoạt bát, có rồng Ramcoh), Morley, Julei, Palamena. Giữ nguyên: Mana, Elemental (\"Tinh Linh\"). Giọng tươi sáng."
+  },
+  {
+   "name": "Sea of Stars",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "notes": "Zale (Mặt Trời) và Valere (Mặt Trăng) là hai Chiến Binh Hạ Chí (Solstice Warrior) lớn lên cùng nhau, thân như anh em: \"tớ/cậu\". Garl là bạn thời thơ ấu, đầu bếp chiến binh, luôn vui vẻ. Resh'an (giả kim bất tử, hài hước), Serai (sát thủ bí ẩn). Thầy là Hiệu trưởng Moraine, Brugaves. Kẻ thù: Fleshmancer và Dweller. Giữ nguyên: Solstice, Eclipse."
+  },
+  {
+   "name": "Persona 5 Strikers",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Persona 5 Scramble"
+   ],
+   "notes": "Hè sau Persona 5. Joker (Ren Amamiya) và đội Phantom Thieves (Kẻ Trộm Bóng Ma) đi xuyên Nhật Bản xuyên vào \"Jail\" (Ngục). Đồng đội: Ryuji (\"tao/mày\" với Joker), Ann, Morgana (mèo, gọi Joker là \"Joker\"), Yusuke, Makoto, Futaba, Haru. Thành viên mới: Sophia (AI, gọi Joker là \"bạn\"), thanh tra Zenkichi Hasegawa (người lớn, gọi bọn trẻ là \"tụi nhóc\"). Giữ nguyên: Persona, Shadow, Jail, Monarch."
+  },
+  {
+   "name": "Dragon Ball Z: Kakarot",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "DBZ Kakarot"
+   ],
+   "notes": "Dragon Ball Z. Goku hồn nhiên, xưng \"tôi\" (giọng quê) hoặc \"tớ\", gọi con trai Gohan \"Gohan\" và xưng \"bố\". Vegeta là hoàng tử Saiyan kiêu ngạo: xưng \"ta\", gọi Goku là \"Kakarot\" và \"ngươi\". Piccolo gọi Gohan \"nhóc\". Chi-Chi là vợ Goku (\"anh/em\" hoặc \"ông\"). Krillin là bạn thân (\"cậu/tớ\"). Phản diện: Frieza (\"ta\", gọi kẻ khác \"lũ khỉ\"), Cell, Majin Buu. Giữ nguyên: Saiyan, Super Saiyan, Kamehameha, Dragon Ball (\"Ngọc Rồng\"), Zenkai."
+  },
+  {
+   "name": "Attack on Titan / Bleach / SAO (game anime)",
+   "group": "Anime, Nhật Bản",
+   "style": "anime",
+   "aka": [
+    "Attack on Titan",
+    "Bleach Rebirth of Souls",
+    "Sword Art Online"
+   ],
+   "notes": "Game chuyển thể anime. Attack on Titan: Eren Yeager (nóng nảy), Mikasa (bảo vệ Eren), Armin, Levi (đội trưởng lạnh lùng, gọi cấp dưới \"tụi bây\"); Titan (\"Người Khổng Lồ\"), Survey Corps (\"Trinh Sát Đoàn\"). Bleach: Ichigo Kurosaki (\"tao/mày\" với kẻ thù), Rukia; Shinigami (\"Tử Thần\"), Hollow, Bankai, Gotei 13. SAO: Kirito và Asuna (\"anh/em\"), Aincrad. Giữ tên Nhật và thuật ngữ quen thuộc của fan."
+  },
+  {
+   "name": "Ghostwire: Tokyo",
+   "group": "Kinh dị",
+   "style": "japan",
+   "notes": "Tokyo bị sương mù xóa sổ người dân, đầy yêu ma (Visitors). Akito là thanh niên bị linh hồn KK (thám tử điều tra siêu nhiên) nhập vào; hai người cãi nhau, dần thân: Akito xưng \"tôi\", KK gọi Akito \"nhóc\" hoặc \"thằng nhóc\", xưng \"tao\" hoặc \"ta\". Em gái Akito là Mari. Phản diện Hannya (đeo mặt nạ). Giữ nguyên: Visitor, yokai (\"yêu quái\"), Ethereal Weaving, Shibuya."
+  },
+  {
+   "name": "The Evil Within 1 / 2",
+   "group": "Kinh dị",
+   "style": "horror",
+   "aka": [
+    "The Evil Within"
+   ],
+   "notes": "Kinh dị tâm lý. Thám tử Sebastian Castellanos bị kéo vào thế giới ảo STEM do tổ chức Mobius tạo. Phần 1: Ruvik (phản diện chính, nói u ám), Joseph Oda (cộng sự), Kidman (Juli). Phần 2: Sebastian đi cứu con gái Lily (\"bố/con\"), các phản diện Stefano Valentini (nhiếp ảnh gia điên), Father Theodore (giáo phái). Văn phong căng thẳng."
+  },
+  {
+   "name": "Resident Evil (5 / 6 / Revelations)",
+   "group": "Kinh dị",
+   "style": "horror",
+   "aka": [
+    "Resident Evil 5",
+    "Resident Evil 6",
+    "Resident Evil Revelations"
+   ],
+   "notes": "Các phần hành động của RE. Chris Redfield (BSAA, quả cảm) và Sheva Alomar (RE5, \"tôi/anh\"); Jill Valentine (đồng đội cũ của Chris). Albert Wesker (\"ta\", kiêu ngạo, gọi Chris là \"Chris\"). RE6: Leon Kennedy và Helena Harper, Chris và Piers, Jake Muller (con trai Wesker) và Sherry Birkin. Giữ nguyên: BSAA, Umbrella, virus T, Las Plagas, B.O.W."
+  },
+  {
+   "name": "Little Nightmares (series)",
+   "group": "Kinh dị",
+   "style": "horror",
+   "aka": [
+    "Little Nightmares"
+   ],
+   "notes": "Kinh dị gần như không lời. Six (cô bé áo mưa vàng) và Mono (cậu bé đội túi giấy). Phần 3: Low và Alone. Quái vật: The Janitor, The Chefs, The Lady, The Teacher. Chữ trên màn hình chủ yếu là menu và gợi ý điều khiển: dịch ngắn gọn."
+  },
+  {
+   "name": "Alien: Isolation",
+   "group": "Kinh dị",
+   "style": "horror",
+   "notes": "Amanda Ripley (con gái Ellen Ripley) lên trạm Sevastopol tìm hộp ghi chuyến bay của tàu Nostromo. Đồng hành: Samuels (robot synthetic), Taylor, Marshal Waits. Androids của tập đoàn Seegson (Working Joe) nói máy móc, lịch sự. Giữ nguyên: Weyland-Yutani, Sevastopol, Xenomorph (\"quái vật\"). Văn phong căng thẳng, nhật ký ghi âm."
+  },
+  {
+   "name": "The Dark Pictures Anthology",
+   "group": "Kinh dị",
+   "style": "horror",
+   "aka": [
+    "Man of Medan",
+    "Little Hope",
+    "House of Ashes",
+    "The Devil in Me",
+    "Directive 8020"
+   ],
+   "notes": "Tuyển tập phim kinh dị tương tác. Người Quản Lưu Trữ (The Curator) nói lịch sự, bí ẩn, xưng \"tôi\" và gọi người chơi \"bạn\". Mỗi phần là một nhóm bạn trẻ (\"tao/mày\" hoặc \"tớ/cậu\"), có cặp đôi (\"anh/em\"). House of Ashes: lính Mỹ và Iraq kẹt dưới đền cổ. Lời thoại đời thường, chửi thề."
+  },
+  {
+   "name": "Lords of the Fallen",
+   "group": "Kinh dị",
+   "style": "fantasy",
+   "notes": "Dark fantasy kiểu Souls. Nhân vật là Dark Crusader (Thánh Chiến Binh Bóng Tối) dùng Đèn Umbral đi giữa thế giới sống (Axiom) và thế giới chết (Umbral). Phản diện Adyr (thần quỷ). NPC nói văn cổ, trang trọng: \"ta/ngươi\", \"ngài\". Giữ nguyên: Umbral, Axiom, Vestige, Rhogar."
+  },
+  {
+   "name": "Wuchang: Fallen Feathers",
+   "group": "Hành động, phiêu lưu",
+   "style": "wuxia",
+   "aka": [
+    "Wuchang"
+   ],
+   "notes": "Cuối nhà Minh, đất Thục bị \"bệnh Lông Vũ\" (Feathering) biến người thành quái vật. Bạch Vô Thường (Bai Wuchang) là nữ hải tặc mất trí nhớ, nhiễm bệnh nhưng giữ được lý trí. Dùng văn phong cổ trang Trung Hoa: ta, ngươi, cô nương, đại nhân, công tử, sư phụ. Giữ tên Hán Việt khi có thể (Thục, Minh). Giữ nguyên: Feathering (\"bệnh Lông Vũ\"), Shrine (\"Miếu\")."
+  },
+  {
+   "name": "The Outer Worlds 2",
+   "group": "Nhập vai (RPG)",
+   "style": "scifi",
+   "aka": [
+    "The Outer Worlds"
+   ],
+   "notes": "Khoa học viễn tưởng hài châm biếm tư bản. Phần 2: thuộc địa Arcadia, người chơi là đặc vụ của Earth Directorate. Các phe: Protectorate (Bảo Hộ Quốc), Auntie's Choice (tập đoàn), Order of the Ascendant. Đồng đội nói chuyện thân thiện, mỉa mai: \"tôi/anh\". Phần 1: Halcyon, tàu Unreliable, robot ADA, đồng đội Parvati (rụt rè, đáng yêu). Văn phong hài, quảng cáo giả tạo."
+  },
+  {
+   "name": "Dragon Quest VII Reimagined",
+   "group": "Nhập vai (RPG)",
+   "style": "fantasy",
+   "aka": [
+    "Dragon Quest VII",
+    "DQ7"
+   ],
+   "notes": "Đảo Estard, thế giới chỉ còn một hòn đảo. Nhân vật chính (con trai ngư dân) cùng bạn thân là hoàng tử Kiefer (nghịch ngợm, mê phiêu lưu: \"tớ/cậu\") và Maribel (con gái trưởng làng, đanh đá, hay cằn nhằn). Đi qua các mảnh đá phục hồi những vùng đất quá khứ. Dragon Quest dùng nhiều chơi chữ, giọng địa phương: giữ không khí vui, cổ tích. Quái vật giữ nguyên tên (Slime)."
+  },
+  {
+   "name": "Hades / Hades II",
+   "group": "Hành động, phiêu lưu",
+   "style": "myth",
+   "aka": [
+    "Hades",
+    "Hades 2"
+   ],
+   "notes": "Thần thoại Hy Lạp. Hades 1: Zagreus là con trai Hades, cố thoát khỏi Âm Phủ; gọi Hades là \"cha\" (Hades gọi \"con\" hoặc \"thằng nhóc\", lạnh lùng). Các vị thần Olympus gọi Zagreus là \"cháu\" (Zeus, Poseidon...) hoặc \"anh họ\" (Athena, Ares...). Nyx là mẹ nuôi (\"mẹ\"), Thanatos, Megaera, Achilles (thầy). Hades II: Melinoë là em gái Zagreus, chống Titan Chronos (\"ông\"), thầy là phù thủy Hecate. Văn phong thần thoại, có chút hài."
+  },
+  {
+   "name": "Prey / Dishonored 2 / Deathloop",
+   "group": "Hành động, phiêu lưu",
+   "style": "scifi",
+   "aka": [
+    "Prey",
+    "Dishonored 2",
+    "Deathloop"
+   ],
+   "notes": "Game Arkane. Prey: Morgan Yu trên trạm Talos I, quái vật Typhon (Mimic), anh trai Alex (\"anh/em\"). Dishonored 2: Emily Kaldwin (nữ hoàng, \"ta\") và cha Corvo Attano (\"cha/con\"), Outsider (thực thể bí ẩn), Delilah. Deathloop: Colt và Julianna (đối thủ trêu chọc qua radio, \"tôi/anh\" hoặc \"tao/mày\"), đảo Blackreef, vòng lặp thời gian. Văn phong châm biếm."
+  },
+  {
+   "name": "Far Cry 5 / New Dawn",
+   "group": "Bắn súng, quân đội",
+   "style": "military",
+   "aka": [
+    "Far Cry 5",
+    "Far Cry New Dawn"
+   ],
+   "notes": "Montana Mỹ, giáo phái Eden's Gate. Người chơi là Deputy (Phó Cảnh Sát), được gọi \"Deputy\" hoặc \"Rookie\" (\"lính mới\"). Gia đình Seed: Joseph (\"Cha\" - Father, nói kiểu thuyết giáo, gọi Deputy là \"con\"), John, Jacob, Faith. Dân kháng chiến nói giọng quê Mỹ, hài hước. Giữ nguyên: Eden's Gate, Hope County, Bliss."
   },
   {
    "name": "Kiểu chung: Cổ trang Trung Hoa, tu tiên",
