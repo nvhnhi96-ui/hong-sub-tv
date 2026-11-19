@@ -35,6 +35,7 @@
       "lg.js",
       "onlinetts.js",
       "tizen.js",
+      "tzraw.js",
       "vendor/**",
       "!node_modules/**"
     ],

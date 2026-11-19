@@ -6164,13 +6164,17 @@ var TZI=(function(){
     if(!window.crypto||!crypto.subtle) return Promise.reject(new Error('Máy này chưa ký được app (thiếu mã hóa trong trang). Cập nhật iOS / Android.'));
     var tv=new Sdb(ip), cap='', duid='', ver=0, tmp='/opt/usr/apps/tmp', files, cert;
     say('Đang kết nối TV '+ip+'...');
+    var dev=D?'máy tính':'điện thoại', Dev=D?'Máy tính':'Điện thoại';
     return tv.connect().catch(function(e){
-      var my=(S.lanPc||'').split(':')[0]||'IP của điện thoại';
-      throw new Error(e.message==='refused'||e.message==='noconnect'||e.message==='timeout'||e.message==='closed'
-        ?'TV chưa cho điện thoại kết nối. Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK rồi tắt TV và bật lại. Điện thoại và TV cùng Wi-Fi.'
-        :e.message==='auth'?'TV đòi xác nhận điện thoại: trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':e.message);
+      var my=(D?(window.hsPcIp||''):(S.lanPc||'').split(':')[0])||('IP của '+dev+' này'), m=e.message;
+      var fix='Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK, rồi rút dây điện TV 30 giây và cắm lại (tắt bằng remote chưa đủ).';
+      throw new Error(m==='timeout'||m==='noconnect'?'Không thấy TV ở '+ip+'. Kiểm tra IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP), TV đang bật và cùng Wi-Fi/modem với '+dev+'.'
+        :m==='refused'?'TV ở '+ip+' chưa mở cổng cài app: Developer mode chưa có hiệu lực. '+fix
+        :m==='closed'?'TV mở cổng cài app nhưng từ chối '+dev+' này: ô Host PC IP trên TV phải đúng là '+my+'. '+fix+(D?' Nếu máy tính đang bật VPN thì tắt đi.':'')
+        :m==='auth'?'TV đòi xác nhận '+dev+': trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':m);
     }).then(function(){ return tv.capability().catch(function(){ return ''; }); })
     .then(function(c){ cap=c; var m=/platform_version:\s*([\d.]+)/.exec(c); ver=m?parseFloat(m[1]):0; var p=/sdk_toolpath:\s*([^\r\n]+)/.exec(c); if(p) tmp=p[1].trim();
+      if(ver&&ver<3) throw new Error('TV này đời quá cũ (Tizen '+ver+', trước năm 2017) nên chưa cài được app Hóng Sub. Không phải do bạn thao tác, cài lại cũng không được.');
       say('Đang đọc mã của TV...'); return tv.shell('0 getduid',15000); })
     .then(function(o){ duid=(o.split(/[\r\n]+/).map(function(x){ return x.trim(); }).filter(function(x){ return /^[A-Za-z0-9]{10,64}$/.test(x); })[0])||'';
       if(!duid) throw new Error('Không đọc được mã TV (DUID). Tắt TV bật lại rồi thử lại.');
@@ -6193,7 +6197,13 @@ var TZI=(function(){
           if(/same id and different certificate|already installed|different certificate/i.test(out)&&!run.again){ run.again=true; say('TV có bản Hóng Sub cũ khác chứng chỉ, đang gỡ...');
             return tv.shell('0 vd_appuninstall '+APP,60000).then(function(){ return tv.shell('0 vd_appuninstall '+PKG,60000).catch(function(){}); }).then(run); }
           var m=/reason:\s*([^\r\n]+)/i.exec(out)||/(install failed[^\r\n]*)/i.exec(out);
-          if(/Check certificate error/i.test(out)){ var C=load('tzCert',null); if(C&&C.dist){ delete C.dist[duid]; save('tzCert',C); } }
+          if(/Check certificate error|certificate is not yet valid|118012|not yet valid/i.test(out)){
+            /* a certificate made a minute ago: a TV whose clock runs behind does not take it yet. Wait and try again */
+            run.cert=(run.cert||0)+1;
+            if(run.cert<=3){ say('TV chưa nhận chứng chỉ vừa cấp, thường do đồng hồ TV chạy chậm. Chờ hơn một phút rồi thử lại (lần '+run.cert+'/3)... Đừng tắt TV.'); return new Promise(function(r){ setTimeout(r,65000); }).then(run); }
+            var C=load('tzCert',null); if(C&&C.dist){ delete C.dist[duid]; save('tzCert',C); }
+            throw new Error('TV không nhận chứng chỉ của app dù đã chờ và thử lại. Thường do ngày giờ trên TV sai: trên TV vào Cài đặt › Chung › Quản lý hệ thống › Thời gian › Đồng hồ, chọn Tự động (TV cần có mạng), rồi bấm Cài lại.');
+          }
           throw new Error('TV không cài được: '+(m?m[1]:out.slice(-200)));
         }
       });
@@ -6204,6 +6214,7 @@ var TZI=(function(){
   function launch(ip){ var tv=new Sdb(ip); return tv.connect().then(function(){ return tv.shell('0 was_execute '+APP,20000); }).then(function(){ tv.close(); return {ok:true}; },function(e){ tv.close(); return {ok:false,err:e.message}; }); }
   return {install:install,launch:launch,_test:{zip:zip,unzip:unzip,sigXml:sigXml,signWgt:signWgt,authorCsr:authorCsr,distCsr:distCsr,newKey:newKey,adbPub:adbPub,crc32:crc32}};
 })();
+window.hsTzi=TZI;   /* the Windows and Mac app installs on Samsung TVs the same way (no Tizen Studio) */
 /* ---------- phone apps with Remote Play inside (Android, iPhone) ---------- */
 if(!D&&DPS){
   document.documentElement.classList.add('hs-mps');

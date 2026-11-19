@@ -792,8 +792,8 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <p class="hs-note">App Hóng Sub cho TV Samsung hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã.</p>
                 <div class="hs-row dk-only" id="dkTzDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkTzOpen">Mở Hóng Sub trên TV</button></div>
                 <details class="tvd dk-only" id="dkTz" open>
-                  <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần)</summary>
-                  <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> làm riêng cho TV, qua phần mềm Tizen Studio. Làm 3 bước dưới một lần (khoảng 20 phút); dòng ✓ xanh là bước đó đã xong.</p>
+                  <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần, khoảng 3 phút)</summary>
+                  <p class="hs-note">Không cần Tizen Studio. Hóng Sub tự xin chứng chỉ Samsung cho TV bằng tài khoản Samsung của bạn (miễn phí), tự ký và cài app lên TV. Dòng ✓ xanh là bước đó đã xong.</p>
                   <ol class="dk-steps dk-tz">
                     <li><b>Trên TV: bật Developer Mode.</b>
                       <ul class="dk-tzsub">
@@ -803,6 +803,20 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                         <li>Khởi động lại TV: rút điện 30 giây rồi cắm lại. Vào lại Ứng dụng thấy chữ <b>Develop Mode</b> ở trên là được.</li>
                       </ul>
                       <div class="tzst" id="dkTzS1"></div></li>
+                    <li><b>Chọn TV.</b> Bấm Tìm TV Samsung, hoặc gõ IP của TV.
+                  <div class="dk-set">
+                    <label class="lab" for="dkTzIp">IP của TV Samsung</label>
+                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
+                    <div class="hs-row" id="dkTzList" style="margin-top:6px"></div>
+                    <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
+                  </div>
+                  </li>
+                    <li><b>Bấm Cài app lên TV.</b> Lần đầu Hóng Sub mở cửa sổ <b>đăng nhập tài khoản Samsung</b>: dùng email và mật khẩu (chưa có thì tạo miễn phí ở account.samsung.com; đăng nhập bằng Google không dùng được). Sau đó máy tính tự xin chứng chỉ, ký, cài và mở Hóng Sub trên TV; TV tự nối với máy tính, không cần gõ mã.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkTzAuto">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
+                  <details class="tvd" id="dkTzOld" style="margin-top:12px">
+                    <summary>Cách cũ: cài bằng Tizen Studio (khi cách trên không được)</summary>
+                    <ol class="dk-steps dk-tz">
                     <li><b>Trên máy tính: cài Tizen Studio.</b> <button class="dk-link" type="button" data-url="https://developer.tizen.org/development/tizen-studio/download">Tải Tizen Studio</button> bản <b>Windows 64-bit</b> (IDE installer), cài vào <b>C:\tizen-studio</b>. Mở <b>Package Manager</b> › thẻ <b>Extension SDK</b> › bấm <b>Install</b> cho <b>TV Extensions</b>, <b>TV Extensions Tools</b> và <b>Samsung Certificate Extension</b>.
                       <div class="tzst" id="dkTzS2"></div></li>
                     <li><b>Trong Tizen Studio: tạo chứng chỉ Samsung</b> (TV đang bật).
@@ -812,19 +826,13 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                         <li>Bước Distributor: để <b>Public</b>, ô <b>DUID</b> có sẵn mã TV › <b>Finish</b>.</li>
                       </ul>
                       <div class="tzst" id="dkTzS3"></div></li>
-                    <li><b>Bấm Cài app lên TV</b> ở dưới. Máy tính tự tải, ký, cài và mở Hóng Sub trên TV; TV tự nối với máy tính, không cần gõ mã.</li>
-                  </ol>
-                  <div class="dk-set">
-                    <label class="lab" for="dkTzIp">IP của TV Samsung</label>
-                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
-                    <div class="hs-row" id="dkTzList" style="margin-top:6px"></div>
-                    <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
-                  </div>
+                    </ol>
                   <div class="dk-set">
                     <label class="lab" for="dkTzProf">Chứng chỉ Samsung</label>
                     <select class="hs-in" id="dkTzProf"></select>
                   </div>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkTzGo">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkTzGo">Cài bằng Tizen Studio</button></div>
+                  </details>
                   <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại. Không tự làm được: hẹn cửa hàng qua Zalo để cài giúp.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
@@ -1310,12 +1318,11 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         </ol>
       </div>
       <div class="hs-gd" data-g="samsung" hidden>
-        <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> làm riêng cho TV (tạo bằng Tizen Studio). Làm một lần, khoảng 20 phút.</p>
+        <p class="hs-note">Không cần Tizen Studio: Hóng Sub tự xin chứng chỉ Samsung cho TV bằng tài khoản Samsung của bạn (miễn phí). Làm một lần, khoảng 3 phút.</p>
         <ol class="hs-steps">
           <li><b>TV:</b> Home › <b>Ứng dụng</b> (đời 2023+: Nội dung › Ứng dụng; có ô Cài đặt ứng dụng thì chọn) › bấm <b>12345</b> (không có phím số: nút <b>123</b>) › Developer mode <b>On</b>, Host PC IP gõ <span class="hs-code" id="hsTvGuidePcIp">IP máy tính</span> › OK. Rút điện TV 30 giây rồi bật lại.</li>
-          <li><b>Máy tính:</b> cài <b>Tizen Studio</b> (Windows 64-bit) vào C:\tizen-studio; trong Package Manager › Extension SDK cài <b>TV Extensions</b>, <b>TV Extensions Tools</b>, <b>Samsung Certificate Extension</b>.</li>
-          <li><b>Tizen Studio:</b> Tools › Device Manager › Scan › bật Connection cho TV. Tools › Certificate Manager › + › <b>Samsung</b> › <b>TV</b> › đặt tên › tạo author certificate › đăng nhập tài khoản Samsung › Distributor <b>Public</b> › Finish.</li>
           <li><b>Hóng Sub:</b> trang Kết nối › TV Samsung › <b>Tìm TV Samsung</b> › <b>Cài app lên TV</b>.</li>
+          <li>Lần đầu: đăng nhập <b>tài khoản Samsung</b> (email và mật khẩu) trong cửa sổ hiện ra. Máy tính tự ký, cài và mở Hóng Sub trên TV.</li>
         </ol>
         <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="hsTvGuideTz">Mở trang cài TV Samsung</button></div>
       </div>
@@ -6798,13 +6805,17 @@ var TZI=(function(){
     if(!window.crypto||!crypto.subtle) return Promise.reject(new Error('Máy này chưa ký được app (thiếu mã hóa trong trang). Cập nhật iOS / Android.'));
     var tv=new Sdb(ip), cap='', duid='', ver=0, tmp='/opt/usr/apps/tmp', files, cert;
     say('Đang kết nối TV '+ip+'...');
+    var dev=D?'máy tính':'điện thoại', Dev=D?'Máy tính':'Điện thoại';
     return tv.connect().catch(function(e){
-      var my=(S.lanPc||'').split(':')[0]||'IP của điện thoại';
-      throw new Error(e.message==='refused'||e.message==='noconnect'||e.message==='timeout'||e.message==='closed'
-        ?'TV chưa cho điện thoại kết nối. Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK rồi tắt TV và bật lại. Điện thoại và TV cùng Wi-Fi.'
-        :e.message==='auth'?'TV đòi xác nhận điện thoại: trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':e.message);
+      var my=(D?(window.hsPcIp||''):(S.lanPc||'').split(':')[0])||('IP của '+dev+' này'), m=e.message;
+      var fix='Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK, rồi rút dây điện TV 30 giây và cắm lại (tắt bằng remote chưa đủ).';
+      throw new Error(m==='timeout'||m==='noconnect'?'Không thấy TV ở '+ip+'. Kiểm tra IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP), TV đang bật và cùng Wi-Fi/modem với '+dev+'.'
+        :m==='refused'?'TV ở '+ip+' chưa mở cổng cài app: Developer mode chưa có hiệu lực. '+fix
+        :m==='closed'?'TV mở cổng cài app nhưng từ chối '+dev+' này: ô Host PC IP trên TV phải đúng là '+my+'. '+fix+(D?' Nếu máy tính đang bật VPN thì tắt đi.':'')
+        :m==='auth'?'TV đòi xác nhận '+dev+': trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':m);
     }).then(function(){ return tv.capability().catch(function(){ return ''; }); })
     .then(function(c){ cap=c; var m=/platform_version:\s*([\d.]+)/.exec(c); ver=m?parseFloat(m[1]):0; var p=/sdk_toolpath:\s*([^\r\n]+)/.exec(c); if(p) tmp=p[1].trim();
+      if(ver&&ver<3) throw new Error('TV này đời quá cũ (Tizen '+ver+', trước năm 2017) nên chưa cài được app Hóng Sub. Không phải do bạn thao tác, cài lại cũng không được.');
       say('Đang đọc mã của TV...'); return tv.shell('0 getduid',15000); })
     .then(function(o){ duid=(o.split(/[\r\n]+/).map(function(x){ return x.trim(); }).filter(function(x){ return /^[A-Za-z0-9]{10,64}$/.test(x); })[0])||'';
       if(!duid) throw new Error('Không đọc được mã TV (DUID). Tắt TV bật lại rồi thử lại.');
@@ -6827,7 +6838,13 @@ var TZI=(function(){
           if(/same id and different certificate|already installed|different certificate/i.test(out)&&!run.again){ run.again=true; say('TV có bản Hóng Sub cũ khác chứng chỉ, đang gỡ...');
             return tv.shell('0 vd_appuninstall '+APP,60000).then(function(){ return tv.shell('0 vd_appuninstall '+PKG,60000).catch(function(){}); }).then(run); }
           var m=/reason:\s*([^\r\n]+)/i.exec(out)||/(install failed[^\r\n]*)/i.exec(out);
-          if(/Check certificate error/i.test(out)){ var C=load('tzCert',null); if(C&&C.dist){ delete C.dist[duid]; save('tzCert',C); } }
+          if(/Check certificate error|certificate is not yet valid|118012|not yet valid/i.test(out)){
+            /* a certificate made a minute ago: a TV whose clock runs behind does not take it yet. Wait and try again */
+            run.cert=(run.cert||0)+1;
+            if(run.cert<=3){ say('TV chưa nhận chứng chỉ vừa cấp, thường do đồng hồ TV chạy chậm. Chờ hơn một phút rồi thử lại (lần '+run.cert+'/3)... Đừng tắt TV.'); return new Promise(function(r){ setTimeout(r,65000); }).then(run); }
+            var C=load('tzCert',null); if(C&&C.dist){ delete C.dist[duid]; save('tzCert',C); }
+            throw new Error('TV không nhận chứng chỉ của app dù đã chờ và thử lại. Thường do ngày giờ trên TV sai: trên TV vào Cài đặt › Chung › Quản lý hệ thống › Thời gian › Đồng hồ, chọn Tự động (TV cần có mạng), rồi bấm Cài lại.');
+          }
           throw new Error('TV không cài được: '+(m?m[1]:out.slice(-200)));
         }
       });
@@ -6838,6 +6855,7 @@ var TZI=(function(){
   function launch(ip){ var tv=new Sdb(ip); return tv.connect().then(function(){ return tv.shell('0 was_execute '+APP,20000); }).then(function(){ tv.close(); return {ok:true}; },function(e){ tv.close(); return {ok:false,err:e.message}; }); }
   return {install:install,launch:launch,_test:{zip:zip,unzip:unzip,sigXml:sigXml,signWgt:signWgt,authorCsr:authorCsr,distCsr:distCsr,newKey:newKey,adbPub:adbPub,crc32:crc32}};
 })();
+window.hsTzi=TZI;   /* the Windows and Mac app installs on Samsung TVs the same way (no Tizen Studio) */
 /* ---------- phone apps with Remote Play inside (Android, iPhone) ---------- */
 if(!D&&DPS){
   document.documentElement.classList.add('hs-mps');

@@ -170,6 +170,24 @@ const api = {
     onProgress: (cb) => ipcRenderer.on('lg-progress', (e, t) => cb(t))
   },
   ps: {
+    /* TV Samsung without Tizen Studio: the same lines and events as the phone apps' core (see tzraw.js) */
+    raw: (() => {
+      const H = [], wait = [];
+      ipcRenderer.on('tzr-ev', (e, j) => {
+        for (let k = 0; k < wait.length; k++) if (wait[k].ev === j.ev && (!wait[k].id || wait[k].id === j.id)) { wait.splice(k, 1)[0].f(j); return; }
+        H.slice().forEach((f) => { try { f(j); } catch (x) { /* ignore */ } });
+      });
+      return {
+        call: (cmd) => ipcRenderer.invoke('tzr-call', String(cmd)),
+        send: (line) => { ipcRenderer.send('tzr-send', String(line)); return Promise.resolve(true); },
+        ask: (line, ev, ms, id) => new Promise((res) => {
+          const x = { ev, id, f: (j) => { clearTimeout(t); res(j); } };
+          const t = setTimeout(() => { const i = wait.indexOf(x); if (i >= 0) wait.splice(i, 1); res({ ev, ok: false, err: 'timeout' }); }, ms || 5000);
+          wait.push(x); ipcRenderer.send('tzr-send', String(line));
+        }),
+        on: (f) => { H.push(f); return () => { const i = H.indexOf(f); if (i >= 0) H.splice(i, 1); }; }
+      };
+    })(),
     state: () => ipcRenderer.invoke('ps-state'),
     login: () => ipcRenderer.invoke('ps-login'),
     loginUrl: (u) => ipcRenderer.invoke('ps-login-url', u),

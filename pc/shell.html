@@ -518,8 +518,8 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <p class="hs-note">App Hóng Sub cho TV Samsung hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã.</p>
                 <div class="hs-row dk-only" id="dkTzDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkTzOpen">Mở Hóng Sub trên TV</button></div>
                 <details class="tvd dk-only" id="dkTz" open>
-                  <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần)</summary>
-                  <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> làm riêng cho TV, qua phần mềm Tizen Studio. Làm 3 bước dưới một lần (khoảng 20 phút); dòng ✓ xanh là bước đó đã xong.</p>
+                  <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần, khoảng 3 phút)</summary>
+                  <p class="hs-note">Không cần Tizen Studio. Hóng Sub tự xin chứng chỉ Samsung cho TV bằng tài khoản Samsung của bạn (miễn phí), tự ký và cài app lên TV. Dòng ✓ xanh là bước đó đã xong.</p>
                   <ol class="dk-steps dk-tz">
                     <li><b>Trên TV: bật Developer Mode.</b>
                       <ul class="dk-tzsub">
@@ -529,6 +529,20 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                         <li>Khởi động lại TV: rút điện 30 giây rồi cắm lại. Vào lại Ứng dụng thấy chữ <b>Develop Mode</b> ở trên là được.</li>
                       </ul>
                       <div class="tzst" id="dkTzS1"></div></li>
+                    <li><b>Chọn TV.</b> Bấm Tìm TV Samsung, hoặc gõ IP của TV.
+                  <div class="dk-set">
+                    <label class="lab" for="dkTzIp">IP của TV Samsung</label>
+                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
+                    <div class="hs-row" id="dkTzList" style="margin-top:6px"></div>
+                    <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
+                  </div>
+                  </li>
+                    <li><b>Bấm Cài app lên TV.</b> Lần đầu Hóng Sub mở cửa sổ <b>đăng nhập tài khoản Samsung</b>: dùng email và mật khẩu (chưa có thì tạo miễn phí ở account.samsung.com; đăng nhập bằng Google không dùng được). Sau đó máy tính tự xin chứng chỉ, ký, cài và mở Hóng Sub trên TV; TV tự nối với máy tính, không cần gõ mã.</li>
+                  </ol>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkTzAuto">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
+                  <details class="tvd" id="dkTzOld" style="margin-top:12px">
+                    <summary>Cách cũ: cài bằng Tizen Studio (khi cách trên không được)</summary>
+                    <ol class="dk-steps dk-tz">
                     <li><b>Trên máy tính: cài Tizen Studio.</b> <button class="dk-link" type="button" data-url="https://developer.tizen.org/development/tizen-studio/download">Tải Tizen Studio</button> bản <b>Windows 64-bit</b> (IDE installer), cài vào <b>C:\tizen-studio</b>. Mở <b>Package Manager</b> › thẻ <b>Extension SDK</b> › bấm <b>Install</b> cho <b>TV Extensions</b>, <b>TV Extensions Tools</b> và <b>Samsung Certificate Extension</b>.
                       <div class="tzst" id="dkTzS2"></div></li>
                     <li><b>Trong Tizen Studio: tạo chứng chỉ Samsung</b> (TV đang bật).
@@ -538,19 +552,13 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                         <li>Bước Distributor: để <b>Public</b>, ô <b>DUID</b> có sẵn mã TV › <b>Finish</b>.</li>
                       </ul>
                       <div class="tzst" id="dkTzS3"></div></li>
-                    <li><b>Bấm Cài app lên TV</b> ở dưới. Máy tính tự tải, ký, cài và mở Hóng Sub trên TV; TV tự nối với máy tính, không cần gõ mã.</li>
-                  </ol>
-                  <div class="dk-set">
-                    <label class="lab" for="dkTzIp">IP của TV Samsung</label>
-                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
-                    <div class="hs-row" id="dkTzList" style="margin-top:6px"></div>
-                    <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
-                  </div>
+                    </ol>
                   <div class="dk-set">
                     <label class="lab" for="dkTzProf">Chứng chỉ Samsung</label>
                     <select class="hs-in" id="dkTzProf"></select>
                   </div>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkTzGo">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
+                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkTzGo">Cài bằng Tizen Studio</button></div>
+                  </details>
                   <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại. Không tự làm được: hẹn cửa hàng qua Zalo để cài giúp.</p>
                 </details>
                 <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
@@ -1036,12 +1044,11 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         </ol>
       </div>
       <div class="hs-gd" data-g="samsung" hidden>
-        <p class="hs-note">Samsung chỉ cho cài app ngoài cửa hàng bằng <b>chứng chỉ Samsung</b> làm riêng cho TV (tạo bằng Tizen Studio). Làm một lần, khoảng 20 phút.</p>
+        <p class="hs-note">Không cần Tizen Studio: Hóng Sub tự xin chứng chỉ Samsung cho TV bằng tài khoản Samsung của bạn (miễn phí). Làm một lần, khoảng 3 phút.</p>
         <ol class="hs-steps">
           <li><b>TV:</b> Home › <b>Ứng dụng</b> (đời 2023+: Nội dung › Ứng dụng; có ô Cài đặt ứng dụng thì chọn) › bấm <b>12345</b> (không có phím số: nút <b>123</b>) › Developer mode <b>On</b>, Host PC IP gõ <span class="hs-code" id="hsTvGuidePcIp">IP máy tính</span> › OK. Rút điện TV 30 giây rồi bật lại.</li>
-          <li><b>Máy tính:</b> cài <b>Tizen Studio</b> (Windows 64-bit) vào C:\tizen-studio; trong Package Manager › Extension SDK cài <b>TV Extensions</b>, <b>TV Extensions Tools</b>, <b>Samsung Certificate Extension</b>.</li>
-          <li><b>Tizen Studio:</b> Tools › Device Manager › Scan › bật Connection cho TV. Tools › Certificate Manager › + › <b>Samsung</b> › <b>TV</b> › đặt tên › tạo author certificate › đăng nhập tài khoản Samsung › Distributor <b>Public</b> › Finish.</li>
           <li><b>Hóng Sub:</b> trang Kết nối › TV Samsung › <b>Tìm TV Samsung</b> › <b>Cài app lên TV</b>.</li>
+          <li>Lần đầu: đăng nhập <b>tài khoản Samsung</b> (email và mật khẩu) trong cửa sổ hiện ra. Máy tính tự ký, cài và mở Hóng Sub trên TV.</li>
         </ol>
         <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="hsTvGuideTz">Mở trang cài TV Samsung</button></div>
       </div>

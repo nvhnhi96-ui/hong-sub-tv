@@ -476,9 +476,11 @@ function code(){
   }
   return v;
 }
+function auto(){ return A.load('tzAuto',null); }
 function openOnTv(){
   msg('','Đang mở Hóng Sub trên TV...');
-  return D.samsung.launch().then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được. '+((r&&r.err)||'')); if(A.tvState) A.tvState(); });
+  var au=auto();
+  return (au&&au.ip&&window.hsTzi?window.hsTzi.launch(au.ip).then(function(r){ return r&&r.ok?r:D.samsung.launch(); }):D.samsung.launch()).then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được. '+((r&&r.err)||'')); if(A.tvState) A.tvState(); });
 }
 function tvCheck(){
   var ip=$('dkTzIp').value.trim();
@@ -503,7 +505,10 @@ function draw(s){
   var sam=pr.filter(function(x){return x.samsung;});
   line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Làm bước 3 rồi bấm Kiểm tra lại.');
   if(st.ip&&!$('dkTzIp').value) $('dkTzIp').value=st.ip;
-  $('dkTzDone').hidden=!st.installed;
+  var inst=st.installed||!!auto();
+  if(!st.ip&&auto()&&!$('dkTzIp').value) $('dkTzIp').value=auto().ip;
+  $('dkTzDone').hidden=!inst;
+  if(inst){ $('dkTzAuto').textContent='Cài lại / cập nhật'; }
   if(st.installed){ window.hsTzOpen=openOnTv; $('dkTzSum').textContent='Cài lại / cập nhật app trên TV Samsung'; $('dkTzGo').textContent='Cài lại'; $('dkTz').open=false; }
   if(A.tvState) A.tvState();
 }
@@ -532,6 +537,27 @@ $('dkTzGo').onclick=function(){
     busy=false; b.disabled=false;
     if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở ô bên dưới là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
     else msg('err',(r&&r.err)||'Chưa cài được.');
+  });
+};
+/* the automatic install: no Tizen Studio (sign in to Samsung once, the computer gets the certificates, signs and installs) */
+$('dkTzAuto').onclick=function(){
+  if(busy) return;
+  var ip=$('dkTzIp').value.trim();
+  if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ msg('warn','Gõ IP của TV Samsung, hoặc bấm Tìm TV Samsung.'); $('dkTzIp').focus(); return; }
+  if(window.hsPcIp&&ip===window.hsPcIp){ msg('warn','Đây là IP của chính máy tính này, không phải của TV. Xem IP của TV trên TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.'); $('dkTzIp').focus(); return; }
+  if(!window.hsTzi||!D.ps||!D.ps.raw){ msg('err','Bản Hóng Sub này chưa cài tự động được. Cập nhật Hóng Sub rồi thử lại.'); return; }
+  busy=true; var b=this; b.disabled=true;
+  if(A.tvType()!=='samsung') A.setTvType('samsung');
+  var c=code(), say=function(t){ msg('',t); };
+  D.ps.raw.call('pcaddr:'+ip).then(function(r){ return window.hsTzi.install(ip,c,(r&&r.addr)||'',say); }).then(function(r){
+    busy=false; b.disabled=false;
+    A.save('tzAuto',{ip:ip,duid:r&&r.duid||'',at:Date.now()});
+    msg('ok','Đã cài xong và mở Hóng Sub trên TV (mã '+c+'). TV tự nối với máy tính. Có thể tắt Developer Mode trên TV. Chọn cổng HDMI của máy PS5 trên TV là phụ đề nằm trên hình game.');
+    if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh();
+  },function(e){
+    busy=false; b.disabled=false;
+    var t=String(e&&e.message||e);
+    msg('err',t); if(A.log) A.log('cài app TV Samsung (tự động) lỗi: '+t);
   });
 };
 $('dkTzOpen').onclick=function(){ openOnTv(); };
