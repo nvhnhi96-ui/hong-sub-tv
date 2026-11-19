@@ -207,33 +207,54 @@ static uint32_t route_ip(const char *to)
 	close(u);
 	return r;
 }
-/* this phone's addresses on home networks (the one towards the TV first, then Wi-Fi), comma separated */
+/* this phone's addresses on home networks, the right one first, comma separated.
+   The first one is what the TV is told (and what a person types on a TV Samsung in Developer Mode), so it must be the
+   phone's Wi-Fi address on the TV's network: never the mobile-data address (Android rmnet/ccmni, iPhone pdp_ip, which
+   are often 10.x too) nor a VPN's (tun, utun, ipsec). Order: the interface on the TV's own network, then Wi-Fi,
+   then other home-looking interfaces. */
+static int if_kind(const char *n)
+{
+	if(!n) return 2;
+	static const char *cell[] = { "rmnet", "ccmni", "pdp_ip", "v4-", "clat", "tun", "utun", "ppp", "ipsec", "dummy", "rev_rmnet", "seth", "wwan", "usb", "rndis", "bridge", "llw", "awdl", "anpi", "gif", "stf", "p2p" };
+	for(size_t k = 0; k < sizeof(cell) / sizeof(cell[0]); k++) if(!strncmp(n, cell[k], strlen(cell[k]))) return 3;   /* not the home network */
+	if(!strncmp(n, "wlan", 4) || !strncmp(n, "swlan", 5) || !strncmp(n, "en", 2) || !strncmp(n, "eth", 3) || !strncmp(n, "ap", 2) || !strncmp(n, "wl", 2) || !strncmp(n, "mlan", 4)) return 1;   /* Wi-Fi / wired */
+	return 2;
+}
+static void add_ip(char *out, size_t n, size_t *on, uint32_t ip)
+{
+	char a[20]; struct in_addr ia; ia.s_addr = htonl(ip); inet_ntop(AF_INET, &ia, a, sizeof(a));
+	char key[24]; snprintf(key, sizeof(key), "%s,", a);
+	char tmp[256]; snprintf(tmp, sizeof(tmp), "%s,", out);
+	if(strstr(tmp, key)) return;
+	if(*on + strlen(a) + 2 < n) *on += (size_t)snprintf(out + *on, n - *on, "%s%s", *on ? "," : "", a);
+}
 static void my_ips(const char *hint, char *out, size_t n)
 {
 	struct ifaddrs *ifs = NULL; size_t on = 0; out[0] = 0;
-	const char *tries[] = { hint, "8.8.8.8", "192.168.1.1", "192.168.0.1" };
-	for(int k = 0; k < 4; k++)
+	uint32_t hip = 0; { struct in_addr a; if(hint && inet_pton(AF_INET, hint, &a) == 1) hip = ntohl(a.s_addr); }
+	struct { uint32_t ip, mask; int kind; } L[16]; int nl = 0;
+	if(getifaddrs(&ifs) == 0)
 	{
-		uint32_t ip = route_ip(tries[k]);
-		if(!ip || !priv_ip(ip)) continue;
-		char a[20]; struct in_addr ia; ia.s_addr = htonl(ip); inet_ntop(AF_INET, &ia, a, sizeof(a));
-		if(strstr(out, a)) continue;
-		if(on + strlen(a) + 2 < n) on += (size_t)snprintf(out + on, n - on, "%s%s", on ? "," : "", a);
-	}
-	if(getifaddrs(&ifs) != 0) return;
-	for(int pass = 0; pass < 2; pass++)
-		for(struct ifaddrs *i = ifs; i; i = i->ifa_next)
+		for(struct ifaddrs *i = ifs; i && nl < 16; i = i->ifa_next)
 		{
-			if(!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK)) continue;
+			if(!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK) || !(i->ifa_flags & IFF_UP)) continue;
 			uint32_t ip = ntohl(((struct sockaddr_in *)i->ifa_addr)->sin_addr.s_addr);
 			if(!priv_ip(ip)) continue;
-			bool wifi = i->ifa_name && (!strncmp(i->ifa_name, "wlan", 4) || !strncmp(i->ifa_name, "en", 2) || !strncmp(i->ifa_name, "eth", 3) || !strncmp(i->ifa_name, "ap", 2) || !strncmp(i->ifa_name, "swlan", 5));
-			if((pass == 0) != wifi) continue;
-			char a[20]; struct in_addr ia; ia.s_addr = htonl(ip); inet_ntop(AF_INET, &ia, a, sizeof(a));
-			if(strstr(out, a)) continue;
-			if(on + strlen(a) + 2 < n) on += (size_t)snprintf(out + on, n - on, "%s%s", on ? "," : "", a);
+			L[nl].ip = ip; L[nl].mask = i->ifa_netmask ? ntohl(((struct sockaddr_in *)i->ifa_netmask)->sin_addr.s_addr) : 0xffffff00u; L[nl].kind = if_kind(i->ifa_name); nl++;
 		}
-	freeifaddrs(ifs);
+		freeifaddrs(ifs);
+	}
+	/* 1. on the TV's own network */
+	if(hip) for(int k = 0; k < nl; k++) { uint32_t m = L[k].mask ? L[k].mask : 0xffffff00u; if(L[k].kind != 3 && (L[k].ip & m) == (hip & m)) add_ip(out, n, &on, L[k].ip); }
+	if(hip) { uint32_t r = route_ip(hint); int k2 = -1; for(int k = 0; k < nl; k++) if(L[k].ip == r) k2 = k; if(r && priv_ip(r) && (k2 < 0 ? nl == 0 : L[k2].kind != 3)) add_ip(out, n, &on, r); }
+	/* 2. Wi-Fi / wired, 3. other home-looking interfaces */
+	for(int pass = 1; pass <= 2; pass++) for(int k = 0; k < nl; k++) if(L[k].kind == pass) add_ip(out, n, &on, L[k].ip);
+	/* the list of interfaces is hidden (some phones): the address used towards the home router or the internet */
+	if(!on)
+	{
+		const char *tries[] = { "192.168.1.1", "192.168.0.1", "8.8.8.8" };
+		for(int k = 0; k < 3; k++) { uint32_t ip = route_ip(tries[k]); if(ip && priv_ip(ip)) add_ip(out, n, &on, ip); }
+	}
 }
 
 int hslan_on(const char *hint, char *ips, size_t ips_size)
