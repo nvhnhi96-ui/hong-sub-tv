@@ -62,16 +62,33 @@ function setSource(n){
       },fail,'MAIN');
     }catch(e){ fail(e); }
   };
-  /* the TV wants its own description of the input, taken from its list of connected sources */
-  var once=false, plain={type:'HDMI',number:n}, pick=function(src){ if(once) return; once=true; go(src); };
-  setTimeout(function(){ pick(plain); },1500);
-  try{
-    tizen.systeminfo.getPropertyValue('VIDEOSOURCE',function(vs){
-      var list=(vs&&vs.connected)||[], hit=null;
-      for(var i=0;i<list.length;i++) if(list[i].type==='HDMI'&&+list[i].number===n) hit=list[i];
-      pick(hit||plain);
-    },function(){ pick(plain); });
-  }catch(e){ pick(plain); }
+  /* the TV only takes its own description of the input (a SystemInfoVideoSourceInfo from its list of sources): a plain
+     {type,number} is refused ("Cannot convert [object Object] to SystemInfoVideoSourceInfo"). So the list is always
+     asked for (no early guess): the port among the connected ones; else, when only one HDMI has something on it, that
+     one (kept for next time); else the port among the not connected ones (a PS5 that is resting). */
+  var done=false, t0=Date.now();
+  var timer=setTimeout(function(){ if(done) return; done=true; fail({message:'TV chưa trả lời danh sách cổng HDMI'}); },8000);
+  var ask=function(tries){
+    try{
+      tizen.systeminfo.getPropertyValue('VIDEOSOURCE',function(vs){
+        if(done) return;
+        var con=(vs&&vs.connected)||[], dis=(vs&&vs.disconnected)||[], hit=null, i;
+        for(i=0;i<con.length;i++) if(con[i].type==='HDMI'&&+con[i].number===n) hit=con[i];
+        var hdmi=con.filter(function(s){ return s.type==='HDMI'; });
+        if(!hit&&hdmi.length===1){ hit=hdmi[0]; var m=+hit.number; if(m>=1&&m<=4&&m!==n){ P.src=m; save('src',m); n=m; try{ pill('Máy PS5 đang cắm ở HDMI '+m+', Hóng Sub chuyển sang cổng này',false); }catch(e){} } }
+        if(!hit) for(i=0;i<dis.length;i++) if(dis[i].type==='HDMI'&&+dis[i].number===n) hit=dis[i];   /* nothing on it now (a resting PS5): the port anyway */
+        if(!hit){
+          if(tries<2){ setTimeout(function(){ ask(tries+1); },900); return; }
+          done=true; clearTimeout(timer);
+          var have=hdmi.map(function(s){ return 'HDMI '+s.number; }).join(', ');
+          fail({message:have?'TV đang thấy thiết bị ở '+have+', không thấy ở HDMI '+n+'. Chọn đúng cổng':'TV chưa thấy thiết bị nào ở cổng HDMI. Bật PS5 và kiểm tra dây HDMI'});
+          return;
+        }
+        done=true; clearTimeout(timer); go(hit);
+      },function(e){ if(done) return; if(tries<2){ setTimeout(function(){ ask(tries+1); },900); return; } done=true; clearTimeout(timer); fail(e); });
+    }catch(e){ if(!done){ done=true; clearTimeout(timer); fail(e); } }
+  };
+  ask(0);
   homeBtns();
 }
 function gameSound(){}
