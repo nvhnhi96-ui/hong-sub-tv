@@ -612,11 +612,12 @@ $('dkTzAuto').onclick=function(){
   var ip=$('dkTzIp').value.trim();
   if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ msg('warn','Gõ IP của TV Samsung, hoặc bấm Tìm TV Samsung.'); $('dkTzIp').focus(); return; }
   if(window.hsPcIp&&ip===window.hsPcIp){ msg('warn','Đây là IP của chính máy tính này, không phải của TV. Xem IP của TV trên TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.'); $('dkTzIp').focus(); return; }
-  if(!window.hsTzi||!D.ps||!D.ps.raw){ msg('err','Bản Hóng Sub này chưa cài tự động được. Cập nhật Hóng Sub rồi thử lại.'); return; }
+  var RAW=(D.ps&&D.ps.raw)||D.tzraw;
+  if(!window.hsTzi||!RAW){ msg('err','Bản Hóng Sub này chưa cài tự động được. Cập nhật Hóng Sub rồi thử lại.'); return; }
   busy=true; var b=this; b.disabled=true;
   if(A.tvType()!=='samsung') A.setTvType('samsung');
   var c=code(), say=function(t){ msg('',t); };
-  D.ps.raw.call('pcaddr:'+ip).then(function(r){ return window.hsTzi.install(ip,c,(r&&r.addr)||'',say); }).then(function(r){
+  RAW.call('pcaddr:'+ip).then(function(r){ return window.hsTzi.install(ip,c,(r&&r.addr)||'',say); }).then(function(r){
     busy=false; b.disabled=false;
     A.save('tzAuto',{ip:ip,duid:r&&r.duid||'',at:Date.now()});
     msg('ok','Đã cài xong và mở Hóng Sub trên TV (mã '+c+'). TV tự nối với máy tính. Có thể tắt Developer Mode trên TV. Chọn cổng HDMI của máy PS5 trên TV là phụ đề nằm trên hình game.');

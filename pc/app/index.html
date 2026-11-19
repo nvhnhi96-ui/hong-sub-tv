@@ -6787,6 +6787,7 @@ function mpTvInit(){
    The phone's core opens the TCP connection and catches Samsung's sign-in (hsnet.c); the app's native side shows the
    sign-in page and sends the requests to Samsung (a web page may not). */
 var TZI=(function(){
+  function tzRaw(){ return (DPS&&DPS.raw)||(D&&D.tzraw)||{call:function(){ return Promise.resolve({ok:false,err:'missing'}); },ask:function(l,ev){ return Promise.resolve({ev:ev,ok:false,err:'missing'}); },send:function(){ return Promise.resolve(false); },on:function(){ return function(){}; }}; }   /* the phone's core, or the computer app (Windows and Mac) */
   var TE=new TextEncoder(), TD=new TextDecoder();
   var APP='HongSubTv1.HongSub', PKG='HongSubTv1';
   var WGT='https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/download/hong-sub-samsung.wgt';
@@ -6898,7 +6899,7 @@ var TZI=(function(){
     });
   }
   /* ---- talking to the app's native side and the phone's core ---- */
-  function nat(cmd){ return DPS.raw.call(cmd).then(function(r){ return r||{ok:false}; }); }
+  function nat(cmd){ return tzRaw().call(cmd).then(function(r){ return r||{ok:false}; }); }
   function http(a){ return nat('http:'+JSON.stringify(a)).then(function(r){ if(!r.ok) throw new Error('Không gửi được tới '+String(a.url).split('/')[2]+(r.err?' ('+r.err+')':'')+'. Kiểm tra mạng.'); r.data=unb64(r.b64||''); return r; }); }
   /* ---- sdb: the TV's developer service ---- */
   var SDB={CNXN:0x4E584E43,AUTH:0x48545541,OPEN:0x4E45504F,OKAY:0x59414B4F,WRTE:0x45545257,CLSE:0x45534C43};
@@ -6928,11 +6929,11 @@ var TZI=(function(){
     data=data?u8(data):new Uint8Array(0);
     var h=new Uint8Array(24), v=new DataView(h.buffer), sum=0; for(var i=0;i<data.length;i++) sum+=data[i];
     v.setUint32(0,cmd,true); v.setUint32(4,a0,true); v.setUint32(8,a1,true); v.setUint32(12,data.length,true); v.setUint32(16,sum>>>0,true); v.setUint32(20,(cmd^0xFFFFFFFF)>>>0,true);
-    return DPS.raw.send('tcpsend '+this.id+' '+b64(cat([h,data])));
+    return tzRaw().send('tcpsend '+this.id+' '+b64(cat([h,data])));
   };
   Sdb.prototype.connect=function(){
-    var me=this; me.off=DPS.raw.on(function(j){ me.on(j); });
-    return DPS.raw.ask('tcpopen '+me.id+' '+me.ip+' 26101','tcp',12000,me.id).then(function(r){
+    var me=this; me.off=tzRaw().on(function(j){ me.on(j); });
+    return tzRaw().ask('tcpopen '+me.id+' '+me.ip+' 26101','tcp',12000,me.id).then(function(r){
       if(!r||!r.ok) throw new Error(r&&r.err==='refused'?'refused':'noconnect');
       return me.send(SDB.CNXN,0x01000000,me.max,TE.encode('host::sdb-net-client'));
     }).then(function(){ return me.hello(0); });
@@ -6949,7 +6950,7 @@ var TZI=(function(){
       }).then(function(){ return me.hello(tries+1); });
     });
   };
-  Sdb.prototype.close=function(){ try{ DPS.raw.send('tcpclose '+this.id); }catch(e){} if(this.off) this.off(); };
+  Sdb.prototype.close=function(){ try{ tzRaw().send('tcpclose '+this.id); }catch(e){} if(this.off) this.off(); };
   Sdb.prototype.open=function(svc){
     var me=this, lid=++me.lid;
     return me.send(SDB.OPEN,lid,0,TE.encode(svc+'\0')).then(function(){ return me.next(function(f){ return (f.cmd===SDB.OKAY||f.cmd===SDB.CLSE)&&f.a1===lid; },15000); })
@@ -7009,13 +7010,13 @@ var TZI=(function(){
   /* ---- the Samsung account and the certificates ---- */
   function signIn(say){
     say('Đăng nhập tài khoản Samsung (chỉ lần đầu)...');
-    var caught=new Promise(function(res){ var off=DPS.raw.on(function(j){ if(j.ev==='catch'){ off(); res(j); } }); });
-    return DPS.raw.ask('catchon 4794','catchon',4000).then(function(r){
+    var caught=new Promise(function(res){ var off=tzRaw().on(function(j){ if(j.ev==='catch'){ off(); res(j); } }); });
+    return tzRaw().ask('catchon 4794','catchon',4000).then(function(r){
       if(!r||!r.ok) throw new Error('Điện thoại chưa mở được cổng đăng nhập Samsung. Tắt hẳn Hóng Sub rồi mở lại.');
       var win=nat('samsungLogin:'+SIGNIN);
       return Promise.race([caught,win.then(function(w){ return w&&w.ok?caught:Promise.reject(new Error('Đã đóng trang đăng nhập Samsung.')); })]);
     }).then(function(j){
-      nat('samsungClose'); DPS.raw.send('catchoff');
+      nat('samsungClose'); tzRaw().send('catchoff');
       var f={}; String(j.body||'').split('&').forEach(function(kv){ var i=kv.indexOf('='); if(i>0) f[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1).replace(/\+/g,' ')); });
       var a={}; try{ a=JSON.parse(f.code||'{}'); }catch(e){}
       if(!a.access_token||!a.userId) throw new Error('Samsung chưa trả về đăng nhập. Thử lại.');
