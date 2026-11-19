@@ -6,7 +6,6 @@ import json, os, subprocess, sys, tarfile, time, urllib.request
 LLAMA = os.environ.get('LLAMA_TAG', 'b12540')
 MODELS = [
     ('qwen3.5-4b', 'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf'),
-    ('qwen3-4b', 'https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf'),
     ('qwen3.5-2b', 'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf'),
 ]
 GAME = 'God of War Ragnarök'
@@ -24,15 +23,47 @@ LINES = [
     "We'll need to find another way across the river before nightfall.",
 ]
 
-def sysprompt(game, notes):
-    """the same text the app sends (pc/web.html localPrompt)"""
-    return ('You translate video game subtitles into natural spoken Vietnamese for a Vietnamese player.\n'
+GAME2 = "Marvel's Spider-Man 2"
+NOTES2 = ('Peter Parker và Mary Jane (MJ) là người yêu: Peter xưng "anh", gọi MJ là "em"; MJ xưng "em", gọi Peter là "anh". '
+          'Miles Morales là học trò của Peter: Miles gọi Peter là "anh Peter", xưng "em"; Peter gọi Miles là "nhóc" hoặc "em". '
+          'Kraven là thợ săn, kẻ thù, xưng "ta", gọi Spider-Man là "ngươi". Giữ nguyên: Spider-Man, Venom, symbiote, New York.')
+LINES2 = [
+    "PETER: MJ, I'm sorry. I should have told you sooner.",
+    "MJ: You don't get to decide that for me, Peter.",
+    "MILES: Pete! Are you okay? You look terrible.",
+    "KRAVEN: At last, a worthy prey. Show me what you are made of, Spider!",
+    "Hold [R2] to swing faster.",
+]
+
+def split_speaker(t):
+    import re
+    m = re.match(r"^([A-Z][A-Za-z .'\-]{0,24}):\s+(.+)$", t, re.S)
+    return (m.group(1), m.group(2)) if m else ('', t)
+
+def sysprompt(game, notes, lang):
+    """the text the app sends (pc/web.html localSys)"""
+    if lang == 'vi':
+        return ('Bạn dịch phụ đề game sang tiếng Việt nói tự nhiên, như lời thoại phim lồng tiếng.\n'
+                + ('Game: ' + game + '\n' if game else '')
+                + ('Nhân vật và cách xưng hô: ' + notes + '\n' if notes else '')
+                + 'Quy tắc:\n- Chỉ dịch câu sau "Dịch:". Không viết tên người nói.\n'
+                  '- Xưng hô đúng theo ghi chú và theo các câu trước (ai nói, nói với ai). Không dùng "bạn" trừ khi ghi chú bảo vậy.\n'
+                  '- Giữ nguyên tiếng Anh cho tên riêng, địa danh, thuật ngữ game và tên nút bấm.\n'
+                  '- Dịch đủ ý, đúng thứ tự câu và dấu câu, không thêm, không bớt, không giải thích.\n'
+                  '- Chỉ trả lời bản dịch tiếng Việt.')
+    return ('You translate video game subtitles into natural spoken Vietnamese, like a dubbed film.\n'
             + ('Game: ' + game + '\n' if game else '')
             + ('Characters and how they address each other in Vietnamese: ' + notes + '\n' if notes else '')
-            + 'Rules: translate only the line after "Translate:". If it starts with a speaker name and a colon, that name tells who speaks: '
-              'do not translate or repeat the name. Use the pronoun pairs from the notes and keep the ones used in the previous lines. '
-              'Keep names, places and game terms in English. Keep the same sentences, order and punctuation. '
-              'If the text is a button prompt or menu, translate it short. Reply with only the Vietnamese translation, nothing else.')
+            + 'Rules:\n- Translate only the text after "Translate:". Never write the speaker name.\n'
+              '- Use the Vietnamese pronouns the notes give for who is speaking to whom, and keep the ones used in the previous lines. Do not use "bạn" unless the notes say so.\n'
+              '- Keep names, places, game terms and button names in English.\n'
+              '- Translate everything, in the same order, with the same punctuation. Add nothing, explain nothing.\n'
+              '- Reply with only the Vietnamese translation.')
+
+def user_msg(hist, line):
+    sp, t = split_speaker(line)
+    h = ('Previous lines:\n' + '\n'.join(f'{e} => {v}' for e, v in hist[-3:]) + '\n') if hist else ''
+    return h + (f'Speaker: {sp}\n' if sp else '') + 'Translate:\n' + t
 
 def fetch(url, dst):
     if os.path.exists(dst): return
@@ -57,7 +88,7 @@ def main():
         except Exception as e: print(name, 'DOWNLOAD FAILED', e); continue
         port = 8099
         log = open(f'llm/{name}.log', 'w')
-        p = subprocess.Popen([srv, '-m', gguf, '-c', '4096', '--host', '127.0.0.1', '--port', str(port), '-np', '1', '--jinja', '-ngl', '99'],
+        p = subprocess.Popen([srv, '-m', gguf, '-c', '4096', '--host', '127.0.0.1', '--port', str(port), '-np', '1', '--jinja', '--reasoning', 'off', '-ngl', '99'],
                              stdout=log, stderr=subprocess.STDOUT, env=dict(os.environ, LD_LIBRARY_PATH=os.path.dirname(srv)))
         t0 = time.time()
         while time.time() - t0 < 180:
@@ -65,22 +96,25 @@ def main():
                 urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=2).read(); break
             except Exception: time.sleep(1)
         print(f'\n=== {name}: server up in {time.time()-t0:.1f}s', flush=True)
-        hist = []
-        sp = sysprompt(GAME, NOTES)
-        for line in LINES:
-            user = ('Previous lines:\n' + '\n'.join(f'{e} => {v}' for e, v in hist[-3:]) + '\n' if hist else '') + 'Translate:\n' + line
-            body = {'messages': [{'role': 'system', 'content': sp}, {'role': 'user', 'content': user}],
-                    'temperature': 0.3, 'top_p': 0.8, 'top_k': 20, 'max_tokens': 160, 'cache_prompt': True,
-                    'chat_template_kwargs': {'enable_thinking': False}}
-            t = time.time()
-            try: j = post('/v1/chat/completions', body, port)
-            except Exception as e: print('  ERR', e); break
-            ms = (time.time() - t) * 1000
-            out = j['choices'][0]['message'].get('content', '').strip()
-            tm = j.get('timings', {})
-            print(f'  {ms:6.0f}ms  pp {tm.get("prompt_n")}tok {tm.get("prompt_per_second", 0):.0f}/s  gen {tm.get("predicted_n")}tok {tm.get("predicted_per_second", 0):.1f}/s', flush=True)
-            print(f'    EN: {line}\n    VI: {out}', flush=True)
-            hist.append((line, out))
+        for lang in ('en', 'vi'):
+            for game, notes, lines in ((GAME, NOTES, LINES), (GAME2, NOTES2, LINES2)):
+                print(f'--- prompt {lang} / {game}', flush=True)
+                hist = []; sp = sysprompt(game, notes, lang); tot = 0
+                for line in lines:
+                    user = user_msg(hist, line)
+                    if lang == 'vi': user = user.replace('Previous lines:', 'Các câu trước:').replace('Speaker:', 'Người nói:').replace('Translate:', 'Dịch:')
+                    body = {'messages': [{'role': 'system', 'content': sp}, {'role': 'user', 'content': user}],
+                            'temperature': 0.3, 'top_p': 0.8, 'top_k': 20, 'max_tokens': 160, 'cache_prompt': True,
+                            'chat_template_kwargs': {'enable_thinking': False}}
+                    t = time.time()
+                    try: j = post('/v1/chat/completions', body, port)
+                    except Exception as e: print('  ERR', e); break
+                    ms = (time.time() - t) * 1000; tot += ms
+                    out = j['choices'][0]['message'].get('content', '').strip()
+                    tm = j.get('timings', {})
+                    print(f'  {ms:6.0f}ms pp {tm.get("prompt_n")} gen {tm.get("predicted_n")} | {line}  =>  {out}', flush=True)
+                    hist.append((line, out))
+                print(f'  avg {tot/len(lines):.0f}ms', flush=True)
         p.terminate(); p.wait(); os.remove(gguf)
         print(open(f'llm/{name}.log').read()[-600:])
 
