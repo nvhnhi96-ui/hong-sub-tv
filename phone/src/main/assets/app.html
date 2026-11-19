@@ -1060,16 +1060,6 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             </div>
           </div>
         </div>
-        <div class="dk-card hl" id="dkBuy">
-          <h2>Mua mã dịch AI</h2>
-          <p class="hs-note">Mã Gemini miễn phí là đủ dùng. Muốn dịch hay hơn và không lo hết lượt thì dùng AI dịch thông minh (OpenRouter) có nạp tiền.</p>
-          <div class="dk-buy">
-            <div><b>Tự nạp</b><p>Đăng nhập OpenRouter bằng Google, nạp 10$ bằng thẻ Visa hoặc Mastercard. Được 1000 câu miễn phí mỗi ngày và dùng DeepSeek rất rẻ. Xong tạo mã rồi dán vào ô "AI dịch thông minh" ở trên.</p>
-              <div class="hs-row"><button class="hs-btn" type="button" data-url="https://openrouter.ai/settings/credits">Mở trang nạp tiền</button><button class="hs-btn" type="button" data-url="https://openrouter.ai/keys">Tạo mã</button></div></div>
-            <div><b>Nhờ Hóng Game Store nạp hộ</b><p>Không có thẻ quốc tế: nhắn Zalo shop, trả bằng chuyển khoản, shop nạp vào tài khoản OpenRouter của bạn và chỉ cách tạo mã.</p>
-              <div class="hs-row"><button class="hs-btn pri" type="button" id="dkBuyZalo">Nhắn Zalo shop</button></div></div>
-          </div>
-        </div>
       </section>
 
       <!-- ============ Game đang chơi ============ -->
@@ -7172,7 +7162,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
   }
   $('dkCurChange').addEventListener('click',function(){ S.pickOpen=!S.pickOpen; cur(); });
   setInterval(cur,800); cur();
-  $('dkBuyZalo').addEventListener('click',function(){
+  if($('dkBuyZalo')) $('dkBuyZalo').addEventListener('click',function(){
     var msg='Chào shop, mình muốn nhờ nạp tiền OpenRouter để dùng AI dịch thông minh trên Hóng Sub.';
     try{ navigator.clipboard.writeText(msg).catch(function(){}); }catch(e){}
     A.status('idle','Đã chép sẵn tin nhắn, dán (Ctrl+V) vào Zalo của shop.');
