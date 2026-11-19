@@ -1244,7 +1244,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
-                <select class="hs-in" id="hsPrefer"><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="fast">Nhanh nhất: lấy bản dịch về trước</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select></div>
+                <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
@@ -3011,7 +3011,8 @@ async function orAsk(prompt,shape){
   throw lastErr||new Error('AI thông minh không dịch được');
 }
 $('hsOr').value=load('or',[]).join('\n');
-$('hsPrefer').value=load('prefer','balanced');
+if(!load('pref2',false)){ if(load('prefer','fast')==='balanced') save('prefer','fast'); save('pref2',true); }   /* quickest by default: the AI still corrects the line a moment later */
+$('hsPrefer').value=load('prefer','fast');
 $('hsPrefer').addEventListener('change',function(){ save('prefer',this.value); });
 $('hsOrModel').addEventListener('change',function(){ save('ormodel',this.value); });
 $('hsOr').addEventListener('change',function(){ save('or',orKeys()); S.or.cool={}; if(orKeys().length) orList(true).then(function(){},function(){}); steps(); keyStats(); });
@@ -3370,19 +3371,19 @@ function voApply(el,vl){
   el.style.padding='.1em .45em'; el.style.borderRadius='8px'; el.style.lineHeight='1.5'; el.style.webkitBoxDecorationBreak='clone'; el.style.boxDecorationBreak='clone';
 }
 function voWrap(html){ return '<span class="vo-line">'+html+'</span>'; }
-function show(res){
+function show(res,quiet){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
   vi=lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var pv=res._voice?ptVoice((res._t0||Date.now()-3000)-200,(res._t1||Date.now())+200):ptVoice(subSince(),Date.now());
   var ch=who?castMeet(who,res.gender,res.age,pv):null;
-  if(pv) log('giọng nghe được: '+pv.f0+' Hz ('+(pv.g==='male'?'nam':pv.g==='female'?'nữ':'chưa rõ')+')'+(who?' · '+who:''));
+  if(pv&&!quiet) log('giọng nghe được: '+pv.f0+' Hz ('+(pv.g==='male'?'nam':pv.g==='female'?'nữ':'chưa rõ')+')'+(who?' · '+who:''));
   if(!who&&pv&&pv.g){ var vk=pv.g==='male'?(pv.f0<118?'Giọng nam trầm':'Giọng nam'):(pv.f0<215?'Giọng nữ':'Giọng nữ cao'); castMeet(vk,pv.g,'',pv); res._vk=vk; res.gender=pv.g; }
   else if(ch&&ch.g) res.gender=ch.g;
   var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+esc(vi).replace(/\n/g,'<br>');
   var vl=res._voice?voLook():null; if(vl&&!vl.on) vl=null;
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=vl?voWrap(html):html; if(vl) voApply($('hsVi').firstChild,vl);
   $('hsEn').textContent=$('hsShowEn').checked?(res._voice?'🔊 ':'')+en:'';
-  S.hist.unshift({en:en,vi:vi,who:who,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
+  if(quiet&&S.hist.length) S.hist[0]={en:en,vi:vi,who:who,voice:!!res._voice}; else S.hist.unshift({en:en,vi:vi,who:who,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
   $('hsHistN').textContent=S.hist.length;
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){return '<li>'+(h.who?'<b>'+esc(h.who)+':</b> ':'')+esc(h.vi)+'<small>'+(h.voice?'🔊 ':'')+esc(h.en)+'</small></li>';}).join('');
   pipRender(vl?voWrap(html):html,$('hsEn').textContent,vl);
@@ -3390,6 +3391,7 @@ function show(res){
   if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
   phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent,vo:vl});
   tvPush(vi,en,who,false,vl);
+  if(quiet) return;   /* a corrected line: already read aloud, its time on screen goes on */
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
   speak(vi,res);
   clearTimeout(S.holdT);
@@ -4324,6 +4326,20 @@ function pump(){
     translateText(j).then(function(){},function(){}).then(function(){ S.qActive--; S.inflight=S.qActive; pump(); });
   }
 }
+/* the AI's translation came after the machine translation was shown: it replaces it (on screen if the line is still
+   there, waiting in line, the cache and the shared store), without reading it aloud again */
+function aiUpgrade(j,ck,r2,via2){
+  if(!r2||!String(r2.vi||'').trim()) return;
+  r2._nl=j.nl||1;
+  S.trCache[ck]=r2; tmAdd('s',j.text,r2.vi,r2.speaker||'',(r2.gender||'').toLowerCase(),via2);
+  S.recent.forEach(function(x){ if(x.raw===j.text) x.res=r2; });
+  var w=S.ready.filter(function(x){ return x.seq===j.seq; })[0];
+  if(w){ w.res=r2; return; }
+  if(S.shownSeq!==j.seq||!S.lastHtml||S.voCur) return;
+  var res=splitSpeaker(JSON.parse(JSON.stringify(r2)),j.text); if(!res||!res.vi) return;
+  res.vi=punctFix(res.en||j.text,res.vi); res._nl=r2._nl;
+  S.via=via2; log('AI sửa lại câu vừa hiện ('+via2+'): '+res.vi); show(res,true); perfTag();
+}
 async function translateText(j){
   if(S.qActive===1) status('busy','Đang dịch...');
   var t1=performance.now(), ck=trKey(j.text);
@@ -4336,7 +4352,7 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(textPrompt(j.text,j.nl),j.text,null,null,false,speakPrefer());
+      res=await askText(textPrompt(j.text,j.nl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); });
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
@@ -4359,19 +4375,19 @@ async function translateText(j){
 /* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
    the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
    can wait a little for the smart AI ("Cân bằng" 0.6s, "Hay nhất" up to 4s). */
-function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'balanced'; }
+function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'fast'; }
 function speakPrefer(){ var p=preferMode(); return $('hsSpeak').checked&&fitOn()&&p==='balanced'?'fast':p; }   /* reading aloud: the voice must keep up, take the first good translation */
 function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
-function askText(prompt,text,schema,shape,plain,prefer){
+function askText(prompt,text,schema,shape,plain,prefer,upgrade){
   schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
   var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady();
   return new Promise(function(resolve,reject){
     var done=false, live=0, errs=[], tms=[], held=null, oDead=false, t0=Date.now();
-    var started={g:false,q:false,o:false,f:false};
+    var started={g:false,q:false,o:false,f:false}, tookVia='', upgraded=false;
     function clearAll(){ tms.forEach(function(id){ if(WT) WT.clear(id); else clearTimeout(id); }); tms=[]; }
-    function accept(r,via){ if(done) return; done=true; clearAll(); S.via=via; resolve(r); }
+    function accept(r,via){ if(done) return; done=true; tookVia=via; clearAll(); S.via=via; resolve(r); }
     function got(r,via){
-      if(done) return;
+      if(done){ if(upgrade&&tookVia==='free'&&via!=='free'&&!upgraded&&r&&r.vi){ upgraded=true; upgrade(r,via); } return; }   /* the machine translation showed first: the AI's line replaces it */
       if(via==='smart'||prefer==='fast'||!started.o||oDead) return accept(r,via);
       if(held) return;
       held={r:r,via:via};                                      /* keep it, give the smart AI a moment */
@@ -4398,7 +4414,7 @@ function askText(prompt,text,schema,shape,plain,prefer){
     if(!hasG&&!hasO) startNext();
     /* Groq answers text in ~0.3s; start it at once when Gemini is missing or usually slow here */
     if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(prefer==='fast'||!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
-    if(S.allowFree&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held) run('f'); },3500));
+    if(S.allowFree&&(hasG||hasQ||hasO)){ var fd=upgrade&&prefer==='fast'?(hasQ?450:0):3500; if(fd) tms.push(later(function(){ if(!held) run('f'); },fd)); else run('f'); }   /* "Nhanh nhất": the free translator (~0.6s) races the AI (Gemini ~1.2s); Groq (~0.35s) gets a head start */
   });
 }
 /* picture of the subtitle area sent to the AI (when the on-device reader is off or sees nothing) */
@@ -4467,7 +4483,7 @@ function ocrTake(txt,force){
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
-    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},200); return; }
+    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
   }
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
@@ -5086,7 +5102,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
