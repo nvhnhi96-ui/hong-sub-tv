@@ -653,6 +653,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
             <div class="dk-card" id="hsKeySec">
               <h2>Mã Gemini</h2>
               <p class="hs-note">Dịch tự nhiên, đúng xưng hô. Miễn phí, mỗi dòng một mã. <button class="dk-link" type="button" data-url="https://aistudio.google.com/apikey">Lấy mã miễn phí</button></p>
+              <p class="hs-note hs-need" id="hsKeyNeed"><b>Tối thiểu 3 mã Gemini, mỗi mã tạo ở một dự án (project) khác nhau</b>, để dịch liên tục không bị hết lượt giữa chừng.</p>
               <textarea class="hs-in" id="hsKeys" rows="3" spellcheck="false" autocomplete="off" placeholder="AIza..." aria-label="Mã Gemini"></textarea>
               <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsCheck" type="button">Kiểm tra mã</button></div>
               <div class="hs-msg" id="hsKeyMsg" hidden></div>
@@ -662,6 +663,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
             <div class="dk-card">
               <h2>Mã Groq</h2>
               <p class="hs-note">Miễn phí. Dịch nhanh khi mã Gemini hết lượt, và chép lời nhân vật nói nhanh, chuẩn nhất. <button class="dk-link" type="button" data-url="https://console.groq.com/keys">Lấy mã Groq</button></p>
+              <p class="hs-note hs-need" id="hsGroqNeed"><b>Tối thiểu 1 mã Groq</b>: dịch nhanh nhất (khoảng 0,35 giây mỗi câu) và làm dự phòng khi mã Gemini hết lượt.</p>
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
             </div>
             <div class="dk-card" id="dkAzCard">

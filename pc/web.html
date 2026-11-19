@@ -144,6 +144,7 @@ span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.
 .hs-in:focus{border-color:var(--ink)!important;outline:0}
 textarea.hs-in{resize:vertical;min-height:60px}
 select.hs-in{cursor:pointer;margin:0!important}
+.hs-need{margin:2px 0 8px;padding:7px 10px;border-radius:8px;border-left:3px solid var(--brand);background:var(--sunk)}.hs-need .cnt{font-weight:700}.hs-need.ok .cnt{color:#2EA36B}
 .hs-ac{position:relative}
 .hs-sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:60;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.28);max-height:320px;overflow:auto;padding:4px}
 .hs-sug button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer}
@@ -382,6 +383,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <div class="t"><b>Mã Gemini</b><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Lấy mã miễn phí</a></div>
         <div class="hs-f">
           <label for="hsKeys">Dán mã, mỗi dòng một mã. Không có mã vẫn dịch được bằng máy dịch miễn phí, có mã thì dịch hay và đúng xưng hô hơn.</label>
+          <p class="hs-note hs-need" id="hsKeyNeed"><b>Tối thiểu 3 mã Gemini, mỗi mã tạo ở một dự án (project) khác nhau</b>, để dịch liên tục không bị hết lượt giữa chừng.</p>
           <textarea class="hs-in" id="hsKeys" rows="2" spellcheck="false" autocomplete="off" placeholder="AIza..."></textarea>
         </div>
         <div class="hs-row" style="margin-top:10px"><button class="hs-btn" id="hsCheck" type="button">Kiểm tra mã</button></div>
@@ -508,6 +510,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
           <div class="hs-sub2">
             <b>Mã Groq dự phòng</b>
             <p class="hs-note">Dùng khi mã Gemini hết lượt. <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Lấy mã Groq</a></p>
+            <p class="hs-note hs-need" id="hsGroqNeed"><b>Tối thiểu 1 mã Groq</b>: dịch nhanh nhất (khoảng 0,35 giây mỗi câu) và làm dự phòng khi mã Gemini hết lượt.</p>
             <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq" style="margin-top:6px"></textarea>
           </div>
           <div class="hs-sub2">
@@ -3226,6 +3229,13 @@ function dictFix(text){
   if(out!==text&&DICT.fixes<=30) log('sửa chữ đọc sai: '+String(text).replace(/\s+/g,' ').slice(0,90)+' → '+out.replace(/\s+/g,' ').slice(0,90));
   return out;
 }
+/* "at least 3 Gemini keys (3 projects), at least 1 Groq key": how many are in each box now */
+function keyNeed(){
+  var g=$('hsKeyNeed'), q=$('hsGroqNeed');
+  if(g){ var n=keys().length, s=g.querySelector('.cnt')||g.appendChild(document.createElement('span')); s.className='cnt'; s.textContent=' Đang có '+n+'/3 mã'+(n>=3?' ✓':'.'); g.classList.toggle('ok',n>=3); }
+  if(q){ var m=groqKeys().length, t=q.querySelector('.cnt')||q.appendChild(document.createElement('span')); t.className='cnt'; t.textContent=' Đang có '+m+'/1 mã'+(m>=1?' ✓':'.'); q.classList.toggle('ok',m>=1); }
+}
+setTimeout(function(){ keyNeed(); ['hsKeys','hsGroq'].forEach(function(id){ var el=$(id); if(el){ el.addEventListener('input',keyNeed); el.addEventListener('change',keyNeed); } }); },0);
 function LG(){ var c=$('hsLang')&&$('hsLang').value; return LANGS[c]?c:'en'; }
 function LN(){ return LANGS[LG()].e; }                 /* name used in the AI prompts */
 var SC={lat:/[A-Za-zÀ-ÖØ-öø-ÿĀ-žẞß]/g, cjk:/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g, kor:/[\uac00-\ud7af\u1100-\u11ff]/g, cyr:/[\u0400-\u04ff]/g};
