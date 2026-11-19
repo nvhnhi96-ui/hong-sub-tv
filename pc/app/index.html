@@ -2423,7 +2423,7 @@ async function zoneTick(force,only){
         try{ await Promise.all(bl.map(async function(B){ try{ var tb=null; if(B.old){ t=t||{vi:B.vi,via:'nhớ'}; return; }
             if(zNeedsEye(B.en,B.ic)){ try{ var e=await zEye(z,zcv,B,B.en,B.n); if(e.vi){ tb={vi:e.vi,via:S.via}; B.ic=e.ic; } }catch(er){ log(zName(z)+': chưa xem được ảnh nút bấm ('+(er.cool?'mã hết lượt':String(er.message||er).slice(0,50))+')'); } }
             var U=zUnits(B.en);   /* whole sentences / menu items, one per line for the AI, then laid out on the original lines */
-            if(!tb){ tb=await zTranslate(z,U.map(function(u){ return u.t; }).join('\n'),B.ic); if(tb.ic) B.ic=tb.ic; B.vi=zUnitLines(zViClean(tb.vi),U,B.n); }
+            if(!tb){ tb=await zTranslate(z,U.map(function(u){ return u.t; }).join('\n'),B.ic); if(tb.ic) B.ic=tb.ic; B.vi=zUnitLines(punctFix(U.map(function(u){ return u.t; }).join('\n'),zViClean(tb.vi)),U,B.n); }
             else B.vi=lineSplitS(zViClean(tb.vi),B.n);
             t=tb;
             if(zSame(B.en,B.vi)) B.vi='';   /* nothing was translated (a name, a logo read as letters): no box */
@@ -2435,7 +2435,7 @@ async function zoneTick(force,only){
           if(zNeedsEye(text,zic)){ try{ var e2=await zEye(z,zcv,{x:0,y:0,w:1,h:1},text,text.split('\n').length); if(e2.vi){ t={vi:e2.vi,via:S.via}; z.ic=e2.ic; } }catch(er2){ log(zName(z)+': chưa xem được ảnh nút bấm'); } }
           if(!t){ t=await zTranslate(z,text,zic); if(t.ic) z.ic=t.ic; }
         } finally{ z.pending=false; } }
-      var vt=zViClean(t.vi);
+      var vt=zViClean(t.vi); if(vt&&!z.items) vt=punctFix(text,vt);
       if(!vt){ zShow(); continue; }
       z.vi=vt; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+vt.replace(/\n/g,' / ').slice(0,120));
       z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(zSay(z).replace(/\n/g,'. '));   /* read aloud only if this area asks for it */
@@ -3951,8 +3951,40 @@ function flushReady(){
     if(shown&&S.ready.length) S.gate=Date.now()+Math.min(1400,700+String(r.res&&r.res.vi||'').length*8);
   }
 }
+/* ---------- punctuation like the original ----------
+   The Vietnamese ends the way the English ends: a question keeps its "?", a shout its "!", a trailing "..." its "…",
+   a line cut off mid-sentence (",", "-", no mark) does not get a full stop; quotes and brackets around the line stay.
+   Line by line when both have the same number of lines. Spaces before ? ! , . ; : are taken out. */
+var PEND=/(\?!|!\?|\.{3}|…|[.?!,;:]|[-–—]+)?(["”'’»)\]]*)\s*$/;
+function punctLine(en,vi){
+  var e=String(en||'').trim(), v=String(vi||'').trim(); if(!e||!v) return vi;
+  v=v.replace(/\s+([?!,.;:…])/g,'$1').replace(/([?!,.;:])(?=[^\s\d"”'’»)\].,?!…:;-])/g,'$1 ').replace(/\.{4,}/g,'...').replace(/\s{2,}/g,' ');
+  var me=e.match(PEND), mv=v.match(PEND), pe=me[1]||'', pv=mv[1]||'', qe=me[2]||'', qv=mv[2]||'';
+  var body=v.slice(0,v.length-mv[0].length).replace(/\s+$/,'');
+  if(!body) return v;
+  var end=pv;
+  if(pe==='...'||pe==='…') end=pe;                                  /* trailing off */
+  else if(/^[?!]+$/.test(pe)||pe==='?!'||pe==='!?') end=pe;          /* question / shout */
+  else if(pe===','||pe===';'||pe===':') end=pe;                      /* goes on in the next line */
+  else if(/^[-–—]+$/.test(pe)) end='—';                              /* cut off */
+  else if(pe==='.'){ if(!pv||pv===','||pv===';'||/^[-–—]+$/.test(pv)) end='.'; }   /* a statement may become "...à?" in Vietnamese: kept */
+  else if(!pe){ if(pv==='.') end=''; }                               /* no mark in the original (the sentence goes on): no full stop */
+  var q=qv;
+  if(qe&&!qv) q=qe; else if(!qe&&qv&&!/^["“'‘«(\[]/.test(v)) q='';
+  var out=body+end+q;
+  var oe=e.match(/^["“'‘«(\[]+/), ov=out.match(/^["“'‘«(\[]+/);
+  if(oe&&!ov) out=oe[0]+out;
+  return out;
+}
+function punctFix(en,vi){
+  if(!vi) return vi;
+  var E=String(en||'').split('\n'), V=String(vi).split('\n');
+  if(E.length===V.length&&E.length>1) return V.map(function(v,i){ return punctLine(E[i],v); }).join('\n');
+  return punctLine(String(en||'').replace(/\s*\n\s*/g,' '),String(vi).replace(/\s*\n\s*/g,'\n'));
+}
 function takeOne(res,seq,raw){
   res=splitSpeaker(res,raw);
+  if(res&&res.vi&&!res._tm) res.vi=punctFix(res.en||raw,res.vi);   /* the shared store keeps its own (a person wrote it) */
   if(!res||!res.en||!res.vi){ coverBack(); return false; }
   if(similar(res.en,S.lastEn)){ coverBack(); return false; }
   var rawT=raw||res.en;
@@ -4771,7 +4803,7 @@ async function fsRun(){
         vis=vis||[];
         var miss=[]; need.forEach(function(b,i){ if(!String(vis[i]||'').trim()) miss.push(i); });
         if(miss.length){ var gv=await Promise.all(miss.map(function(i){ return gtx(need[i].en).catch(function(){return '';}); })); miss.forEach(function(i,k){ vis[i]=gv[k]; }); }
-        need.forEach(function(b,i){ b.vi=String(vis[i]||'').trim(); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
+        need.forEach(function(b,i){ b.vi=punctFix(b.en,String(vis[i]||'').trim()); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
         if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       }
     }
@@ -4888,7 +4920,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
