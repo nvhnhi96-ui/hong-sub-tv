@@ -1048,14 +1048,57 @@ $('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gMode
 $('hsKeys').addEventListener('change',function(){save('keys',keys());S.models=[];save('models',[]);steps();});
 function keyMsg(cls,t){var m=$('hsKeyMsg');m.hidden=false;m.className='hs-msg '+cls;m.textContent=t;}
 
-function pickKey(){
+/* Google counts free quota per project and per model (Flash Lite: 15 a minute, 500 a day; full Flash: 5 a minute,
+   20 a day). A "quota used up" answer for one model therefore only rests that model on that key, never the whole
+   key, and each key is kept under the per-minute limit instead of being hammered until Google refuses. */
+S.mcool={}; S.kreq={};
+var KEY_RPM=12;
+function kmCool(k,m){ var t=S.mcool[k+'|'+m]; return !!(t&&t>Date.now()); }
+function keySent(k){ var now=Date.now(), a=(S.kreq[k]||[]).filter(function(x){ return now-x<60e3; }); S.kreq[k]=a; return a.length; }
+function keyBusy(k){ return keySent(k)>=KEY_RPM; }
+function gModelsAll(){ return S.models&&S.models.length?S.models:FALLBACK; }
+function gModelsMain(){ var ms=gModelsAll(), l=ms.filter(function(m){ return /lite/.test(m); }); return l.length?l:ms; }
+function keyOpenModel(k,m){ if(m) return !kmCool(k,m); return gModelsAll().some(function(x){ return !kmCool(k,x); }); }
+/* when every everyday (lite) model of a key is resting: until when (for the key list) */
+function keyCoolUntil(k){
+  var now=Date.now(); if(S.cool[k]&&S.cool[k]>now) return S.cool[k];
+  var ms=gModelsMain(), until=0;
+  for(var i=0;i<ms.length;i++){ var t=S.mcool[k+'|'+ms[i]]; if(!t||t<=now) return 0; if(!until||t<until) until=t; }
+  return until;
+}
+/* the next reset of Google's daily quota: midnight in California */
+function quotaDayEnd(){
+  try{ var la=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Los_Angeles'})); var left=24*3600e3-((la.getHours()*60+la.getMinutes())*60+la.getSeconds())*1000; if(left>0&&left<=24*3600e3) return Date.now()+left+60e3; }catch(e){}
+  return Date.now()+3600e3;
+}
+/* read Google's "quota used up" answer: daily or per minute, and how long to wait */
+function gQuota(j,msg){
+  var daily=/per.?day|daily/i.test(msg), wait=0, d=(j&&j.error&&j.error.details)||[];
+  try{ d.forEach(function(x){
+    (x.violations||[]).forEach(function(v){ if(/PerDay/i.test(v.quotaId||'')) daily=true; });
+    if(x.retryDelay){ var s=parseFloat(String(x.retryDelay)); if(s>0) wait=s*1000; }
+  }); }catch(e){}
+  if(!wait){ var m=String(msg||'').match(/retry in ([\d.]+)s/i); if(m) wait=parseFloat(m[1])*1000; }
+  return {daily:daily, wait:wait};
+}
+/* a 429 from Gemini: rest only this model on this key */
+function gRest(key,model,j,msg){
+  if(!key||!model) return;
+  if(/limit:\s*0\b/.test(msg)){ S.mcool[key+'|'+model]=Date.now()+12*3600e3; return; }   /* this model is not free on this key */
+  var q=gQuota(j,msg);
+  S.mcool[key+'|'+model]=q.daily?quotaDayEnd():Date.now()+Math.min(120e3,Math.max(5e3,(q.wait||30e3)+1000));
+}
+function pickKey(model){
   var ks=keys(); if(!ks.length) return null;
   var now=Date.now();
   for(var i=0;i<ks.length;i++){
     var k=ks[(S.keyIdx+i)%ks.length];
-    if(!S.cool[k]||S.cool[k]<now){S.keyIdx=(S.keyIdx+i+1)%ks.length;return k;}
+    if(S.cool[k]&&S.cool[k]>=now) continue;
+    if(!keyOpenModel(k,model)) continue;
+    if(keyBusy(k)) continue;
+    S.keyIdx=(S.keyIdx+i+1)%ks.length; return k;
   }
-  return null;
+  return null;   /* every key is resting or already at the per-minute limit: wait instead of being refused */
 }
 
 /* rank models: newest flash-lite first (fastest), then flash */
@@ -2058,7 +2101,7 @@ S.lat=load('lat',{}); S.latAt=load('latat',{}); S.noMin=load('nomin',{}); S.slow
 function mScore(m,i){
   var now=Date.now(), s=(S.lat[m]||2500)+i*40;
   if(S.slow[m]&&S.slow[m]>now) s+=1e6;
-  if(!/lite/.test(m)) s+=1500;
+  if(!/lite/.test(m)) s+=6000;   /* full Flash: free quota is tiny (5 a minute, 20 a day), last resort only */
   if(/pro/.test(m)) s+=8000;
   if(/-latest$/.test(m)) s+=300;
   return s;
@@ -2069,18 +2112,17 @@ function gCall(model,key,prompt,b64,schema,ctl){
   var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
   var tc=thinkCfg(model); if(tc) gc.thinkingConfig=tc;
   var parts=[{text:prompt}]; if(b64) parts.push({inlineData:{mimeType:'image/jpeg',data:b64}});
-  var t0=performance.now();
+  var t0=performance.now(); (S.kreq[key]=S.kreq[key]||[]).push(Date.now());
   return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:gc})})
     .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {r:r,j:j,model:model,key:key,ms:performance.now()-t0};});});
 }
-/* send to the fastest model. On the first lines of a session (or when this machine has no fresh timing) the two
-   best models start together so the quicker one is learned at once; later the second model joins only when the
-   first is slower than usual. */
+/* send to the fastest model on this key. Every request uses quota (also one cancelled half way), so a second
+   request only starts when the first is really late (4-6 s), on another key and a model still open there. */
 function hedged(order,key,prompt,b64,schema){
   return new Promise(function(resolve,reject){
     var done=false, pending=0, ctls=[], bad=null, t0=performance.now(), ht=null, next=0, list=order.slice(0,2), st={}, back={};
     S.gN++;
-    var top=list[0], learn=list.length>1&&(S.gN<=2||!S.latAt[top]||Date.now()-S.latAt[top]>3*86400e3);
+    if(list.length>1&&!/lite/.test(list[1])&&/lite/.test(list[0])) list=list.slice(0,1);   /* never race a lite model with full Flash */
     function finish(res){
       if(done) return; done=true; clearTimeout(ht); ctls.forEach(function(c){try{c.abort();}catch(e){}});
       var now=performance.now();
@@ -2088,35 +2130,36 @@ function hedged(order,key,prompt,b64,schema){
       resolve(res);
     }
     function start(){
-      var m=list[next++], k=next===1?key:(pickKey()||key);
+      var m=list[next++], k=next===1?key:pickKey(m);
+      if(!k||(next>1&&k===key)) return false;
       var ctl=new AbortController(); ctls.push(ctl); pending++; st[m]=performance.now();
       var to=setTimeout(function(){ctl.abort();},9000);
       gCall(m,k,prompt,b64,schema,ctl).then(function(res){
         clearTimeout(to); pending--; back[m]=true; if(done) return;
-        if(res.r.ok) finish(res); else { bad=res; if(pending===0&&next>=list.length) finish(bad); else if(pending===0){ clearTimeout(ht); start(); arm(); } }
+        if(res.r.ok) finish(res); else { if(res.r.status===429) gRest(res.key,res.model,res.j,(res.j&&res.j.error&&res.j.error.message)||''); bad=res; if(pending===0) finish(bad); }
       },function(e){
         clearTimeout(to); pending--; back[m]=true;
         if(e&&e.name==='AbortError'&&!done){ S.slow[m]=Date.now()+5*60e3; noteLat(m,performance.now()-t0); }
         if(done) return;
-        if(pending===0){ if(next<list.length){ clearTimeout(ht); start(); arm(); } else if(bad) finish(bad); else { done=true; clearTimeout(ht); reject(e); } }
+        if(pending===0){ if(bad) finish(bad); else { done=true; clearTimeout(ht); reject(e); } }
       });
     }
     function arm(){
       if(next>=list.length) return;
-      var wait=Math.min(3000,Math.max(1100,(S.lat[list[next-1]]||2000)*1.5));
-      ht=setTimeout(function(){ if(!done){ noteLat(list[next-1],performance.now()-t0+800); start(); arm(); } },wait);
+      var wait=Math.min(6000,Math.max(4000,(S.lat[list[next-1]]||2000)*2.5));
+      ht=setTimeout(function(){ if(!done){ noteLat(list[next-1],performance.now()-t0+800); start(); } },wait);
     }
-    start();
-    if(learn) start(); else arm();
+    start(); arm();
   });
 }
 async function gemini(prompt,b64,schema){
   var models=S.models&&S.models.length?S.models:FALLBACK;
   var lastErr=null;
-  for(var tried=0;tried<models.length+keys().length;tried++){
-    var order=fastOrder(models);
+  for(var tried=0;tried<Math.min(8,models.length+keys().length);tried++){
     var key=pickKey();
     if(!key){var e=new Error('cool');e.cool=true;throw e;}
+    var order=fastOrder(models).filter(function(m){ return !kmCool(key,m); });
+    if(!order.length) continue;
     var res;
     try{ res=await hedged(order,key,prompt,b64,schema); }
     catch(e){ lastErr=new Error(e&&e.name==='AbortError'?'Gemini phản hồi quá chậm, thử lại...':'Mất kết nối mạng'); continue; }
@@ -2133,10 +2176,7 @@ async function gemini(prompt,b64,schema){
       if(/minimal/i.test(msg)&&!S.noMin[model]){S.noMin[model]=true; save('nomin',S.noMin);} else S.noThink[model]=true;
       continue;
     }
-    if(r.status===429){
-      if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ S.slow[model]=Date.now()+12*3600e3; continue; } /* model not in free tier */
-      var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:(/per.?day|daily/i.test(msg)?3600e3:45000)); continue;
-    }
+    if(r.status===429){ gRest(key,model,j,msg); continue; }   /* this model on this key rests; the key's other models and the other keys go on */
     if(r.status===404||(r.status===400&&/model/i.test(msg))){ S.slow[model]=Date.now()+(r.status===404?7*24:12)*3600e3; if(r.status===404){ S.gone[model]=S.slow[model]; save('mgone',S.gone); } continue; }
     if(r.status===400||r.status===403){S.cool[key]=Date.now()+3600e3; continue;}
     if(r.status>=500){ S.slow[model]=Date.now()+60e3; continue; }
@@ -2358,7 +2398,7 @@ function count(key,kind){ if(!key) return; if(S.use.d!==today()) S.use={d:today(
 function keyStats(){
   var box=$('hsKeyStat'); if(!box) return; if(S.use.d!==today()) S.use={d:today(),k:{}};
   var now=Date.now(), rows=[];
-  keys().forEach(function(k,i){ var c=S.cool[k]&&S.cool[k]>now; rows.push('<div><span>Gemini '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['g'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
+  keys().forEach(function(k,i){ var cu=keyCoolUntil(k), c=cu>now; rows.push('<div><span>Gemini '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['g'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(cu).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   groqKeys().forEach(function(k,i){ var c=S.gcool[k]&&S.gcool[k]>now; rows.push('<div><span>Groq '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['q'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>tạm hết lượt</em>':'')+'</div>'); });
   orKeys().forEach(function(k,i){ var c=S.or.cool[k]&&S.or.cool[k]>now; rows.push('<div><span>AI thông minh '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['o'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.or.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   if(S.use.k.free) rows.push('<div><span>Máy dịch miễn phí</span><b>'+S.use.k.free+' câu hôm nay</b></div>');
@@ -4767,7 +4807,7 @@ async function webSearchNotes(name){
   ms.sort(function(a,b){ return (/lite/.test(a)?1:0)-(/lite/.test(b)?1:0); });   /* full flash models search better */
   var last=null;
   for(var i=0;i<Math.min(4,ms.length+1);i++){
-    var gk=pickKey(); if(!gk) break; var m=ms[i%ms.length];
+    var m=ms[i%ms.length], gk=pickKey(m); if(!gk) break; (S.kreq[gk]=S.kreq[gk]||[]).push(Date.now());
     var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },25000), r, j;
     try{
       r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':gk},
@@ -4780,7 +4820,7 @@ async function webSearchNotes(name){
       var src=((c&&c.groundingMetadata&&c.groundingMetadata.groundingChunks)||[]).length;
       return {text:webNotesClean(t),web:src>0}; }
     last=new Error((j.error&&j.error.message)||('HTTP '+r.status));
-    if(r.status===429){ S.cool[gk]=Date.now()+45000; continue; }
+    if(r.status===429){ gRest(gk,m,j,last.message); continue; }
     if(r.status===400||r.status===404) continue;   /* this model cannot search: the next one */
     if(r.status===403){ S.cool[gk]=Date.now()+3600e3; continue; }
   }
@@ -5330,14 +5370,14 @@ async function voStt(wav){
   var models=(S.models&&S.models.length?S.models:FALLBACK);
   for(var k=0;k<keys().length+1;k++){
     var gk=pickKey(); if(!gk){ var c2=new Error('cool'); c2.cool=true; throw c2; }
-    var model=fastOrder(models)[0];
+    var model=fastOrder(models).filter(function(x){ return !kmCool(gk,x); })[0]; if(!model) continue; (S.kreq[gk]=S.kreq[gk]||[]).push(Date.now());
     var body={contents:[{parts:[{text:'This is a short clip of a video game\'s sound. Write down exactly the words a character speaks, in the language spoken ('+LN()+' expected). Leave out music, sound effects and noises. If nobody speaks, reply with nothing at all.'},{inline_data:{mime_type:'audio/wav',data:b64}}]}],generationConfig:{temperature:0}};
     var rr,jj;
     try{ rr=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':gk},body:JSON.stringify(body)}); jj=await rr.json().catch(function(){return {};}); }
     catch(e){ last=new Error('Mất kết nối mạng'); continue; }
     if(rr.ok){ count(gk,'g'); return ((jj.candidates&&jj.candidates[0]&&jj.candidates[0].content&&jj.candidates[0].content.parts)||[]).map(function(p){return p.text||'';}).join(' '); }
     var gm=(jj.error&&jj.error.message)||('HTTP '+rr.status); last=new Error(gm);
-    if(rr.status===429){ S.cool[gk]=Date.now()+45000; continue; }
+    if(rr.status===429){ gRest(gk,model,jj,gm); continue; }
     if(rr.status===400||rr.status===403){ S.cool[gk]=Date.now()+3600e3; continue; }
     if(rr.status>=500) continue;
     break;
