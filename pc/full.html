@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
     var W=window.innerWidth, H=window.innerHeight;
     d.items.forEach(function(it){
       var el=document.createElement('div'); el.className='b';
-      var L=it.x*W, w=Math.max(24,it.w*W); el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.minHeight=(it.h*H)+'px'; if(d.font) el.style.fontFamily=d.font;
+      var L=it.x*W, w=Math.max(24,it.w*W); el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.minHeight=(it.h*H)+'px'; if(d.font) el.style.fontFamily=d.font; if(it.bg){ el.style.background=it.bg; el.style.boxShadow='none'; } if(it.fg) el.style.color=it.fg;
       var f=Math.max(10,Math.round(it.lh*H*0.7)); el.style.fontSize=f+'px';
       el.innerHTML=esc(it.vi).replace(/\n/g,'<br>');
       root.appendChild(el);

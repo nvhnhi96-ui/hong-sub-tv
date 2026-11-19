@@ -56,6 +56,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
 .hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
+.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:2px;padding:0 3px}
 .hs-cover{position:absolute;z-index:7;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:4px 12px;background:rgba(6,7,9,.88);border-radius:6px;pointer-events:none;text-align:center}
 .hs-cover[hidden]{display:none}
 .hs-cover>div{color:#fff;font-weight:600;line-height:1.3;text-shadow:0 1px 2px #000;font-family:var(--fb)}
@@ -609,6 +610,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw">Tắt tiếng game (khi chơi PS5 / PS4 trong Hóng Sub) <input type="checkbox" id="hsGameMute"></label>
+                <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
                 <label class="hs-sw" hidden>Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
@@ -1146,6 +1148,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note" id="hsReadNote" style="margin-top:6px"></p>
               </div>
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
+              <label class="hs-sw dk-sw">Tự dịch chữ khác trên màn hình: nhiệm vụ, hướng dẫn nút, menu, tin nhắn (ngoài dòng phụ đề) <input type="checkbox" id="hsFsLive"></label>
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
@@ -4837,11 +4840,11 @@ function startRun(){
   }
   S.sents=[]; OCR.miss=0;
   S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0; GUARD.kind=''; GUARD.neg=0; GUARD.next=0;
-  restartTimer(); later(tick,30);
+  restartTimer(); later(tick,30); flStart();
   phState(true); awakeSync();
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
-function stopRun(){S.running=false; stopTimer(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''}); awakeSync();}
+function stopRun(){S.running=false; stopTimer(); flStop(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''}); awakeSync();}
 /* "Dịch khi tắt màn hình" (Android phone): while translating, the phone may sleep and the translation goes on
    (subtitles and areas to the TV, reading aloud). The phone keeps the processor and Wi-Fi awake for it. */
 function awakeOk(){ return !!(PH&&PH.awake); }
@@ -4885,8 +4888,15 @@ function fsDraw(){
   fsLayer.innerHTML=html; fsLayer.hidden=!S.fs.on||!html;
   /* shrink text that does not fit its box */
   [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
-  if(PH){ try{ PH.full(JSON.stringify(S.fs.on?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFontKey()}:null)); }catch(e){} }
-  if(D&&D.fullOverlay) D.fullOverlay(S.fs.on&&!stageFs()?{items:S.fs.items.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi};}),font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
+  fsOverlaySync();
+}
+/* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
+function fsOverlaySync(){
+  var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
+  var list=src.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:it.bg||'',fg:it.fg||''};});
+  var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
+  if(PH){ try{ PH.full(JSON.stringify(on?{items:list,font:subFontKey()}:null)); }catch(e){} }
+  if(D&&D.fullOverlay) D.fullOverlay(on&&!stageFs()?{items:list,font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
@@ -5004,6 +5014,134 @@ async function fullScreen(){
   if(!ocrOn()&&!keys().length){ status('warn','Đợi bộ đọc chữ tải xong, hoặc nhập mã Gemini để dịch cả màn hình.'); fsStop(); return; }
   fsRun(); S.fs.timer=later(fsWatch,600);
 }
+/* ---------- automatic: every other text on the screen while translating ----------
+   Besides the subtitle line (translated on its own), text that comes up anywhere on the screen (quests, button
+   hints, menus, phone messages, item names, tutorials...) is found and covered with Vietnamese at the same place,
+   in the colours of the original. The picture is watched in small points: text that stays still while the game
+   world moves behind it is read (moving signs and scenery are not); a box goes away as soon as the picture under
+   it changes. The free translator shows a line at once, the AI's line replaces it a moment later. */
+var flLayer=document.createElement('div'); flLayer.className='hs-fs hs-fl'; flLayer.hidden=true; $('hsStage').appendChild(flLayer);
+var flc=document.createElement('canvas'), flcx=flc.getContext('2d',{willReadFrequently:true});
+S.fl={on:false,items:[],prev:null,still:null,dirty:null,last:0,busy:false,timer:0,seq:0,reads:0};
+function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
+function flStart(){ if(S.fl.on||!fsLiveOn()||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
+function flStop(){ if(!S.fl.on&&!S.fl.items.length) return; S.fl.on=false; S.fl.seq++; S.fl.busy=false; WT?WT.clear(S.fl.timer):clearTimeout(S.fl.timer); S.fl.items=[]; flDraw(); }
+function flDraw(){
+  var b=videoBox(), html='', show=S.fl.on&&!S.fs.on;
+  if(show) S.fl.items.forEach(function(it){
+    if(!it.vi) return;
+    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w);
+    html+='<div class="hs-fsb hs-flb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
+  });
+  flLayer.innerHTML=html; flLayer.hidden=!html;
+  [].forEach.call(flLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
+  if(!S.fs.on) fsOverlaySync();
+}
+window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
+/* the small picture points under a box (160x90 grey picture) */
+function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
+function flPatch(g,it){ var r=flRect(it), o=[]; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++) o.push(g[y*160+x]); return o; }
+function flChanged(g,it){ if(!it.sig) return false; var r=flRect(it), k=0, n=0, big=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ var d=Math.abs(g[y*160+x]-it.sig[k++]); n++; if(d>26) big++; } return n&&big/n>0.22; }
+function flStill(it){ var r=flRect(it), n=0, s=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ n++; if(S.fl.still[y*160+x]>=2) s++; } return n?s/n:0; }
+function flSkip(b){
+  /* the subtitle line has its own translation; the areas the person set up too */
+  var R=S.region; if(R&&fsOverlap({x:R.x-0.01,y:R.y-0.015,w:R.w+0.02,h:R.h+0.03},b)>0.3) return true;
+  if((S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })) return true;
+  if(S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
+  if(notiLike(b.en)||viPlain(b.en)) return true;
+  return false;
+}
+function flTick(my){
+  if(!S.fl.on||my!==S.fl.seq) return;
+  S.fl.timer=later(function(){ flTick(my); },300);
+  if(S.fs.on||!S.stream||!S.running){ if(S.fl.items.length&&S.fs.on){ S.fl.items=[]; flDraw(); } return; }
+  var g=fsSig(); if(!g) return;
+  var N=g.length, i;
+  if(!S.fl.prev||S.fl.prev.length!==N){ S.fl.prev=g; S.fl.still=new Uint8Array(N); S.fl.dirty=new Uint8Array(N).fill(1); return; }
+  for(i=0;i<N;i++){ var d=Math.abs(g[i]-S.fl.prev[i]); if(d>14){ S.fl.still[i]=0; S.fl.dirty[i]=1; } else if(S.fl.still[i]<250) S.fl.still[i]++; }
+  S.fl.prev=g;
+  /* the picture under a box changed: its text may be gone. When most of the screen changed (another view), the
+     boxes go at once; otherwise the box is read again on its own and only goes when its text is not there any more
+     (text over moving scenery stays put) */
+  var moved=0; for(i=0;i<N;i++) if(S.fl.still[i]===0) moved++;
+  var ch=S.fl.items.filter(function(it){ return flChanged(g,it); });
+  if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0; }); flDraw(); }
+  else ch.forEach(function(it){ it.chk=true; });
+  if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||GUARD.kind) return;
+  if(S.fl.items.some(function(it){ return it.chk; })){ flVerify(my); return; }
+  var now=Date.now(); if(now-S.fl.last<900) return;
+  var fresh=0; for(i=0;i<N;i++) if(S.fl.dirty[i]&&S.fl.still[i]>=2) fresh++;
+  if(fresh>=40||(fresh>0&&now-S.fl.last>6000)) flRead(my);
+}
+/* the boxes whose picture changed, read again one by one: same text -> it stays (new picture kept), else it goes */
+async function flVerify(my){
+  S.fl.busy=true; S.ocrBusy=true;
+  var vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk; }).slice(0,4), gone=[];
+  try{
+    for(var k=0;k<list.length;k++){
+      var it=list[k], px=it.w*0.15, py=it.h*0.35, x=Math.max(0,it.x-px), y=Math.max(0,it.y-py), w=Math.min(1-x,it.w+2*px), h=Math.min(1-y,it.h+2*py);
+      var got=await fsRead(x*vw,y*vh,w*vw,h*vh,900), txt=got.map(function(b){ return b.en; }).join('\n');
+      var a=norm(it.en), bb=norm(txt);
+      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.sig=flPatch(S.fl.prev,it); }
+      else gone.push(it);
+    }
+  }catch(e){}
+  finally{ S.ocrBusy=false; S.fl.busy=false; }
+  if(my!==S.fl.seq) return;
+  if(gone.length){ S.fl.items=S.fl.items.filter(function(it){ return gone.indexOf(it)<0; }); flDraw(); }
+}
+async function flRead(my){
+  S.fl.busy=true; S.fl.last=Date.now(); S.fl.reads++;
+  var vw=video.videoWidth, vh=video.videoHeight, g=S.fl.prev, still=S.fl.still;
+  /* the region that changed and is still now: read it again, larger, so small text is not missed */
+  var x0=160,y0=90,x1=0,y1=0,i;
+  for(i=0;i<g.length;i++) if(S.fl.dirty[i]&&still[i]>=2){ var x=i%160, y=(i/160)|0; if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y; }
+  S.fl.dirty.fill(0);
+  var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<600) await new Promise(function(r){later(r,30);});
+  if(S.ocrBusy||my!==S.fl.seq){ S.fl.busy=false; return; }
+  S.ocrBusy=true; var all=[];
+  try{
+    all=all.concat(await fsRead(0,0,vw,vh,1600));
+    if(x1>=x0){ var bx=Math.max(0,(x0-4)/160*vw), by=Math.max(0,(y0-3)/90*vh), bw=Math.min(vw-bx,(x1-x0+9)/160*vw), bh=Math.min(vh-by,(y1-y0+7)/90*vh);
+      if(bw*bh<vw*vh*0.5&&bw>40&&bh>20) all=all.concat(await fsRead(bx,by,bw,bh,1400)); }
+    var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height);   /* for the colours */
+  }catch(e){ all=[]; }
+  finally{ S.ocrBusy=false; }
+  if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
+  all.sort(function(a,b){ return b.en.length-a.en.length; });
+  var blocks=[];
+  all.forEach(function(b){ if(!blocks.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); })) blocks.push(b); });
+  var g2=S.fl.prev, add=[];
+  blocks.forEach(function(b){
+    if(flSkip(b)||flStill(b)<0.7) return;                       /* moving things (signs going past) are not read */
+    var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.4; });
+    if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0; })) return;   /* already on screen (also read as one line or two) */
+    if(same.length) S.fl.items=S.fl.items.filter(function(it){ return same.indexOf(it)<0; });
+    b.sig=flPatch(g2,b);
+    try{ var c=zColors(flc,b); if(c&&c.bg&&flStill(b)>=0.92){ b.bg=c.bg; b.fg=c.fg||''; } }catch(e){}   /* a plain background (a panel, a phone): its colours; text over moving scenery: the dark box */
+    add.push(b);
+  });
+  if(!add.length){ S.fl.busy=false; return; }
+  var need=[];
+  add.forEach(function(b){ var c=S.fs.cache.get(norm(b.en)); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });
+  S.fl.items=S.fl.items.concat(add); flDraw();
+  log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
+  S.fl.busy=false;
+  if(!need.length) return;
+  /* the free translator first (about half a second), the AI's line replaces it */
+  if(S.allowFree) Promise.all(need.map(function(b){ return gtx(b.en).catch(function(){ return ''; }); })).then(function(vs){
+    if(my!==S.fl.seq) return; var ch=false;
+    need.forEach(function(b,k){ if(!b.vi&&vs[k]){ b.vi=caseFix(b.en,punctFix(b.en,vs[k])); ch=true; } }); if(ch) flDraw(); });
+  if(keys().length||groqKeys().length||orKeys().length){
+    try{
+      var r=await askText(fsPrompt(need.map(function(b){return b.en;})),need.map(function(b){return b.en;}).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
+      if(my!==S.fl.seq) return;
+      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=caseFix(b.en,punctFix(b.en,String(it.vi).trim())); S.fs.cache.set(norm(b.en),b.vi); });
+      if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
+      flDraw();
+    }catch(e){}
+  }
+}
 $('hsFull').addEventListener('click',fullScreen);
 $('hsModalX').addEventListener('click',function(){$('hsModal').classList.remove('open');});
 $('hsModal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
@@ -5076,6 +5214,8 @@ $('hsPsWatch').addEventListener('change',function(){ save('psWatch',this.checked
 $('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
 if(!load('fsautoOff1',false)){ save('fsauto',false); save('fsautoOff1',true); }   /* off by default (11/2026): everyone starts with it off once, turning it on is remembered */
 $('hsFsAuto').checked=load('fsauto',false); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
+$('hsFsLive').checked=load('fslive',!(PH||IOS));   /* on by default on computers; phones turn it on themselves (more work for the phone) */
+$('hsFsLive').addEventListener('change',function(){ save('fslive',this.checked); if(this.checked) flStart(); else flStop(); });
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
