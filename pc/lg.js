@@ -8,6 +8,17 @@ const http = require('http');
 const https = require('https');
 const dgram = require('dgram');
 const os = require('os');
+/* this computer's addresses on the home network, best first: the one in the TV's network, then real Wi-Fi / Ethernet
+   cards; the virtual ones (Hyper-V / WSL "vEthernet", VirtualBox, VMware, Docker, VPNs) last: their 172.x.x.1
+   address is not where a TV can reach this computer */
+const VIRT = /vEthernet|WSL|Hyper-V|Default Switch|VirtualBox|vboxnet|VMware|VMnet|Docker|br-|veth|virbr|ZeroTier|Tailscale|Radmin|Hamachi|WireGuard|OpenVPN|TAP|TUN|utun|Npcap|Loopback|Bluetooth|bridge1\d\d/i;
+function homeIps(tvIp) {
+  const list = [];
+  Object.entries(os.networkInterfaces()).forEach(([name, l]) => (l || []).forEach((a) => { if (a.family === 'IPv4' && !a.internal && !/^169\.254\./.test(a.address)) list.push({ name, ip: a.address }); }));
+  const pre = String(tvIp || '').split('.').slice(0, 3).join('.') + '.';
+  const score = (x) => (tvIp && x.ip.startsWith(pre) ? 0 : 10) + (VIRT.test(x.name) ? 5 : 0) + (/^(192\.168|10\.)/.test(x.ip) ? 0 : /^172\.(1[6-9]|2\d|3[01])/.test(x.ip) ? 1 : 3);
+  return list.sort((a, b) => score(a) - score(b)).map((x) => x.ip);
+}
 let ssh2 = null;
 const sshLib = () => (ssh2 = ssh2 || require('./vendor/ssh2.js'));   /* loaded only when a TV LG is used */
 
@@ -175,10 +186,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
   }
   /* this computer's address on the same network as the TV */
   function myAddr(tvIp) {
-    const all = [];
-    Object.values(os.networkInterfaces()).forEach((l) => (l || []).forEach((a) => { if (a.family === 'IPv4' && !a.internal) all.push(a.address); }));
-    const pre = String(tvIp || '').split('.').slice(0, 3).join('.') + '.';
-    const ip = all.filter((a) => a.startsWith(pre))[0] || all.filter((a) => /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))/.test(a))[0] || all[0] || '';
+    const ip = homeIps(tvIp)[0] || '';
     return ip && lanPort ? ip + ':' + lanPort : '';
   }
 
@@ -256,4 +264,4 @@ function selfTest() {
   const ok = sshLib().utils.parseKey(privateKey, 'ABC123'), bad = sshLib().utils.parseKey(privateKey, 'WRONG1');
   return { encrypted: /ENCRYPTED/.test(privateKey), opens: !(ok instanceof Error) && !!ok && ok.type === 'ssh-rsa', wrongRejected: bad instanceof Error };
 }
-module.exports = { setup, APP_ID, selfTest };
+module.exports = { setup, APP_ID, selfTest, homeIps };

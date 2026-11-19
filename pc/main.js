@@ -958,10 +958,12 @@ function setupIpc() {
   /* Android TV: the clip goes to the TV in the message itself (the TV may not reach this computer through Windows Firewall) */
   ipcMain.handle('tv-say', (e, ip, msg) => tvHttp(ip, '/sub', msg));
   /* this computer on the home network: the IP the TVs need, and the port Hóng Sub answers them on */
-  ipcMain.handle('net-info', () => {
-    const a = lgApi && lgApi.myAddr ? lgApi.myAddr('') : '';
-    const all = []; Object.values(os.networkInterfaces()).forEach((l) => (l || []).forEach((x) => { if (x.family === 'IPv4' && !x.internal) all.push(x.address); }));
-    return { ip: a ? a.split(':')[0] : (all[0] || ''), port: a ? +a.split(':')[1] : 0, all };
+  ipcMain.handle('net-info', (e, tvIp) => {
+    tvIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(String(tvIp || '')) ? String(tvIp) : '';
+    const all = require('./lg').homeIps(tvIp);
+    const a = lgApi && lgApi.myAddr ? lgApi.myAddr(tvIp) : '';
+    const pre = tvIp.split('.').slice(0, 3).join('.') + '.';
+    return { ip: a ? a.split(':')[0] : (all[0] || ''), port: a ? +a.split(':')[1] : 0, all, sameNet: tvIp ? all.some((x) => x.startsWith(pre)) : null };
   });
   ipcMain.handle('update', () => checkUpdate());
   /* what changed: the change notes between this version and the newest one (or the latest changes up to this version) */

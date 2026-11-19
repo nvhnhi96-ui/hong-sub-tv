@@ -644,7 +644,7 @@ refresh();
     ['hsTvGuidePcIp','dkTzPcIp'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=n.ip; });
     window.hsPcIp=n.ip;
   }
-  function look(){ D.netInfo().then(fill).catch(function(){}); }
+  function look(){ var t=document.getElementById('hsTvIp'), z=document.getElementById('dkTzIp'); D.netInfo((t&&t.value.trim())||(z&&z.value.trim())||'').then(fill).catch(function(){}); }
   look(); setInterval(look,60000);
   window.hsNetLook=look;
 })();

@@ -2399,7 +2399,7 @@ function tvStatus(){
     if(ip){
       if(S.tvOk&&tvOld()) return {bad:true,t:'TV '+(S.tvName?S.tvName+' ':'')+'đang chạy app Hóng Sub TV bản cũ'+(S.tvVer&&S.tvVer!=='old'?' ('+S.tvVer+')':'')+', chưa có các sửa lỗi mới. Trên TV mở app Hóng Sub TV, TV hỏi cập nhật thì bấm Cập nhật (làm một lần).'};
       if(S.tvOk) return {ok:true,t:'Đã nối TV '+(S.tvName?S.tvName+' ':'')+'('+ip+') qua mạng nhà'+(S.tvVer&&S.tvVer!=='old'?', app TV bản '+S.tvVer:'')+'.'};
-      if(S.tvOk===false) return {bad:true,t:'TV '+ip+' chưa trả lời. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".',a:'Tìm lại TV',f:function(){ tvFindUi(false); }};
+      if(S.tvOk===false) return c.length>=4?{ok:true,t:'TV '+ip+' không nối được qua mạng nhà, phụ đề đi bằng mã '+c+' (qua internet).'}:{bad:true,t:(D?tvWhyText(ip):'TV '+ip+' chưa trả lời. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'),html:!!D,a:'Tìm lại TV',f:function(){ tvFindUi(false); }};
       return {t:'Đang kiểm tra TV '+ip+'...'};
     }
     if(c.length>=4) return seen?{ok:true,t:'TV đang mở Hóng Sub TV (mã '+c+').'}:{ok:true,t:'Gửi phụ đề bằng mã '+c+'. Trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".'};
@@ -2438,7 +2438,7 @@ function tvState(){
   var box=$('hsTvState'); if(!box) return;
   var st=tvStatus(), b=$('hsTvStateB');
   box.className='tvs'+(st.ok?' ok':st.bad?' bad':'');
-  $('hsTvStateT').textContent=st.t;
+  if(st.html) $('hsTvStateT').innerHTML=st.t; else $('hsTvStateT').textContent=st.t;
   b.hidden=!(st.a&&st.f); if(st.a){ b.textContent=st.a; b.onclick=st.f; }
 }
 (function(){ var box=$('hsTvType'); if(!box) return;
@@ -2503,6 +2503,19 @@ function tvPush(vi,en,who,manual,vl){
     .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: '+(lanTv()?'trên TV mở app Hóng Sub, kiểm tra mã trên TV đúng là '+tvCode()+'.':S.tvType==='web'?'trên TV mở honggame.store/lg, kiểm tra mã trên TV đúng là '+tvCode()+'.':'trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".')); })
     .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err',tvIp()?'TV không trả lời. Kiểm tra TV đã mở app Hóng Sub TV, và '+(PH||IOS?'điện thoại':''+(PH||IOS?'điện thoại':'máy tính')+'')+' với TV dùng chung một mạng.':'Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
 }
+/* why the TV on the home network does not answer: no app listening there (refused), or nothing reaches it (timeout:
+   this computer is on another network, or the router keeps devices apart) */
+function tvWhy(ip){
+  if(!D||!D.netInfo||S.tvWhyAt&&Date.now()-S.tvWhyAt<20000) return; S.tvWhyAt=Date.now();
+  D.netInfo(ip).then(function(n){ S.tvNet=n; if(window.hsNetLook) window.hsNetLook(); tvState(); }).catch(function(){});
+}
+function tvWhyText(ip){
+  var n=S.tvNet||{}, e=String(S.tvErr||''), mine=esc((n.all||[]).join(', ')); ip=esc(ip);
+  var code=' Cách chắc chắn nhất: gõ <b>mã TV</b> (6 chữ đang hiện trên app Hóng Sub TV) vào ô "Hoặc dùng mã TV" bên dưới, phụ đề đi qua internet, không cần chung mạng.';
+  if(/ECONNREFUSED/.test(e)) return 'TV '+ip+' có trong mạng nhưng app Hóng Sub TV chưa mở. Trên TV mở app Hóng Sub TV, bấm "Bật phụ đề" (app phải chạy, rồi mới chuyển sang cổng HDMI của PS5).';
+  if(n.sameNet===false) return 'Máy tính này không cùng mạng với TV: máy tính có IP '+(mine||'?')+', TV là '+ip+'. Cắm máy tính vào cùng modem/wifi với TV.'+code;
+  return 'TV '+ip+' không trả lời: TV đã tắt, IP của TV đã đổi (bấm Tìm lại TV), hoặc modem chặn các máy nói chuyện với nhau (wifi khách, "AP isolation").'+code;
+}
 /* connection state shown under the IP box */
 S.tvOk=null;
 function tvLan(ok,name){
@@ -2550,7 +2563,7 @@ function tvListen(){
       if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; S.tvVer=String(r.ver||'old'); tvLan(true);
         if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ: '+S.tvVer); status('warn','App Hóng Sub TV trên TV là bản cũ. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); tvNotice('App Hóng Sub TV có bản mới: mở app Hóng Sub TV trên TV rồi bấm Cập nhật.'); }
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
-      else tvLan(false);
+      else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
     }).catch(function(){ tvLan(false); });
   } else if(c.length>=4) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
     var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65;

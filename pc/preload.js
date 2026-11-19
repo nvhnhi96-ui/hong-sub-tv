@@ -139,7 +139,7 @@ const api = {
     state: () => ipcRenderer.invoke('az-state'),
     test: () => ipcRenderer.invoke('az-test')
   },
-  netInfo: () => ipcRenderer.invoke('net-info'),
+  netInfo: (tvIp) => ipcRenderer.invoke('net-info', tvIp || ''),
   voiceClip: (text, voice) => ipcRenderer.invoke('voice-clip', text, voice),
   /* play a clip made by voiceClip here too (same queue as the subtitles read aloud) */
   playClip: (clip, rate, pitch, queue) => {
