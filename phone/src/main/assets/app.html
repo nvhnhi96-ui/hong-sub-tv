@@ -5064,7 +5064,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
@@ -5912,7 +5912,7 @@ function psFind(ip){
 }
 function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms);});}
 async function psPlay(h,opt){
-  PS.last=h; PS.retrying=false; PS.q=opt||null; PS.frz=0; PS.lastFr=0; PS.lastPk=0;
+  PS.last=h; PS.retrying=false; PS.appReason=''; PS.q=opt||null; PS.frz=0; PS.lastFr=0; PS.lastPk=0;
   if(h.state!=='ready'){
     psMsg('','Đang bật '+h.name+'...'); await DPS.wake(h.id);
     for(var i=0;i<20;i++){ await sleepMs(2500); var l=await DPS.discover(h.addr); var x=l.filter(function(y){return y.id===h.id;})[0]; if(x&&x.state==='ready'){ h=x; break; } if(i===8) DPS.wake(h.id); }
@@ -5983,6 +5983,45 @@ function gameMuteSet(on){
   var c=$('hsGameMute'); if(c) c.checked=!!on;
 }
 function playQSync(){ var a=$('hsPsQ'), b=$('hsPlayQ'); if(!a||!b) return; if(b.options.length!==a.options.length) b.innerHTML=a.innerHTML; b.value=a.value; }
+/* The PS refused the session at once and said why (RP-Application-Reason). A lower quality does not help: tell the
+   person exactly what to do on the PS5, and, when the pairing is no longer known to the PS, offer to pair again.
+   80108b12: Remote Play is switched off on the PS (pairing still works when it is off)
+   80108b26: the PS no longer knows this pairing (removed on the PS, PS reset or paired again elsewhere)
+   80108b10: another Remote Play is using the PS (phone, other computer, PS Portal, or one that just ended)
+   80108b13: the PS refused this user / is not ready (another user signed in, user picker on screen) */
+function psRefused(code){
+  var h=PS.last||{}, name=h.name||'máy PS', ps5=h.ps5!==false, now=Date.now();
+  var path=ps5?'Cài đặt › Hệ thống › Chơi từ xa':'Cài đặt › Cài đặt kết nối Chơi từ xa';
+  var t='', act=null, actTxt='', again=false;
+  if(code==='80108b12'){ t=name+' đang tắt Chơi từ xa. Trên PS5 vào '+path+', bật "Bật Chơi từ xa", rồi bấm Kết nối lại.'; again=true; }
+  else if(code==='80108b26'||code==='80108b09'||code==='80108b02'){ t=name+' không còn nhận '+psDev()+' này (đã bỏ ghép trên PS5, PS5 vừa cài lại, hoặc đã ghép lại ở nơi khác). Cần ghép lại: bấm "Ghép lại", trên PS5 vào '+path+' › Liên kết thiết bị (Link Device) để lấy mã 8 số.'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; }
+  else if(code==='80108b10'){ t=name+' đang được chơi từ xa ở thiết bị khác (app PS Remote Play trên điện thoại / máy khác, PS Portal). Tắt kết nối đó rồi bấm Kết nối lại.'; again=true;
+    if(!PS.inUseAt||now-PS.inUseAt>120000){ PS.inUseAt=now; t+=' Hóng Sub tự thử lại sau 20 giây.'; setTimeout(function(){ if(!PS.host&&PS.last===h) psPlay(h,PS.q||null); },20000); } }
+  else if(code==='80108b13'){ t=name+' chưa cho vào (mã 13): thường do PS5 đang ở màn hình chọn người dùng, hoặc người đang đăng nhập trên PS5 không phải tài khoản PSN đã ghép. Trên PS5 chọn đúng người dùng ('+((PS.acc&&PS.acc.onlineId)||'tài khoản đã ghép')+'), rồi bấm Kết nối lại. Vẫn bị thì bấm "Ghép lại".'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; again=true; }
+  else if(code==='80108b15'){ t='Chơi từ xa trên '+name+' bị lỗi. Tắt hẳn PS5 (giữ nút nguồn 3 giây) rồi bật lại, rồi bấm Kết nối lại.'; again=true; }
+  else return false;
+  log('PS: máy từ chối (0x'+code+'): '+t);
+  psWatchStop(); try{ DPS.stop(false); }catch(e){} PS.retrying=true; psStopView(); PS.retrying=false;
+  PS.err='máy từ chối 0x'+code; PS.appReason='';
+  autoReport('ps-refused','0x'+code+': '+t.slice(0,150));
+  psMsg('err',t); status('err',t); tvNotice('Máy PS chưa cho kết nối, xem hướng dẫn trên '+psDev()+'.');
+  var box=$('hsPsMsg');
+  if(box){ var row=document.createElement('div'); row.className='hs-row'; row.style.marginTop='8px';
+    if(act){ var b1=document.createElement('button'); b1.className='hs-btn pri'; b1.type='button'; b1.textContent=actTxt; b1.onclick=act; row.appendChild(b1); }
+    if(again){ var b2=document.createElement('button'); b2.className='hs-btn'+(act?'':' pri'); b2.type='button'; b2.textContent='Kết nối lại'; b2.onclick=function(){ psPlay(h,PS.q||null); }; row.appendChild(b2); }
+    box.appendChild(row); }
+  return true;
+}
+/* pair again: forget the old pairing, find the PS, open its 8-digit code box */
+function psRepair(h){
+  if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép lại.'); return; }
+  psMsg('','Đang bỏ ghép cũ...');
+  DPS.forget(h.id).then(function(){ return psFind(h.addr); }).then(function(){
+    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm máy.'); return; }
+    var box=document.querySelector('.hs-ps[data-i="'+i+'"]'), pb=box&&box.querySelector('[data-a=pair]'); if(pb) pb.click();
+    if(box) box.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
 function psRetry(why){
   psWatchStop(); log('PS: '+why);
   var h=PS.last; if(PS.retrying) return;
@@ -6183,7 +6222,7 @@ function psPadStop(){ if(PS.padTimer){clearInterval(PS.padTimer); PS.padTimer=nu
 /* --- console events --- */
 var QUIT_TXT={'Remote Play already in use':'Máy đang được kết nối Chơi từ xa ở nơi khác','Connection refused':'Máy từ chối kết nối'};
 function psEvent(ev){
-  if(ev.ev==='log'){ if((PS.nlog=(PS.nlog||0)+1)<=200) log('PS máy: '+ev.msg); return; }
+  if(ev.ev==='log'){ if((PS.nlog=(PS.nlog||0)+1)<=200) log('PS máy: '+ev.msg); var ar=/Application Reason:\s*0x([0-9a-f]+)/i.exec(ev.msg||''); if(ar) PS.appReason=ar[1].toLowerCase(); return; }
   if(ev.ev!=='rumble') log('PS sự kiện: '+JSON.stringify(ev).slice(0,300));
   if(ev.ev==='connected'){ PS.conn=true; psMsg('','Đã kết nối, đang chờ hình...'); }
   else if(ev.ev==='pin'){
@@ -6193,6 +6232,7 @@ function psEvent(ev){
   }
   else if(ev.ev==='quit'){
     var t=ev.text||'', msg='Đã ngắt kết nối'+(t?': '+(QUIT_TXT[t]||t):'')+(ev.str?' ('+ev.str+')':'');
+    if(PS.host&&!PS.frames&&PS.appReason&&psRefused(PS.appReason)) return;   /* the PS said why it refused: say it, do not try lower quality */
     if(PS.host&&!PS.frames&&!/already in use/i.test(t)&&ev.reason!==1){ psRetry('máy ngắt khi chưa có hình: '+t+' '+(ev.str||'')); return; }
     PS.err=QUIT_TXT[t]||t||''; psMsg(ev.reason===1||ev.reason===12?'':'err',msg); if(ev.reason!==1&&ev.reason!==12) status('err',msg);
   }
