@@ -2827,7 +2827,7 @@ function thinkCfg(model){
   return {thinkingLevel:S.noMin[model]?'low':'minimal'}; /* "low" thinking made each line take ~10s */
 }
 /* speed: remember how fast each model answers on this machine and use the quickest */
-S.lat=load('lat',{}); S.latAt=load('latat',{}); S.noMin=load('nomin',{}); S.slow={}; S.gN=0;
+S.lat=load('lat',{}); S.latAt=load('latat',{}); S.noMin=load('nomin',{}); S.slow={}; S.gone=load('mgone',{}); Object.keys(S.gone).forEach(function(m){ if(S.gone[m]>Date.now()) S.slow[m]=S.gone[m]; });   /* models Google retired (404) stay skipped after a restart */ S.gN=0;
 function mScore(m,i){
   var now=Date.now(), s=(S.lat[m]||2500)+i*40;
   if(S.slow[m]&&S.slow[m]>now) s+=1e6;
@@ -2910,7 +2910,7 @@ async function gemini(prompt,b64,schema){
       if(/limit:\s*0\b/.test(msg)||/free.?tier/i.test(msg)&&/not available|limit: 0/i.test(msg)){ S.slow[model]=Date.now()+12*3600e3; continue; } /* model not in free tier */
       var m=msg.match(/retry in ([\d.]+)s/i); S.cool[key]=Date.now()+(m?parseFloat(m[1])*1000:(/per.?day|daily/i.test(msg)?3600e3:45000)); continue;
     }
-    if(r.status===404||(r.status===400&&/model/i.test(msg))){ S.slow[model]=Date.now()+12*3600e3; continue; }
+    if(r.status===404||(r.status===400&&/model/i.test(msg))){ S.slow[model]=Date.now()+(r.status===404?7*24:12)*3600e3; if(r.status===404){ S.gone[model]=S.slow[model]; save('mgone',S.gone); } continue; }
     if(r.status===400||r.status===403){S.cool[key]=Date.now()+3600e3; continue;}
     if(r.status>=500){ S.slow[model]=Date.now()+60e3; continue; }
     break;
