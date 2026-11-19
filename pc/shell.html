@@ -667,6 +667,12 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note hs-need" id="hsGroqNeed"><b>Tối thiểu 1 mã Groq</b>: dịch nhanh nhất (khoảng 0,35 giây mỗi câu) và làm dự phòng khi mã Gemini hết lượt.</p>
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
             </div>
+            <div class="dk-card">
+              <h2>Mã DeepL <small style="font-weight:400;color:var(--muted,#9a9aa6)">không bắt buộc</small></h2>
+              <p class="hs-note">Khi hết mã AI, Hóng Sub dịch bằng máy dịch miễn phí: Google dịch, Bing làm dự phòng (Google chậm hoặc lỗi thì Bing dịch). Có mã DeepL thì DeepL dịch trước, câu tự nhiên hơn. Miễn phí 500.000 ký tự mỗi tháng (khoảng 10.000 câu thoại). <button class="dk-link" type="button" data-url="https://www.deepl.com/pro-api">Lấy mã DeepL miễn phí</button></p>
+              <input class="hs-in" id="hsDeepl" type="password" spellcheck="false" autocomplete="off" placeholder="Dán mã DeepL (mã miễn phí có đuôi :fx)" aria-label="Mã DeepL">
+              <div class="hs-msg" id="hsDeeplMsg" hidden></div>
+            </div>
             <div class="dk-card" id="dkAzCard">
               <h2>Giọng Azure</h2>
               <p class="hs-note">Giọng đọc tiếng Việt tự nhiên của Microsoft (Hoài My, Nam Minh), trả lời rất nhanh. Gói miễn phí 0,5 triệu ký tự mỗi tháng, hết thì Hóng Sub tự đọc bằng giọng có sẵn. Tạo tài nguyên "Speech" trong Azure, chọn gói Free F0, rồi lấy KEY 1 và Location/Region ở mục Keys and Endpoint. <button class="dk-link" type="button" data-url="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices">Tạo Speech trên Azure</button></p>
@@ -888,7 +894,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
-              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
+              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí (DeepL nếu có mã, Google, Bing) <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
             <div class="dk-card">

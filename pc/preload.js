@@ -168,6 +168,7 @@ const api = {
   updateNotes: (from, to) => ipcRenderer.invoke('update-notes', from, to),
   version: () => ipcRenderer.invoke('app-version'),
   getJson: (u) => ipcRenderer.invoke('get-json', u),
+  netReq: (u, o) => ipcRenderer.invoke('net-req', u, o),
   hotkeys: () => ipcRenderer.invoke('hotkeys-get'),
   setHotkeys: (k) => ipcRenderer.invoke('hotkeys-set', k),
   pauseHotkeys: (on) => ipcRenderer.invoke('hotkeys-pause', on),

@@ -1077,6 +1077,18 @@ function setupIpc() {
     const ny = Math.round(Math.min(b.y, d.y + d.height - hh));
     overlay.setBounds({ x: nx, y: ny, width: w, height: hh }); cfg.overlay = overlay.getBounds(); cfg.overlayPct = pct; saveCfg(); return true;
   });
+  /* free machine translators that do not answer web pages directly (DeepL, Bing): asked from here */
+  ipcMain.handle('net-req', async (e, u, o) => {
+    try {
+      const url = new URL(String(u));
+      if (url.protocol !== 'https:' || !['edge.microsoft.com', 'api-edge.cognitive.microsofttranslator.com', 'api-free.deepl.com', 'api.deepl.com', 'translate.googleapis.com'].includes(url.hostname)) return { err: 'blocked' };
+      o = o || {};
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 12000);
+      const r = await net.fetch(url.toString(), { method: o.method || 'GET', headers: o.headers || {}, body: o.body || undefined, signal: ctl.signal });
+      const text = await r.text(); clearTimeout(tm);
+      return { status: r.status, text: text.slice(0, 200000) };
+    } catch (err) { return { err: String(err && err.message || err) }; }
+  });
   ipcMain.handle('get-json', async (e, u) => {
     const url = new URL(String(u));
     if (url.hostname !== 'translate.googleapis.com') throw new Error('blocked');

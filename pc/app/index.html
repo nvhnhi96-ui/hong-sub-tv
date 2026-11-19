@@ -943,6 +943,12 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note hs-need" id="hsGroqNeed"><b>Tối thiểu 1 mã Groq</b>: dịch nhanh nhất (khoảng 0,35 giây mỗi câu) và làm dự phòng khi mã Gemini hết lượt.</p>
               <textarea class="hs-in" id="hsGroq" rows="2" spellcheck="false" autocomplete="off" placeholder="gsk_..." aria-label="Mã Groq"></textarea>
             </div>
+            <div class="dk-card">
+              <h2>Mã DeepL <small style="font-weight:400;color:var(--muted,#9a9aa6)">không bắt buộc</small></h2>
+              <p class="hs-note">Khi hết mã AI, Hóng Sub dịch bằng máy dịch miễn phí: Google dịch, Bing làm dự phòng (Google chậm hoặc lỗi thì Bing dịch). Có mã DeepL thì DeepL dịch trước, câu tự nhiên hơn. Miễn phí 500.000 ký tự mỗi tháng (khoảng 10.000 câu thoại). <button class="dk-link" type="button" data-url="https://www.deepl.com/pro-api">Lấy mã DeepL miễn phí</button></p>
+              <input class="hs-in" id="hsDeepl" type="password" spellcheck="false" autocomplete="off" placeholder="Dán mã DeepL (mã miễn phí có đuôi :fx)" aria-label="Mã DeepL">
+              <div class="hs-msg" id="hsDeeplMsg" hidden></div>
+            </div>
             <div class="dk-card" id="dkAzCard">
               <h2>Giọng Azure</h2>
               <p class="hs-note">Giọng đọc tiếng Việt tự nhiên của Microsoft (Hoài My, Nam Minh), trả lời rất nhanh. Gói miễn phí 0,5 triệu ký tự mỗi tháng, hết thì Hóng Sub tự đọc bằng giọng có sẵn. Tạo tài nguyên "Speech" trong Azure, chọn gói Free F0, rồi lấy KEY 1 và Location/Region ở mục Keys and Endpoint. <button class="dk-link" type="button" data-url="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices">Tạo Speech trên Azure</button></p>
@@ -1164,7 +1170,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
-              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí <input type="checkbox" id="dkFree"></label>
+              <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí (DeepL nếu có mã, Google, Bing) <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
             <div class="dk-card">
@@ -1715,6 +1721,7 @@ function keys(){return $('hsKeys').value.split(/[\s,]+/).map(function(s){return 
 (function(){ var k=load('keys',[]); $('hsKeys').value=Array.isArray(k)?k.join('\n'):String(k||''); })();
 function groqKeys(){return $('hsGroq').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
 $('hsGroq').value=load('groq',[]).join('\n');
+if($('hsDeepl')){ $('hsDeepl').value=load('deepl',''); $('hsDeepl').addEventListener('change',function(){ this.value=this.value.trim(); save('deepl',this.value); S.deeplOut=0; if(this.value) deeplTr('Hello, are you ready?').then(function(v){ log('DeepL dùng được: '+v); if($('hsDeeplMsg')){ $('hsDeeplMsg').hidden=false; $('hsDeeplMsg').className='hs-msg ok'; $('hsDeeplMsg').textContent='Mã DeepL dùng được. Khi hết mã AI, Hóng Sub dịch bằng DeepL trước.'; } },function(e){ if($('hsDeeplMsg')){ $('hsDeeplMsg').hidden=false; $('hsDeeplMsg').className='hs-msg err'; $('hsDeeplMsg').textContent=/mã sai/.test(e.message)?'Mã DeepL không đúng. Sao chép lại mã ở trang DeepL (mã miễn phí có đuôi :fx).':!D&&!(DPS&&DPS.raw)?'DeepL chỉ dùng được trong app Hóng Sub (Windows, Mac, điện thoại).':'Chưa thử được DeepL: '+e.message; } }); }); }
 $('hsGroq').addEventListener('change',function(){save('groq',groqKeys());S.gModels=[];S.gListed=0;save('gmodels2',[]);steps();});
 $('hsKeys').addEventListener('change',function(){save('keys',keys());S.models=[];save('models',[]);steps();});
 function keyMsg(cls,t){var m=$('hsKeyMsg');m.hidden=false;m.className='hs-msg '+cls;m.textContent=t;}
@@ -3056,7 +3063,60 @@ async function freeTr(text){
   var vi=await gtx(body);
   return {en:(who?who+': ':'')+body, vi:vi, gender:''};
 }
+/* ---------- free machine translation when every AI key is out: DeepL (own key, best), then Google and Bing ----------
+   Google answers first; Bing (Microsoft Translator, as in the Edge browser) starts when Google is slow or blocked, the
+   first good answer wins. With a DeepL key (500,000 letters a month free) DeepL goes first, with the recent lines as
+   context. DeepL and Bing go through the app (Windows/Mac/phones), where websites' browser rules do not apply. */
+function xhttp(url,o){
+  o=o||{};
+  if(D&&D.netReq) return D.netReq(url,{method:o.method||'GET',headers:o.headers||{},body:o.body||''}).then(function(r){ if(!r||r.err) throw new Error((r&&r.err)||'mạng'); return r; });
+  if(DPS&&DPS.raw&&DPS.raw.call&&!D){ var a={url:url,method:o.method||'GET',headers:o.headers||{}}; if(o.body) a.body=btoa(unescape(encodeURIComponent(o.body)));
+    return DPS.raw.call('http:'+JSON.stringify(a)).then(function(r){ if(!r||!r.ok) throw new Error((r&&r.err)||'mạng'); var t=''; try{ t=decodeURIComponent(escape(atob(r.b64||''))); }catch(e){ t=atob(r.b64||''); } return {status:r.status,text:t}; }); }
+  return fetch(url,{method:o.method||'GET',headers:o.headers||{},body:o.body||undefined}).then(function(r){ return r.text().then(function(t){ return {status:r.status,text:t}; }); });
+}
+function deeplKey(){ var el=$('hsDeepl'); return String((el&&el.value)||load('deepl','')||'').trim(); }
+S.deeplOut=0; S.mtVia='';
+async function deeplTr(text){
+  var k=deeplKey(); if(!k||Date.now()<S.deeplOut) throw new Error('deepl');
+  var body={text:[text],target_lang:'VI'}, sl=String(LG()||'').toLowerCase(); if(sl&&sl!=='auto') body.source_lang=sl.split('-')[0].toUpperCase();
+  var ctx=S.hist.slice(0,3).reverse().map(function(h){ return h.en; }).filter(Boolean).join('\n'); if(ctx) body.context=ctx.slice(0,1500);
+  var r=await xhttp('https://'+(/:fx$/.test(k)?'api-free':'api')+'.deepl.com/v2/translate',{method:'POST',headers:{'Authorization':'DeepL-Auth-Key '+k,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(r.status===456){ S.deeplOut=Date.now()+6*3600e3; log('DeepL: hết 500.000 ký tự miễn phí của tháng này, dùng Google/Bing'); throw new Error('deepl hết lượt'); }
+  if(r.status===403||r.status===401){ S.deeplOut=Date.now()+3600e3; log('DeepL: mã không đúng'); throw new Error('deepl mã sai'); }
+  if(r.status===429||r.status>=500){ S.deeplOut=Date.now()+60e3; throw new Error('deepl bận'); }
+  var j=JSON.parse(r.text||'{}'), vi=((j.translations||[])[0]||{}).text||'';
+  if(!vi.trim()) throw new Error('deepl trống'); return vi.trim();
+}
+S.bing={tok:'',at:0};
+async function bingTok(force){
+  if(!force&&S.bing.tok&&Date.now()-S.bing.at<8*60e3) return S.bing.tok;
+  var r=await xhttp('https://edge.microsoft.com/translate/auth',{});
+  var t=String(r.text||'').trim(); if(r.status!==200||t.split('.').length<3) throw new Error('bing auth '+r.status);
+  S.bing={tok:t,at:Date.now()}; return t;
+}
+async function bingTr(text,again){
+  var t=await bingTok(again), sl=String(LG()||'').toLowerCase(), from=sl&&sl!=='auto'?(sl==='zh-cn'?'zh-Hans':sl==='zh-tw'?'zh-Hant':sl.split('-')[0]):'';
+  var r=await xhttp('https://api-edge.cognitive.microsofttranslator.com/translate?api-version=3.0&to=vi'+(from?'&from='+from:''),{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify([{Text:text}])});
+  if(r.status===401&&!again) return bingTr(text,true);
+  if(r.status!==200) throw new Error('bing '+r.status);
+  var j=JSON.parse(r.text||'[]'), vi=(((j[0]||{}).translations||[])[0]||{}).text||'';
+  if(!vi.trim()) throw new Error('bing trống'); return vi.trim();
+}
+function mtVia(v){ if(v!==S.mtVia){ S.mtVia=v; log('máy dịch miễn phí: '+(v==='deepl'?'DeepL':v==='bing'?'Bing (Microsoft)':'Google dịch')); } }
 async function gtx(text){
+  if(deeplKey()&&Date.now()>=S.deeplOut){
+    try{ var dv=await Promise.race([deeplTr(text),new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('deepl chậm')); },3000); })]); mtVia('deepl'); return dv; }catch(e){}
+  }
+  return new Promise(function(res,rej){
+    var done=false, fails=0, bStarted=false, errs=[];
+    function ok(v,via){ if(done) return; done=true; mtVia(via); res(v); }
+    function bad(e){ errs.push(e); if(++fails>=2&&!done){ done=true; rej(errs[0]); } else startB(); }
+    function startB(){ if(bStarted||done) return; bStarted=true; bingTr(text).then(function(v){ ok(v,'bing'); },bad); }
+    gtxGoogle(text).then(function(v){ ok(v,'google'); },bad);
+    setTimeout(startB,700);   /* Google slow: Bing joins */
+  });
+}
+async function gtxGoogle(text){
   var u='https://translate.googleapis.com/translate_a/single?client=gtx&sl='+LG()+'&tl=vi&dt=t&q='+encodeURIComponent(text);
   var j=D&&D.getJson?await D.getJson(u):await fetch(u).then(function(r){ if(!r.ok) throw new Error('Máy dịch miễn phí lỗi '+r.status); return r.json(); });
   var vi=((j&&j[0])||[]).map(function(x){return x&&x[0]||'';}).join('').trim();
@@ -4235,7 +4295,7 @@ function runStatus(){
 }
 S.perf={o:0,t:0};
 function perfTag(){
-  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='tm'?'Kho dịch chung':S.via==='free'?'Máy dịch miễn phí':S.via==='groq'?'Groq':S.via==='local'?'AI trên máy':S.via==='smart'?orShort(S.orModel):(S.model||'');
+  var on=$('hsPerf')&&$('hsPerf').checked, via=S.via==='tm'?'Kho dịch chung':S.via==='free'?(S.mtVia==='deepl'?'DeepL':S.mtVia==='bing'?'Bing':'Google dịch'):S.via==='groq'?'Groq':S.via==='local'?'AI trên máy':S.via==='smart'?orShort(S.orModel):(S.model||'');
   $('hsModelTag').textContent=via+(on&&S.perf.t?' · đọc chữ '+(S.perf.o/1000).toFixed(2)+'s · dịch '+(S.perf.t/1000).toFixed(2)+'s':'');
 }
 
