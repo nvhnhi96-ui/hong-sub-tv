@@ -685,8 +685,8 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
             <div class="dk-card">
               <h2>Game đang chơi</h2>
               <p class="hs-note">Chọn đúng game để AI dịch đúng tên nhân vật, địa danh và cách xưng hô. Đổi game thì đổi ở đây.</p>
-              <div class="dk-set"><label class="lab" for="hsPreset">Chọn game</label><select class="hs-in" id="hsPreset"><option value="">Chọn game</option></select></div>
-              <div class="dk-set"><label class="lab" for="hsGame">Game khác thì gõ tên</label><input class="hs-in" id="hsGame" type="text" list="hsGameList" autocomplete="off" placeholder="VD: Ghost of Tsushima"><datalist id="hsGameList"></datalist></div>
+              <div class="dk-set" hidden><select class="hs-in" id="hsPreset" aria-hidden="true" tabindex="-1"><option value="">Chọn game</option></select></div>
+              <div class="dk-set"><label class="lab" for="hsGame">Tìm game</label><div class="hs-ac"><input class="hs-in" id="hsGame" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hsGameSug" placeholder="Gõ vài chữ đầu, VD: gow, gta, ghost"><div class="hs-sug" id="hsGameSug" role="listbox" hidden></div></div><datalist id="hsGameList"></datalist></div>
               <div class="dk-set"><label class="lab" for="hsLang">Ngôn ngữ chữ trong game</label><select class="hs-in" id="hsLang"></select>
                 <p class="hs-note">Tiếng Anh và tiếng Trung đọc được ngay. Tiếng Nhật, Hàn, Nga và Pháp, Đức, Tây Ban Nha, Ý, Bồ Đào Nha tải thêm bộ đọc chữ khoảng 10 MB ở lần đầu chọn.</p></div>
               <div class="dk-set"><label class="lab" for="hsNotes">Nhân vật và cách xưng hô</label><textarea class="hs-in" id="hsNotes" rows="5" placeholder="VD: Kratos là cha, Atreus là con. Kratos xưng ta, gọi con."></textarea></div>
