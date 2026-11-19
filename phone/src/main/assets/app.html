@@ -2762,7 +2762,7 @@ function zTvClearAll(){
   if(!(tvIp()||tvCode().length>=4)) return;
   var any=S.zones.some(function(z){ return z.tvLive||z.tvN; });
   if(!any&&!S.zTvAny) return;
-  S.zTvAny=false;
+  S.zTvAny=false; S.fsTvN=0;
   tvSend({kind:'zone',zclr:1,vi:''}).catch(function(){});
   S.zones.forEach(function(z){
     if(!z.tvLive&&!z.tvN) return;
@@ -2776,7 +2776,7 @@ function zTvClearAll(){
    computer asleep, network gone), the TV takes the area boxes away by itself instead of keeping old text for minutes */
 (function(){
   function beat(){
-    var live=S.zones.some(function(z){ return z.tvLive; });
+    var live=S.zones.some(function(z){ return z.tvLive; })||(S.fsTvN||0)>0;
     if(live) S.zTvAny=true;
     if(!live||!(tvIp()||tvCode().length>=4)) return;
     if(!S.stream){ zTvClearAll(); return; }
@@ -5295,7 +5295,26 @@ function fsOverlaySync(){
   var list=src.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:it.bg||'',fg:it.fg||''};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
   if(PH){ try{ PH.full(JSON.stringify(on?{items:list,font:subFontKey()}:null)); }catch(e){} }
-  if(D&&D.fullOverlay) D.fullOverlay(on&&!stageFs()?{items:list,font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
+  /* the window over the whole computer screen is for a game shown on this computer (Remote Play window). With the PS5
+     inside Hóng Sub the boxes are on its picture already, and on the TV: nothing floats over other apps. */
+  var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;
+  if(D&&D.fullOverlay) D.fullOverlay(on&&!stageFs()&&!inApp?{items:list,font:subFont(),fontUrl:fontUrl(subFontKey())}:null);
+  fsTv(on?list:[]);
+}
+/* "Dịch cả màn hình" and the automatic screen-text translation on the TV too: each block a box at its place (the
+   TV's area boxes, ids fs_0, fs_1...), boxes no longer needed are emptied */
+function fsTv(list){
+  if(!(tvIp()||tvCode().length>=4)) return;
+  var old=S.fsTvN||0, n=0, font=subFontKey();
+  list.forEach(function(it){
+    var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
+    var px=Math.max(6,Math.round((it.lh||it.h/2)*1080*0.85*(S.cam&&r.h&&it.h?r.h/it.h:1)));
+    var o={kind:'zone',zid:'fs_'+n,vi:it.vi,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:'c',zbg:90,font:font,zfont:font,zfit:1,zpx:px,zauto:1,zgrow:1,zmaxw:Math.min(1-r.x,Math.max(r.w*1.6,r.w+0.08)),speak:false};
+    if(it.bg) { o.zbgc=it.bg; o.zfg=it.fg||''; }
+    tvSend(o).catch(function(){}); n++;
+  });
+  for(var j=n;j<old;j++) tvSend({kind:'zone',zid:'fs_'+j,vi:'',x:0,y:0,w:0.01,h:0.01}).catch(function(){});
+  S.fsTvN=n; if(n) S.zTvAny=true;
 }
 window.addEventListener('resize',function(){ if(S.fs.on) fsDraw(); });
 function fsClear(){ S.fs.items=[]; fsDraw(); }
