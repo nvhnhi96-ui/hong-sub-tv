@@ -2142,6 +2142,7 @@ var ZBTN=/(^|[^A-Za-z0-9])(?:[LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕�
 var ZPROMPT=/^(?:restart|retry|resume|start|pause|load|save|delete|yes|no|ok|back|select|confirm|cancel|close|exit|return|track|untrack|details?|zoom|move|scroll|sort|filter|equip|unequip|use|drop|discard|inspect|view|map|menu|options|toggle|skip|next|prev(?:ious)?|page|tab|hold|press|rotate|info|more|compare|mark|unmark|buy|sell|collect|read|open|show|hide|set|waypoint|navigate|change|switch|upgrade|craft|dismantle|favorite|favourite|lock|unlock|accept|decline|continue|quit|help|controls|legend|quests?|journal|inventory|camera|reset|aim|fire|shoot|sprint|run|walk|jump|crouch|attack|heavy|light|dodge|roll|block|parry|reload|interact|climb|swim|dive|throw|heal|whistle|call|mount|dismount|ride|lock|target|vision|scan|focus|sneak|loot|pick|up|on|off|and|or|to|the|a|of|all)$/i;
 function zBtnLine(s,inPara){
   var n=(String(s).match(/\uE000/g)||[]).length; s=String(s).replace(/\uE000/g,' ').replace(ZBTN,function(m,a){ n++; return a+' '; }).replace(/[()\[\]{}<>|]+\s*[()\[\]{}<>|]*/g,function(x){ return /\w/.test(x)?x:' '; }).replace(/\s+/g,' ').trim();
+  if(!S.hintSkip) return /[A-Za-z]{2}/.test(s)?s:'';   /* button hints ("✕ Chọn  ○ Quay lại", "Nhấn R3 để theo dõi") are translated too, their icons kept in place */
   var after=(s.match(/\bto\b\s+(.*)$/i)||[])[1]||'', shortHint=after.split(/\s+/).filter(Boolean).length<=2;   /* "Press R3 to track", not "Hold to Charge and Build Up Focus" */
   if(!inPara&&shortHint&&(/^(?:press|hold|tap|mash|use|click)\b.{0,40}\bto\b/i.test(s)&&n||/^(?:press|hold|tap|mash)\s+(?:\S{1,3}\s+)?to\b/i.test(s))) return '';
   var w=s.split(' ').filter(Boolean), glyph=n>0||w.some(function(x){ return /^[XOABY]$/.test(x); });   /* the reader often turns ✕ ○ into X O */
@@ -2152,6 +2153,11 @@ function zBtnLine(s,inPara){
    becomes {{1}}, {{2}}... in the text sent to the AI, which keeps them where they belong in the Vietnamese; the
    Vietnamese is then shown with the same icons, so "Press ◉ to..." reads "Nhấn ◉ để...", not "Nhấn để..." */
 var ZBTN1=/(^|[^A-Za-z0-9{])([LR][123]|[LR]B|[LR]T|[LR]S|ZL|ZR|[△○×□✕◯⨯⭘])(?![A-Za-z0-9}])|\uE000/g;
+function zHintRow(l){   /* "X Select  O Back", "© Back", "(X) Confirm": a row of button hints, its X/O are the ✕ ○ icons */
+  var w=String(l).replace(/[()\[\]]/g,' ').split(/\s+/).filter(Boolean); if(!w.length||w.length>10) return false;
+  if(/[.!?…]$/.test(String(l).trim())) return false;
+  return w.some(function(x){ return /^[XO©®@⊗⊙]$/.test(x); })&&w.every(function(x){ return /^[XO©®@⊗⊙]$/.test(x)||ZPROMPT.test(x.replace(/[^A-Za-z]/g,''))||/^[A-Z]/.test(x)||!/[A-Za-z]{2}/.test(x); });   /* labels next to the icons start with a capital */
+}
 function zPrep(raw,icons){
   var qi=0, out=[], ic=[];
   var whole=String(raw||'').replace(/\s*\n\s*/g,' ').replace(/\s+/g,' ').trim();
@@ -2160,6 +2166,7 @@ function zPrep(raw,icons){
     var m=(l.match(/\uE000/g)||[]).length, mine=(icons||[]).slice(qi,qi+m); qi+=m;
     var c=l.replace(/([.!?,;:])(?=[A-Za-z])/g,'$1 ').replace(/\s+/g,' ').trim();
     var k=zBtnLine(c,true); if(!k||!langOk(k,2,0.5)) return;
+    if(zHintRow(c)) c=c.replace(/\(?\b([XO])\b\)?|[©®@⊗⊙]/g,function(x,l){ return ' '+({X:'✕',O:'○','©':'○','®':'○','@':'○','⊙':'○','⊗':'✕'}[l||x.trim()]||x)+' '; }).replace(/\s+/g,' ').trim();
     var j=0, t=c.replace(ZBTN1,function(x,a,tok){ if(x==='\uE000'){ var u=mine[j++]; if(!u) return ' '; ic.push(u); return ' {{'+ic.length+'}} '; } ic.push('t:'+tok); return (a||'')+'{{'+ic.length+'}}'; });
     out.push(t.replace(/\s+([.,!?;:])/g,'$1').replace(/\s{2,}/g,' ').trim());
   });
@@ -2243,7 +2250,8 @@ function zIcFix(en,vi,ic){
   return vi.replace(/\{\{(\d+)\}\}/g,function(m,k){ return +k>=1&&+k<=ic.length?m:''; });
 }
 /* the Vietnamese with its icons: as HTML (pictures and button names), or as plain text for places that show only text */
-function zIcHtml(t,ic){ return esc(String(t||'')).replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; if(!v) return ''; return v.indexOf('t:')===0?'<span class="hs-key">'+esc(v.slice(2))+'</span>':'<img class="hs-key" src="'+v+'" alt="">'; }); }
+var TOKBTN={'✕':'CROSS','×':'CROSS','⨯':'CROSS','○':'CIRCLE','◯':'CIRCLE','⭘':'CIRCLE','□':'SQUARE','△':'TRIANGLE',L1:'L1',R1:'R1',L2:'L2',R2:'R2',L3:'L3',R3:'R3',LS:'L3',RS:'R3'};
+function zIcHtml(t,ic){ return esc(String(t||'')).replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; if(!v) return ''; if(v.indexOf('t:')===0){ var bt=TOKBTN[v.slice(2).toUpperCase()]||TOKBTN[v.slice(2)]; return bt?'<img class="hs-key" src="'+btnPic(bt)+'" alt="'+esc(v.slice(2))+'">':'<span class="hs-key">'+esc(v.slice(2))+'</span>'; } return '<img class="hs-key" src="'+v+'" alt="">'; }); }
 function zIcText(t,ic,pic){ return String(t||'').replace(/\{\{(\d+)\}\}/g,function(m,k){ var v=ic&&ic[+k-1]; return !v?'':v.indexOf('t:')===0?v.slice(2):(pic||''); }).replace(/[ \t]{2,}/g,' ').replace(/ +\n|\n +/g,'\n').trim(); }
 /* how the original lines sit: lined up on the left, centred or on the right */
 function linesAlign(L,W){
@@ -2313,8 +2321,8 @@ function zPrompt(z,text){
   return 'You translate on-screen video game text ('+ZKINDS[z.kind].d+') from '+LN()+' for a Vietnamese player.\n'+
     'On-device OCR read the text between <<< and >>>. It may contain OCR mistakes or words stuck together.\n<<<\n'+text+'\n>>>\n'+
     'Translate it into short, clear Vietnamese in "vi". Keep one output line for each input line, joined with \\n. Keep names of characters and places as they are; numbers and stats stay unchanged. '+
-    (/\{\{\d+\}\}/.test(text)?'{{1}}, {{2}}... are controller button icons drawn in the sentence: keep every one of them in the Vietnamese, at the place that matches the meaning, written exactly the same (e.g. "Press {{1}} to jump" → "Nhấn {{1}} để nhảy", "Hold {{1}} and {{2}} to aim" → "Giữ {{1}} và {{2}} để ngắm"). Never translate, drop or add them. Leave out lines that are only button hints, like "Back / Select". ':
-    'Leave out every controller hint: button names like L1, L2, L3, R1, R2, R3, LB, RT, ✕ ○ △ □, Options, Touchpad, and lines such as "Press R3 to track" or "Back / Select". ')+'Ignore lines that are only numbers or icons. '+
+    (/\{\{\d+\}\}/.test(text)?'{{1}}, {{2}}... are controller button icons drawn in the sentence: keep every one of them in the Vietnamese, at the place that matches the meaning, written exactly the same (e.g. "Press {{1}} to jump" → "Nhấn {{1}} để nhảy", "Hold {{1}} and {{2}} to aim" → "Giữ {{1}} và {{2}} để ngắm"). Never translate, drop or add them. Button hints are translated too, short like in a Vietnamese game (e.g. "{{1}} Select {{2}} Back" → "{{1}} Chọn {{2}} Quay lại", "Restore Defaults" → "Khôi phục mặc định"). ':
+    'Button hints are translated too, short like the game\'s own ("Back" → "Quay lại", "Select" → "Chọn", "Restore Defaults" → "Khôi phục mặc định"); button names (L1, R2, R3, Options, Touchpad) stay as they are. ')+'Keep the letter case of each line: a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. '+'Ignore lines that are only numbers or icons. '+
     ({quest:'This is a quest or objective: write it as a short instruction a player can act on (e.g. "Đi đến ...", "Nói chuyện với ...", "Tìm ... (2/5)"), keep the quest title as a title. ',
       item:'This is an item: on the first line give the item name in Vietnamese followed by the original name in parentheses, e.g. "Kiếm sắt (Iron Sword)"; a unique named item keeps its name. Then translate the description and effects clearly; keep numbers, rarity and stats. ',
       map:'These are map labels and hints: keep place names, translate the generic words (e.g. "Camp" → "Trại", "Fast Travel" → "Dịch chuyển nhanh"). ',
@@ -2423,7 +2431,7 @@ async function zoneTick(force,only){
         try{ await Promise.all(bl.map(async function(B){ try{ var tb=null; if(B.old){ t=t||{vi:B.vi,via:'nhớ'}; return; }
             if(zNeedsEye(B.en,B.ic)){ try{ var e=await zEye(z,zcv,B,B.en,B.n); if(e.vi){ tb={vi:e.vi,via:S.via}; B.ic=e.ic; } }catch(er){ log(zName(z)+': chưa xem được ảnh nút bấm ('+(er.cool?'mã hết lượt':String(er.message||er).slice(0,50))+')'); } }
             var U=zUnits(B.en);   /* whole sentences / menu items, one per line for the AI, then laid out on the original lines */
-            if(!tb){ tb=await zTranslate(z,U.map(function(u){ return u.t; }).join('\n'),B.ic); if(tb.ic) B.ic=tb.ic; B.vi=zUnitLines(punctFix(U.map(function(u){ return u.t; }).join('\n'),zViClean(tb.vi)),U,B.n); }
+            if(!tb){ tb=await zTranslate(z,U.map(function(u){ return u.t; }).join('\n'),B.ic); if(tb.ic) B.ic=tb.ic; B.vi=caseFix(B.en,zUnitLines(caseFix(U.map(function(u){ return u.t; }).join('\n'),punctFix(U.map(function(u){ return u.t; }).join('\n'),zViClean(tb.vi))),U,B.n)); }
             else B.vi=lineSplitS(zViClean(tb.vi),B.n);
             t=tb;
             if(zSame(B.en,B.vi)) B.vi='';   /* nothing was translated (a name, a logo read as letters): no box */
@@ -2435,7 +2443,7 @@ async function zoneTick(force,only){
           if(zNeedsEye(text,zic)){ try{ var e2=await zEye(z,zcv,{x:0,y:0,w:1,h:1},text,text.split('\n').length); if(e2.vi){ t={vi:e2.vi,via:S.via}; z.ic=e2.ic; } }catch(er2){ log(zName(z)+': chưa xem được ảnh nút bấm'); } }
           if(!t){ t=await zTranslate(z,text,zic); if(t.ic) z.ic=t.ic; }
         } finally{ z.pending=false; } }
-      var vt=zViClean(t.vi); if(vt&&!z.items) vt=punctFix(text,vt);
+      var vt=zViClean(t.vi); if(vt&&!z.items) vt=caseFix(text,punctFix(text,vt));
       if(!vt){ zShow(); continue; }
       z.vi=vt; z.hide=false; log(zName(z)+' dịch ('+t.via+'): '+vt.replace(/\n/g,' / ').slice(0,120));
       z.fresh=true; zShow(); zList(); zPush(); zHold(z); zTv(z); if(z.speak) speak(zSay(z).replace(/\n/g,'. '));   /* read aloud only if this area asks for it */
@@ -3976,6 +3984,29 @@ function punctLine(en,vi){
   if(oe&&!ov) out=oe[0]+out;
   return out;
 }
+/* letter case like the original: a line in CAPITALS stays in CAPITALS ("SETTINGS" → "CÀI ĐẶT"), a Title Case label
+   stays Title Case ("Horizontal Look Sensitivity" → "Độ Nhạy Nhìn Ngang"); sentences are left as they are */
+function caseKind(e){
+  var w=String(e||'').replace(/\{\{\d+\}\}|\uE000/g,' ').split(/\s+/).filter(function(x){ return /[A-Za-z]{2}/.test(x); });
+  if(!w.length) return '';
+  var L=w.join(''); if(L.replace(/[^A-Za-z]/g,'').length>=3&&!/[a-z]/.test(L)) return 'up';
+  if(w.length>=2&&w.length<=7&&!/[.!?…]$/.test(String(e).trim())&&w.every(function(x){ return /^[^A-Za-z]*[A-Z0-9]/.test(x)||SMALLW.test(x); })) return 'title';
+  return '';
+}
+function caseLine(e,v){
+  var k=caseKind(e); v=String(v||'');
+  if(k==='up') return v.replace(/\{\{\d+\}\}|[^{}]+/g,function(x){ return /^\{\{/.test(x)?x:x.toLocaleUpperCase('vi'); });
+  if(k==='title') return v.replace(/(^|[\s(\-\/"“])([a-zà-ỹđ])/g,function(m,a,c){ return a+c.toLocaleUpperCase('vi'); });
+  return v;
+}
+function caseFix(en,vi){
+  if(!vi) return vi;
+  var E=String(en||'').split('\n'), V=String(vi).split('\n');
+  if(E.length===V.length) return V.map(function(v,i){ return caseLine(E[i],v); }).join('\n');
+  var ks=E.map(caseKind); if(ks.every(function(k){ return k==='up'; })) return caseLine('ABC',vi);
+  if(ks.every(function(k){ return k==='title'; })) return V.map(function(v){ return caseLine('Ab Cd',v); }).join('\n');
+  return vi;
+}
 function punctFix(en,vi){
   if(!vi) return vi;
   var E=String(en||'').split('\n'), V=String(vi).split('\n');
@@ -4774,7 +4805,7 @@ function fsPrompt(list){
   return 'You translate '+LN()+' text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
     'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
     list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
-    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+context();
+    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+context();
 }
 async function fsRun(){
   if(!S.stream||S.fs.busy) return;
@@ -4803,7 +4834,7 @@ async function fsRun(){
         vis=vis||[];
         var miss=[]; need.forEach(function(b,i){ if(!String(vis[i]||'').trim()) miss.push(i); });
         if(miss.length){ var gv=await Promise.all(miss.map(function(i){ return gtx(need[i].en).catch(function(){return '';}); })); miss.forEach(function(i,k){ vis[i]=gv[k]; }); }
-        need.forEach(function(b,i){ b.vi=punctFix(b.en,String(vis[i]||'').trim()); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
+        need.forEach(function(b,i){ b.vi=caseFix(b.en,punctFix(b.en,String(vis[i]||'').trim())); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
         if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       }
     }
@@ -4920,7 +4951,7 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
+window.hsFitT={cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
