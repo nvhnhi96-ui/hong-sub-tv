@@ -93,6 +93,10 @@ if (!function_exists('hgs_vip_table')) {
         for ($i = 0; $i < 8; $i++) $s .= $a[random_int(0, strlen($a) - 1)];
         return 'HSV-' . substr($s, 0, 4) . '-' . substr($s, 4);
     }
+    // gio Viet Nam, du WordPress dang de mui gio nao
+    function hgs_vip_date($fmt, $ts = null) {
+        return wp_date($fmt, $ts === null ? time() : $ts, new DateTimeZone('Asia/Ho_Chi_Minh'));
+    }
     function hgs_vip_ip() {
         return isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
     }
@@ -123,7 +127,7 @@ if (!function_exists('hgs_vip_table')) {
         }
         if ($row->dev !== $dev) return hgs_vip_err('vip_device', 'Mã VIP này đang dùng trên máy khác. Muốn đổi máy, liên hệ 0367 879 283.', 403);
         $until = $row->expires ? strtotime($row->expires . ' UTC') : 0;
-        if ($until && $until < $now) return hgs_vip_err('vip_expired', 'Mã VIP đã hết hạn ngày ' . wp_date('d/m/Y', $until) . '. Gia hạn tại Hóng Game Store, 0367 879 283.', 403);
+        if ($until && $until < $now) return hgs_vip_err('vip_expired', 'Mã VIP đã hết hạn ngày ' . hgs_vip_date('d/m/Y', $until) . '. Gia hạn tại Hóng Game Store, 0367 879 283.', 403);
         $row->until = $until;
         return $row;
     }
@@ -357,7 +361,7 @@ if (!function_exists('hgs_vip_table')) {
         $nm = (int) get_transient($mk);
         if ($nm >= HGS_VIP_PER_MIN) return hgs_vip_err('vip_limit', 'Dịch quá nhanh, chờ vài giây.', 429);
         set_transient($mk, $nm + 1, 120);
-        $today = wp_date('Y-m-d');
+        $today = hgs_vip_date('Y-m-d');
         if ($row->day === $today && (int) $row->nday >= HGS_VIP_PER_DAY) return hgs_vip_err('vip_limit', 'Đã dịch rất nhiều câu hôm nay, mai dùng tiếp nhé.', 429);
 
         $prompt = trim(wp_check_invalid_utf8((string) $req->get_param('prompt')));
@@ -534,7 +538,7 @@ if (!function_exists('hgs_vip_admin')) {
         $t = hgs_vip_table();
         $key = hgs_vip_key();
         $rows = $wpdb->get_results("SELECT * FROM $t ORDER BY id DESC LIMIT 500");
-        $today = wp_date('Y-m-d');
+        $today = hgs_vip_date('Y-m-d');
         $sin = 0; $sout = 0; $ntoday = 0;
         foreach ($rows as $r) { $sin += $r->tin; $sout += $r->tout; if ($r->day === $today) $ntoday += $r->nday; }
         $usd = $sin / 1e6 * 0.10 + $sout / 1e6 * 0.50;   // gia Claude Haiku 5.5 (prompt duoi 100k token)
@@ -569,7 +573,7 @@ if (!function_exists('hgs_vip_admin')) {
         if (!$ords) echo '<tr><td colspan="7">Chưa có đơn nào.</td></tr>';
         foreach ($ords as $x) {
             $st = (int) $x->status === 1 ? '<span style="color:#008a20">Đã trả, VIP ' . esc_html($x->code) . '</span>' : ((int) $x->status === 3 ? '<b style="color:#d63638">Chuyển thiếu (' . number_format($x->got, 0, ',', '.') . 'đ)</b>' : 'Chờ chuyển khoản');
-            echo '<tr><td>' . esc_html(wp_date('d/m H:i', strtotime($x->created . ' UTC'))) . '</td><td><code>' . esc_html($x->pay) . '</code></td><td>' . esc_html($x->plan) . '</td><td>' . number_format($x->amount, 0, ',', '.') . 'đ</td><td>' . esc_html($x->phone) . '</td><td>' . $st . '</td><td>'
+            echo '<tr><td>' . esc_html(hgs_vip_date('d/m H:i', strtotime($x->created . ' UTC'))) . '</td><td><code>' . esc_html($x->pay) . '</code></td><td>' . esc_html($x->plan) . '</td><td>' . number_format($x->amount, 0, ',', '.') . 'đ</td><td>' . esc_html($x->phone) . '</td><td>' . $st . '</td><td>'
                 . ((int) $x->status !== 1 ? $f('paid', $x->id, 'Đã nhận tiền, cấp VIP', '', 'Xác nhận đã nhận tiền đơn ' . $x->pay . '?') : '') . '</td></tr>';
         }
         echo '</tbody></table>';
@@ -580,7 +584,7 @@ if (!function_exists('hgs_vip_admin')) {
         if (!$regs) echo '<tr><td colspan="7">Chưa có đăng ký nào.</td></tr>';
         foreach ($regs as $g) {
             $st = (int) $g->status === 0 ? '<b style="color:#d63638">Chờ duyệt</b>' : ((int) $g->status === 1 ? '<span style="color:#008a20">Đã cấp ' . esc_html($g->code) . '</span>' : 'Đã bỏ');
-            echo '<tr><td>' . esc_html(wp_date('d/m H:i', strtotime($g->created . ' UTC'))) . '</td><td>' . esc_html($g->name) . '</td>'
+            echo '<tr><td>' . esc_html(hgs_vip_date('d/m H:i', strtotime($g->created . ' UTC'))) . '</td><td>' . esc_html($g->name) . '</td>'
                 . '<td><a href="tel:' . esc_attr($g->phone) . '">' . esc_html($g->phone) . '</a> · <a href="https://zalo.me/' . esc_attr($g->phone) . '" target="_blank" rel="noopener">Zalo</a></td>'
                 . '<td>' . esc_html($g->plan) . ($g->price !== '' ? ' · ' . esc_html($g->price) : '') . '</td><td>' . esc_html($g->note) . '</td><td>' . $st . '</td><td>'
                 . ((int) $g->status === 0 ? $f('approve', $g->id, 'Cấp mã', '<input type="number" name="days" value="' . (int) $g->days . '" min="1" style="width:64px"> ngày ') . $f('reject', $g->id, 'Bỏ', '', 'Bỏ đăng ký của ' . $g->name . '?') : $f('regdel', $g->id, 'Xóa', '', 'Xóa đăng ký của ' . $g->name . '?'))
@@ -620,10 +624,10 @@ if (!function_exists('hgs_vip_admin')) {
             $exp = $r->expires ? strtotime($r->expires . ' UTC') : 0;
             if ((int) $r->off) $s = '<span style="color:#b32d2e">Đã khóa</span>';
             elseif (!$r->activated) $s = 'Chưa kích hoạt (' . (int) $r->days . ' ngày)';
-            elseif ($exp && $exp < time()) $s = '<span style="color:#b32d2e">Hết hạn ' . esc_html(wp_date('d/m/Y', $exp)) . '</span>';
-            else $s = '<span style="color:#008a20">Còn ' . max(0, ceil(($exp - time()) / DAY_IN_SECONDS)) . ' ngày</span> (đến ' . esc_html(wp_date('d/m/Y', $exp)) . ')';
+            elseif ($exp && $exp < time()) $s = '<span style="color:#b32d2e">Hết hạn ' . esc_html(hgs_vip_date('d/m/Y', $exp)) . '</span>';
+            else $s = '<span style="color:#008a20">Còn ' . max(0, ceil(($exp - time()) / DAY_IN_SECONDS)) . ' ngày</span> (đến ' . esc_html(hgs_vip_date('d/m/Y', $exp)) . ')';
             echo '<tr><td><code>' . esc_html($r->code) . '</code></td><td>' . esc_html($r->note) . '</td><td>' . $s . '</td><td>' . ($r->dev ? '…' . esc_html(substr($r->dev, -6)) : '—') . '</td>'
-                . '<td>' . ($r->day === $today ? (int) $r->nday : 0) . ' / ' . (int) $r->ntotal . '</td><td>' . ($r->last ? esc_html(wp_date('d/m H:i', strtotime($r->last . ' UTC'))) : '—') . '</td><td>'
+                . '<td>' . ($r->day === $today ? (int) $r->nday : 0) . ' / ' . (int) $r->ntotal . '</td><td>' . ($r->last ? esc_html(hgs_vip_date('d/m H:i', strtotime($r->last . ' UTC'))) : '—') . '</td><td>'
                 . ($r->dev ? $f('unbind', $r->id, 'Gỡ máy') : '')
                 . $f('extend', $r->id, 'Gia hạn', '<input type="number" name="days" value="30" min="1" style="width:56px"> ')
                 . $f('lock', $r->id, (int) $r->off ? 'Mở khóa' : 'Khóa')
