@@ -5860,19 +5860,20 @@ function fsTv(list){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
     var g=grp[ix], lh=g?g.lh:Math.min(it.lh||it.h/2,lhm*1.25);
     var px=Math.max(6,Math.round(lh*1080*0.66*(S.cam&&r.h&&it.h?r.h/it.h:1)));   /* the letters as big as the original's: a TV draws its bold font larger than the computer's */
-    var hasIc=!!(it.ic&&it.ic.length), al=it.al||'c';
+    var multi=String(it.en||'').indexOf('\n')>=0, hasIc=!!(it.ic&&it.ic.length), al=it.al||(multi?'l':'c');   /* a paragraph reads from the left, like on the computer */
+    var viL=hasIc?it.vi:fsLinesLike(it.en,it.vi);
     /* drawn on the TV the way the computer draws it ("Đúng chỗ" box): every line of the Vietnamese stays one line,
        the box is the original's size with the picture's own colour, and longer Vietnamese gets smaller letters
        instead of wrapping into a tall narrow box over the next row. A one-line label may be a little wider than its
        original (like the computer: up to 12% more) on the side it is lined up from. */
-    var one=String(it.vi||'').indexOf('\n')<0, ext=one&&uiLike(it.en)?(fsCell(it)?1:r.w*0.12+0.004):0;   /* a message or a sentence: never wider than the original */   /* a label in its own tab or button: up to the frame */
+    var one=String(viL||'').indexOf('\n')<0, ext=one&&uiLike(it.en)?(fsCell(it)?1:r.w*0.12+0.004):0;   /* a message or a sentence: never wider than the original */   /* a label in its own tab or button: up to the frame */
     if(g){ var gr=camRect({x:g.L,y:it.y,w:g.R-g.L,h:it.h}); if(gr) ext=Math.max(ext,al==='c'?gr.w-r.w:al==='r'?r.x-gr.x:gr.x+gr.w-(r.x+r.w)); }
     /* never over the next box on the same row or the button icon in front of it ("✕ CHỌN  ○ QUAY LẠI"): a wider
        box hid the icon and the first letters of the next label, so the Vietnamese gets smaller letters instead */
     var fr=fsFree(it,list), sc=it.w?r.w/it.w:1;
     ext=Math.max(0,Math.min(ext,(al==='l'?fr.r:al==='r'?fr.l:2*Math.min(fr.l,fr.r))*sc));
     var zx=al==='l'?r.x:al==='r'?r.x-ext:r.x-ext/2;
-    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
+    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):viL,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
       zx:Math.max(0,zx),zy:r.y,zw:Math.min(1-Math.max(0,zx),r.w+ext),zh:r.h,zwt:600};   /* zwt: the half-bold letters the computer draws (600) */
     if(it.bg) { o.zbgc=tvTone(it.bg); o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
@@ -5981,6 +5982,12 @@ function fsKeep(b){
 /* the text that goes to the translator: with its button markers when it has buttons */
 function fsT(b){ return b.ic&&b.ic.length?b.et:b.en; }
 function fsVi(b,vi){ vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(vi||'').trim()))); return b.ic&&b.ic.length?zIcFix(b.et,vi,b.ic):vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim(); }
+/* the Vietnamese on as many lines as the original block (a paragraph from the shared store comes as one line) */
+function fsLinesLike(en,vi){
+  var n=String(en||'').split('\n').length, v=String(vi||'');
+  if(n<2||v.split('\n').length===n) return v;
+  return fsViLines(en,v.replace(/\s*\n\s*/g,' '));
+}
 function fsHtml(it){ return (it.ic&&it.ic.length?zIcHtml(it.vi,it.ic):esc(it.vi)).replace(/\n/g,'<br>'); }
 async function fsRead(sx,sy,sw,sh,maxW){
   var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
@@ -6099,7 +6106,7 @@ async function fsRun(){
         var b=it.box, n=Math.max(1,(it.en||'').split('\n').length), h=(b[2]-b[0])/1000;
         return {x:b[1]/1000,y:b[0]/1000,w:(b[3]-b[1])/1000,h:h,lh:h/n,en:it.en||'',vi:it.vi}; });
     } else {
-      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });   /* lines in the shared store cost no AI call */
+      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });   /* lines in the shared store cost no AI call */
       if(S.fs.on&&my===S.fs.seq&&blocks.some(function(b){return b.vi;})){ S.fs.items=blocks; fsDraw(); }
       if(need.length){
         var vis;
@@ -6288,7 +6295,7 @@ async function flRead(my){
   });
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
-  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });
+  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
   S.fl.items=S.fl.items.concat(add); flDraw();
   log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
   S.fl.busy=false;

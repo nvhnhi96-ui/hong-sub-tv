@@ -494,6 +494,7 @@ public class OverlayService extends Service {
         int padH = dp(4), slack = dp(4);
         float padK = 0.12f;   // room above and below the lines, per pixel of letter size
         float f = Math.max(6f, (zpx > 0 ? zpx : 22) * H / 1080f);
+        final float f0 = f;
         android.text.TextPaint p = new android.text.TextPaint(tv.getPaint());
         p.setTypeface(face);
         p.setTextSize(f);
@@ -511,14 +512,30 @@ public class OverlayService extends Service {
             if (widest <= avail || avail <= 0 || f <= 6f) break;
             f = Math.max(6f, f * avail / widest * 0.99f);
         }
+        // Lines too long for the room (a paragraph that came as fewer lines than the original): wrapped inside the
+        // original's box at the biggest size that fits its height, like the computer draws it, instead of one line of
+        // tiny letters. Kept only when it gives bigger letters than keeping the lines.
+        android.text.StaticLayout wrap = null;
+        float availW = room - 2 * padH - slack;
+        if (availW > 8 && f < f0 * 0.9f) {
+            float maxH = bh * 1.15f;
+            for (float g = f0; g > f * 1.05f && g > 6f; g *= 0.94f) {
+                p.setTextSize(g);
+                android.text.StaticLayout sl = makeLayout(vi, p, (int) availW);
+                if (sl.getHeight() + 2 * g * padK <= maxH) { wrap = sl; f = g; break; }
+            }
+        }
         tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, f);
         p.setTextSize(f);
         float widest = 0;
-        for (String s : lines) widest = Math.max(widest, p.measureText(s));
+        int rows = n;
+        if (wrap != null) { for (int i = 0; i < wrap.getLineCount(); i++) widest = Math.max(widest, wrap.getLineWidth(i)); rows = wrap.getLineCount(); }
+        else for (String s : lines) widest = Math.max(widest, p.measureText(s));
+        if (Build.VERSION.SDK_INT >= 23) { tv.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE); tv.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE); }
         android.graphics.Paint.FontMetricsInt fi = p.getFontMetricsInt();
         int padV = Math.round(f * padK);
         int boxW = (int) Math.ceil(Math.min(Math.max(room, bw), Math.max(bw, widest + 2 * padH + slack)));
-        int boxH = (int) Math.ceil(Math.max(bh, n * (fi.descent - fi.ascent) + 2 * padV));
+        int boxH = (int) Math.ceil(Math.max(bh, wrap != null ? wrap.getHeight() + 2 * padV : rows * (fi.descent - fi.ascent) + 2 * padV));
         float left = "r".equals(zal) ? bx + bw - boxW : "c".equals(zal) ? bx + bw / 2 - boxW / 2f : bx;
         left = Math.max(0, Math.min(W - boxW, left));
         float top = Math.max(0, Math.min(H - boxH, by + bh / 2 - boxH / 2f));
@@ -552,6 +569,13 @@ public class OverlayService extends Service {
             tv.setTextColor(Color.WHITE);
             tv.setShadowLayer(3f, 0f, 1f, Color.BLACK);
         }
+    }
+
+    private static android.text.StaticLayout makeLayout(String t, android.text.TextPaint p, int w) {
+        if (Build.VERSION.SDK_INT >= 23)
+            return android.text.StaticLayout.Builder.obtain(t, 0, t.length(), p, w).setIncludePad(false)
+                .setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE).setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE).build();
+        return new android.text.StaticLayout(t, p, w, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false);
     }
 
     /** The typeface picked on the computer, as close as Android TV's own fonts allow. */
