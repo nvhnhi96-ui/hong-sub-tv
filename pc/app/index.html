@@ -889,7 +889,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <div class="dk-set"><label class="lab" for="hsTvRead">Đọc to phụ đề ở</label><select class="hs-in" id="hsTvRead"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng trên TV)</option><option value="both">Cả máy tính và TV</option></select></div>
                 <div class="dk-set" data-tvvolrow><div class="lab"><label for="hsTvVol">Âm lượng giọng đọc trên TV</label><output id="hsTvVolV">150%</output></div><input class="hs-range" id="hsTvVol" type="range" min="50" max="300" step="10" value="150"><p class="hs-note">Trên 100% là to hơn mức bình thường của TV (giọng đọc được khuếch đại). Chỉnh xong TV đọc thử ngay.</p></div>
                 <label class="hs-sw" style="margin-top:10px">Hiện câu gốc tiếng Anh dưới câu Việt <input type="checkbox" id="hsTvEn"></label>
-                <div class="dk-set tvlg-only"><label class="lab" for="hsTvHdmi">Cổng HDMI đang cắm máy PS</label><select class="hs-in" id="hsTvHdmi"><option value="1">HDMI 1</option><option value="2">HDMI 2</option><option value="3">HDMI 3</option><option value="4">HDMI 4</option><option value="0">Không hiện hình, chỉ hiện phụ đề</option></select></div>
+                <div class="dk-set tvlg-only"><label class="lab" for="hsTvHdmi">Cổng HDMI đang cắm máy PS</label><select class="hs-in" id="hsTvHdmi"><option value="0">TV tự tìm (khuyên dùng)</option><option value="1">HDMI 1</option><option value="2">HDMI 2</option><option value="3">HDMI 3</option><option value="4">HDMI 4</option></select></div>
                 <p class="hs-note" style="margin-top:6px">Mọi cài đặt chữ trên TV chỉnh ở đây. App trên TV chỉ để kết nối, đổi ở đây là TV đổi theo ngay.</p>
               </div>
               <div class="hs-msg" id="hsTvMsg" hidden></div>
@@ -3238,7 +3238,7 @@ function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.app
      (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
      hides the English like the dark box on the picture */
   else if(o.cov){ o.cspot=1; o.cal='c'; o.cfs=48; }
-  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')) o.hdmi=+$('hsTvHdmi').value; if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
   delete o.vo; return o; }   /* mid: the TV shows a line once even if it arrives both ways */
@@ -3419,7 +3419,7 @@ function tvLanInit(){
 tvLanInit();   /* the phone apps call it again once their core is there */
 /* every TV setting lives here on the computer; the TV app only connects and follows */
 (function(){ var ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); ps.value=load('tvpos','bottom');
-  if(en) en.checked=load('tven',false); if(hd) hd.value=String(load('tvhdmi',1));
+  if(en) en.checked=load('tven',false); if(hd){ if(!load('tvhdmiFix1',false)){ save('tvhdmiFix1',true); save('tvhdmi',0); } hd.value=String(load('tvhdmi',0)); }   /* once: back to 'TV tự tìm'; HDMI 1 was the default and pulled every TV to HDMI 1 */
   function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên '+(PH?'điện thoại':'máy tính')+': kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
   var t=0; function send(what){ lookTxt(); clearTimeout(t); t=setTimeout(function(){ lookTxt(); if(!(tvIp()||tvCode().length>=4)) return;
       if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
