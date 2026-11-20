@@ -4128,7 +4128,7 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); });
+      res=await specOr(j,ck,function(){ return askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); }); });
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
@@ -4151,6 +4151,34 @@ async function translateText(j){
 /* text lines: every AI with its own quota starts together (Gemini, the smart AI); Groq joins a moment later;
    the free translator after 3.5s or when the others fail. The first good answer wins, except that a quicker answer
    can wait a little for the smart AI ("Cân bằng" 0.6s, "Hay nhất" up to 4s). */
+/* a line seen for the first time without its end mark is usually already complete: its translation starts right
+   away while the reader looks once more to be sure, so when the line is confirmed the answer is already on its way.
+   A game that types its lines out letter by letter makes these early guesses miss: after two misses it stops for a while. */
+S.spec=null; S.specOff=0; S.specMiss=0;
+function specStart(t){
+  if(!S.running||viMode()||Date.now()<S.specOff||S.qActive>=QMAX) return;
+  t=String(t||'').trim(); if(wordsOf(t)<4||uiLike(t)||notiSub(t)||flOwns(t)) return;
+  var ck=trKey(t); if(S.trCache[ck]||glossExact(t)||tmFind(t)||nearRecent(t)) return;
+  if(!keys().length&&!groqKeys().length&&!orKeys().length&&!localOk()&&!S.allowFree) return;
+  var nl=Math.max(1,Math.min(4,S.ocrLines||1)), el=enLinesFor(t,nl);
+  var sp={t:t,ck:ck,at:Date.now(),j:null,better:null,bvia:''};
+  sp.p=askText(textPrompt(t,el?el.length:nl,el),t,null,null,false,speakPrefer(),function(r2,via2){ if(sp.j) aiUpgrade(sp.j,ck,r2,via2); else { sp.better=r2; sp.bvia=via2; } }).then(function(r){ sp.via=S.via; return r; });
+  sp.p.catch(function(){});
+  S.spec=sp; log('dịch sẵn câu vừa hiện: '+t.replace(/\s+/g,' ').slice(0,70));
+}
+/* the confirmed line: the early translation when it is the same line, else a normal request */
+async function specOr(j,ck,ask){
+  var sp=S.spec;
+  if(sp&&Date.now()-sp.at<12000){
+    S.spec=null;
+    if(sp.ck===ck){
+      sp.j=j; S.specMiss=0;
+      try{ var r=await sp.p; if(sp.better){ r=sp.better; S.via=sp.bvia||S.via; } else if(sp.via) S.via=sp.via;
+        if(r&&String(r.vi||'').trim()){ log('đã dịch sẵn từ lúc câu vừa hiện ('+(Date.now()-sp.at)+'ms trước)'); return r; } }catch(e){}
+    } else if(++S.specMiss>=2){ S.specOff=Date.now()+600e3; S.specMiss=0; log('game hiện chữ từng chữ một: tạm thôi dịch sẵn 10 phút'); }
+  }
+  return ask();
+}
 /* ---------- AI dịch trên máy (Windows/Mac app): llama.cpp with a small Qwen model, no key and no quota ---------- */
 S.llmSt=null;
 if(D&&D.llm){ try{ D.llm.onState(function(st){ S.llmSt=st; }); D.llm.state().then(function(st){ S.llmSt=st; },function(){}); }catch(e){} }
@@ -4254,9 +4282,9 @@ async function ocrStep(m,force){
   var noKey=!keys().length&&!groqKeys().length;
   if(m.ink<MW*MH*0.003){ S.subLive=false; S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(Date.now()-S.noInkAt>600) subGone(); return; }   /* no text on screen */
   S.noInkAt=0;
+  if(S.ocrBusy){ if((S.forceOcr||force)&&!S.quick) S.quick=later(function(){ S.quick=null; tick(force); },120); return; }   /* the reader is busy (the screen check, screen text): the second look waits for it, it is not lost */
   var again=S.forceOcr; S.forceOcr=false;
   if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
-  if(S.ocrBusy) return;
   S.ocrBusy=true;
   ocv.width=cap.width; ocv.height=cap.height; ocx2.drawImage(cap,0,0);             /* the next tick redraws cap while we read */
   var o;
@@ -4297,7 +4325,7 @@ function ocrTake(txt,force){
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
-    if(!stable&&!tooLong){ if(!S.cand) S.cand={t:txt,at:Date.now()}; else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
+    if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now()}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
   }
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
@@ -4587,6 +4615,7 @@ async function guardProbe(){
   finally{ S.ocrBusy=false; GUARD.busy=false; GUARD.at=Date.now(); GUARD.next=GUARD.at+(GUARD.kind?1500:3000); }
 }
 async function tick(force){
+  if(S.running&&Date.now()-S.warmAt>45e3) warmNet(true);
   if((!S.running&&force!==true)||!S.stream) return;
   force=force===true;
   if(!grab(S.region,ocrOn()?1280:900)) return;
@@ -4633,8 +4662,15 @@ function stopTimer(){ if(WT) WT.clear(S.timer); else clearInterval(S.timer); S.t
 function restartTimer(){ stopTimer(); S.timer=WT?WT.set(tick,S.interval,true):setInterval(tick,S.interval); }
 /* open the connections to the translators before the first line appears: the first answer comes ~0.3-0.8s sooner */
 S.warmAt=0;
-function warmNet(){
-  if(Date.now()-S.warmAt<60e3) return; S.warmAt=Date.now();
+function warmNet(keep){
+  if(Date.now()-S.warmAt<(keep?45e3:60e3)) return; S.warmAt=Date.now();
+  if(keep){   /* while playing: a tiny request to each translator now and then keeps its connection open, so a line after a quiet stretch does not wait for a new connection (0.2-0.6s) */
+    var k0=keys()[0], m0=(S.models&&S.models[0])||'gemini-flash-lite-latest';
+    if(k0) fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m0,{headers:{'x-goog-api-key':k0}}).then(function(){},function(){});
+    var g0=groqKeys()[0]; if(g0) fetch(GROQ+'/models',{headers:{Authorization:'Bearer '+g0}}).then(function(){},function(){});
+    if(S.allowFree){ var u='https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=ok'; (D&&D.getJson?D.getJson(u):fetch(u)).then(function(){},function(){}); }
+    return;
+  }
   var k=keys()[0];
   if(k) listModels(k).then(function(ms){ if(ms&&ms.length){ S.models=ms; save('models',ms); } },function(){});
   if(groqKeys().length) groqModels().then(function(){},function(){});
@@ -4643,7 +4679,7 @@ function warmNet(){
 }
 function startRun(){
   if(!S.stream){ if(PH) pick(false); return; }
-  ocrLoad(); warmNet();
+  ocrLoad(); S.warmAt=0; warmNet();
   if(!keys().length&&!groqKeys().length&&!orKeys().length&&!S.offlineDemo){
     if(readMode()!=='local'||OCR.fails>=5){status('err','Cần nhập mã Gemini trước'); $('hsKeys').focus(); return;}
     log('chạy không có mã: dùng máy dịch miễn phí');
