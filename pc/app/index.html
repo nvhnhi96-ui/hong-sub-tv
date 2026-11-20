@@ -1575,7 +1575,7 @@ function blockUp(items,wide){
     blocks.forEach(function(b){
       var last=b.lines[b.lines.length-1], gap=l.y-(last.y+last.h), hr=Math.max(l.h,last.h)/Math.min(l.h,last.h);
       var overlap=Math.min(l.x+l.w,b.x+b.w)-Math.max(l.x,b.x);
-      var aligned=Math.abs(l.x-b.x)<last.h*1.5||Math.abs((l.x+l.w/2)-(b.x+b.w/2))<last.h*1.5;
+      var aligned=Math.abs(l.x-b.x)<last.h*1.5||Math.abs((l.x+l.w/2)-(b.x+b.w/2))<last.h*1.5||Math.abs((l.x+l.w)-(b.x+b.w))<last.h*0.8;   /* left, centred, or right-aligned (a list of button hints on the right) */
       if(gap>-last.h*0.3&&gap<last.h*0.55&&hr<1.3&&overlap>0&&aligned) best=b;
     });
     if(best){ best.lines.push(l); var x2=Math.max(best.x+best.w,l.x+l.w), y2=l.y+l.h; best.x=Math.min(best.x,l.x); best.w=x2-best.x; best.h=y2-best.y; }
@@ -1584,7 +1584,7 @@ function blockUp(items,wide){
   return blocks.map(function(b){
     var tl=b.lines.reduce(function(a,l){return a+l.text.length;},0);
     var xs=b.lines.map(function(l){ return l.x0; }).filter(function(v){ return v!=null; });
-    return {x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl),icons:[].concat.apply([],b.lines.map(function(l){ return l.icons||[]; }))};
+    return {ls:b.lines.map(function(l){ return {x:l.x,y:l.y,w:l.w,h:l.h,x0:l.x0}; }),x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl),icons:[].concat.apply([],b.lines.map(function(l){ return l.icons||[]; }))};
   });
 }
 async function read(src,opts){
@@ -5247,7 +5247,7 @@ function fsDraw(){
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
 function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
-  var list=src.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:it.bg||'',fg:it.fg||''};});
+  var list=src.filter(function(it){return it.vi;}).map(function(it){return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,bg:it.bg||'',fg:it.fg||'',al:it.al||''};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
   if(PH){ try{ PH.full(JSON.stringify(on?{items:list,font:subFontKey()}:null)); }catch(e){} }
   /* the window over the whole computer screen is for a game shown on this computer (Remote Play window). With the PS5
@@ -5264,7 +5264,7 @@ function fsTv(list){
   list.forEach(function(it){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
     var px=Math.max(6,Math.round((it.lh||it.h/2)*1080*0.85*(S.cam&&r.h&&it.h?r.h/it.h:1)));
-    var o={kind:'zone',zid:'fs_'+n,vi:it.vi,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:'c',zbg:90,font:font,zfont:font,zfit:1,zpx:px,zauto:1,zgrow:1,zmaxw:Math.min(1-r.x,Math.max(r.w*1.6,r.w+0.08)),speak:false};
+    var o={kind:'zone',zid:'fs_'+n,vi:it.vi,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:it.al||'c',zbg:90,font:font,zfont:font,zfit:1,zpx:px,zauto:1,zgrow:1,zmaxw:Math.min(1-r.x,Math.max(r.w*1.6,r.w+0.08)),speak:false};
     if(it.bg) { o.zbgc=it.bg; o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
   });
@@ -5290,22 +5290,91 @@ function fsWatch(){
   S.fs.timer=later(fsWatch,350);
 }
 /* the whole screen read in parts: once as a whole, then four overlapping quarters enlarged, so small menu and quest text is not missed */
+/* a button icon at either end of a short line is read as a stray letter or sign: "EXIT ○" comes as "EXIT O", "ADD MARKER □" as "ADD MARKER 0", "RECENTER (L3)" as "RECENTER C ®" */
+function fsIconEnds(s){
+  if(!/[A-Za-zÀ-ỹ]{3}/.test(s)||s.split(' ').length>8) return s;
+  var junk=/^(?:[^\sA-Za-zÀ-ỹ0-9]{1,3}|[OoCcXxDQ0]|[OC]\)|\(?[LR][123]\)?)$/;
+  var w=s.split(' '); while(w.length>1&&junk.test(w[w.length-1])) w.pop(); while(w.length>1&&junk.test(w[0])) w.shift();
+  return w.join(' ');
+}
 function fsOk(text,conf){
-  var s=zBtnLine(String(text||'').replace(/\s+/g,' ').trim());
+  var s=zBtnLine(fsIconEnds(String(text||'').replace(/\s+/g,' ').trim()));
   if(!s||conf<0.5||viPlain(s)) return '';
   var letters=(s.match(/[A-Za-z]/g)||[]).length; if(letters<3) return '';
   return langOk(s,3,s.split(' ').length<=2?0.5:0.4)?s:'';
+}
+/* a list of short entries, one per line ("RECENTER L3 / 2D VIEW R3 / ADD MARKER □ / EXIT ○", a menu): each line
+   is its own text, not one sentence wrapped over several lines */
+function fsList(lines){
+  if(lines.length<2) return false;
+  return lines.every(function(l,i){
+    var w=l.split(/\s+/).filter(Boolean), nx=lines[i+1];
+    return w.length<=4&&l.length<=32&&!/[.,;:!?…]["”’)]?$/.test(l)&&!(nx&&/^[a-z]/.test(nx));   /* the next line going on in lower case: one sentence */
+  });
+}
+/* the part of a line that is words: the button icon after it ("EXIT ○", read as "EXIT O") or before it stays visible */
+function fsWords(l,raw){
+  var t=String(raw||''), m, first=-1, last=-1, re=/\S+/g;
+  while((m=re.exec(t))){ var w=m[0].replace(/[^A-Za-zÀ-ỹ0-9']/g,'');
+    if(w.length>=2&&/[A-Za-zÀ-ỹ]/.test(w)&&!/^([LR][123]|[LR][BTS]|Z[LR]|[OC]\)?)$/i.test(w)){ if(first<0) first=m.index; last=m.index+m[0].length; } }
+  var n=Math.max(1,t.length), x=l.x, x2=l.x+l.w;
+  if(first<0) return {x:x,w:l.w};
+  var lead=first>0, trail=t.slice(last).trim().length>0;
+  if(lead) x=l.x0!=null&&l.x0>x?l.x0:l.x+l.w*first/n*0.9;
+  if(trail) x2=l.x+l.w*Math.min(1,(last/n)*1.04+0.01);
+  return {x:x,w:Math.max(l.h,x2-x),al:trail&&!lead?'r':lead&&!trail?'l':''};   /* the icon's side: the longer Vietnamese grows away from it */
+}
+/* how the lines of a list line up: right edges together ("RECENTER", "EXIT" over one another on the right) */
+function fsAlign(ls){
+  var L=ls.map(function(l){ return l.x; }), R=ls.map(function(l){ return l.x+l.w; }), h=ls[0].h||10;
+  var sp=function(a){ return Math.max.apply(null,a)-Math.min.apply(null,a); };
+  return sp(R)<h*0.6&&sp(L)>h*1.2?'r':sp(L)<h*0.6&&sp(R)>h*1.2?'l':'c';
 }
 async function fsRead(sx,sy,sw,sh,maxW){
   var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
   var g=fsv.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(video,sx,sy,sw,sh,0,0,fsv.width,fsv.height);
   var o=await HsOcr.read(fsv,{blocks:true}), vw=video.videoWidth, vh=video.videoHeight, out=[];
+  function px(v){ return (sx+v/o.W*sw)/vw; } function py(v){ return (sy+v/o.H*sh)/vh; } function pw(v){ return (v/o.W*sw)/vw; } function ph(v){ return (v/o.H*sh)/vh; }
   (o.blocks||[]).forEach(function(b){
-    var lines=String(b.text||'').split('\n').map(function(l){ return fsOk(l,b.conf); }).filter(Boolean);
+    var raw=String(b.text||'').split('\n'), lines=raw.map(function(l){ return fsOk(l,b.conf); }).filter(Boolean);
     if(!lines.length) return;
-    out.push({x:(sx+b.x/o.W*sw)/vw,y:(sy+b.y/o.H*sh)/vh,w:(b.w/o.W*sw)/vw,h:(b.h/o.H*sh)/vh,lh:(b.lh/o.H*sh)/vh,en:lines.join('\n'),conf:b.conf});
+    if(b.ls&&b.ls.length===raw.length&&fsList(lines)){
+      var al=fsAlign(b.ls);
+      b.ls.forEach(function(l,i){ var t=fsOk(raw[i],b.conf); if(!t) return; var wb=fsWords(l,raw[i]);
+        out.push({x:px(wb.x),y:py(l.y),w:pw(wb.w),h:ph(l.h),lh:ph(l.h),en:t,conf:b.conf,al:al!=='c'?al:(wb.al||al),row:1}); });
+      return;
+    }
+    var keepI=raw.map(function(l,i){ return fsOk(l,b.conf)?i:-1; }).filter(function(i){ return i>=0; });
+    if(keepI.length===1&&b.ls&&b.ls.length===raw.length){ var l1=b.ls[keepI[0]], w1=fsWords(l1,raw[keepI[0]]);   /* one line kept (the others were icons or scraps): that line's own box */
+      out.push({x:px(w1.x),y:py(l1.y),w:pw(w1.w),h:ph(l1.h),lh:ph(l1.h),en:lines[0],conf:b.conf,al:w1.al||''}); return; }
+    if(raw.length===1&&b.ls&&b.ls[0]){ var w1=fsWords(b.ls[0],raw[0]); out.push({x:px(w1.x),y:py(b.y),w:pw(w1.w),h:ph(b.h),lh:ph(b.lh),en:lines[0],conf:b.conf,al:w1.al||''}); return; }   /* one line: its words only, an icon beside it stays visible */
+    out.push({x:px(b.x),y:py(b.y),w:pw(b.w),h:ph(b.h),lh:ph(b.lh),en:lines.join('\n'),conf:b.conf});
   });
   return out;
+}
+/* one-line labels stacked in a column with their right ends (or left ends) lined up: a list of hints or a menu.
+   The reader does not always see each icon, so the column's side decides for every label in it. */
+function fsRowsAlign(list){
+  var one=list.filter(function(b){ return b.en.indexOf('\n')<0; }).sort(function(a,b){ return a.y-b.y; });
+  one.forEach(function(a,i){
+    var col=[a];
+    for(var j=i+1;j<one.length;j++){ var c=one[j], p=col[col.length-1], h=Math.max(p.h,c.h);
+      if(c.y-(p.y+p.h)>h*1.6) break;
+      if(Math.abs((c.x+c.w)-(a.x+a.w))<h*2.2||Math.abs(c.x-a.x)<h*0.8) col.push(c); }
+    if(col.length<3) return;
+    var R=col.map(function(b){ return b.x+b.w; }), L=col.map(function(b){ return b.x; }), sp=function(v){ return Math.max.apply(null,v)-Math.min.apply(null,v); };
+    var al=sp(R)<sp(L)*0.6?'r':sp(L)<sp(R)*0.6?'l':'';
+    if(al) col.forEach(function(b){ if(!b.al||b.al==='c') b.al=al; });
+    if(al==='r'){ var md=R.slice().sort(function(x,y){ return x-y; })[R.length>>1], asp=video.videoWidth?video.videoHeight/video.videoWidth:0.5625;   /* a label read together with its icon: cut back to where the others' words end */
+      col.forEach(function(b){ var hx=b.h*asp, d=b.x+b.w-md; if(d>hx*0.4&&md-b.x>hx||d<0&&d>-hx*1.2) b.w=md-b.x; }); }   /* a little short (the end of the last word cut off): out to the same line too */
+  });
+  return list;
+}
+/* the Vietnamese of a block on as many lines as the original, broken at the matching places */
+function fsViLines(en,vi){
+  var L=String(en||'').split('\n'); vi=String(vi||'').trim();
+  if(L.length<2||!vi) return vi.replace(/\n+/g,L.length<2?' ':'\n');
+  return alignVi(vi,L);
 }
 function fsOverlap(a,b){
   var x=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)), y=Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));
@@ -5331,6 +5400,7 @@ async function fsBlocks(){
     var dup=keep.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); });
     if(!dup) keep.push(b);
   });
+  fsRowsAlign(keep);
   return keep.filter(function(b){ return !notiLike(b.en); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
 }
 function fsPrompt(list){
@@ -5366,7 +5436,7 @@ async function fsRun(){
         vis=vis||[];
         var miss=[]; need.forEach(function(b,i){ if(!String(vis[i]||'').trim()) miss.push(i); });
         if(miss.length){ var gv=await Promise.all(miss.map(function(i){ return gtx(need[i].en).catch(function(){return '';}); })); miss.forEach(function(i,k){ vis[i]=gv[k]; }); }
-        need.forEach(function(b,i){ b.vi=caseFix(b.en,punctFix(b.en,String(vis[i]||'').trim())); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
+        need.forEach(function(b,i){ b.vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(vis[i]||'').trim()))); if(b.vi) S.fs.cache.set(norm(b.en),b.vi); });
         if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       }
     }
@@ -5403,11 +5473,23 @@ function flDraw(){
   var b=videoBox(), html='', show=S.fl.on&&!S.fs.on;
   if(show) S.fl.items.forEach(function(it){
     if(!it.vi) return;
-    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w);
-    html+='<div class="hs-fsb hs-flb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
+    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), one=it.en.indexOf('\n')<0&&it.vi.indexOf('\n')<0;
+    /* a one-line label ("EXIT", "ADD MARKER") stays on one line: the Vietnamese is longer, so the box grows sideways
+       (to the left for a list lined up on the right) instead of wrapping into tiny letters */
+    html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px')+';min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+esc(it.vi).replace(/\n/g,'<br>')+'</div>';
   });
   flLayer.innerHTML=html; flLayer.hidden=!html;
-  [].forEach.call(flLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
+  [].forEach.call(flLayer.children,function(el){
+    var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6;
+    if(el.dataset.one){
+      var W=+el.dataset.w, L=+el.dataset.l, maxW=Math.max(W*2.6,W+120);
+      while(f>9&&el.offsetWidth>maxW){ f--; el.style.fontSize=f+'px'; }
+      var ow=el.offsetWidth, al=el.dataset.al, x=al==='r'?L+W-ow:al==='l'?L:L+W/2-ow/2;
+      el.style.left=Math.max(b.l,Math.min(b.l+b.w-ow,x))+'px';
+      return;
+    }
+    while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; }
+  });
   if(!S.fs.on) fsOverlaySync();
 }
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
@@ -5486,6 +5568,7 @@ async function flRead(my){
   all.sort(function(a,b){ return b.en.length-a.en.length; });
   var blocks=[];
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); })) blocks.push(b); });
+  fsRowsAlign(blocks);
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){
     if(flSkip(b)||flStill(b)<0.7) return;                       /* moving things (signs going past) are not read */
@@ -5506,12 +5589,12 @@ async function flRead(my){
   /* the free translator first (about half a second), the AI's line replaces it */
   if(S.allowFree) Promise.all(need.map(function(b){ return gtx(b.en).catch(function(){ return ''; }); })).then(function(vs){
     if(my!==S.fl.seq) return; var ch=false;
-    need.forEach(function(b,k){ if(!b.vi&&vs[k]){ b.vi=caseFix(b.en,punctFix(b.en,vs[k])); ch=true; } }); if(ch) flDraw(); });
+    need.forEach(function(b,k){ if(!b.vi&&vs[k]){ b.vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,vs[k]))); ch=true; } }); if(ch) flDraw(); });
   if(keys().length||groqKeys().length||orKeys().length){
     try{
       var r=await askText(fsPrompt(need.map(function(b){return b.en;})),need.map(function(b){return b.en;}).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
       if(my!==S.fl.seq) return;
-      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=caseFix(b.en,punctFix(b.en,String(it.vi).trim())); S.fs.cache.set(norm(b.en),b.vi); });
+      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(it.vi).trim()))); S.fs.cache.set(norm(b.en),b.vi); });
       if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       flDraw();
     }catch(e){}
@@ -5616,7 +5699,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
