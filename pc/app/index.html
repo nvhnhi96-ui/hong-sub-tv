@@ -321,6 +321,10 @@ html,body{height:100%;overflow:hidden}
 .vip-nudge>svg{width:17px;height:17px;flex:none;fill:#FFC400}.vip-nudge span{flex:1}.vip-nudge .hs-btn{padding:6px 12px!important;font-size:13px!important}.vip-x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
 .vip-promo{display:flex;align-items:center;gap:14px;justify-content:space-between;border-color:rgba(255,196,0,.45)!important;background:linear-gradient(135deg,rgba(255,196,0,.10),transparent 70%),var(--panel)!important}.vip-promo .hs-note{margin:4px 0 0}.vip-promo[hidden]{display:none}
 .vip-empty{margin-top:12px;font-size:13.5px;color:var(--muted)}.vip-empty .dk-link{color:#FFC400;font-weight:700}
+.vip-pay{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;margin-top:12px;align-items:start}.vip-pay[hidden]{display:none}
+.vip-qr{background:#fff;border-radius:12px;padding:8px;line-height:0}.vip-qr img{width:100%;height:auto;display:block}
+.vip-amt{font-size:24px;font-weight:800;color:#FFC400;margin-bottom:6px}.vip-payinfo dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0 0 10px;font-size:13.5px}.vip-payinfo dt{color:var(--muted)}.vip-payinfo dd{margin:0;word-break:break-word}
+.vip-wait{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--muted);margin:0 0 8px;line-height:1.5}.vip-spin{flex:none;width:15px;height:15px;margin-top:2px;border:2px solid rgba(255,196,0,.3);border-top-color:#FFC400;border-radius:50%;animation:vipspin 1s linear infinite}@keyframes vipspin{to{transform:rotate(360deg)}}
 @media (max-width:1100px){.vip-perks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body:not(.desk) .dk-only{display:none!important}
 /* Mac: PS5 through Sony's PS Remote Play for Mac; the built-in player, AI voice pack and Windows firewall are Windows only */
@@ -966,13 +970,29 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         </div>
         <div class="dk-cols">
           <div class="dk-card vip-reg" id="hsVipBuy">
-            <h2>Đăng ký VIP</h2>
-            <p class="hs-note">Chọn gói, để lại tên và số điện thoại. Shop gọi hoặc nhắn Zalo xác nhận, kích hoạt xong là VIP tự bật trên máy này, không cần nhập mã.</p>
+            <h2 id="hsVipBuyH">Mua gói VIP</h2>
+            <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, không cần nhập mã, mua lúc nào cũng được.</p>
             <div class="vip-plans" id="hsVipPlans" role="radiogroup" aria-label="Chọn gói VIP"></div>
-            <div class="vip-f"><label for="hsVipName">Họ tên</label><input class="hs-in" id="hsVipName" type="text" autocomplete="name" placeholder="VD: Nguyễn Văn A"></div>
-            <div class="vip-f"><label for="hsVipPhone">Số điện thoại (Zalo)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
-            <div class="vip-f"><label for="hsVipNote">Ghi chú (không bắt buộc)</label><input class="hs-in" id="hsVipNote" type="text" placeholder="VD: gọi sau 19h, đang chơi GTA V..."></div>
-            <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Gửi đăng ký</button><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhắn Zalo cho shop</button></div>
+            <div id="hsVipForm">
+              <div class="vip-f" id="hsVipNameF" hidden><label for="hsVipName">Họ tên</label><input class="hs-in" id="hsVipName" type="text" autocomplete="name" placeholder="VD: Nguyễn Văn A"></div>
+              <div class="vip-f"><label for="hsVipPhone" id="hsVipPhoneL">Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
+              <div class="vip-f" id="hsVipNoteF" hidden><label for="hsVipNote">Ghi chú (không bắt buộc)</label><input class="hs-in" id="hsVipNote" type="text" placeholder="VD: gọi sau 19h, đang chơi GTA V..."></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Mua ngay</button><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Hỏi shop qua Zalo</button></div>
+            </div>
+            <div class="vip-pay" id="hsVipPay" hidden>
+              <div class="vip-qr"><img id="hsVipQr" alt="Mã QR chuyển khoản"></div>
+              <div class="vip-payinfo">
+                <div class="vip-amt" id="hsVipAmt"></div>
+                <dl>
+                  <dt>Ngân hàng</dt><dd id="hsVipBank"></dd>
+                  <dt>Số tài khoản</dt><dd><span id="hsVipAcc"></span> <button class="dk-link" type="button" data-copy="hsVipAcc">Sao chép</button></dd>
+                  <dt>Chủ tài khoản</dt><dd id="hsVipAccName"></dd>
+                  <dt>Nội dung</dt><dd><b id="hsVipContent"></b> <button class="dk-link" type="button" data-copy="hsVipContent">Sao chép</button></dd>
+                </dl>
+                <p class="vip-wait" id="hsVipWait"><i class="vip-spin"></i>Đang chờ tiền vào... Giữ đúng <b>nội dung chuyển khoản</b>, VIP tự bật ngay khi shop nhận được tiền.</p>
+                <button class="dk-link" type="button" id="hsVipPayBack">Chọn gói khác</button>
+              </div>
+            </div>
             <div class="hs-msg" id="hsVipRegMsg" hidden></div>
           </div>
           <div>
@@ -1824,44 +1844,94 @@ function vipUi(){
   set('dkVipNavTx',function(x){ x.textContent=on?'VIP của bạn':'Gói VIP'; });
   vipNudge();
 }
-/* ---------- VIP: plans and sign-up inside the app. The shop confirms by phone / Zalo and presses "Cấp mã" on the
-   website: this computer then turns VIP on by itself (checked every minute), no code to type. ---------- */
-S.vipPlans=load('vipplans',[]); S.vipPlan=load('vipplan',0); S.vipReg=load('vipreg',null);
+/* ---------- VIP: buying inside the app. The customer picks a plan and pays by bank QR (amount and transfer note
+   filled in); the bank tells the shop's server (SePay) and VIP turns on here by itself within seconds, day or night.
+   While the shop has not turned automatic buying on (or a plan has no price), the same box is a sign-up form:
+   the shop calls back and presses "Cấp mã", and VIP turns on here by itself too. ---------- */
+S.vipPlans=load('vipplans',[]); S.vipPlan=load('vipplan',0); S.vipReg=load('vipreg',null); S.vipOrder=load('viporder',null); S.vipCanBuy=load('vipcanbuy',false);
 function vipRegMsg(cls,t){ var m=$('hsVipRegMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
+function vipMoney(n){ return (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'đ'; }
+function vipPlanList(){ return S.vipPlans.length?S.vipPlans:[{id:0,name:'1 tháng',days:30,price:'',amount:0},{id:1,name:'3 tháng',days:90,price:'',amount:0},{id:2,name:'12 tháng',days:365,price:'',amount:0}]; }
+function vipBuyMode(){ var pl=vipPlanList()[S.vipPlan]; return !!(S.vipCanBuy&&pl&&pl.amount>0); }
 function vipPlansUi(){
   var box=$('hsVipPlans'); if(!box) return;
-  var pl=S.vipPlans.length?S.vipPlans:[{id:0,name:'1 tháng',days:30,price:''},{id:1,name:'3 tháng',days:90,price:''},{id:2,name:'12 tháng',days:365,price:''}];
-  if(S.vipPlan>=pl.length) S.vipPlan=0;
-  box.innerHTML=pl.map(function(x,i){ return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.price?esc(x.price):'Shop báo giá qua Zalo')+'</span></button>'; }).join('');
+  var pl=vipPlanList(); if(S.vipPlan>=pl.length) S.vipPlan=0;
+  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per:(x.price?esc(x.price):'Shop báo giá qua Zalo'))+'</span></button>'; }).join('');
   box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
+  var buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
+  set('hsVipBuyH',function(x){ x.textContent=buy?'Mua gói VIP':'Đăng ký VIP'; });
+  set('hsVipBuyNote',function(x){ x.textContent=buy?'Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, không cần nhập mã, mua lúc nào cũng được.':'Chọn gói, để lại tên và số điện thoại. Shop gọi hoặc nhắn Zalo xác nhận, kích hoạt xong là VIP tự bật trên máy này, không cần nhập mã.'; });
+  set('hsVipNameF',function(x){ x.hidden=buy; });
+  set('hsVipNoteF',function(x){ x.hidden=buy; });
+  set('hsVipPhoneL',function(x){ x.textContent=buy?'Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)':'Số điện thoại (Zalo)'; });
+  set('hsVipReg',function(x){ x.textContent=buy?'Mua ngay':'Gửi đăng ký'; });
 }
 function vipPlansLoad(){
   if(!$('hsVipPlans')) return;
-  fetch(VIPAPI+'plans').then(function(r){ return r.json(); }).then(function(j){ if(j&&j.ok&&Array.isArray(j.plans)&&j.plans.length){ S.vipPlans=j.plans; save('vipplans',j.plans); S.vipPay=j.pay||''; vipPlansUi(); } },function(){});
+  fetch(VIPAPI+'plans').then(function(r){ return r.json(); }).then(function(j){ if(j&&j.ok&&Array.isArray(j.plans)&&j.plans.length){ S.vipPlans=j.plans; save('vipplans',j.plans); S.vipCanBuy=!!j.buy; save('vipcanbuy',S.vipCanBuy); S.vipPay=j.pay||''; vipPlansUi(); } },function(){});
+}
+function vipOn2(code,until,msg){
+  S.vip={code:code,ok:true,until:(until||0)*1000,err:''}; save('vip',S.vip);
+  var el=$('hsVip'); if(el) el.value=code;
+  S.vipOrder=null; save('viporder',null); S.vipReg=null; save('vipreg',null);
+  var pay=$('hsVipPay'); if(pay) pay.hidden=true; var f=$('hsVipForm'); if(f) f.hidden=false;
+  vipRegMsg('ok',msg); log('VIP: đã bật'); vipUi(); steps(); keyNeed();
+}
+/* the transfer details and QR of an order, and wait for the money */
+function vipPayShow(o){
+  var set=function(id,v){ var x=$(id); if(x) x.textContent=v; };
+  var q=$('hsVipQr'); if(q) q.src=o.qr;
+  set('hsVipAmt',vipMoney(o.amount)+' · gói '+o.plan); set('hsVipBank',o.bank); set('hsVipAcc',o.acc); set('hsVipAccName',o.name); set('hsVipContent',o.pay);
+  $('hsVipPay').hidden=false; $('hsVipForm').hidden=true; vipRegMsg('','');
+  vipOrderPoll();
 }
 async function vipRegister(){
-  var name=($('hsVipName').value||'').trim(), phone=($('hsVipPhone').value||'').replace(/[^\d+]/g,''), note=($('hsVipNote').value||'').trim();
+  var phone=($('hsVipPhone').value||'').replace(/[^\d+]/g,'');
+  if(vipBuyMode()){
+    var b=$('hsVipReg'); b.disabled=true; vipRegMsg('','Đang tạo mã QR...');
+    try{
+      var x=await vipCall('buy',{plan:S.vipPlan,dev:vipDev(),phone:phone},15000);
+      if(x.r.ok&&x.j.ok){ S.vipOrder={id:x.j.id,token:x.j.token,at:Date.now(),o:x.j}; save('viporder',S.vipOrder); log('VIP: đơn '+x.j.pay); vipPayShow(x.j); }
+      else if(x.j.code==='vip_nobuy'){ S.vipCanBuy=false; save('vipcanbuy',false); vipPlansUi(); vipRegMsg('warn',x.j.message); }
+      else vipRegMsg('err',x.j.message||'Chưa tạo được đơn, thử lại sau.');
+    }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau hoặc nhắn Zalo 0367 879 283.'); }
+    finally{ b.disabled=false; }
+    return;
+  }
+  var name=($('hsVipName').value||'').trim(), note=($('hsVipNote').value||'').trim();
   if(name.length<2){ vipRegMsg('err','Nhập họ tên của bạn.'); $('hsVipName').focus(); return; }
   if(phone.replace(/\D/g,'').length<9){ vipRegMsg('err','Nhập số điện thoại (Zalo) để shop liên hệ.'); $('hsVipPhone').focus(); return; }
   save('vipme',{name:name,phone:phone});
-  var b=$('hsVipReg'); b.disabled=true; vipRegMsg('','Đang gửi đăng ký...');
+  var b2=$('hsVipReg'); b2.disabled=true; vipRegMsg('','Đang gửi đăng ký...');
   try{
-    var x=await vipCall('register',{name:name,phone:phone,note:note,plan:S.vipPlan,dev:vipDev()},15000);
-    if(x.r.ok&&x.j.ok){
-      S.vipReg={id:x.j.id,token:x.j.token,at:Date.now()}; save('vipreg',S.vipReg); log('VIP: đã gửi đăng ký');
-      vipRegMsg('ok','Đã gửi đăng ký! Shop sẽ gọi hoặc nhắn Zalo số '+phone+' để xác nhận. Khi shop kích hoạt, VIP tự bật trên máy này.'+(x.j.pay?'\n'+x.j.pay:''));
+    var y=await vipCall('register',{name:name,phone:phone,note:note,plan:S.vipPlan,dev:vipDev()},15000);
+    if(y.r.ok&&y.j.ok){
+      S.vipReg={id:y.j.id,token:y.j.token,at:Date.now()}; save('vipreg',S.vipReg); log('VIP: đã gửi đăng ký');
+      vipRegMsg('ok','Đã gửi đăng ký! Shop sẽ gọi hoặc nhắn Zalo số '+phone+' để xác nhận. Khi shop kích hoạt, VIP tự bật trên máy này.'+(y.j.pay?'\n'+y.j.pay:''));
       vipRegPoll();
-    } else vipRegMsg('err',x.j.message||'Chưa gửi được đăng ký, thử lại sau.');
+    } else vipRegMsg('err',y.j.message||'Chưa gửi được đăng ký, thử lại sau.');
   }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau hoặc nhắn Zalo 0367 879 283.'); }
-  finally{ b.disabled=false; }
+  finally{ b2.disabled=false; }
+}
+/* paid yet? every 4 s while the QR is on screen, every 30 s otherwise (a transfer can come late) */
+function vipOrderPoll(){
+  clearTimeout(S.vipOrderT);
+  if(!S.vipOrder) return;
+  vipCall('order',{id:S.vipOrder.id,token:S.vipOrder.token,dev:vipDev()},12000).then(function(x){
+    var j=x.j||{};
+    if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Đã nhận tiền, VIP đã bật! Cảm ơn bạn đã ủng hộ Hóng Game Store.'); return; }
+    if(j.status==='old'||x.r.status===404){ S.vipOrder=null; save('viporder',null); var pay=$('hsVipPay'); if(pay&&!pay.hidden){ pay.hidden=true; $('hsVipForm').hidden=false; } return; }
+    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung, hoặc nhắn Zalo 0367 879 283.');
+    var vis=$('hsVipPay')&&!$('hsVipPay').hidden;
+    S.vipOrderT=setTimeout(vipOrderPoll,vis?4000:30000);
+  },function(){ S.vipOrderT=setTimeout(vipOrderPoll,15000); });
 }
 function vipRegPoll(){
   clearTimeout(S.vipRegT);
   if(!S.vipReg||vipOn()) return;
   vipCall('reg',{id:S.vipReg.id,token:S.vipReg.token,dev:vipDev()},12000).then(function(x){
     var j=x.j||{};
-    if(j.status==='done'&&j.code){ S.vip={code:j.code,ok:true,until:(j.until||0)*1000,err:''}; save('vip',S.vip); S.vipReg=null; save('vipreg',null);
-      var el=$('hsVip'); if(el) el.value=j.code; vipRegMsg('ok','Shop đã kích hoạt VIP cho bạn. Chúc chơi game vui vẻ!'); log('VIP: shop đã kích hoạt'); vipUi(); steps(); keyNeed(); return; }
+    if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Shop đã kích hoạt VIP cho bạn. Chúc chơi game vui vẻ!'); return; }
     if(j.status==='no'||x.r.status===404){ S.vipReg=null; save('vipreg',null); vipRegMsg('warn','Đăng ký trước chưa được kích hoạt. Gửi lại đăng ký hoặc nhắn Zalo 0367 879 283.'); return; }
     if(j.status==='wait') vipRegMsg('','Đã gửi đăng ký lúc '+new Date(S.vipReg.at).toLocaleString('vi-VN')+'. Đang chờ shop xác nhận, VIP sẽ tự bật khi shop kích hoạt.');
     S.vipRegT=setTimeout(vipRegPoll,60e3);
@@ -1922,6 +1992,9 @@ async function vipAsk(prompt,b64,schema,mode){
   var me=load('vipme',null); if(me){ if($('hsVipName')) $('hsVipName').value=me.name||''; if($('hsVipPhone')) $('hsVipPhone').value=me.phone||''; }
   vipPlansUi(); vipPlansLoad();
   if(S.vipReg&&!vipOn()) setTimeout(vipRegPoll,2500);
+  if(S.vipOrder&&S.vipOrder.o){ if(Date.now()-S.vipOrder.at<20*3600e3&&$('hsVipPay')) vipPayShow(S.vipOrder.o); else setTimeout(vipOrderPoll,3000); }
+  var pb=$('hsVipPayBack'); if(pb) pb.addEventListener('click',function(){ $('hsVipPay').hidden=true; $('hsVipForm').hidden=false; clearTimeout(S.vipOrderT); S.vipOrderT=setTimeout(vipOrderPoll,30000); });
+  document.querySelectorAll('[data-copy]').forEach(function(b){ b.addEventListener('click',function(){ var v=($(b.dataset.copy)||{}).textContent||''; try{ navigator.clipboard.writeText(v); b.textContent='Đã chép'; setTimeout(function(){ b.textContent='Sao chép'; },1500); }catch(e){} }); });
   setInterval(vipNudge,4000);
 })();
 /* VIP: "Gợi ý nhiệm vụ": the game picture now goes to the shop's server, which answers with a short hint in

@@ -45,6 +45,10 @@ html,body{height:100%;overflow:hidden}
 .vip-nudge>svg{width:17px;height:17px;flex:none;fill:#FFC400}.vip-nudge span{flex:1}.vip-nudge .hs-btn{padding:6px 12px!important;font-size:13px!important}.vip-x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
 .vip-promo{display:flex;align-items:center;gap:14px;justify-content:space-between;border-color:rgba(255,196,0,.45)!important;background:linear-gradient(135deg,rgba(255,196,0,.10),transparent 70%),var(--panel)!important}.vip-promo .hs-note{margin:4px 0 0}.vip-promo[hidden]{display:none}
 .vip-empty{margin-top:12px;font-size:13.5px;color:var(--muted)}.vip-empty .dk-link{color:#FFC400;font-weight:700}
+.vip-pay{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;margin-top:12px;align-items:start}.vip-pay[hidden]{display:none}
+.vip-qr{background:#fff;border-radius:12px;padding:8px;line-height:0}.vip-qr img{width:100%;height:auto;display:block}
+.vip-amt{font-size:24px;font-weight:800;color:#FFC400;margin-bottom:6px}.vip-payinfo dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0 0 10px;font-size:13.5px}.vip-payinfo dt{color:var(--muted)}.vip-payinfo dd{margin:0;word-break:break-word}
+.vip-wait{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--muted);margin:0 0 8px;line-height:1.5}.vip-spin{flex:none;width:15px;height:15px;margin-top:2px;border:2px solid rgba(255,196,0,.3);border-top-color:#FFC400;border-radius:50%;animation:vipspin 1s linear infinite}@keyframes vipspin{to{transform:rotate(360deg)}}
 @media (max-width:1100px){.vip-perks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 body:not(.desk) .dk-only{display:none!important}
 /* Mac: PS5 through Sony's PS Remote Play for Mac; the built-in player, AI voice pack and Windows firewall are Windows only */
@@ -690,13 +694,29 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         </div>
         <div class="dk-cols">
           <div class="dk-card vip-reg" id="hsVipBuy">
-            <h2>Đăng ký VIP</h2>
-            <p class="hs-note">Chọn gói, để lại tên và số điện thoại. Shop gọi hoặc nhắn Zalo xác nhận, kích hoạt xong là VIP tự bật trên máy này, không cần nhập mã.</p>
+            <h2 id="hsVipBuyH">Mua gói VIP</h2>
+            <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, không cần nhập mã, mua lúc nào cũng được.</p>
             <div class="vip-plans" id="hsVipPlans" role="radiogroup" aria-label="Chọn gói VIP"></div>
-            <div class="vip-f"><label for="hsVipName">Họ tên</label><input class="hs-in" id="hsVipName" type="text" autocomplete="name" placeholder="VD: Nguyễn Văn A"></div>
-            <div class="vip-f"><label for="hsVipPhone">Số điện thoại (Zalo)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
-            <div class="vip-f"><label for="hsVipNote">Ghi chú (không bắt buộc)</label><input class="hs-in" id="hsVipNote" type="text" placeholder="VD: gọi sau 19h, đang chơi GTA V..."></div>
-            <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Gửi đăng ký</button><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhắn Zalo cho shop</button></div>
+            <div id="hsVipForm">
+              <div class="vip-f" id="hsVipNameF" hidden><label for="hsVipName">Họ tên</label><input class="hs-in" id="hsVipName" type="text" autocomplete="name" placeholder="VD: Nguyễn Văn A"></div>
+              <div class="vip-f"><label for="hsVipPhone" id="hsVipPhoneL">Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
+              <div class="vip-f" id="hsVipNoteF" hidden><label for="hsVipNote">Ghi chú (không bắt buộc)</label><input class="hs-in" id="hsVipNote" type="text" placeholder="VD: gọi sau 19h, đang chơi GTA V..."></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Mua ngay</button><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Hỏi shop qua Zalo</button></div>
+            </div>
+            <div class="vip-pay" id="hsVipPay" hidden>
+              <div class="vip-qr"><img id="hsVipQr" alt="Mã QR chuyển khoản"></div>
+              <div class="vip-payinfo">
+                <div class="vip-amt" id="hsVipAmt"></div>
+                <dl>
+                  <dt>Ngân hàng</dt><dd id="hsVipBank"></dd>
+                  <dt>Số tài khoản</dt><dd><span id="hsVipAcc"></span> <button class="dk-link" type="button" data-copy="hsVipAcc">Sao chép</button></dd>
+                  <dt>Chủ tài khoản</dt><dd id="hsVipAccName"></dd>
+                  <dt>Nội dung</dt><dd><b id="hsVipContent"></b> <button class="dk-link" type="button" data-copy="hsVipContent">Sao chép</button></dd>
+                </dl>
+                <p class="vip-wait" id="hsVipWait"><i class="vip-spin"></i>Đang chờ tiền vào... Giữ đúng <b>nội dung chuyển khoản</b>, VIP tự bật ngay khi shop nhận được tiền.</p>
+                <button class="dk-link" type="button" id="hsVipPayBack">Chọn gói khác</button>
+              </div>
+            </div>
             <div class="hs-msg" id="hsVipRegMsg" hidden></div>
           </div>
           <div>
