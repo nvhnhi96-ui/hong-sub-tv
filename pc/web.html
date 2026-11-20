@@ -4991,10 +4991,16 @@ function fsTv(list){
   var lhs=list.map(function(it){ return it.lh||it.h/2; }).sort(function(a,b){ return a-b; }), lhm=lhs.length?lhs[Math.floor(lhs.length/2)]:0.03;
   list.forEach(function(it){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
-    var px=Math.max(6,Math.round(Math.min(it.lh||it.h/2,lhm*1.25)*1080*0.85*(S.cam&&r.h&&it.h?r.h/it.h:1)));
-    var hasIc=!!(it.ic&&it.ic.length);
-    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:it.al||'c',zbg:100,font:font,zfont:font,zfit:1,zpx:px,zauto:0,zgrow:0,zmaxw:r.w,speak:false};   /* solid background: no English through or around it */
-    o.zx=r.x; o.zy=r.y; o.zw=r.w; o.zh=r.h;   /* the original's own box is the room: letters get smaller instead of spilling over it */
+    var px=Math.max(6,Math.round(Math.min(it.lh||it.h/2,lhm*1.25)*1080*0.76*(S.cam&&r.h&&it.h?r.h/it.h:1)));   /* the same share of the line as on the computer (0.74) */
+    var hasIc=!!(it.ic&&it.ic.length), al=it.al||'c';
+    /* drawn on the TV the way the computer draws it ("Đúng chỗ" box): every line of the Vietnamese stays one line,
+       the box is the original's size with the picture's own colour, and longer Vietnamese gets smaller letters
+       instead of wrapping into a tall narrow box over the next row. A one-line label may be a little wider than its
+       original (like the computer: up to 12% more) on the side it is lined up from. */
+    var one=String(it.vi||'').indexOf('\n')<0, ext=one?r.w*0.12+0.004:0;
+    var zx=al==='l'?r.x:al==='r'?r.x-ext:r.x-ext/2;
+    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
+      zx:Math.max(0,zx),zy:r.y,zw:Math.min(1-Math.max(0,zx),r.w+ext),zh:r.h};
     if(it.bg) { o.zbgc=it.bg; o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
   });
