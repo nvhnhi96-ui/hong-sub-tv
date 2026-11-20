@@ -2765,8 +2765,7 @@ tvLanInit();   /* the phone apps call it again once their core is there */
   ps.addEventListener('change',function(){ save('tvpos',ps.value); send(); });
   if(en) en.addEventListener('change',function(){ save('tven',en.checked); send(); });
   if(hd) hd.addEventListener('change',function(){ save('tvhdmi',+hd.value); send('hdmi'); });
-  var wo=$('hsWhoOn'), mo=$('hsMainOn'), mc=$('hsMainCol');
-  if(wo){ wo.checked=load('whoOn',true); wo.addEventListener('change',function(){ save('whoOn',wo.checked); }); }
+  var mo=$('hsMainOn'), mc=$('hsMainCol');
   if(mo){ mo.checked=load('mainOn',true); mo.addEventListener('change',function(){ save('mainOn',mo.checked); if(S.hist[0]) show({en:S.hist[0].en,vi:S.hist[0].vi,speaker:'',who:S.hist[0].who,role:S.hist[0].role,sure:'yes',_whoDone:true},true); }); }
   if(mc){ mc.value=mainCol(); mc.addEventListener('input',function(){ save('mainCol',mc.value); }); mc.addEventListener('change',function(){ if(S.hist[0]&&S.hist[0].role==='main') show({en:S.hist[0].en,vi:S.hist[0].vi,speaker:'',who:S.hist[0].who,role:'main',sure:'yes',_whoDone:true},true); }); }
   $('hsGame').addEventListener('change',function(){ mainWhoUi(); });
