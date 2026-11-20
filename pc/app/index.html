@@ -2166,7 +2166,8 @@ function zColors(cv,it){
   function contrast(c){ var l=lum(c), a=Math.max(l,lb), b2=Math.min(l,lb); return (a+0.05)/(b2+0.05); }
   if(!fg||contrast(fg)<3) fg=lb>0.4?[17,17,20]:[255,255,255];   /* never letters that are hard to read */
   function hex(c){ return '#'+c.map(function(v){ return ('0'+Math.max(0,Math.min(255,Math.round(v))).toString(16)).slice(-2); }).join(''); }
-  return {bg:hex(bg),fg:hex(fg)};
+  var near=0; for(var yy=0;yy<ch;yy++) for(var xx=0;xx<cw;xx++){ if(!(yy<by||yy>=ch-by||xx<bx||xx>=cw-bx)) continue; var j=(yy*cw+xx)*4, e0=d[j]-bg[0], e1=d[j+1]-bg[1], e2=d[j+2]-bg[2]; if(e0*e0+e1*e1+e2*e2<1600) near++; }
+  return {bg:hex(bg),fg:hex(fg),plain:near/nb};   /* plain: share of the edge that is the background colour (a panel, a phone screen: high; scenery: low) */
 }
 /* a menu where only the highlight moved: the words are the same, the colours are not. Each check looks at the colours
    under every box again, so the white of the chosen item moves down with it (small flickers of the picture are ignored) */
@@ -4719,6 +4720,7 @@ function glossHints(text){
   return (use.length?'Dictionary for this game (use these Vietnamese words exactly): '+use.slice(0,25).join('; ')+'\n':'')+(keep.length?'Keep these names as they are: '+keep.slice(0,25).join(', ')+'\n':'');
 }
 function enqueue(text){
+  if(flOwns(text)){ S.saved++; if(!S.flOwnLog||Date.now()-S.flOwnLog>10000){ S.flOwnLog=Date.now(); log('phụ đề: dòng này là một phần chữ trên màn hình (điện thoại, thư...), để phần dịch chữ trên màn hình lo'); } return; }
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
   var nl=Math.max(1,Math.min(4,S.ocrLines||1)), el=enLinesFor(text,nl);
@@ -5348,7 +5350,8 @@ function fsTv(list){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
     var px=Math.max(6,Math.round((it.lh||it.h/2)*1080*0.85*(S.cam&&r.h&&it.h?r.h/it.h:1)));
     var hasIc=!!(it.ic&&it.ic.length);
-    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:it.al||'c',zbg:90,font:font,zfont:font,zfit:1,zpx:px,zauto:1,zgrow:1,zmaxw:Math.min(1-r.x,Math.max(r.w*1.6,r.w+0.08)),speak:false};
+    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:it.al||'c',zbg:90,font:font,zfont:font,zfit:1,zpx:px,zauto:1,zgrow:1,zmaxw:r.w,speak:false};
+    o.zx=r.x; o.zy=r.y; o.zw=r.w; o.zh=r.h;   /* the original's own box is the room: letters get smaller instead of spilling over it */
     if(it.bg) { o.zbgc=it.bg; o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
   });
@@ -5601,13 +5604,13 @@ function flDraw(){
     var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), one=it.en.indexOf('\n')<0&&it.vi.indexOf('\n')<0;
     /* a one-line label ("EXIT", "ADD MARKER") stays on one line: the Vietnamese is longer, so the box grows sideways
        (to the left for a list lined up on the right) instead of wrapping into tiny letters */
-    html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px')+';min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+fsHtml(it)+'</div>';
+    html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px'+(it.vi.split('\n').length===it.en.split('\n').length?';white-space:nowrap':''))+';min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+fsHtml(it)+'</div>';
   });
   flLayer.innerHTML=html; flLayer.hidden=!html;
   [].forEach.call(flLayer.children,function(el){
     var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6;
     if(el.dataset.one){
-      var W=+el.dataset.w, L=+el.dataset.l, maxW=Math.max(W*2.6,W+120);
+      var W=+el.dataset.w, L=+el.dataset.l, maxW=W*1.12+8;   /* the size of the original: smaller letters rather than spilling over it */
       while(f>9&&el.offsetWidth>maxW){ f--; el.style.fontSize=f+'px'; }
       var ow=el.offsetWidth, al=el.dataset.al, x=al==='r'?L+W-ow:al==='l'?L:L+W/2-ow/2;
       el.style.left=Math.max(b.l,Math.min(b.l+b.w-ow,x))+'px';
@@ -5623,11 +5626,24 @@ function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math
 function flPatch(g,it){ var r=flRect(it), o=[]; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++) o.push(g[y*160+x]); return o; }
 function flChanged(g,it){ if(!it.sig) return false; var r=flRect(it), k=0, n=0, big=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ var d=Math.abs(g[y*160+x]-it.sig[k++]); n++; if(d>26) big++; } return n&&big/n>0.22; }
 function flStill(it){ var r=flRect(it), n=0, s=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ n++; if(S.fl.still[y*160+x]>=2) s++; } return n?s/n:0; }
+/* share of a text's words that another text has: a second, partial reading of the same paragraph */
+function flWordsIn(a,b){ var A=norm(a).split(' ').filter(function(w){ return w.length>2; }), B=' '+norm(b)+' '; if(!A.length) return 0; return A.filter(function(w){ return B.indexOf(' '+w+' ')>=0; }).length/A.length; }
+function flIn(R,b){ var x=Math.max(0,Math.min(R.x+R.w,b.x+b.w)-Math.max(R.x,b.x)), y=Math.max(0,Math.min(R.y+R.h,b.y+b.h)-Math.max(R.y,b.y)); return x*y/Math.max(1e-6,b.w*b.h); }
+/* the subtitle reader saw a piece of a paragraph that the screen-text reader has (a phone or a note reaching into the
+   subtitle area): that is not a subtitle, so it is not translated twice */
+function flOwns(text){
+  if(!S.fl||!S.fl.on||!S.region) return false;
+  var R=S.region, t=norm(text); if(t.length<6) return false;
+  return (S.fl.items||[]).concat(S.fl.seen||[]).some(function(b){
+    if(!fsOverlap(R,b)||flIn(R,b)>0.6&&!b.panel) return false;
+    var e=norm(b.en); return e.indexOf(t)>=0||dice(e,t)>0.6||String(b.en).split('\n').some(function(l){ var n=norm(l); return n.length>5&&(t.indexOf(n)>=0||dice(n,t)>0.7); });
+  });
+}
 function flSkip(b){
   /* the subtitle line has its own translation; the areas the person set up too */
-  var R=S.region; if(R&&fsOverlap({x:R.x-0.01,y:R.y-0.015,w:R.w+0.02,h:R.h+0.03},b)>0.3) return true;
+  var R=S.region; if(R&&!b.panel&&flIn({x:R.x-0.01,y:R.y-0.015,w:R.w+0.02,h:R.h+0.03},b)>0.6) return true;   /* a paragraph that only reaches into the subtitle area (a phone held low) is screen text */
   if((S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })) return true;
-  if(S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
+  if(!b.panel&&S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
   if(notiLike(b.en)||viPlain(b.en)) return true;
   return false;
 }
@@ -5695,13 +5711,16 @@ async function flRead(my){
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); })) blocks.push(b); });
   fsRowsAlign(blocks);
   var g2=S.fl.prev, add=[];
+  blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
+  S.fl.seen=blocks.slice(0,40);
   blocks.forEach(function(b){
     if(flSkip(b)||flStill(b)<0.7) return;                       /* moving things (signs going past) are not read */
-    var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.4; });
-    if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0; })) return;   /* already on screen (also read as one line or two) */
+    var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
+    if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0||flWordsIn(b.en,it.en)>=0.75&&fsOverlap(it,b)>0.4; })) return;   /* already on screen (also read as one line or two, or only part of it this time) */   /* already on screen (also read as one line or two) */
     if(same.length) S.fl.items=S.fl.items.filter(function(it){ return same.indexOf(it)<0; });
     b.sig=flPatch(g2,b);
-    try{ var c=zColors(flc,b); if(c&&c.bg&&flStill(b)>=0.92){ b.bg=c.bg; b.fg=c.fg||''; } }catch(e){}   /* a plain background (a panel, a phone): its colours; text over moving scenery: the dark box */
+    if(b.panel&&S.lastHtml&&S.lastRaw&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.6||norm(b.en).indexOf(norm(S.lastRaw))>=0)){ clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); }   /* the subtitle reader had taken a piece of the page for a subtitle */
+    try{ var c=b.col||zColors(flc,b); if(c&&c.bg&&(c.plain>=0.55||flStill(b)>=0.92&&c.plain>=0.35)){ b.bg=c.bg; b.fg=c.fg||''; } }catch(e){}   /* a plain background (a panel, a phone screen): the same colours as the original; text over scenery: the dark box */
     add.push(b);
   });
   if(!add.length){ S.fl.busy=false; return; }
