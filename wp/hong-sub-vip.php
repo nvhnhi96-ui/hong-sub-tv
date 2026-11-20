@@ -253,7 +253,7 @@ if (!function_exists('hgs_vip_table')) {
         global $wpdb;
         $o = hgs_vip_order_table();
         $ipk = 'hgs_vip_buy_' . md5(hgs_vip_ip());
-        if ((int) get_transient($ipk) >= 15) return hgs_vip_err('vip_limit', 'Bạn đã tạo nhiều đơn. Thử lại sau, hoặc nhắn Zalo 0367 879 283.', 429);
+        if ((int) get_transient($ipk) >= 15) return hgs_vip_err('vip_limit', 'Bạn đã tạo nhiều đơn. Thử lại sau ít phút.', 429);
         $dev = substr(preg_replace('/[^a-zA-Z0-9]/', '', (string) $req->get_param('dev')), 0, 40);
         if (strlen($dev) < 8) return hgs_vip_err('vip_input', 'Thiếu mã máy.', 400);
         $pl = hgs_vip_plans();
@@ -261,7 +261,7 @@ if (!function_exists('hgs_vip_table')) {
         if (!isset($pl[$pi])) return hgs_vip_err('vip_input', 'Chọn một gói VIP.', 400);
         $amount = hgs_vip_amount($pl[$pi]['price']);
         $bank = hgs_vip_bank();
-        if (!$amount || !$bank || get_option('hgs_vip_autopay', '') !== '1') return hgs_vip_err('vip_nobuy', 'Gói này chưa mua tự động được. Để lại số điện thoại để shop liên hệ, hoặc nhắn Zalo 0367 879 283.', 409);
+        if (!$amount || !$bank || get_option('hgs_vip_autopay', '') !== '1') return hgs_vip_err('vip_nobuy', 'Tạm thời chưa mua được, thử lại sau ít phút.', 409);
         $phone = preg_replace('/\D/', '', (string) $req->get_param('phone'));
         // dang co don cho cua may nay, cung goi: dung lai (khach bam Mua nhieu lan)
         $old = $wpdb->get_row($wpdb->prepare("SELECT * FROM $o WHERE dev=%s AND status=0 AND days=%d AND amount=%d AND created > %s ORDER BY id DESC LIMIT 1",

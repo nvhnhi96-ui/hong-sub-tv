@@ -1081,7 +1081,7 @@ function vipUi(){
   else if(S.vip.err) vipMsg('err',S.vip.err);
   else vipMsg('','');
   var set=function(id,f){ var x=$(id); if(x) f(x); };
-  set('hsVipBuy',function(x){ x.hidden=on; });
+  vipPlansUi();
   set('hsVipHint',function(x){ x.hidden=!on; });
   set('hsVipPromo',function(x){ x.hidden=on; });
   set('hsVipEmpty',function(x){ x.hidden=on; });
@@ -1103,26 +1103,23 @@ function vipBuyMode(){ var pl=vipPlanList()[S.vipPlan]; return !!(S.vipCanBuy&&p
 function vipPlansUi(){
   var box=$('hsVipPlans'); if(!box) return;
   var pl=vipPlanList(); if(S.vipPlan>=pl.length) S.vipPlan=0;
-  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per:(x.price?esc(x.price):'Shop báo giá qua Zalo'))+'</span></button>'; }).join('');
+  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per:'Đang cập nhật giá')+'</span></button>'; }).join('');
   box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
-  var buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
-  set('hsVipBuyH',function(x){ x.textContent=buy?'Mua gói VIP':'Đăng ký VIP'; });
-  set('hsVipBuyNote',function(x){ x.textContent=buy?'Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, không cần nhập mã, mua lúc nào cũng được.':'Chọn gói, để lại tên và số điện thoại. Shop gọi hoặc nhắn Zalo xác nhận, kích hoạt xong là VIP tự bật trên máy này, không cần nhập mã.'; });
-  set('hsVipNameF',function(x){ x.hidden=buy; });
-  set('hsVipNoteF',function(x){ x.hidden=buy; });
-  set('hsVipPhoneL',function(x){ x.textContent=buy?'Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)':'Số điện thoại (Zalo)'; });
-  set('hsVipReg',function(x){ x.textContent=buy?'Mua ngay':'Gửi đăng ký'; });
+  var on=vipOn(), buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
+  set('hsVipBuyH',function(x){ x.textContent=on?'Gia hạn VIP':'Mua gói VIP'; });
+  set('hsVipBuyNote',function(x){ x.textContent=on?'Mua thêm gói: số ngày được cộng vào VIP đang dùng trên máy này, tiền vào là tự gia hạn.':'Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, mã VIP được tạo tự động, mua lúc nào cũng được.'; });
+  set('hsVipReg',function(x){ x.textContent=on?'Gia hạn ngay':'Mua ngay'; x.disabled=!buy; x.title=buy?'':'Tạm thời chưa mua được, quay lại sau ít phút'; });
 }
 function vipPlansLoad(){
   if(!$('hsVipPlans')) return;
-  fetch(VIPAPI+'plans').then(function(r){ return r.json(); }).then(function(j){ if(j&&j.ok&&Array.isArray(j.plans)&&j.plans.length){ S.vipPlans=j.plans; save('vipplans',j.plans); S.vipCanBuy=!!j.buy; save('vipcanbuy',S.vipCanBuy); S.vipPay=j.pay||''; vipPlansUi(); } },function(){});
+  fetch(VIPAPI+'plans?t='+Math.floor(Date.now()/6e4)).then(function(r){ return r.json(); }).then(function(j){ if(j&&j.ok&&Array.isArray(j.plans)&&j.plans.length){ S.vipPlans=j.plans; save('vipplans',j.plans); S.vipCanBuy=!!j.buy; save('vipcanbuy',S.vipCanBuy); vipPlansUi(); } },function(){});
 }
 function vipOn2(code,until,msg){
   S.vip={code:code,ok:true,until:(until||0)*1000,err:''}; save('vip',S.vip);
   var el=$('hsVip'); if(el) el.value=code;
   S.vipOrder=null; save('viporder',null); S.vipReg=null; save('vipreg',null);
   var pay=$('hsVipPay'); if(pay) pay.hidden=true; var f=$('hsVipForm'); if(f) f.hidden=false;
-  vipRegMsg('ok',msg); log('VIP: đã bật'); vipUi(); steps(); keyNeed();
+  vipRegMsg('ok',msg+' Mã VIP của bạn: '+code+' (đã lưu trong máy, ghi lại để dùng khi cài lại máy).'); log('VIP: đã bật '+code); vipUi(); vipPlansUi(); steps(); keyNeed();
 }
 /* the transfer details and QR of an order, and wait for the money */
 function vipPayShow(o){
@@ -1133,32 +1130,16 @@ function vipPayShow(o){
   vipOrderPoll();
 }
 async function vipRegister(){
-  var phone=($('hsVipPhone').value||'').replace(/[^\d+]/g,'');
-  if(vipBuyMode()){
-    var b=$('hsVipReg'); b.disabled=true; vipRegMsg('','Đang tạo mã QR...');
-    try{
-      var x=await vipCall('buy',{plan:S.vipPlan,dev:vipDev(),phone:phone},15000);
-      if(x.r.ok&&x.j.ok){ S.vipOrder={id:x.j.id,token:x.j.token,at:Date.now(),o:x.j}; save('viporder',S.vipOrder); log('VIP: đơn '+x.j.pay); vipPayShow(x.j); }
-      else if(x.j.code==='vip_nobuy'){ S.vipCanBuy=false; save('vipcanbuy',false); vipPlansUi(); vipRegMsg('warn',x.j.message); }
-      else vipRegMsg('err',x.j.message||'Chưa tạo được đơn, thử lại sau.');
-    }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau hoặc nhắn Zalo 0367 879 283.'); }
-    finally{ b.disabled=false; }
-    return;
-  }
-  var name=($('hsVipName').value||'').trim(), note=($('hsVipNote').value||'').trim();
-  if(name.length<2){ vipRegMsg('err','Nhập họ tên của bạn.'); $('hsVipName').focus(); return; }
-  if(phone.replace(/\D/g,'').length<9){ vipRegMsg('err','Nhập số điện thoại (Zalo) để shop liên hệ.'); $('hsVipPhone').focus(); return; }
-  save('vipme',{name:name,phone:phone});
-  var b2=$('hsVipReg'); b2.disabled=true; vipRegMsg('','Đang gửi đăng ký...');
+  if(!vipBuyMode()){ vipPlansLoad(); vipRegMsg('warn','Tạm thời chưa mua được, thử lại sau ít phút.'); return; }
+  var phone=($('hsVipPhone').value||'').replace(/[^\d+]/g,''); if(phone) save('vipme',{phone:phone});
+  var b=$('hsVipReg'); b.disabled=true; vipRegMsg('','Đang tạo mã QR...');
   try{
-    var y=await vipCall('register',{name:name,phone:phone,note:note,plan:S.vipPlan,dev:vipDev()},15000);
-    if(y.r.ok&&y.j.ok){
-      S.vipReg={id:y.j.id,token:y.j.token,at:Date.now()}; save('vipreg',S.vipReg); log('VIP: đã gửi đăng ký');
-      vipRegMsg('ok','Đã gửi đăng ký! Shop sẽ gọi hoặc nhắn Zalo số '+phone+' để xác nhận. Khi shop kích hoạt, VIP tự bật trên máy này.'+(y.j.pay?'\n'+y.j.pay:''));
-      vipRegPoll();
-    } else vipRegMsg('err',y.j.message||'Chưa gửi được đăng ký, thử lại sau.');
-  }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau hoặc nhắn Zalo 0367 879 283.'); }
-  finally{ b2.disabled=false; }
+    var x=await vipCall('buy',{plan:S.vipPlan,dev:vipDev(),phone:phone},15000);
+    if(x.r.ok&&x.j.ok){ S.vipOrder={id:x.j.id,token:x.j.token,at:Date.now(),o:x.j}; save('viporder',S.vipOrder); log('VIP: đơn '+x.j.pay); vipPayShow(x.j); }
+    else if(x.j.code==='vip_nobuy'){ S.vipCanBuy=false; save('vipcanbuy',false); vipPlansUi(); vipRegMsg('warn',x.j.message); }
+    else vipRegMsg('err',x.j.message||'Chưa tạo được đơn, thử lại sau.');
+  }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau.'); }
+  finally{ b.disabled=!vipBuyMode(); }
 }
 /* paid yet? every 4 s while the QR is on screen, every 30 s otherwise (a transfer can come late) */
 function vipOrderPoll(){
@@ -1168,7 +1149,7 @@ function vipOrderPoll(){
     var j=x.j||{};
     if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Đã nhận tiền, VIP đã bật! Cảm ơn bạn đã ủng hộ Hóng Game Store.'); return; }
     if(j.status==='old'||x.r.status===404){ S.vipOrder=null; save('viporder',null); var pay=$('hsVipPay'); if(pay&&!pay.hidden){ pay.hidden=true; $('hsVipForm').hidden=false; } return; }
-    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung, hoặc nhắn Zalo 0367 879 283.');
+    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung chuyển khoản, hoặc gọi 0367 879 283.');
     var vis=$('hsVipPay')&&!$('hsVipPay').hidden;
     S.vipOrderT=setTimeout(vipOrderPoll,vis?4000:30000);
   },function(){ S.vipOrderT=setTimeout(vipOrderPoll,15000); });
@@ -1179,7 +1160,7 @@ function vipRegPoll(){
   vipCall('reg',{id:S.vipReg.id,token:S.vipReg.token,dev:vipDev()},12000).then(function(x){
     var j=x.j||{};
     if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Shop đã kích hoạt VIP cho bạn. Chúc chơi game vui vẻ!'); return; }
-    if(j.status==='no'||x.r.status===404){ S.vipReg=null; save('vipreg',null); vipRegMsg('warn','Đăng ký trước chưa được kích hoạt. Gửi lại đăng ký hoặc nhắn Zalo 0367 879 283.'); return; }
+    if(j.status==='no'||x.r.status===404){ S.vipReg=null; save('vipreg',null); vipRegMsg('',''); return; }
     if(j.status==='wait') vipRegMsg('','Đã gửi đăng ký lúc '+new Date(S.vipReg.at).toLocaleString('vi-VN')+'. Đang chờ shop xác nhận, VIP sẽ tự bật khi shop kích hoạt.');
     S.vipRegT=setTimeout(vipRegPoll,60e3);
   },function(){ S.vipRegT=setTimeout(vipRegPoll,90e3); });
@@ -1236,7 +1217,10 @@ async function vipAsk(prompt,b64,schema,mode){
   var hb=$('hsVipHint'); if(hb) hb.addEventListener('click',function(){ vipHint(); });
   var nx=$('hsVipNudgeX'); if(nx) nx.addEventListener('click',function(){ S.vipNudgeOff=true; vipNudge(); });
   var rg=$('hsVipReg'); if(rg) rg.addEventListener('click',function(){ vipRegister(); });
-  var me=load('vipme',null); if(me){ if($('hsVipName')) $('hsVipName').value=me.name||''; if($('hsVipPhone')) $('hsVipPhone').value=me.phone||''; }
+  var me=load('vipme',null); if(me&&$('hsVipPhone')) $('hsVipPhone').value=me.phone||'';
+  /* prices and the on/off switch fresh every time the VIP page opens, and every 10 minutes */
+  document.querySelectorAll('[data-p=vip],[data-go=vip]').forEach(function(b){ b.addEventListener('click',function(){ vipPlansLoad(); }); });
+  setInterval(vipPlansLoad,10*60e3);
   vipPlansUi(); vipPlansLoad();
   if(S.vipReg&&!vipOn()) setTimeout(vipRegPoll,2500);
   if(S.vipOrder&&S.vipOrder.o){ if(Date.now()-S.vipOrder.at<20*3600e3&&$('hsVipPay')) vipPayShow(S.vipOrder.o); else setTimeout(vipOrderPoll,3000); }

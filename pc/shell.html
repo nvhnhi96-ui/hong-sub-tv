@@ -695,13 +695,11 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         <div class="dk-cols">
           <div class="dk-card vip-reg" id="hsVipBuy">
             <h2 id="hsVipBuyH">Mua gói VIP</h2>
-            <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, không cần nhập mã, mua lúc nào cũng được.</p>
+            <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, mã VIP được tạo tự động, mua lúc nào cũng được.</p>
             <div class="vip-plans" id="hsVipPlans" role="radiogroup" aria-label="Chọn gói VIP"></div>
             <div id="hsVipForm">
-              <div class="vip-f" id="hsVipNameF" hidden><label for="hsVipName">Họ tên</label><input class="hs-in" id="hsVipName" type="text" autocomplete="name" placeholder="VD: Nguyễn Văn A"></div>
-              <div class="vip-f"><label for="hsVipPhone" id="hsVipPhoneL">Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
-              <div class="vip-f" id="hsVipNoteF" hidden><label for="hsVipNote">Ghi chú (không bắt buộc)</label><input class="hs-in" id="hsVipNote" type="text" placeholder="VD: gọi sau 19h, đang chơi GTA V..."></div>
-              <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Mua ngay</button><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Hỏi shop qua Zalo</button></div>
+              <div class="vip-f"><label for="hsVipPhone">Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri vip-go" id="hsVipReg" type="button">Mua ngay</button></div>
             </div>
             <div class="vip-pay" id="hsVipPay" hidden>
               <div class="vip-qr"><img id="hsVipQr" alt="Mã QR chuyển khoản"></div>
@@ -722,7 +720,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
           <div>
             <div class="dk-card">
               <h2>Đã có mã VIP?</h2>
-              <p class="hs-note">Nhập mã shop gửi (dạng HSV-XXXX-XXXX). Mỗi mã dùng trên một máy.</p>
+              <p class="hs-note">Mua trong app thì mã tự điền vào đây. Có mã shop gửi (dạng HSV-XXXX-XXXX) thì nhập rồi bấm Kích hoạt. Mỗi mã dùng trên một máy.</p>
               <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsVip" type="text" spellcheck="false" autocomplete="off" placeholder="HSV-XXXX-XXXX" aria-label="Mã VIP" style="text-transform:uppercase"><button class="hs-btn" id="hsVipGo" type="button">Kích hoạt</button></div>
             </div>
             <div class="dk-card">
@@ -730,7 +728,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <p class="hs-note">Đang chơi mà bị kẹt: về <b>Màn hình chơi</b>, bấm nút vàng <b>Gợi ý nhiệm vụ</b> dưới khung phụ đề. Gợi ý hiện ngay trên game (và trên TV nếu đang nối TV).</p>
               <div class="hs-msg" id="hsHintOut" hidden></div>
             </div>
-            <p class="hs-note">Hỏi về gói VIP: Zalo / điện thoại <b>0367 879 283</b>.</p>
+            <p class="hs-note">Hỗ trợ gói VIP: <b>0367 879 283</b>.</p>
           </div>
         </div>
       </section>
