@@ -3300,7 +3300,7 @@ function tvTypeUi(){
 }
 /* what the TV is doing right now, in one line, with the one thing to do next */
 /* the Android TV app is older than the fixes this computer counts on (TVs before 1.0.112 do not say their version) */
-var TV_MIN=112;
+var TV_MIN=194;   /* 1.0.194: unpacks what comes through the TV code (place, colours, size of screen-text boxes) */
 function tvOld(){ if(!S.tvVer) return false; if(S.tvVer==='old') return true; var n=parseInt(String(S.tvVer).split('.').pop(),10)||0; return n>0&&n<TV_MIN; }
 function tvStatus(){
   var k=S.tvType, c=tvCode(), ip=tvIp(), last=Math.max(S.tvSeen,S.tvLanSeen||0), seen=Date.now()-last<65000, lately=last&&Date.now()-last<180000;
@@ -3399,14 +3399,18 @@ function relayPump(){
 function b64u(s){ return btoa(unescape(encodeURIComponent(s))); }
 function relayPack(o){
   var keep={room:1,vi:1,en:1,who:1,size:1,pos:1,kind:1,mid:1}, x={}, any=false, kind=o.kind||'sub';
-  Object.keys(o).forEach(function(k){ if(!keep[k]&&o[k]!==undefined&&o[k]!==null){ x[k]=o[k]; any=true; } });
+  Object.keys(o).forEach(function(k){ if(!keep[k]&&o[k]!==undefined&&o[k]!==null){ var v=o[k]; x[k]=typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1e4)/1e4:v; any=true; } });   /* 4 decimals: a box's place needs no more, and long numbers made the packed message too long for the store */
+  if(x.speak===false) delete x.speak;
+  if(x.font&&x.font===x.zfont) delete x.font;
   if(!{sub:1,zone:1,notice:1,hello:1,alive:1}[kind]){ x.k=kind; any=true; kind='zone'; }
   var b={room:o.room,vi:String(o.vi||'').slice(0,600),who:o.who||'',size:o.size||0,pos:o.pos==='top'?'top':o.pos==='bottom'?'bottom':'',kind:kind,mid:o.mid,en:String(o.en||'').slice(0,600)};
   if(!any) return b;
   if(o.en) x.en=o.en;
   var s='HSX1:'+b64u(JSON.stringify(x));
-  ['name','pc','en','zv','zic','appv'].forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
+  ['name','pc','en','zv','zic','appv','zfit','zs','font'].forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
+  if(s.length>600&&x.zgrow&&x.zmaxw!=null&&x.zx===x.x&&x.zw===x.w){ ['zx','zy','zw','zh'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* the box's own place as its room: the TV gets the same from zmaxw */
   if(s.length<=600) b.en=s;
+  else log('TV qua mã TV: tin quá dài, TV chỉ nhận chữ ('+s.length+')');
   return b;
 }
 function relayUnpack(j){
@@ -3524,7 +3528,10 @@ function tvListen(){
     var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65, tv=j.kind==='hello'||j.kind==='alive';
     var news=S.tvHello<0?(fresh&&tv):(seq!==S.tvHello&&tv), first=S.tvHello<0; S.tvHello=seq;
     if(!news) return;
-    S.tvSeen=Date.now(); tvState();
+    S.tvSeen=Date.now();
+    var tvv=(String(j.vi||'').match(/^tv (\S+)/)||[])[1]; if(tvv&&(!S.tvVer||!S.tvOk)){ S.tvVer=tvv;   /* the app's version, also when the TV is reached only through the TV code */
+      if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ (qua mã TV): '+tvv); status('warn','App Hóng Sub TV trên TV là bản cũ ('+tvv+'). Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); } }
+    tvState();
     if(!first&&j.kind==='hello'&&D) tvHello();
     if(/^crash /.test(j.en||'')&&j.en!==S.tvCrash){ S.tvCrash=j.en; log('app trên TV đã bị lỗi và tự mở lại: '+String(j.en).slice(6,600)); }
     var tip=String(j.ip||''); if(S.tvType==='android'&&TVD()&&/^\d{1,3}(\.\d{1,3}){3}$/.test(tip)&&tip!==tvIp())
@@ -5544,6 +5551,7 @@ function fsOverlaySync(){
    TV's area boxes, ids fs_0, fs_1...), boxes no longer needed are emptied */
 function fsTv(list){
   if(!(tvIp()||tvCode().length>=4)) return;
+  if(tvOld()){ if(list.length&&!S.fsOldTold){ S.fsOldTold=true; log('chữ trên màn hình không gửi lên TV: app TV bản cũ ('+S.tvVer+'), cần bản 1.0.'+TV_MIN+' trở lên'); status('warn','Chữ dịch trên màn hình cần app Hóng Sub TV bản mới. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); } return; }   /* an old TV app draws these boxes as small wrapped labels over the game */
   var old=S.fsTvN||0, n=0, font=subFontKey();
   /* one letter size for every box of the screen (no box bigger than the median by more than a quarter), so a menu
      or a phone screen reads as one piece */
