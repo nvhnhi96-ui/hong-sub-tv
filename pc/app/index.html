@@ -4921,7 +4921,7 @@ function viSet(on,auto){
    by itself a few seconds after the game picture is back. Only short pieces of text count, so a dialogue line that talks
    about a map never stops anything. */
 var GUARD={kind:'',neg:0,next:0,at:0,st:0,busy:false};
-var PS_STRONG=/\b(control cent(er|re)|game base|playstation store|ps store|game library|enter rest mode|turn off ps5|restart ps5|power options|remote play|playstation plus|ps plus|media gallery|game help|your collection|add to library|recently played|trophy progress|activity goals?|officially launched|track your progress|recently created|new video clip)\b/;
+var PS_STRONG=/\b(control cent(er|re)|game base|playstation store|ps store|game library|enter rest mode|turn off ps5|restart ps5|power options|remote play|playstation plus|ps plus|media gallery|game help|your collection|add to library|recently played|trophy progress|activity goals?|officially launched|track your progress|recently created|new video clip|what s new|tv & video|tv video|playstation now|game hub|officially released|ps5 console|ps4 console|ready to install|add to wishlist|in your library|join party|start party|create party|game presets|parental controls|system software|users and accounts|saved data and game app settings|screen and video|captures and broadcasts|family and parental controls|gamer profile)\b/;
 var PS_WEAK={games:/^games?$/,media:/^media$/,explore:/^explore$/,library:/^library$/,store:/^store$/,settings:/^settings$/,notif:/\bnotifications?\b/,
   friends:/\bfriends\b/,party:/^part(y|ies)$/,acc:/\baccessories\b/,power:/^power$/,sound:/^sound$/,network:/^network$/,mic:/^mic$/,switcher:/\bswitcher\b/,
   trophy:/\btroph(y|ies)\b/,act:/\bactivit(y|ies)\b/,profile:/^profile$/,wish:/\bwishlist\b/,installed:/^installed$/,purchased:/^purchased$/,captures:/^captures$/,
@@ -4945,7 +4945,7 @@ function guardKind(texts){
     Object.keys(PS_WEAK).forEach(function(k){ if(PS_WEAK[k].test(s)) weak[k]=1; });
     Object.keys(MAP_W).forEach(function(k){ if(MAP_W[k].test(s)) mp[k]=1; });
   });
-  if(strong||Object.keys(weak).length>=3) return 'ps';
+  if(strong||Object.keys(weak).length>=3||weak.games&&weak.media||weak.vi_games&&weak.vi_media) return 'ps';   /* "Games  Media": the two tabs at the top of the PS5 home screen */
   var mk=Object.keys(mp); if(mk.length>=2&&mk.some(function(k){ return MAP_ONLY[k]; })) return 'map';
   return '';
 }
@@ -4958,6 +4958,7 @@ function guardSet(k){
     coverHide(); S.cand=null; clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''});
     S.zones.forEach(function(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.prevMask=null; z.pending=false; if(had) zTv(z); });
     zShow(); zList(); zPush();
+    if(S.fl&&S.fl.items&&S.fl.items.length){ S.fl.items=[]; try{ flDraw(); }catch(e){} }
     status('idle',k==='map'?'Tạm ngừng dịch vì đang mở bản đồ. Đóng bản đồ là dịch tiếp.':'Tạm ngừng dịch vì đang ở màn hình của máy PS. Vào game là dịch tiếp.');
     return; }
   if(!GUARD.kind) return;
@@ -5458,6 +5459,8 @@ async function flRead(my){
   }catch(e){ all=[]; }
   finally{ S.ocrBusy=false; }
   if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
+  if(guardOn()&&S.running){ var gk=guardKind([].concat.apply([],all.map(function(b){ return b.en.split('\n'); })));   /* the whole picture: the PS5 or PS4 home screen, the store, settings, or a map */
+    if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
   all.sort(function(a,b){ return b.en.length-a.en.length; });
   var blocks=[];
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsOverlap(k,b)>0.5&&(similar(k.en,b.en)||norm(k.en).indexOf(norm(b.en))>=0||dice(k.en,b.en)>0.6); })) blocks.push(b); });
@@ -5590,7 +5593,8 @@ function autoReport(kind,head){
   }catch(e){ return false; }
 }
 window.hsRep={send:autoReport,text:reportText};
-window.hsFitT={align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsGuardT=function(){ return GUARD.kind; };
+window.hsFitT={guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
