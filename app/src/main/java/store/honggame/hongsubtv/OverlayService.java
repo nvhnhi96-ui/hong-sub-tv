@@ -71,6 +71,7 @@ public class OverlayService extends Service {
     private final HashMap<String, Runnable> zoneOff = new HashMap<>();
     /* a line that arrives two ways is shown once */
     private final ArrayDeque<String> mids = new ArrayDeque<>();
+    private final ArrayDeque<String> midsImg = new ArrayDeque<>();
     private Prefs prefs;
     private volatile boolean polling;
     private Thread poller;
@@ -377,6 +378,18 @@ public class OverlayService extends Service {
         final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
         final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
         final String zbgc = j.optString("zbgc", ""), zfgc = j.optString("zfg", "");   // "Theo màu game": colours around the original
+        // the box as a picture drawn on the computer (screen text over the home network): shown as it is, at its place,
+        // so the TV looks exactly like the computer
+        android.graphics.Bitmap bm0 = null;
+        String zimg = j.optString("zimg", "");
+        if (!zimg.isEmpty()) {
+            try {
+                byte[] d = Base64.decode(zimg.substring(zimg.indexOf(',') + 1), Base64.DEFAULT);
+                bm0 = android.graphics.BitmapFactory.decodeByteArray(d, 0, d.length);
+            } catch (Throwable e) { bm0 = null; }
+        }
+        final android.graphics.Bitmap bm = bm0;
+        final double ix = j.optDouble("zix", x), iy = j.optDouble("ziy", y), iw = j.optDouble("ziw", w), ih = j.optDouble("zih", h);
         safePost(() -> {
             if (zoneLayer == null) return;
             Runnable old = zoneOff.remove(id);
@@ -395,6 +408,28 @@ public class OverlayService extends Service {
                 tv.setBackground(bg);
                 zoneViews.put(id, tv);
                 zoneLayer.addView(tv);
+            }
+            if (bm != null) {
+                DisplayMetrics dmi = new DisplayMetrics();
+                wm.getDefaultDisplay().getRealMetrics(dmi);
+                int Wi = dmi.widthPixels, Hi = dmi.heightPixels;
+                FrameLayout.LayoutParams fli = new FrameLayout.LayoutParams(Math.max(1, (int) Math.round(iw * Wi)), Math.max(1, (int) Math.round(ih * Hi)));
+                fli.leftMargin = (int) Math.round(ix * Wi);
+                fli.topMargin = (int) Math.round(iy * Hi);
+                if (Build.VERSION.SDK_INT >= 26) tv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE);
+                tv.setMinWidth(0); tv.setMinHeight(0); tv.setMaxWidth(Integer.MAX_VALUE); tv.setMaxHeight(Integer.MAX_VALUE);
+                tv.setText("");
+                tv.setPadding(0, 0, 0, 0);
+                tv.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT);
+                tv.setLayoutParams(fli);
+                android.graphics.drawable.BitmapDrawable bd = new android.graphics.drawable.BitmapDrawable(getResources(), bm);
+                bd.setFilterBitmap(true);
+                tv.setBackground(bd);
+                final TextView vi2 = tv;
+                Runnable offI = () -> { zoneLayer.removeView(vi2); zoneViews.remove(id); zoneOff.remove(id); };
+                zoneOff.put(id, offI);
+                main.postDelayed(offI, hold > 0 ? hold * 1000L : 300000L);
+                return;
             }
             if (zgrow) {   // "Đúng chỗ": one paragraph right over its own original
                 spotBox(tv, vi, face, zal, zbg, zpx, zauto, x, y, w, h, zx, zw, zmaxw, zbgc, zfgc);
@@ -793,11 +828,14 @@ public class OverlayService extends Service {
         pcAt = android.os.SystemClock.elapsedRealtime();
         if (j.has("hb")) hbOn = true;
         String mid = j.optString("mid", "");
+        boolean img = !j.optString("zimg", "").isEmpty();   // a box as the computer drew it (home network only)
         if (!mid.isEmpty()) {
             synchronized (mids) {
-                if (mids.contains(mid)) return;
-                mids.add(mid);
-                if (mids.size() > 60) mids.poll();
+                // the copy through honggame.store (text only) may come first: the picture of the same box still
+                // replaces it, and a text copy after the picture is dropped
+                if (mids.contains(mid)) { if (!img || midsImg.contains(mid)) return; }
+                else { mids.add(mid); if (mids.size() > 60) mids.poll(); }
+                if (img) { midsImg.add(mid); if (midsImg.size() > 60) midsImg.poll(); }
             }
         }
         String vi = j.optString("vi", "");

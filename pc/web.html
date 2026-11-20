@@ -2898,6 +2898,7 @@ function relayPack(o){
   var keep={room:1,vi:1,en:1,who:1,size:1,pos:1,kind:1,mid:1}, x={}, any=false, kind=o.kind||'sub';
   Object.keys(o).forEach(function(k){ if(!keep[k]&&o[k]!==undefined&&o[k]!==null){ var v=o[k]; x[k]=typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1e4)/1e4:v; any=true; } });   /* 4 decimals: a box's place needs no more, and long numbers made the packed message too long for the store */
   if(x.speak===false) delete x.speak;
+  ['zimg','zix','ziy','ziw','zih'].forEach(function(k){ delete x[k]; });   /* a picture is far too big for honggame.store */
   if(x.font&&x.font===x.zfont) delete x.font;
   if(!{sub:1,zone:1,notice:1,hello:1,alive:1}[kind]){ x.k=kind; any=true; kind='zone'; }
   var b={room:o.room,vi:String(o.vi||'').slice(0,600),who:o.who||'',size:o.size||0,pos:o.pos==='top'?'top':o.pos==='bottom'?'bottom':'',kind:kind,mid:o.mid,en:String(o.en||'').slice(0,600)};
@@ -5055,11 +5056,48 @@ function fsTint(items){
     miss.forEach(function(it){ it.tinted=true; try{ var c=zColors(fsCv,{x:it.x,y:it.y,w:it.w,h:it.h}); if(c&&c.bg){ it.bg=c.bg; it.fg=c.fg||''; } }catch(e){} });
   }catch(e){}
 }
+/* a screen-text box exactly as this computer draws it (its lines, letters, colours and button icons), as a picture
+   for the TV at the TV's size (1080 lines): the TV puts the picture at the same place over the game, so what is seen on
+   the TV is what is seen here. Each run of letters is drawn where the page put it, in the page's own font. */
+function fsSnap(el,it){
+  var b=videoBox(), r=el.getBoundingClientRect();
+  if(!b.w||!b.h||r.width<2||r.height<2) return null;
+  var k=Math.max(1,Math.min(6,1080/b.h)), W=Math.ceil(r.width*k), H=Math.ceil(r.height*k);
+  if(W*H>2.5e6) return null;
+  var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  var g=cv.getContext('2d'), cs=getComputedStyle(el), rad=(parseFloat(cs.borderTopLeftRadius)||0)*k;
+  g.fillStyle=it.bg||cs.backgroundColor||'rgba(12,14,18,.92)';
+  g.beginPath(); if(g.roundRect) g.roundRect(0,0,W,H,rad); else g.rect(0,0,W,H); g.fill();
+  var fs=parseFloat(cs.fontSize)*k;
+  g.font=(cs.fontStyle==='italic'?'italic ':'')+cs.fontWeight+' '+fs+'px '+cs.fontFamily;
+  g.fillStyle=it.fg||cs.color||'#fff'; g.textBaseline='alphabetic';
+  var fm=g.measureText('ÀgÝy'), asc=fm.fontBoundingBoxAscent||fs*0.9, dsc=fm.fontBoundingBoxDescent||fs*0.25;
+  var runs=[], cur=null, rg=document.createRange();
+  function flush(){ if(cur&&cur.t.trim()) runs.push(cur); cur=null; }
+  var tw=document.createTreeWalker(el,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT), n;
+  while((n=tw.nextNode())){
+    if(n.nodeType===1){ if(n.tagName==='IMG'){ flush(); var ir=n.getBoundingClientRect(); if(n.complete&&ir.width) try{ g.drawImage(n,(ir.left-r.left)*k,(ir.top-r.top)*k,ir.width*k,ir.height*k); }catch(e){} } else if(n.tagName==='BR') flush(); continue; }
+    var t=n.nodeValue||'';
+    for(var i=0;i<t.length;i++){
+      var ch=t.charAt(i); rg.setStart(n,i); rg.setEnd(n,i+1); var q=rg.getClientRects()[0];
+      if(!q||!q.width){ if(cur) cur.t+=ch; continue; }   /* a mark that sits on the letter before it */
+      if(!cur||Math.abs(q.top-cur.top)>q.height*0.5||q.left<cur.right-1){ flush(); cur={t:'',left:q.left,top:q.top,h:q.height,right:q.left}; }
+      cur.t+=ch; cur.right=q.right;
+    }
+  }
+  flush();
+  runs.forEach(function(u){ var y=(u.top-r.top)*k+(u.h*k-(asc+dsc))/2+asc; g.fillText(u.t.replace(/\s+$/,''),(u.left-r.left)*k,y); });
+  return {img:cv.toDataURL('image/png'),x:(r.left-b.r.left-b.l)/b.w,y:(r.top-b.r.top-b.t)/b.h,w:r.width/b.w,h:r.height/b.h};
+}
 function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
   fsTint(src);
-  var list=src.filter(function(it){return it.vi&&fsWorth(it);}).map(function(it){var ic=it.ic&&it.ic.length; return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||''};});
+  var list=src.filter(function(it){return it.vi&&fsWorth(it);}).map(function(it){var ic=it.ic&&it.ic.length; return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
+  if(on&&(tvIp()||tvCode().length>=4)){   /* the TV gets each box as the picture drawn here: the same letters, lines and colours */
+    var lay=S.fs.on?fsLayer:flLayer, kids=lay&&!lay.hidden?lay.children:[];
+    if(kids.length===list.length) list.forEach(function(it,i){ try{ it.snap=fsSnap(kids[i],it); }catch(e){ it.snap=null; } });
+  }
   if(PH){ try{ PH.full(JSON.stringify(on?{items:list,font:subFontKey()}:null)); }catch(e){} }
   /* the window over the whole computer screen is for a game shown on this computer (Remote Play window). With the PS5
      inside Hóng Sub the boxes are on its picture already, and on the TV: nothing floats over other apps. */
@@ -5129,6 +5167,8 @@ function fsTv(list){
     var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):viL,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
       zx:Math.max(0,zx),zy:r.y,zw:Math.min(1-Math.max(0,zx),r.w+ext),zh:r.h,zwt:600};   /* zwt: the half-bold letters the computer draws (600) */
     if(it.bg) { o.zbgc=tvTone(it.bg); o.zfg=it.fg||''; }
+    var sr=it.snap&&camRect({x:it.snap.x,y:it.snap.y,w:it.snap.w,h:it.snap.h});
+    if(sr){ o.zimg=it.snap.img; o.zix=sr.x; o.ziy=sr.y; o.ziw=sr.w; o.zih=sr.h; }   /* over the home network: the box as drawn here; through honggame.store the TV draws the text itself */
     tvSend(o).catch(function(){}); n++;
   });
   for(var j=n;j<old;j++) tvSend({kind:'zone',zid:'fs_'+j,vi:'',x:0,y:0,w:0.01,h:0.01}).catch(function(){});
@@ -5672,7 +5712,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
