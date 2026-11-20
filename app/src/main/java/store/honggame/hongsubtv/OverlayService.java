@@ -694,7 +694,11 @@ public class OverlayService extends Service {
         }
     }
 
+    /* several people talking at once: the colour of each line (the game's own colour of that person's words) */
+    private volatile JSONArray lineCols = null;
+
     private void showLine(String who, String vi, String en, long holdMs, boolean speakIt) {
+        final JSONArray lc = lineCols; lineCols = null;
         safePost(() -> {
             if (box == null) return;
             SpannableStringBuilder sb = new SpannableStringBuilder();
@@ -702,7 +706,17 @@ public class OverlayService extends Service {
                 sb.append(who).append(": ");
                 sb.setSpan(new ForegroundColorSpan(Color.rgb(255, 196, 0)), 0, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
+            int at = sb.length();
             sb.append(vi);
+            if (lc != null) {
+                String[] ls = vi.split("\n", -1);
+                int p = at;
+                for (int i = 0; i < ls.length; i++) {
+                    String c = i < lc.length() ? lc.optString(i, "") : "";
+                    if (c.matches("#[0-9A-Fa-f]{6}")) sb.setSpan(new ForegroundColorSpan(Color.parseColor(c)), p, p + ls[i].length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    p += ls[i].length() + 1;
+                }
+            }
             viView.setText(sb);
             boolean en1 = prefs.showEn() && en != null && !en.isEmpty();
             enView.setText(en1 ? en : "");
@@ -819,6 +833,7 @@ public class OverlayService extends Service {
         }
         else if (!vi.isEmpty()) {
             long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
+            lineCols = j.optJSONArray("lc");
             showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, read);
         }
     }
