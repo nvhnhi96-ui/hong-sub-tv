@@ -210,7 +210,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.198';
+var VERSION='1.0.199';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -322,9 +322,11 @@ function applyLook(){
   $('sub').className=($('sub').className.indexOf('on')>=0?'on ':'')+(P.pos==='top'?'top':'')+(cov?' cov':'');
   fitLines();
 }
+var lineCols=null;   /* several people talking at once: the colour of each line */
 function showLine(who,vi,en,hold,readIt){
   if(readIt===undefined) readIt=false;
-  $('vi').innerHTML=(who?'<span class="who">'+esc(who)+':</span>':'')+esc(vi).replace(/\n/g,'<br>');
+  var lc=lineCols; lineCols=null;
+  $('vi').innerHTML=(who?'<span class="who">'+esc(who)+':</span>':'')+String(vi).split('\n').map(function(t,i){ var c=lc&&lc[i]; return c&&/^#[0-9A-Fa-f]{6}$/.test(c)?'<span style="color:'+c+'">'+esc(t)+'</span>':esc(t); }).join('<br>');
   $('en').innerHTML=P.en&&en?esc(en):''; $('en').style.display=P.en&&en?'block':'none';
   $('sub').className='on'+(P.pos==='top'?' top':'')+(cov?' cov':''); coverPlace(); fitLines();
   clearTimeout(hideT); hideT=setTimeout(function(){ $('sub').className=(P.pos==='top'?'top':'')+(cov?' cov':''); },hold);
@@ -545,6 +547,7 @@ function handle(j){
   if(kind==='zone'&&+j.zclr===1){ zonesClear(); return; }   /* Hóng Sub stopped: every area box off */
   if(kind==='notice'){ if(vi) showLine(j.who||'Hóng Sub',vi,'',6000,false); return; }
   if(kind==='zone'){ zoneShow(j,vi); if(vi&&!pcOff&&j.speak) say(vi.replace(/\n/g,'. ').replace(/●/g,'')); return; }   /* read aloud only when the area asks for it on the computer */
+  lineCols=j.lc||null;
   if(vi) showLine(j.who||'',vi,j.en||'',Math.max(4500,Math.min(12000,vi.length*110)),readIt);
 }
 function lanOk(){ return Date.now()-lanAt<20000; }
