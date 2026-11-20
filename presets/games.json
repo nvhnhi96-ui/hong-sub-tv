@@ -8,7 +8,19 @@
    "style": "myth",
    "main": [
     "Kratos"
-   ]
+   ],
+   "terms": {
+    "Kratos": "Kratos",
+    "Atreus": "Atreus",
+    "Boy": "Nhóc",
+    "Mimir": "Mimir",
+    "Freya": "Freya",
+    "Midgard": "Midgard",
+    "Leviathan Axe": "Rìu Leviathan",
+    "Blades of Chaos": "Lưỡi kiếm Hỗn Mang",
+    "Hacksilver": "Bạc vụn",
+    "Realm Tear": "Vết nứt cõi giới"
+   }
   },
   {
    "name": "God of War Ragnarök",
@@ -18,7 +30,23 @@
    "main": [
     "Kratos",
     "Atreus"
-   ]
+   ],
+   "terms": {
+    "Kratos": "Kratos",
+    "Atreus": "Atreus",
+    "Boy": "Nhóc",
+    "Mimir": "Mimir",
+    "Freya": "Freya",
+    "Odin": "Odin",
+    "Thor": "Thor",
+    "Midgard": "Midgard",
+    "Asgard": "Asgard",
+    "Leviathan Axe": "Rìu Leviathan",
+    "Blades of Chaos": "Lưỡi kiếm Hỗn Mang",
+    "Ragnarök": "Ragnarök",
+    "Realm Tear": "Vết nứt cõi giới",
+    "Hacksilver": "Bạc vụn"
+   }
   },
   {
    "name": "Ghost of Tsushima",
@@ -27,7 +55,21 @@
    "style": "japan",
    "main": [
     "Jin Sakai"
-   ]
+   ],
+   "terms": {
+    "Jin": "Jin",
+    "Jin Sakai": "Jin Sakai",
+    "Lord Shimura": "Lãnh chúa Shimura",
+    "Yuna": "Yuna",
+    "Khotun Khan": "Khotun Khan",
+    "Tsushima": "Tsushima",
+    "Ghost": "Bóng Ma",
+    "Mongols": "quân Mông Cổ",
+    "Samurai": "Samurai",
+    "Standoff": "Đấu tay đôi",
+    "Resolve": "Ý chí",
+    "Stance": "Thế kiếm"
+   }
   },
   {
    "name": "Ghost of Yōtei",
@@ -97,7 +139,24 @@
    "main": [
     "Arthur Morgan",
     "John Marston"
-   ]
+   ],
+   "terms": {
+    "Arthur": "Arthur",
+    "Dutch": "Dutch",
+    "Hosea": "Hosea",
+    "John Marston": "John Marston",
+    "Sadie": "Sadie",
+    "Saint Denis": "Saint Denis",
+    "Valentine": "Valentine",
+    "Blackwater": "Blackwater",
+    "Pinkertons": "Pinkertons",
+    "Dead Eye": "Mắt Tử Thần",
+    "Honor": "Danh dự",
+    "Camp": "Trại",
+    "Bounty": "Tiền truy nã",
+    "Wanted": "Bị truy nã",
+    "Stamina": "Thể lực"
+   }
   },
   {
    "name": "Grand Theft Auto V",
@@ -115,7 +174,25 @@
     "Michael De Santa",
     "Franklin Clinton",
     "Trevor Philips"
-   ]
+   ],
+   "terms": {
+    "Michael": "Michael",
+    "Franklin": "Franklin",
+    "Trevor": "Trevor",
+    "Lamar": "Lamar",
+    "Lester": "Lester",
+    "Los Santos": "Los Santos",
+    "Blaine County": "Blaine County",
+    "Sandy Shores": "Sandy Shores",
+    "Paleto Bay": "Paleto Bay",
+    "Vinewood": "Vinewood",
+    "Grove Street": "Grove Street",
+    "Wanted": "Bị truy nã",
+    "Wanted Level": "Mức truy nã",
+    "Safehouse": "Nhà an toàn",
+    "Heist": "Phi vụ",
+    "LSPD": "LSPD"
+   }
   },
   {
    "name": "Uncharted 4 / Legacy of Thieves",
@@ -437,7 +514,31 @@
     "Lucia Caminos",
     "Jason",
     "Lucia"
-   ]
+   ],
+   "terms": {
+    "Jason": "Jason",
+    "Lucia": "Lucia",
+    "Jason Duval": "Jason Duval",
+    "Lucia Caminos": "Lucia Caminos",
+    "Vice City": "Vice City",
+    "Leonida": "Leonida",
+    "Leonida Keys": "Leonida Keys",
+    "Port Gellhorn": "Port Gellhorn",
+    "Ambrosia": "Ambrosia",
+    "Grassrivers": "Grassrivers",
+    "Mount Kalaga": "Mount Kalaga",
+    "Cal Hampton": "Cal Hampton",
+    "Boobie Ike": "Boobie Ike",
+    "Dre'Quan Priest": "Dre'Quan Priest",
+    "Real Dimez": "Real Dimez",
+    "Raul Bautista": "Raul Bautista",
+    "Brian Heder": "Brian Heder",
+    "Wanted": "Bị truy nã",
+    "Wanted Level": "Mức truy nã",
+    "Safehouse": "Nhà an toàn",
+    "Heist": "Phi vụ",
+    "Vice City Police": "Cảnh sát Vice City"
+   }
   },
   {
    "group": "Hành động, phiêu lưu",
@@ -488,7 +589,24 @@
    "name": "Elden Ring",
    "group": "Nhập vai (RPG)",
    "notes": "Thế giới giả tưởng u tối. Người chơi là một Tarnished (\"Kẻ Ô Uế\" hoặc giữ nguyên). Melina (cô gái dẫn đường), Ranni the Witch (Phù thủy Ranni), Blaidd, Iji, Margit, Godrick the Grafted, Radahn, Malenia, Morgott, Nữ hoàng Marika, Radagon. Giữ nguyên: Lands Between, Erdtree, Elden Ring, Golden Order, rune, Site of Grace, Roundtable Hold. Văn phong cổ, trang trọng: ta, ngươi.",
-   "style": "fantasy"
+   "style": "fantasy",
+   "terms": {
+    "Tarnished": "Kẻ Ô Uế",
+    "Elden Ring": "Elden Ring",
+    "The Lands Between": "Vùng Đất Giữa",
+    "Erdtree": "Cây Erd",
+    "Site of Grace": "Điểm Ân Sủng",
+    "Runes": "Rune",
+    "Flask of Crimson Tears": "Bình Lệ Đỏ",
+    "Flask of Cerulean Tears": "Bình Lệ Xanh",
+    "Torrent": "Torrent",
+    "Melina": "Melina",
+    "Ranni": "Ranni",
+    "Malenia": "Malenia",
+    "Margit": "Margit",
+    "Godrick": "Godrick",
+    "Radahn": "Radahn"
+   }
   },
   {
    "name": "Final Fantasy VII Remake / Rebirth",
