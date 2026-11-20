@@ -2736,7 +2736,11 @@ function relayPack(o){
   if(!any) return b;
   if(o.en) x.en=o.en;
   var s='HSX1:'+b64u(JSON.stringify(x));
-  ['name','pc','en','zv','zic','appv','zfit','zs','font'].forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
+  /* an area box (screen text, an area's paragraph): the subtitle's own settings that ride along on every message
+     (its cover, colours, size, volume...) go first; the box's place, size and colours stay */
+  var drop=o.kind==='zone'&&o.zid?['cov','cspot','cal','cfs','cn','vol','wid','col','bg','sen','hdmi','font','pc','appv','name','en','zv','zic','zfit','zs']:['name','pc','en','zv','zic','appv','zfit','zs','font'];
+  if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
+  drop.forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
   if(s.length>600&&x.zgrow&&x.zmaxw!=null&&x.zx===x.x&&x.zw===x.w){ ['zx','zy','zw','zh'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* the box's own place as its room: the TV gets the same from zmaxw */
   if(s.length<=600) b.en=s;
   else log('TV qua mã TV: tin quá dài, TV chỉ nhận chữ ('+s.length+')');
@@ -2844,7 +2848,7 @@ function tvListen(){
   }
   if(ip){
     TVD().ping(ip).then(function(r){
-      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; S.tvVer=String(r.ver||'old'); tvLan(true);
+      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); tvLan(true);
         if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ: '+S.tvVer); status('warn','App Hóng Sub TV trên TV là bản cũ. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); tvNotice('App Hóng Sub TV có bản mới: mở app Hóng Sub TV trên TV rồi bấm Cập nhật.'); }
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
@@ -5190,12 +5194,12 @@ function flSkip(b){
    turns its Vietnamese into scraps like "atalan ke". It is not the game's text. */
 function rpBanner(b){
   var d=deTone(b.en).toLowerCase();
-  if(/\b(da ket noi|ket noi|choi tu xa|remote play|connected to|ps remote)\b/.test(d)) return true;
+  if(/\b(da ket noi|ket noi|choi tu xa|remote play|connected to|ps remote)\b/.test(d)||/\bket\s*[nh][o0][il1]\b|\bch[o0][il1]\s*tu\s*xa\b|\btu\s*xa\b/.test(d)) return true;   /* also read badly: "Da ket hol Chol tu xa" */
   if(!(b.y<0.1&&b.h<0.07&&Math.abs(b.x+b.w/2-0.5)<0.15&&b.w<0.35)) return false;   /* where the bar sits */
   var w=String(b.en).toLowerCase().match(/[a-zà-ỹ]{2,}/g)||[];
   if(!w.length) return true;
   var known=DICT.common?w.filter(function(x){ return dictHas(x); }).length:w.length;
-  return w.length<=4&&known/w.length<0.6||/[à-ỹđ]/i.test(b.en);   /* a few words that are not English: the bar read wrongly */
+  return w.length<=7&&known/w.length<0.6||/[à-ỹđ]/i.test(b.en);   /* a few words that are not English: the bar read wrongly */
 }
 function flTick(my){
   if(!S.fl.on||my!==S.fl.seq) return;
@@ -5378,7 +5382,7 @@ function reportText(){
     'Game: '+$('hsGame').value, 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
-    'TV: '+JSON.stringify({loai:S.tvType,ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
+    'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
 }
@@ -5393,7 +5397,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
