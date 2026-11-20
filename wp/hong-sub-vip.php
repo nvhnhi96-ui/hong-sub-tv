@@ -495,6 +495,14 @@ add_action('admin_post_hgs_vip', function () {
         if (!empty($_POST['bclear'])) delete_option('hgs_vip_bank');
         elseif ($b['bank'] !== '' && $b['acc'] !== '') update_option('hgs_vip_bank', $b, false);
         $msg = 'Đã lưu cài đặt thanh toán tự động.';
+    } elseif ($do === 'testorder') {
+        // don thu 2.000d: shop tu chuyen khoan de kiem tra SePay bao ve web va tu cap VIP
+        $o = hgs_vip_order_table();
+        $pay = 'HSV' . random_int(100000, 999999);
+        $wpdb->insert($o, array('token' => wp_generate_password(32, false, false), 'pay' => $pay, 'dev' => 'dshoptest' . random_int(100000, 999999), 'plan' => 'ĐƠN THỬ', 'days' => 1,
+            'amount' => 2000, 'phone' => '', 'ip' => hgs_vip_ip(), 'created' => gmdate('Y-m-d H:i:s')));
+        set_transient('hgs_vip_testpay', $pay, 3600);
+        $msg = 'Đã tạo đơn thử ' . $pay . ' (2.000đ). Quét mã QR bên dưới để chuyển thử.';
     } elseif ($do === 'paid' && $id) {
         $o = hgs_vip_order_table();
         $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $o WHERE id=%d", $id));
@@ -568,6 +576,14 @@ if (!function_exists('hgs_vip_admin')) {
             . '<p>API Key cho SePay (chọn kiểu xác thực "API Key"): ' . ($sk ? '<code>' . esc_html($sk) . '</code>' : '<i>bấm Lưu để tạo</i>') . ' <label><input type="checkbox" name="newkey" value="1"> tạo key mới</label></p>'
             . '<p class="description">SePay báo gần nhất: ' . esc_html(get_option('hgs_vip_sepay_last', 'chưa có')) . '</p>'
             . '<button class="button button-primary">Lưu</button></form>';
+        $tp = get_transient('hgs_vip_testpay');
+        if ($tp && $bank) {
+            $tr = $wpdb->get_row($wpdb->prepare("SELECT * FROM $ot WHERE pay=%s", $tp));
+            echo '<div style="background:#fff;border:2px solid #ffb300;padding:12px 16px;max-width:900px;margin-top:10px"><b>Đơn thử ' . esc_html($tp) . ' · 2.000đ</b> — '
+                . ($tr && (int) $tr->status === 1 ? '<b style="color:#008a20">ĐÃ NHẬN TIỀN, web đã tự cấp VIP ' . esc_html($tr->code) . '. SePay chạy đúng!</b>' : 'quét mã này bằng app ngân hàng, chuyển xong tải lại trang này sau vài giây.')
+                . '<br><img src="' . esc_url('https://img.vietqr.io/image/' . rawurlencode(hgs_vip_bin($bank['bank'])) . '-' . rawurlencode($bank['acc']) . '-compact2.png?amount=2000&addInfo=' . rawurlencode($tp) . '&accountName=' . rawurlencode($bank['name'])) . '" style="width:200px;margin-top:8px"></div>';
+        }
+        echo '<p>' . $f('testorder', 0, 'Tạo đơn thử 2.000đ (kiểm tra SePay)') . '</p>';
         $ords = $wpdb->get_results("SELECT * FROM $ot ORDER BY id DESC LIMIT 40");
         echo '<h3>Đơn mua VIP</h3><table class="widefat striped" style="margin-bottom:18px"><thead><tr><th>Thời gian</th><th>Nội dung CK</th><th>Gói</th><th>Số tiền</th><th>SĐT</th><th>Trạng thái</th><th></th></tr></thead><tbody>';
         if (!$ords) echo '<tr><td colspan="7">Chưa có đơn nào.</td></tr>';
