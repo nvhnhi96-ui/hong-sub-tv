@@ -10,7 +10,7 @@ if (!function_exists('hgs_vip_table')) {
     function hgs_vip_table() {
         global $wpdb;
         $t = $wpdb->prefix . 'hgs_vip';
-        if (get_option('hgs_vip_db') !== '2') {
+        if (get_option('hgs_vip_db') !== '3') {
             require_once ABSPATH . 'wp-admin/includes/upgrade.php';
             $c = $wpdb->get_charset_collate();
             dbDelta("CREATE TABLE $t (
@@ -32,7 +32,26 @@ if (!function_exists('hgs_vip_table')) {
   PRIMARY KEY  (id),
   UNIQUE KEY code (code)
 ) $c;");
-            update_option('hgs_vip_db', '2', false);
+            $r = $wpdb->prefix . 'hgs_vip_reg';
+            dbDelta("CREATE TABLE $r (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  token char(32) NOT NULL,
+  name varchar(80) NOT NULL DEFAULT '',
+  phone varchar(20) NOT NULL DEFAULT '',
+  plan varchar(60) NOT NULL DEFAULT '',
+  days int(10) unsigned NOT NULL DEFAULT 30,
+  price varchar(40) NOT NULL DEFAULT '',
+  note varchar(300) NOT NULL DEFAULT '',
+  dev varchar(40) NOT NULL DEFAULT '',
+  ip varchar(64) NOT NULL DEFAULT '',
+  created datetime NOT NULL,
+  status tinyint(1) unsigned NOT NULL DEFAULT 0,
+  code varchar(20) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  KEY status (status,id),
+  KEY dev (dev)
+) $c;");
+            update_option('hgs_vip_db', '3', false);
         }
         return $t;
     }
@@ -86,6 +105,70 @@ if (!function_exists('hgs_vip_table')) {
         if ($until && $until < $now) return hgs_vip_err('vip_expired', 'Mã VIP đã hết hạn ngày ' . wp_date('d/m/Y', $until) . '. Gia hạn tại Hóng Game Store, 0367 879 283.', 403);
         $row->until = $until;
         return $row;
+    }
+    function hgs_vip_reg_table() {
+        global $wpdb;
+        hgs_vip_table();
+        return $wpdb->prefix . 'hgs_vip_reg';
+    }
+    // cac goi VIP shop dang ban (ten, so ngay, gia) - sua o trang quan tri
+    function hgs_vip_plans() {
+        $p = get_option('hgs_vip_plans', null);
+        if (!is_array($p) || !$p) $p = array(
+            array('name' => '1 tháng', 'days' => 30, 'price' => ''),
+            array('name' => '3 tháng', 'days' => 90, 'price' => ''),
+            array('name' => '12 tháng', 'days' => 365, 'price' => ''),
+        );
+        $out = array();
+        foreach ($p as $x) {
+            if (!empty($x['name']) && (int) $x['days'] > 0) $out[] = array('name' => (string) $x['name'], 'days' => (int) $x['days'], 'price' => (string) $x['price']);
+        }
+        return $out;
+    }
+    function hgs_vip_plans_api() {
+        $pl = hgs_vip_plans();
+        foreach ($pl as $i => $x) $pl[$i]['id'] = $i;
+        return array('ok' => true, 'plans' => $pl, 'pay' => (string) get_option('hgs_vip_pay', ''));
+    }
+    // khach dang ky VIP ngay trong app: luu lai, shop goi / nhan Zalo xac nhan, bam "Cap ma" la VIP tu bat tren may khach
+    function hgs_vip_register($req) {
+        global $wpdb;
+        $r = hgs_vip_reg_table();
+        $ipk = 'hgs_vip_rg_' . md5(hgs_vip_ip());
+        if ((int) get_transient($ipk) >= 6) return hgs_vip_err('vip_limit', 'Bạn đã gửi nhiều đăng ký. Shop sẽ liên hệ sớm, hoặc nhắn Zalo 0367 879 283.', 429);
+        $name  = mb_substr(trim(sanitize_text_field((string) $req->get_param('name'))), 0, 80);
+        $phone = preg_replace('/\D/', '', (string) $req->get_param('phone'));
+        if (strpos($phone, '84') === 0 && strlen($phone) >= 11) $phone = '0' . substr($phone, 2);
+        $note  = mb_substr(trim(sanitize_text_field((string) $req->get_param('note'))), 0, 300);
+        $dev   = substr(preg_replace('/[^a-zA-Z0-9]/', '', (string) $req->get_param('dev')), 0, 40);
+        $pl    = hgs_vip_plans();
+        $pi    = (int) $req->get_param('plan');
+        if (mb_strlen($name) < 2) return hgs_vip_err('vip_input', 'Nhập họ tên của bạn.', 400);
+        if (!preg_match('/^0\d{9,10}$/', $phone)) return hgs_vip_err('vip_input', 'Số điện thoại chưa đúng (VD: 0912345678).', 400);
+        if (!isset($pl[$pi])) return hgs_vip_err('vip_input', 'Chọn một gói VIP.', 400);
+        if (strlen($dev) < 8) return hgs_vip_err('vip_input', 'Thiếu mã máy.', 400);
+        $tok = wp_generate_password(32, false, false);
+        $wpdb->insert($r, array('token' => $tok, 'name' => $name, 'phone' => $phone, 'plan' => $pl[$pi]['name'], 'days' => $pl[$pi]['days'],
+            'price' => $pl[$pi]['price'], 'note' => $note, 'dev' => $dev, 'ip' => hgs_vip_ip(), 'created' => gmdate('Y-m-d H:i:s')));
+        $id = (int) $wpdb->insert_id;
+        if (!$id) return hgs_vip_err('vip_busy', 'Chưa gửi được đăng ký, thử lại sau.', 500);
+        set_transient($ipk, (int) get_transient($ipk) + 1, HOUR_IN_SECONDS);
+        $to = get_option('hgs_vip_mail', '') ?: get_option('admin_email');
+        if ($to) wp_mail($to, '[Hóng Sub VIP] Đăng ký mới: ' . $name . ' - ' . $phone,
+            "Khách đăng ký gói VIP Hóng Sub\n\nHọ tên: $name\nSĐT/Zalo: $phone\nGói: " . $pl[$pi]['name'] . ($pl[$pi]['price'] !== '' ? ' (' . $pl[$pi]['price'] . ')' : '') . "\nGhi chú: $note\n\nDuyệt và cấp mã: " . admin_url('admin.php?page=hgs-vip'));
+        return array('ok' => true, 'id' => $id, 'token' => $tok, 'pay' => (string) get_option('hgs_vip_pay', ''));
+    }
+    function hgs_vip_reg_status($req) {
+        global $wpdb;
+        $r = hgs_vip_reg_table();
+        $t = hgs_vip_table();
+        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $r WHERE id=%d", (int) $req->get_param('id')));
+        $dev = substr(preg_replace('/[^a-zA-Z0-9]/', '', (string) $req->get_param('dev')), 0, 40);
+        if (!$row || !hash_equals($row->token, (string) $req->get_param('token')) || $row->dev !== $dev) return hgs_vip_err('vip_gone', 'Không tìm thấy đăng ký.', 404);
+        if ((int) $row->status === 2) return array('ok' => true, 'status' => 'no');
+        if ((int) $row->status !== 1 || $row->code === '') return array('ok' => true, 'status' => 'wait');
+        $c = $wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE code=%s", $row->code));
+        return array('ok' => true, 'status' => 'done', 'code' => $row->code, 'until' => ($c && $c->expires) ? strtotime($c->expires . ' UTC') : 0);
     }
     function hgs_vip_check($req) {
         $row = hgs_vip_auth($req);
@@ -159,11 +242,17 @@ if (!function_exists('hgs_vip_table')) {
 add_action('rest_api_init', function () {
     register_rest_route('hgs-sub/v1', '/vip/check', array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'hgs_vip_check'));
     register_rest_route('hgs-sub/v1', '/vip/ask', array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'hgs_vip_ask'));
+    register_rest_route('hgs-sub/v1', '/vip/plans', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_vip_plans_api'));
+    register_rest_route('hgs-sub/v1', '/vip/register', array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'hgs_vip_register'));
+    register_rest_route('hgs-sub/v1', '/vip/reg', array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'hgs_vip_reg_status'));
 });
 
 // ---------------- Trang quan tri: Hong Sub VIP ----------------
 add_action('admin_menu', function () {
-    add_menu_page('Hóng Sub VIP', 'Hóng Sub VIP', 'manage_options', 'hgs-vip', 'hgs_vip_admin', 'dashicons-star-filled', 58);
+    global $wpdb;
+    $n = 0;
+    if (get_option('hgs_vip_db') === '3') $n = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}hgs_vip_reg WHERE status=0");
+    add_menu_page('Hóng Sub VIP', 'Hóng Sub VIP' . ($n ? ' <span class="awaiting-mod">' . $n . '</span>' : ''), 'manage_options', 'hgs-vip', 'hgs_vip_admin', 'dashicons-star-filled', 58);
 });
 add_action('admin_post_hgs_vip', function () {
     global $wpdb;
@@ -193,6 +282,41 @@ add_action('admin_post_hgs_vip', function () {
                 ? 'Khóa dùng được. Claude dịch: ' . (isset($j['content'][0]['text']) ? $j['content'][0]['text'] : '')
                 : 'Khóa lỗi (' . wp_remote_retrieve_response_code($r) . '): ' . (isset($j['error']['message']) ? $j['error']['message'] : '');
         }
+    } elseif ($do === 'plans') {
+        $pl = array();
+        $names = isset($_POST['pn']) ? (array) $_POST['pn'] : array();
+        foreach ($names as $i => $nm) {
+            $nm = mb_substr(sanitize_text_field(wp_unslash($nm)), 0, 60);
+            $dd = isset($_POST['pd'][$i]) ? (int) $_POST['pd'][$i] : 0;
+            $pr = isset($_POST['pp'][$i]) ? mb_substr(sanitize_text_field(wp_unslash($_POST['pp'][$i])), 0, 40) : '';
+            if ($nm !== '' && $dd > 0) $pl[] = array('name' => $nm, 'days' => $dd, 'price' => $pr);
+        }
+        update_option('hgs_vip_plans', $pl, false);
+        update_option('hgs_vip_pay', mb_substr(sanitize_textarea_field(wp_unslash(isset($_POST['pay']) ? $_POST['pay'] : '')), 0, 600), false);
+        update_option('hgs_vip_mail', sanitize_email(wp_unslash(isset($_POST['mail']) ? $_POST['mail'] : '')), false);
+        $msg = 'Đã lưu gói và giá.';
+    } elseif ($do === 'approve' && $id) {
+        $r = hgs_vip_reg_table();
+        $g = $wpdb->get_row($wpdb->prepare("SELECT * FROM $r WHERE id=%d", $id));
+        if ($g && (int) $g->status === 0) {
+            $days = max(1, min(3650, isset($_POST['days']) ? (int) $_POST['days'] : (int) $g->days));
+            $now = time();
+            for ($try = 0; $try < 5; $try++) {
+                $c = hgs_vip_new_code();
+                if ($wpdb->insert($t, array('code' => $c, 'note' => $g->name . ' ' . $g->phone . ' (' . $g->plan . ')', 'days' => $days, 'dev' => $g->dev,
+                    'created' => gmdate('Y-m-d H:i:s', $now), 'activated' => gmdate('Y-m-d H:i:s', $now), 'expires' => gmdate('Y-m-d H:i:s', $now + $days * DAY_IN_SECONDS)))) {
+                    $wpdb->update($r, array('status' => 1, 'code' => $c), array('id' => $id));
+                    $msg = 'Đã cấp mã ' . $c . ' (' . $days . ' ngày) cho ' . $g->name . '. VIP tự bật trên máy khách trong khoảng 1 phút.';
+                    break;
+                }
+            }
+        }
+    } elseif ($do === 'regdel' && $id) {
+        $wpdb->delete(hgs_vip_reg_table(), array('id' => $id));
+        $msg = 'Đã xóa đăng ký.';
+    } elseif ($do === 'reject' && $id) {
+        $wpdb->update(hgs_vip_reg_table(), array('status' => 2), array('id' => $id));
+        $msg = 'Đã bỏ đăng ký này.';
     } elseif ($do === 'new') {
         $n = max(1, min(50, (int) $_POST['n']));
         $days = max(1, min(3650, (int) $_POST['days']));
@@ -239,6 +363,32 @@ if (!function_exists('hgs_vip_admin')) {
         if (!empty($_GET['msg'])) echo '<div class="notice notice-info"><p>' . esc_html(wp_unslash(rawurldecode($_GET['msg']))) . '</p></div>';
         $made = get_transient('hgs_vip_made');
         if ($made) { delete_transient('hgs_vip_made'); echo '<div class="notice notice-success"><p><b>Mã mới (sao chép gửi khách):</b></p><textarea readonly rows="' . min(12, count($made) + 1) . '" style="width:320px;font-family:monospace">' . esc_textarea(implode("\n", $made)) . '</textarea></div>'; }
+
+        $rt = hgs_vip_reg_table();
+        $regs = $wpdb->get_results("SELECT * FROM $rt ORDER BY status=0 DESC, id DESC LIMIT 60");
+        echo '<h2>Khách đăng ký VIP</h2><p class="description">Khách bấm "Đăng ký VIP" trong app sẽ hiện ở đây. Gọi / nhắn Zalo xác nhận và nhận tiền, rồi bấm <b>Cấp mã</b>: VIP tự bật trên máy khách, không cần gửi mã.</p>';
+        echo '<table class="widefat striped" style="margin-bottom:18px"><thead><tr><th>Thời gian</th><th>Khách</th><th>SĐT / Zalo</th><th>Gói</th><th>Ghi chú</th><th>Trạng thái</th><th></th></tr></thead><tbody>';
+        if (!$regs) echo '<tr><td colspan="7">Chưa có đăng ký nào.</td></tr>';
+        foreach ($regs as $g) {
+            $st = (int) $g->status === 0 ? '<b style="color:#d63638">Chờ duyệt</b>' : ((int) $g->status === 1 ? '<span style="color:#008a20">Đã cấp ' . esc_html($g->code) . '</span>' : 'Đã bỏ');
+            echo '<tr><td>' . esc_html(wp_date('d/m H:i', strtotime($g->created . ' UTC'))) . '</td><td>' . esc_html($g->name) . '</td>'
+                . '<td><a href="tel:' . esc_attr($g->phone) . '">' . esc_html($g->phone) . '</a> · <a href="https://zalo.me/' . esc_attr($g->phone) . '" target="_blank" rel="noopener">Zalo</a></td>'
+                . '<td>' . esc_html($g->plan) . ($g->price !== '' ? ' · ' . esc_html($g->price) : '') . '</td><td>' . esc_html($g->note) . '</td><td>' . $st . '</td><td>'
+                . ((int) $g->status === 0 ? $f('approve', $g->id, 'Cấp mã', '<input type="number" name="days" value="' . (int) $g->days . '" min="1" style="width:64px"> ngày ') . $f('reject', $g->id, 'Bỏ', '', 'Bỏ đăng ký của ' . $g->name . '?') : $f('regdel', $g->id, 'Xóa', '', 'Xóa đăng ký của ' . $g->name . '?'))
+                . '</td></tr>';
+        }
+        echo '</tbody></table>';
+
+        $pl = hgs_vip_plans();
+        while (count($pl) < 4) $pl[] = array('name' => '', 'days' => '', 'price' => '');
+        echo '<h2>Gói VIP và giá (hiện trong app)</h2><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">' . wp_nonce_field('hgs_vip', '_wpnonce', true, false)
+            . '<input type="hidden" name="action" value="hgs_vip"><input type="hidden" name="do" value="plans"><table class="widefat" style="max-width:640px"><thead><tr><th>Tên gói</th><th>Số ngày</th><th>Giá (để trống: shop báo giá qua Zalo)</th></tr></thead><tbody>';
+        foreach ($pl as $i => $x) {
+            echo '<tr><td><input name="pn[' . $i . ']" value="' . esc_attr($x['name']) . '" placeholder="VD: 1 tháng"></td><td><input type="number" name="pd[' . $i . ']" value="' . esc_attr($x['days']) . '" style="width:80px"></td><td><input name="pp[' . $i . ']" value="' . esc_attr($x['price']) . '" placeholder="VD: 49.000đ"></td></tr>';
+        }
+        echo '</tbody></table><p>Hướng dẫn thanh toán hiện cho khách sau khi đăng ký (không bắt buộc):<br><textarea name="pay" rows="3" style="width:640px" placeholder="VD: Shop sẽ gọi xác nhận. Chuyển khoản: ...">' . esc_textarea(get_option('hgs_vip_pay', '')) . '</textarea></p>'
+            . '<p>Email nhận báo đăng ký mới: <input type="email" name="mail" value="' . esc_attr(get_option('hgs_vip_mail', '')) . '" placeholder="' . esc_attr(get_option('admin_email')) . '" style="width:300px"></p>'
+            . '<button class="button button-primary">Lưu gói và giá</button></form>';
 
         echo '<h2>1. Khóa Claude</h2><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">' . wp_nonce_field('hgs_vip', '_wpnonce', true, false)
             . '<input type="hidden" name="action" value="hgs_vip"><input type="hidden" name="do" value="key"><table class="form-table">'

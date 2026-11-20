@@ -1073,16 +1073,73 @@ function vipShape(s){   /* the JSON shape the server must answer in, from the Ge
   return ty==='BOOLEAN'?true:(ty==='INTEGER'||ty==='NUMBER')?0:'';
 }
 function vipMsg(cls,t){ var m=$('hsVipMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
+function vipLeft(){ return S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.now())/864e5)):0; }
 function vipUi(){
-  var el=$('hsVip'), on=vipOn(); if(!el) return;
-  if(!el.value&&S.vip.code) el.value=S.vip.code;
-  if(on){ var left=S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.now())/864e5)):0;
-    vipMsg('ok','Bạn đang là thành viên VIP'+(S.vip.until?', còn '+left+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.'); }
+  var on=vipOn(), el=$('hsVip');
+  if(el&&!el.value&&S.vip.code) el.value=S.vip.code;
+  if(on) vipMsg('ok','Bạn đang là thành viên VIP'+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.');
   else if(S.vip.err) vipMsg('err',S.vip.err);
   else vipMsg('','');
-  var b=$('hsVipBuy'); if(b) b.hidden=on;
-  var h=$('hsHint'); if(h) h.hidden=!on;
-  var sec=$('hsVipSec'); if(sec) sec.classList.toggle('on',on);
+  var set=function(id,f){ var x=$(id); if(x) f(x); };
+  set('hsVipBuy',function(x){ x.hidden=on; });
+  set('hsVipHint',function(x){ x.hidden=!on; });
+  set('hsVipPromo',function(x){ x.hidden=on; });
+  set('hsVipEmpty',function(x){ x.hidden=on; });
+  set('hsVipSec',function(x){ x.classList.toggle('on',on); });
+  set('dkVipChip',function(x){ x.classList.toggle('on',on); });
+  set('dkVipChipTx',function(x){ x.textContent=on?'VIP'+(S.vip.until?' · còn '+vipLeft()+' ngày':''):'Nâng cấp VIP'; });
+  set('dkVipNavTx',function(x){ x.textContent=on?'VIP của bạn':'Gói VIP'; });
+  vipNudge();
+}
+/* ---------- VIP: plans and sign-up inside the app. The shop confirms by phone / Zalo and presses "Cấp mã" on the
+   website: this computer then turns VIP on by itself (checked every minute), no code to type. ---------- */
+S.vipPlans=load('vipplans',[]); S.vipPlan=load('vipplan',0); S.vipReg=load('vipreg',null);
+function vipRegMsg(cls,t){ var m=$('hsVipRegMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
+function vipPlansUi(){
+  var box=$('hsVipPlans'); if(!box) return;
+  var pl=S.vipPlans.length?S.vipPlans:[{id:0,name:'1 tháng',days:30,price:''},{id:1,name:'3 tháng',days:90,price:''},{id:2,name:'12 tháng',days:365,price:''}];
+  if(S.vipPlan>=pl.length) S.vipPlan=0;
+  box.innerHTML=pl.map(function(x,i){ return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.price?esc(x.price):'Shop báo giá qua Zalo')+'</span></button>'; }).join('');
+  box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
+}
+function vipPlansLoad(){
+  if(!$('hsVipPlans')) return;
+  fetch(VIPAPI+'plans').then(function(r){ return r.json(); }).then(function(j){ if(j&&j.ok&&Array.isArray(j.plans)&&j.plans.length){ S.vipPlans=j.plans; save('vipplans',j.plans); S.vipPay=j.pay||''; vipPlansUi(); } },function(){});
+}
+async function vipRegister(){
+  var name=($('hsVipName').value||'').trim(), phone=($('hsVipPhone').value||'').replace(/[^\d+]/g,''), note=($('hsVipNote').value||'').trim();
+  if(name.length<2){ vipRegMsg('err','Nhập họ tên của bạn.'); $('hsVipName').focus(); return; }
+  if(phone.replace(/\D/g,'').length<9){ vipRegMsg('err','Nhập số điện thoại (Zalo) để shop liên hệ.'); $('hsVipPhone').focus(); return; }
+  save('vipme',{name:name,phone:phone});
+  var b=$('hsVipReg'); b.disabled=true; vipRegMsg('','Đang gửi đăng ký...');
+  try{
+    var x=await vipCall('register',{name:name,phone:phone,note:note,plan:S.vipPlan,dev:vipDev()},15000);
+    if(x.r.ok&&x.j.ok){
+      S.vipReg={id:x.j.id,token:x.j.token,at:Date.now()}; save('vipreg',S.vipReg); log('VIP: đã gửi đăng ký');
+      vipRegMsg('ok','Đã gửi đăng ký! Shop sẽ gọi hoặc nhắn Zalo số '+phone+' để xác nhận. Khi shop kích hoạt, VIP tự bật trên máy này.'+(x.j.pay?'\n'+x.j.pay:''));
+      vipRegPoll();
+    } else vipRegMsg('err',x.j.message||'Chưa gửi được đăng ký, thử lại sau.');
+  }catch(e){ vipRegMsg('err',e.message+'. Thử lại sau hoặc nhắn Zalo 0367 879 283.'); }
+  finally{ b.disabled=false; }
+}
+function vipRegPoll(){
+  clearTimeout(S.vipRegT);
+  if(!S.vipReg||vipOn()) return;
+  vipCall('reg',{id:S.vipReg.id,token:S.vipReg.token,dev:vipDev()},12000).then(function(x){
+    var j=x.j||{};
+    if(j.status==='done'&&j.code){ S.vip={code:j.code,ok:true,until:(j.until||0)*1000,err:''}; save('vip',S.vip); S.vipReg=null; save('vipreg',null);
+      var el=$('hsVip'); if(el) el.value=j.code; vipRegMsg('ok','Shop đã kích hoạt VIP cho bạn. Chúc chơi game vui vẻ!'); log('VIP: shop đã kích hoạt'); vipUi(); steps(); keyNeed(); return; }
+    if(j.status==='no'||x.r.status===404){ S.vipReg=null; save('vipreg',null); vipRegMsg('warn','Đăng ký trước chưa được kích hoạt. Gửi lại đăng ký hoặc nhắn Zalo 0367 879 283.'); return; }
+    if(j.status==='wait') vipRegMsg('','Đã gửi đăng ký lúc '+new Date(S.vipReg.at).toLocaleString('vi-VN')+'. Đang chờ shop xác nhận, VIP sẽ tự bật khi shop kích hoạt.');
+    S.vipRegT=setTimeout(vipRegPoll,60e3);
+  },function(){ S.vipRegT=setTimeout(vipRegPoll,90e3); });
+}
+/* running on the free translator (keys used up, or no key): a small gold line under the subtitle points to VIP */
+function vipNudge(){
+  var n=$('hsVipNudge'); if(!n) return;
+  var show=!vipOn()&&!S.vipNudgeOff&&S.running&&S.via==='free';
+  if(show){ var tx=$('hsVipNudgeTx'); if(tx) tx.textContent=gKeys().length||groqKeys().length?'Mã dịch đang hết lượt, Hóng Sub tạm dùng máy dịch miễn phí.':'Đang dịch bằng máy dịch miễn phí (chưa có mã AI).'; }
+  n.hidden=!show;
 }
 async function vipCall(path,body,ms){
   var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },ms||15000), r, j;
@@ -1126,7 +1183,13 @@ async function vipAsk(prompt,b64,schema,mode){
   if(go) go.addEventListener('click',function(){ vipCheck(el.value); });
   el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); vipCheck(el.value); } });
   if(S.vip.code&&S.vip.ok) setTimeout(function(){ vipCheck(S.vip.code); },4000);   /* still valid? (expired, moved to another computer) */
-  var hb=$('hsHint'); if(hb) hb.addEventListener('click',function(){ vipHint(); });
+  var hb=$('hsVipHint'); if(hb) hb.addEventListener('click',function(){ vipHint(); });
+  var nx=$('hsVipNudgeX'); if(nx) nx.addEventListener('click',function(){ S.vipNudgeOff=true; vipNudge(); });
+  var rg=$('hsVipReg'); if(rg) rg.addEventListener('click',function(){ vipRegister(); });
+  var me=load('vipme',null); if(me){ if($('hsVipName')) $('hsVipName').value=me.name||''; if($('hsVipPhone')) $('hsVipPhone').value=me.phone||''; }
+  vipPlansUi(); vipPlansLoad();
+  if(S.vipReg&&!vipOn()) setTimeout(vipRegPoll,2500);
+  setInterval(vipNudge,4000);
 })();
 /* VIP: "Gợi ý nhiệm vụ": the game picture now goes to the shop's server, which answers with a short hint in
    Vietnamese for the puzzle or quest on screen. Shown like a subtitle (computer, floating window, TV) and in the VIP box. */
@@ -1147,7 +1210,7 @@ async function vipHint(){
   if(S.hintBusy) return;
   if(!grab({x:0,y:0,w:1,h:1},1280)){ hintOut('err','Chưa có hình game. Mở game trước rồi bấm Gợi ý nhiệm vụ.'); return; }
   var img=jpeg(.82), g=(($('hsGame')&&$('hsGame').value)||'').trim();
-  S.hintBusy=true; var hb=$('hsHint'); if(hb) hb.disabled=true;
+  S.hintBusy=true; var hb=$('hsVipHint'); if(hb) hb.disabled=true;
   hintOut('','Đang xem màn hình để gợi ý...'); log('VIP: xin gợi ý nhiệm vụ');
   try{
     var r=await vipAsk((g?'Game: '+g+'\n':'')+'This is a screenshot of the video game the player is playing right now. The player is stuck on the current quest, objective or puzzle shown on screen. '+
