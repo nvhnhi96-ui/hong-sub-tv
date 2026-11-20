@@ -9,7 +9,9 @@ let audio = null, seq = 0;
    When reading falls behind the subtitles: the line being read speeds up, waiting lines are read faster,
    at most two lines wait, and a line that waited too long (its subtitle is long gone) is skipped. */
 const lines = []; let cur = null;
-const MAX_WAIT_MS = 7000;
+/* the voice follows the character: a line whose subtitle came more than 3 s ago is not read any more, only the newest
+   line waits, and a line still being read when the next one comes speeds up, or is cut if it has been going on long */
+const MAX_WAIT_MS = 3000, CUT_AFTER_MS = 2500;
 function lineDrop(L) { if (L && L.ai && L.id) ipcRenderer.send('aiv-drop', L.id); }
 function stopAll() {
   seq++; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } audio = null; }
@@ -28,12 +30,13 @@ function prepare(L) {
 }
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
 function speedOf(c) { return Math.max(1, Math.min(1.6, c.boost * (c.hurry || 1), 2.3 / Math.max(1, c.rate || 1))); }   /* never faster than 2.3x in all */
+function cutCur() { const c = cur; if (!c) return; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } } audio = null; lineDrop(c); cur = null; }
 function playPart() {
   const c = cur;
   if (!c || c.playing) return;
   const p = c.parts.shift();
   if (!p) { if (c.ended) finish(c); return; }
-  c.playing = true;
+  c.playing = true; if (!c.startAt) c.startAt = Date.now();
   audio = new Audio('data:' + (p.mime || 'audio/wav') + ';base64,' + p.wav);
   c.applyRate = !!(c.ai || p.rateApply);
   const sp = speedOf(c);
@@ -55,14 +58,15 @@ function startNext() {
 /* a new line arrived while one is being read: read the current one a little faster so the voice keeps up */
 function hurry() {
   if (!cur) return;
-  cur.hurry = Math.min(1.35, (cur.hurry || 1) * 1.12);
+  cur.hurry = Math.min(1.5, (cur.hurry || 1) * 1.3);
   if (audio) { const sp = speedOf(cur); audio.playbackRate = cur.applyRate ? cur.rate * cur.pitch * sp : cur.pitch * sp; }
 }
 function enqueue(L, queue) {
   if (!queue) stopAll();
   else {
-    while (lines.length >= 2) lineDrop(lines.shift());   /* far behind: drop the oldest waiting line */
-    if (cur || lines.length) { L.boost = lines.length ? 1.25 : 1.12; hurry(); }
+    while (lines.length) lineDrop(lines.shift());        /* only the newest line waits: an older waiting one is already late */
+    if (cur && cur.startAt && Date.now() - cur.startAt > CUT_AFTER_MS && !cur.pre) cutCur();   /* the character has moved on */
+    if (cur) { L.boost = 1.12; hurry(); }
   }
   prepare(L); lines.push(L); startNext();
 }

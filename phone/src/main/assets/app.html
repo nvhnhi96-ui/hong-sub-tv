@@ -4413,7 +4413,7 @@ function ggNext(){
 }
 function ggWeb(t,rate,queue){
   if(!queue) ggStop();
-  if(GQ.length>=4) GQ.length=0;                       /* far behind: drop what is waiting */
+  if(queue) GQ.length=0;                              /* only the newest line waits: the voice follows the character */
   var r=Math.max(0.5,Math.min(2,rate||1))*(queue&&(gAud||GQ.length)?1.12:1);
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
@@ -4462,10 +4462,10 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   if(PH&&v0&&v0.ph){ try{ PH.speak(t,v0.name,rate,pitch||1,!!queue); }catch(e){} return; }   /* a voice of the phone (Android) */
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
   /* subtitles wait for the line being read; if two are already waiting, start fresh */
-  if(!queue||speechSynthesis.pending) speechSynthesis.cancel();
-  else if(speechSynthesis.speaking) rate=Math.min(2,rate*1.12);
+  if(!queue||speechSynthesis.pending||(speechSynthesis.speaking&&Date.now()-(S.ssAt||0)>2500)) speechSynthesis.cancel();   /* the line read for long: the character has moved on */
+  else if(speechSynthesis.speaking) rate=Math.min(2,rate*1.2);
   var v=v0;
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; speechSynthesis.speak(u);
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); }; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
@@ -5852,6 +5852,24 @@ function fsOverlaySync(){
 }
 /* "Dịch cả màn hình" and the automatic screen-text translation on the TV too: each block a box at its place (the
    TV's area boxes, ids fs_0, fs_1...), boxes no longer needed are emptied */
+/* a TV makes the game's picture livelier (its picture mode) but not what an app draws over it, so the same colour
+   looks brighter and more saturated in the box than around it: a little less of both brings them together */
+function tvTone(hex){
+  var m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex||'')); if(!m) return hex;
+  var c=[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)], gy=0.299*c[0]+0.587*c[1]+0.114*c[2];
+  return '#'+c.map(function(v){ v=(gy+(v-gy)*0.8)*0.93; return ('0'+Math.max(0,Math.min(255,Math.round(v))).toString(16)).slice(-2); }).join('');
+}
+/* the empty room beside a box on its own row, less the width of a button icon, left and right */
+function fsFree(it,list){
+  var h=it.lh||it.h, a=h*1.6, L=Infinity, R=Infinity;
+  list.forEach(function(o){
+    if(o===it) return;
+    var ov=Math.min(o.y+o.h,it.y+it.h)-Math.max(o.y,it.y); if(ov<Math.min(o.h,it.h)*0.5) return;
+    if(o.x>=it.x+it.w-h*0.2) R=Math.min(R,o.x-(it.x+it.w));
+    else if(o.x+o.w<=it.x+h*0.2) L=Math.min(L,it.x-(o.x+o.w));
+  });
+  return {l:L===Infinity?L:Math.max(0,L-a),r:R===Infinity?R:Math.max(0,R-a)};
+}
 function fsTv(list){
   if(!(tvIp()||tvCode().length>=4)) return;
   if(tvOld()){ if(list.length&&!S.fsOldTold){ S.fsOldTold=true; log('chữ trên màn hình không gửi lên TV: app TV bản cũ ('+S.tvVer+'), cần bản 1.0.'+TV_MIN+' trở lên'); status('warn','Chữ dịch trên màn hình cần app Hóng Sub TV bản mới. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); } return; }   /* an old TV app draws these boxes as small wrapped labels over the game */
@@ -5859,13 +5877,36 @@ function fsTv(list){
   /* one letter size for every box of the screen (no box bigger than the median by more than a quarter), so a menu
      or a phone screen reads as one piece */
   var lhs=list.map(function(it){ return it.lh||it.h/2; }).sort(function(a,b){ return a-b; }), lhm=lhs.length?lhs[Math.floor(lhs.length/2)]:0.03;
-  list.forEach(function(it){
+  /* the rows of one list (a menu column: three or more boxes lined up on the same edge, with about the same letter
+     size) get one letter size and may widen up to the column's widest row, so a longer Vietnamese row is not drawn
+     smaller than the others */
+  var grp=list.map(function(it){
+    var al=it.al||'c', lh=it.lh||it.h/2;
+    var mates=list.filter(function(o){ var ol=o.lh||o.h/2; if((o.al||'c')!==al||ol<lh*0.75||ol>lh*1.33) return false;
+      return al==='r'?Math.abs((o.x+o.w)-(it.x+it.w))<0.012:al==='l'?Math.abs(o.x-it.x)<0.012:Math.abs((o.x+o.w/2)-(it.x+it.w/2))<0.012; });
+    if(mates.length<3) return null;
+    var ls=mates.map(function(o){ return o.lh||o.h/2; }).sort(function(a,b){ return a-b; });
+    return {lh:ls[Math.floor(ls.length/2)],L:Math.min.apply(null,mates.map(function(o){ return o.x; })),R:Math.max.apply(null,mates.map(function(o){ return o.x+o.w; }))};
+  });
+  list.forEach(function(it,ix){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
-    var px=Math.max(6,Math.round(Math.min(it.lh||it.h/2,lhm*1.25)*1080*0.85*(S.cam&&r.h&&it.h?r.h/it.h:1)));
-    var hasIc=!!(it.ic&&it.ic.length);
-    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,zx:0,zy:0,zw:1,zh:1,hold:0,name:'Chữ trên màn hình',zs:'m',zal:it.al||'c',zbg:100,font:font,zfont:font,zfit:1,zpx:px,zauto:0,zgrow:0,zmaxw:r.w,speak:false};   /* solid background: no English through or around it */
-    o.zx=r.x; o.zy=r.y; o.zw=r.w; o.zh=r.h;   /* the original's own box is the room: letters get smaller instead of spilling over it */
-    if(it.bg) { o.zbgc=it.bg; o.zfg=it.fg||''; }
+    var g=grp[ix], lh=g?g.lh:Math.min(it.lh||it.h/2,lhm*1.25);
+    var px=Math.max(6,Math.round(lh*1080*0.66*(S.cam&&r.h&&it.h?r.h/it.h:1)));   /* the letters as big as the original's: a TV draws its bold font larger than the computer's */
+    var hasIc=!!(it.ic&&it.ic.length), al=it.al||'c';
+    /* drawn on the TV the way the computer draws it ("Đúng chỗ" box): every line of the Vietnamese stays one line,
+       the box is the original's size with the picture's own colour, and longer Vietnamese gets smaller letters
+       instead of wrapping into a tall narrow box over the next row. A one-line label may be a little wider than its
+       original (like the computer: up to 12% more) on the side it is lined up from. */
+    var one=String(it.vi||'').indexOf('\n')<0, ext=one?r.w*0.12+0.004:0;
+    if(g){ var gr=camRect({x:g.L,y:it.y,w:g.R-g.L,h:it.h}); if(gr) ext=Math.max(ext,al==='c'?gr.w-r.w:al==='r'?r.x-gr.x:gr.x+gr.w-(r.x+r.w)); }
+    /* never over the next box on the same row or the button icon in front of it ("✕ CHỌN  ○ QUAY LẠI"): a wider
+       box hid the icon and the first letters of the next label, so the Vietnamese gets smaller letters instead */
+    var fr=fsFree(it,list), sc=it.w?r.w/it.w:1;
+    ext=Math.max(0,Math.min(ext,(al==='l'?fr.r:al==='r'?fr.l:2*Math.min(fr.l,fr.r))*sc));
+    var zx=al==='l'?r.x:al==='r'?r.x-ext:r.x-ext/2;
+    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
+      zx:Math.max(0,zx),zy:r.y,zw:Math.min(1-Math.max(0,zx),r.w+ext),zh:r.h,zwt:600};   /* zwt: the half-bold letters the computer draws (600) */
+    if(it.bg) { o.zbgc=tvTone(it.bg); o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
   });
   for(var j=n;j<old;j++) tvSend({kind:'zone',zid:'fs_'+j,vi:'',x:0,y:0,w:0.01,h:0.01}).catch(function(){});
@@ -6374,7 +6415,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';

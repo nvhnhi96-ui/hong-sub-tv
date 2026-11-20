@@ -52,6 +52,8 @@ final class Voice {
         return a.toString();
     }
 
+    private static long lastAt = 0;
+
     static void speak(String text, String name, float rate, float pitch, boolean queue) {
         if (tts == null || !ready || text == null || text.trim().isEmpty()) return;
         try {
@@ -60,7 +62,12 @@ final class Voice {
             tts.setPitch(Math.max(0.5f, Math.min(2f, pitch)));
             Bundle b = new Bundle();
             b.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1f);
-            tts.speak(text, queue ? TextToSpeech.QUEUE_ADD : TextToSpeech.QUEUE_FLUSH, b, "hs" + (++seq));
+            /* the voice follows the character: a new subtitle line replaces what is still waiting or being read for long */
+            long now = android.os.SystemClock.elapsedRealtime();
+            boolean busy = tts.isSpeaking();
+            boolean flush = !queue || (busy && now - lastAt > 2500);
+            if (flush || !busy) lastAt = now;
+            tts.speak(text, flush ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, b, "hs" + (++seq));
         } catch (Exception ignored) { }
     }
 

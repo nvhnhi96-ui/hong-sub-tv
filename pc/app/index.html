@@ -4294,7 +4294,7 @@ function ggNext(){
 }
 function ggWeb(t,rate,queue){
   if(!queue) ggStop();
-  if(GQ.length>=4) GQ.length=0;                       /* far behind: drop what is waiting */
+  if(queue) GQ.length=0;                              /* only the newest line waits: the voice follows the character */
   var r=Math.max(0.5,Math.min(2,rate||1))*(queue&&(gAud||GQ.length)?1.12:1);
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
@@ -4343,10 +4343,10 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   if(PH&&v0&&v0.ph){ try{ PH.speak(t,v0.name,rate,pitch||1,!!queue); }catch(e){} return; }   /* a voice of the phone (Android) */
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
   /* subtitles wait for the line being read; if two are already waiting, start fresh */
-  if(!queue||speechSynthesis.pending) speechSynthesis.cancel();
-  else if(speechSynthesis.speaking) rate=Math.min(2,rate*1.12);
+  if(!queue||speechSynthesis.pending||(speechSynthesis.speaking&&Date.now()-(S.ssAt||0)>2500)) speechSynthesis.cancel();   /* the line read for long: the character has moved on */
+  else if(speechSynthesis.speaking) rate=Math.min(2,rate*1.2);
   var v=v0;
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; speechSynthesis.speak(u);
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); }; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
