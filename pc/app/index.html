@@ -3901,11 +3901,6 @@ function castUi(){
 }
 function mainWhoUi(){ var el=$('hsMainWho'); if(!el) return; var m=mainList(); el.textContent=m.length?'Nhân vật chính: '+m.filter(function(n,i){ return !m.slice(0,i).some(function(x){ return nameIn(n,[x])||nameIn(x,[n]); }); }).join(', '):'Chưa biết nhân vật chính của game này, Hóng Sub sẽ tự đoán.'; }
 $('hsGame').addEventListener('change',castUi);
-$('hsGame').addEventListener('change',function(){
-  var vg=load('viGames',{}), g=gameKey(this.value), sel=$('hsLang');
-  if(g&&vg[g]&&sel.value!=='vi'){ S.langBeforeVi=sel.value; sel.value='vi'; sel.dispatchEvent(new Event('change')); }
-  else if(g&&!vg[g]&&sel.value==='vi'){ sel.value=S.langBeforeVi&&S.langBeforeVi!=='vi'?S.langBeforeVi:'en'; sel.dispatchEvent(new Event('change')); }
-});
 
 /* --- Google AI voice --- */
 var TTS_FALLBACK=['gemini-3.8-flash-lite-tts','gemini-3.8-flash-tts','gemini-3.1-flash-tts-preview'];
@@ -4223,12 +4218,11 @@ async function ocrLang(){
 (function(){
   var sel=$('hsLang');
   sel.innerHTML=Object.keys(LANGS).map(function(k){return '<option value="'+k+'">'+LANGS[k].n+'</option>';}).join('');
-  sel.value=LANGS[load('lang','en')]?load('lang','en'):'en';
-  /* once: a game switched to "Tiếng Việt" by itself by mistake (English lines taken for Vietnamese) stayed that way
-     for good and was never translated again. Start every game from the language set before. */
-  if(!load('viReset1',false)){ save('viReset1',true); save('viGames',{}); if(sel.value==='vi'){ sel.value='en'; save('lang','en'); } }
-  sel.addEventListener('change',function(){ if(S.viAuto){ S.viAuto=false; } else { save('lang',sel.value);
-    var vg=load('viGames',{}), g=gameKey(($('hsGame')||{}).value); if(g){ if(sel.value==='vi') vg[g]=1; else delete vg[g]; save('viGames',vg); } } S.lastEn=''; S.lastOcr=''; S.fs&&S.fs.cache.clear(); S.zones.forEach(function(z){z.lastText=''; z.doneMask=null;}); ocrLang(); });
+  /* English is the default, always: the language changes only when the person picks one here. "Tiếng Việt" (a game
+     already in Vietnamese, read aloud only) lasts until Hóng Sub closes, so a game is never left untranslated. */
+  var l0=load('lang','en'); if(!LANGS[l0]||l0==='vi'){ l0='en'; save('lang','en'); }
+  sel.value=l0; save('viGames',{});
+  sel.addEventListener('change',function(){ save('lang',sel.value==='vi'?'en':sel.value); S.lastEn=''; S.lastOcr=''; S.fs&&S.fs.cache.clear(); S.zones.forEach(function(z){z.lastText=''; z.doneMask=null;}); ocrLang(); });
 })();
 /* share of tokens that look like real English words: drops OCR junk like "fdrtglgbou" */
 var SHORTW=/^(a|i|o|an|am|as|at|be|by|do|go|he|hi|if|in|is|it|me|my|no|of|oh|ok|on|or|so|to|up|us|we|ya|ye|yo|mr|ms|dr|st)$/;
@@ -4924,7 +4918,7 @@ function ocrTake(txt,force){
   OCR.miss=0;
   if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
   if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; return; }   /* the line on screen, read again */
-  if(!viMode()&&(viPlain(txt)||viLike(txt))){ S.cand=null; S.lastOcr=txt; if(viLike(txt)) viSeen(txt); return; }   /* Vietnamese: the console's own menus, or a game already in Vietnamese */
+  if(!viMode()&&(viPlain(txt)||viLike(txt))){ S.cand=null; S.lastOcr=txt; return; }   /* Vietnamese: the console's own menus, or a game already in Vietnamese */
   if(!force&&promptOnly(txt)){ S.cand=null; S.lastOcr=txt; return; }               /* "Skip □  Restart ✕": button prompts, not a subtitle */
   if(!force&&guardOn()&&S.running&&PS_STRONG.test(txt.toLowerCase())){ S.cand=null; S.lastOcr=txt; guardSet('ps'); return; }   /* PS5 words: its own screen */
   if(!force&&guardOn()&&S.running&&ocrOn()&&guardHint(txt)){                       /* maybe a map's button hints: check the screen before translating */
@@ -5018,22 +5012,12 @@ async function viRead(part){
 }
 /* subtitles in Vietnamese again and again while playing (not the PS5's own screens): the game is in Vietnamese,
    switch to reading aloud by itself and remember it for this game */
-function viSeen(t){
-  if(viMode()||!S.running||!$('hsGame').value.trim()||!$('hsSpeak').checked) return;
-  if(typeof GUARD!=='undefined'&&GUARD.kind) return;
-  if(t.split(/\s+/).length<6) return;
-  var now=Date.now(); S.viHits=(S.viHits||[]).filter(function(x){ return now-x<120000; }); S.viHits.push(now);
-  if(S.viHits.length<5) return;
-  S.viHits=[]; viSet(true,true);
-}
-window.hsVi={like:viLike,read:viRead,set:function(o){viSet(o,true);},take:function(t){ocrTake(t,true);}};
-function viSet(on,auto){
-  var sel=$('hsLang'), g=gameKey($('hsGame').value), vg=load('viGames',{});
-  if(on){ if(g&&!auto) vg[g]=1;   /* found by itself: only until Hóng Sub closes (a wrong guess never stops a game from being translated for good) */ S.langBeforeVi=sel.value!=='vi'?sel.value:(S.langBeforeVi||'en'); sel.value='vi'; }
-  else { if(g) delete vg[g]; sel.value=S.langBeforeVi&&S.langBeforeVi!=='vi'?S.langBeforeVi:'en'; }
-  if(!(on&&auto)) save('viGames',vg); else S.viAuto=true;
+window.hsVi={like:viLike,read:viRead,set:function(o){viSet(o);},take:function(t){ocrTake(t,true);}};
+function viSet(on){
+  var sel=$('hsLang');
+  if(on){ S.langBeforeVi=sel.value!=='vi'?sel.value:(S.langBeforeVi||'en'); sel.value='vi'; }
+  else sel.value=S.langBeforeVi&&S.langBeforeVi!=='vi'?S.langBeforeVi:'en';
   sel.dispatchEvent(new Event('change'));
-  if(on&&auto){ log('phụ đề game là tiếng Việt: chuyển sang chỉ đọc to (đến khi tắt Hóng Sub)'); status('run','Phụ đề game đang là tiếng Việt: Hóng Sub chỉ đọc to, không dịch. Không đúng thì đổi ở Cài đặt › Ngôn ngữ chữ trong game.'); }
 }
 /* ---------- "Chỉ dịch khi đang chơi": not on the PS5's own screens, not on the game map ----------
    Every 3 s while translating, the top and bottom edges of the picture are read (that is where the PS5 shows its menu bar,
