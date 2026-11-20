@@ -1378,6 +1378,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
               <label class="hs-sw dk-sw">Tự dịch chữ khác trên màn hình: nhiệm vụ, hướng dẫn nút, menu, tin nhắn (ngoài dòng phụ đề) <input type="checkbox" id="hsFsLive"></label>
               <label class="hs-sw dk-sw">Chữ trên màn hình: chỉ dịch câu (tin nhắn, thông báo), giữ nguyên tên và nhãn <input type="checkbox" id="hsFsSent" checked></label>
+              <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
@@ -5622,11 +5623,14 @@ function guardSet(k){
     S.zones.forEach(function(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.prevMask=null; z.pending=false; if(had) zTv(z); });
     zShow(); zList(); zPush();
     if(S.fl&&S.fl.items&&S.fl.items.length){ S.fl.items=[]; try{ flDraw(); }catch(e){} }
+    if(k==='map'&&mapTrOn()&&S.running){ S.fs.cache&&S.fs.cache.clear&&S.fs.cache.clear(); flStart(); status('run','Đang mở bản đồ: dịch chữ trên bản đồ, giữ nguyên địa danh. Đóng bản đồ là dịch phụ đề tiếp.'); return; }
     status('idle',k==='map'?'Tạm ngừng dịch vì đang mở bản đồ. Đóng bản đồ là dịch tiếp.':'Tạm ngừng dịch vì đang ở màn hình của máy PS. Vào game là dịch tiếp.');
     return; }
   if(!GUARD.kind) return;
   if(++GUARD.neg<2) return;                                                  /* two looks in a row without it: back in the game */
+  var wasMap=GUARD.kind==='map';
   GUARD.kind=''; GUARD.neg=0; S.lastOcr=''; S.ocrMask=null; S.sentMask=null; S.prevMask=null; S.forceOcr=true;
+  if(wasMap){ S.fs.cache&&S.fs.cache.clear&&S.fs.cache.clear(); if(!fsLiveOn()) flStop(); else if(S.fl&&S.fl.items){ S.fl.items=[]; try{ flDraw(); }catch(e){} } }
   log('dịch tiếp: đã vào lại game'); if(S.running) runStatus();
 }
 /* is the game being played? The whole picture, tiny and grey, is compared every 0.35 s: while playing, the world and the
@@ -5894,7 +5898,7 @@ function fsWorth(it){
   /* "Chỉ dịch câu": contact names (Rusty Anchor, Donnie), headers and labels (Suggested, Messages) stay as in the
      game; only what is written to be read (messages, notices, quest text) gets a box. Common game menu words that
      the dictionary knows (Unarmed, In Hand, Continue...) are still translated. */
-  if(fsSentOnly()&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]) return false;
+  if(fsSentOnly()&&GUARD.kind!=='map'&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]) return false;
   return true;
 }
 function fsSentOnly(){ var c=$('hsFsSent'); return c?c.checked:load('fsSent',true); }
@@ -5979,19 +5983,20 @@ function fsTv(list){
     var r=camRect({x:it.x,y:it.y,w:it.w,h:it.h}); if(!r) return;
     var g=grp[ix], lh=g?g.lh:Math.min(it.lh||it.h/2,lhm*1.25);
     var px=Math.max(6,Math.round(lh*1080*0.66*(S.cam&&r.h&&it.h?r.h/it.h:1)));   /* the letters as big as the original's: a TV draws its bold font larger than the computer's */
-    var hasIc=!!(it.ic&&it.ic.length), al=it.al||'c';
+    var multi=String(it.en||'').indexOf('\n')>=0, hasIc=!!(it.ic&&it.ic.length), al=it.al||(multi?'l':'c');   /* a paragraph reads from the left, like on the computer */
+    var viL=hasIc?it.vi:fsLinesLike(it.en,it.vi);
     /* drawn on the TV the way the computer draws it ("Đúng chỗ" box): every line of the Vietnamese stays one line,
        the box is the original's size with the picture's own colour, and longer Vietnamese gets smaller letters
        instead of wrapping into a tall narrow box over the next row. A one-line label may be a little wider than its
        original (like the computer: up to 12% more) on the side it is lined up from. */
-    var one=String(it.vi||'').indexOf('\n')<0, ext=one&&uiLike(it.en)?(fsCell(it)?1:r.w*0.12+0.004):0;   /* a message or a sentence: never wider than the original */   /* a label in its own tab or button: up to the frame */
+    var one=String(viL||'').indexOf('\n')<0, ext=one&&uiLike(it.en)?(fsCell(it)?1:r.w*0.12+0.004):0;   /* a message or a sentence: never wider than the original */   /* a label in its own tab or button: up to the frame */
     if(g){ var gr=camRect({x:g.L,y:it.y,w:g.R-g.L,h:it.h}); if(gr) ext=Math.max(ext,al==='c'?gr.w-r.w:al==='r'?r.x-gr.x:gr.x+gr.w-(r.x+r.w)); }
     /* never over the next box on the same row or the button icon in front of it ("✕ CHỌN  ○ QUAY LẠI"): a wider
        box hid the icon and the first letters of the next label, so the Vietnamese gets smaller letters instead */
     var fr=fsFree(it,list), sc=it.w?r.w/it.w:1;
     ext=Math.max(0,Math.min(ext,(al==='l'?fr.r:al==='r'?fr.l:2*Math.min(fr.l,fr.r))*sc));
     var zx=al==='l'?r.x:al==='r'?r.x-ext:r.x-ext/2;
-    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):it.vi,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
+    var o={kind:'zone',zid:'fs_'+n,vi:hasIc?zIcText(it.vi,it.ic,'●'):viL,zv:hasIc?it.vi:undefined,zic:hasIc?it.ic:undefined,x:r.x,y:r.y,w:r.w,h:r.h,hold:0,name:'Chữ trên màn hình',zal:al,zbg:it.bg?100:92,zfont:font,zpx:px,zauto:1,zgrow:1,zmaxw:r.w+ext,speak:false,
       zx:Math.max(0,zx),zy:r.y,zw:Math.min(1-Math.max(0,zx),r.w+ext),zh:r.h,zwt:600};   /* zwt: the half-bold letters the computer draws (600) */
     if(it.bg) { o.zbgc=tvTone(it.bg); o.zfg=it.fg||''; }
     tvSend(o).catch(function(){}); n++;
@@ -6100,6 +6105,12 @@ function fsKeep(b){
 /* the text that goes to the translator: with its button markers when it has buttons */
 function fsT(b){ return b.ic&&b.ic.length?b.et:b.en; }
 function fsVi(b,vi){ vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(vi||'').trim()))); return b.ic&&b.ic.length?zIcFix(b.et,vi,b.ic):vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim(); }
+/* the Vietnamese on as many lines as the original block (a paragraph from the shared store comes as one line) */
+function fsLinesLike(en,vi){
+  var n=String(en||'').split('\n').length, v=String(vi||'');
+  if(n<2||v.split('\n').length===n) return v;
+  return fsViLines(en,v.replace(/\s*\n\s*/g,' '));
+}
 function fsHtml(it){ return (it.ic&&it.ic.length?zIcHtml(it.vi,it.ic):esc(it.vi)).replace(/\n/g,'<br>'); }
 async function fsRead(sx,sy,sw,sh,maxW){
   var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
@@ -6203,6 +6214,7 @@ function fsPrompt(list){
     'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
     list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
     '{{1}}, {{2}}... are PlayStation controller button icons: keep every one of them, unchanged, at the matching place in the Vietnamese ("Hold {{1}} to sprint" → "Giữ {{1}} để chạy nhanh", "{{1}} Select {{2}} Back" → "{{1}} Chọn {{2}} Quay lại").\n'+
+    (GUARD.kind==='map'?'This is the game\'s MAP screen. Do NOT translate place names (cities, districts, streets, islands, beaches, parks), shop, business and brand names, or map labels and markers: for such a block return "vi":"". Translate the quest/mission list, the mission card and its description, the legend and filter names, and the button hints (Recenter, 2D View, Add Marker, Set Destination, Close Menu).\n':'')+
     'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+glossHints(list.join('\n'))+context(list.join(' '));
 }
 async function fsRun(){
@@ -6218,7 +6230,7 @@ async function fsRun(){
         var b=it.box, n=Math.max(1,(it.en||'').split('\n').length), h=(b[2]-b[0])/1000;
         return {x:b[1]/1000,y:b[0]/1000,w:(b[3]-b[1])/1000,h:h,lh:h/n,en:it.en||'',vi:it.vi}; });
     } else {
-      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });   /* lines in the shared store cost no AI call */
+      var need=[]; blocks.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });   /* lines in the shared store cost no AI call */
       if(S.fs.on&&my===S.fs.seq&&blocks.some(function(b){return b.vi;})){ S.fs.items=blocks; fsDraw(); }
       if(need.length){
         var vis;
@@ -6263,8 +6275,13 @@ var flLayer=document.createElement('div'); flLayer.className='hs-fs hs-fl'; flLa
 var flc=document.createElement('canvas'), flcx=flc.getContext('2d',{willReadFrequently:true});
 S.fl={on:false,items:[],prev:null,still:null,dirty:null,last:0,busy:false,timer:0,seq:0,reads:0};
 function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
+(function(){ var c=$('hsMapTr'); if(!c) return; c.checked=load('mapTr',true); c.addEventListener('change',function(){ save('mapTr',c.checked); if(GUARD.kind==='map'){ if(c.checked) flStart(); else if(!fsLiveOn()) flStop(); } }); })();
 (function(){ var c=$('hsFsSent'); if(!c) return; c.checked=load('fsSent',true); c.addEventListener('change',function(){ save('fsSent',c.checked); S.fsOvK=''; try{ fsDraw(); flDraw(); fsOverlaySync(); }catch(e){} }); })();
-function flStart(){ if(S.fl.on||!fsLiveOn()||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
+/* the game map: the quest list, the mission card, the legend and the button hints are translated, the place names,
+   streets, shops and map signs stay as in the game. Works without "Tự dịch chữ khác" too (only while the map is open). */
+function mapOn(){ return GUARD.kind==='map'&&mapTrOn(); }
+function mapTrOn(){ var c=$('hsMapTr'); return c?c.checked:load('mapTr',true); }
+function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn())||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
 function flStop(){ if(!S.fl.on&&!S.fl.items.length) return; S.fl.on=false; S.fl.seq++; S.fl.busy=false; WT?WT.clear(S.fl.timer):clearTimeout(S.fl.timer); S.fl.items=[]; flDraw(); }
 function flDraw(){
   var b=videoBox(), html='', show=S.fl.on&&!S.fs.on;
@@ -6345,7 +6362,7 @@ function flTick(my){
   var ch=S.fl.items.filter(function(it){ return flChanged(g,it); });
   if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0; }); flDraw(); }
   else ch.forEach(function(it){ it.chk=true; });
-  if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||GUARD.kind) return;
+  if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||(GUARD.kind&&GUARD.kind!=='map')) return;   /* the game map: its text is translated (not the place names) */
   if(S.fl.items.some(function(it){ return it.chk; })){ flVerify(my); return; }
   var now=Date.now(); if(now-S.fl.last<900) return;
   var fresh=0; for(i=0;i<N;i++) if(S.fl.dirty[i]&&S.fl.still[i]>=2) fresh++;
@@ -6407,7 +6424,7 @@ async function flRead(my){
   });
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
-  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=sh; S.fs.cache.set(norm(b.en),sh); } } if(c!=null) b.vi=c; else need.push(b); });
+  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
   S.fl.items=S.fl.items.concat(add); flDraw();
   log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
   S.fl.busy=false;
