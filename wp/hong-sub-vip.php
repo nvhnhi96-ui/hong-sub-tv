@@ -204,6 +204,25 @@ if (!function_exists('hgs_vip_table')) {
         if ($n > 0 && $n < 10000 && strpos($s, 'k') !== false) $n *= 1000;
         return $n >= 1000 ? $n : 0;
     }
+    // ten ngan hang day du ("Ngan hang TMCP Quan doi") -> ma BIN de tao QR
+    function hgs_vip_bin($bank) {
+        $b = trim((string) $bank);
+        if (preg_match('/^\d{6}$/', $b)) return $b;
+        $s = strtolower(remove_accents($b));
+        $map = array(
+            'quan doi' => '970422', 'mbbank' => '970422', 'mb bank' => '970422', 'ngoai thuong' => '970436', 'vietcombank' => '970436', 'cong thuong' => '970415', 'vietinbank' => '970415',
+            'dau tu va phat trien' => '970418', 'bidv' => '970418', 'nong nghiep' => '970405', 'agribank' => '970405', 'ky thuong' => '970407', 'techcombank' => '970407',
+            'a chau' => '970416', 'acb' => '970416', 'thinh vuong' => '970432', 'vpbank' => '970432', 'tien phong' => '970423', 'tpbank' => '970423',
+            'sai gon thuong tin' => '970403', 'sacombank' => '970403', 'quoc te' => '970441', 'vib' => '970441', 'phat trien thanh pho ho chi minh' => '970437', 'hdbank' => '970437',
+            'sai gon - ha noi' => '970443', 'sai gon ha noi' => '970443', 'shb' => '970443', 'phuong dong' => '970448', 'ocb' => '970448', 'hang hai' => '970426', 'msb' => '970426',
+            'xuat nhap khau' => '970431', 'eximbank' => '970431', 'dong nam a' => '970440', 'seabank' => '970440', 'loc phat' => '970449', 'lpbank' => '970449', 'buu dien lien viet' => '970449',
+            'an binh' => '970425', 'abbank' => '970425', 'bac a' => '970409', 'nam a' => '970428', 'kien long' => '970452', 'viet a' => '970427', 'bao viet' => '970438', 'cake' => '546034', 'timo' => '963388',
+        );
+        foreach ($map as $k => $v) if (strpos($s, $k) !== false) return $v;
+        $map2 = array('MB' => '970422', 'VCB' => '970436', 'CTG' => '970415', 'ICB' => '970415', 'BIDV' => '970418', 'VBA' => '970405', 'TCB' => '970407', 'ACB' => '970416', 'VPB' => '970432', 'TPB' => '970423', 'STB' => '970403');
+        $u = strtoupper($b);
+        return isset($map2[$u]) ? $map2[$u] : $b;
+    }
     // tai khoan nhan tien: lay tu cai dat VietQR cua web (WooCommerce), hoac o trang quan tri
     function hgs_vip_bank() {
         $own = get_option('hgs_vip_bank', array());
@@ -255,7 +274,7 @@ if (!function_exists('hgs_vip_table')) {
             if (!$id) return hgs_vip_err('vip_busy', 'Chưa tạo được đơn, thử lại sau.', 500);
             set_transient($ipk, (int) get_transient($ipk) + 1, HOUR_IN_SECONDS);
         }
-        $qr = 'https://img.vietqr.io/image/' . rawurlencode($bank['bank']) . '-' . rawurlencode($bank['acc']) . '-compact2.png?amount=' . $amount . '&addInfo=' . rawurlencode($pay) . '&accountName=' . rawurlencode($bank['name']);
+        $qr = 'https://img.vietqr.io/image/' . rawurlencode(hgs_vip_bin($bank['bank'])) . '-' . rawurlencode($bank['acc']) . '-compact2.png?amount=' . $amount . '&addInfo=' . rawurlencode($pay) . '&accountName=' . rawurlencode($bank['name']);
         return array('ok' => true, 'id' => $id, 'token' => $tok, 'pay' => $pay, 'amount' => $amount, 'plan' => $pl[$pi]['name'], 'qr' => $qr,
             'bank' => $bank['bank'], 'acc' => $bank['acc'], 'name' => $bank['name']);
     }
@@ -540,6 +559,7 @@ if (!function_exists('hgs_vip_admin')) {
             . '<p><label><input type="checkbox" name="autopay" value="1"' . checked($ap, true, false) . '> <b>Bật mua tự động trong app</b> (khách chọn gói, quét QR, tiền vào là VIP tự bật)</label></p>'
             . '<p>Tài khoản nhận tiền: ' . ($bank ? '<b>' . esc_html($bank['bank']) . ' · …' . esc_html(substr($bank['acc'], -4)) . ' · ' . esc_html($bank['name']) . '</b> <span class="description">(lấy từ ' . esc_html($bank['src']) . ')</span>' : '<b style="color:#d63638">chưa có</b>') . '</p>'
             . '<details' . ($bank ? '' : ' open') . '><summary>Dùng tài khoản khác cho VIP</summary><p>Ngân hàng (mã, VD: VCB, MB, TCB, ACB, 970436) <input name="bk" value="' . esc_attr(isset($own['bank']) ? $own['bank'] : '') . '" style="width:120px"> Số tài khoản <input name="ba" value="" placeholder="' . (isset($own['acc']) ? '…' . esc_attr(substr($own['acc'], -4)) : '') . '" style="width:180px"> Tên chủ TK <input name="bn" value="' . esc_attr(isset($own['name']) ? $own['name'] : '') . '" style="width:200px"> <label><input type="checkbox" name="bclear" value="1"> dùng lại tài khoản VietQR của web</label></p></details>'
+            . ($bank ? '<p>Mã QR thử (10.000đ, nội dung HSV000000) để kiểm tra đúng tài khoản: <br><img src="' . esc_url('https://img.vietqr.io/image/' . rawurlencode(hgs_vip_bin($bank['bank'])) . '-' . rawurlencode($bank['acc']) . '-compact2.png?amount=10000&addInfo=HSV000000&accountName=' . rawurlencode($bank['name'])) . '" alt="QR thử" style="width:180px;border:1px solid #ddd;margin-top:6px"></p>' : '')
             . '<p>Đường dẫn Webhook cho SePay: <code>' . esc_html(rest_url('hgs-sub/v1/vip/sepay')) . '</code></p>'
             . '<p>API Key cho SePay (chọn kiểu xác thực "API Key"): ' . ($sk ? '<code>' . esc_html($sk) . '</code>' : '<i>bấm Lưu để tạo</i>') . ' <label><input type="checkbox" name="newkey" value="1"> tạo key mới</label></p>'
             . '<p class="description">SePay báo gần nhất: ' . esc_html(get_option('hgs_vip_sepay_last', 'chưa có')) . '</p>'
