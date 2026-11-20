@@ -1803,7 +1803,7 @@ function zPrompt(z,text){
       item:'This is an item: on the first line give the item name in Vietnamese followed by the original name in parentheses, e.g. "Kiếm sắt (Iron Sword)"; a unique named item keeps its name. Then translate the description and effects clearly; keep numbers, rarity and stats. ',
       map:'These are map labels and hints: keep place names, translate the generic words (e.g. "Camp" → "Trại", "Fast Travel" → "Dịch chuyển nhanh"). ',
       menu:'This is a game menu: use the short Vietnamese words players expect (e.g. "Tiếp tục", "Cài đặt", "Trang bị"). '}[z.kind]||'')+
-    'If it is not real text, return "vi":"".\n'+glossHints(text)+context();
+    'If it is not real text, return "vi":"".\n'+glossHints(text)+context(text);
 }
 function zKey(text){ return gameKey($('hsGame').value)+'|'+norm(text); }
 function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>250) delete S.zcache[ks[0]]; save('zcache',S.zcache); }
@@ -2103,8 +2103,24 @@ var STYLES={
   western:'wild west: plain, rough cowboy talk, short sentences'
 };
 function styleOf(){ var v=$('hsStyle')?$('hsStyle').value:''; return v&&STYLES[v]?STYLES[v]:''; }
-function context(){
-  var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim(), st=styleOf();
+/* long character notes (GTA VI: about 4,000 letters) are sent in part: the general lines at the top, the main
+   characters, and the characters named in this line or the last ones. A shorter question is answered sooner. */
+function notesFor(text){
+  var n=$('hsNotes').value.trim(); if(n.length<=1400) return n;
+  var hay=(String(text||'')+' '+S.hist.slice(0,4).map(function(h){ return (h.who||'')+' '+h.en; }).join(' ')).toLowerCase();
+  var main=mainList().map(function(x){ return String(x).toLowerCase().split(' ')[0]; });
+  var segs=n.split(/([.;])\s+(?=[A-ZĐÀ-Ỹ"“(])/), parts=[];
+  for(var i=0;i<segs.length;i+=2) parts.push(segs[i]+(segs[i+1]||''));
+  var keep=[], len=0;
+  parts.forEach(function(sg,i){
+    var names=sg.match(/\b[A-Z][a-zA-Z'’\-]{2,}(?:\s+[A-Z][a-zA-Z'’\-]{2,})*/g)||[];
+    var hit=i<3||(!names.length&&i<5)||names.some(function(nm){ var f=nm.toLowerCase().split(' ')[0]; return hay.indexOf(f)>=0||main.indexOf(f)>=0; });
+    if(hit&&len+sg.length<2200){ keep.push(sg); len+=sg.length; }
+  });
+  return keep.join(' ');
+}
+function context(text){
+  var g=$('hsGame').value.trim(), n=notesFor(text), st=styleOf();
   var recent=S.hist.slice(0,4).map(function(h){return (h.who?h.who+(h.role==='main'?' (main)':'')+': ':'')+h.en+' => '+h.vi;}).join('\n');
   return (g?'Game: '+g+'\n':'')+(n?'Character / pronoun notes: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+
     'Rules: keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text; for "we" use "chúng tôi" when the listener is not included and "chúng ta" when they are; speak politely to elders, leaders and strangers.\n'+
@@ -3645,7 +3661,7 @@ function textPrompt(t,nl,enl){
     '4. In "gender" put the speaker\'s gender only when you really know it: from the speaker name (a known character of this game or of the notes) or because the line itself makes it certain; otherwise "". Do not guess from the topic of the line. In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
     (/\n/.test(t)?'Each new line of the text between <<< and >>> is a different character speaking (several people talk at once): translate each one on its own, never join two people\'s words into one sentence, and keep them on separate lines of "vi" in the same order.\n':'')+
-    (nl>1?'6. The original subtitle is shown on '+nl+' lines'+(enl&&enl.length===nl?':\n'+enl.map(function(l,i){ return '   line '+(i+1)+': '+l; }).join('\n')+'\n  ':'. ')+'Write "vi" on exactly '+nl+' lines too, separated by \\n, each Vietnamese line carrying the meaning of the same original line: where an original line ends a sentence, end the Vietnamese line there; where a sentence goes on to the next line, break the Vietnamese sentence at the matching place.\n':'')+whoRule()+glossHints(t)+context();
+    (nl>1?'6. The original subtitle is shown on '+nl+' lines'+(enl&&enl.length===nl?':\n'+enl.map(function(l,i){ return '   line '+(i+1)+': '+l; }).join('\n')+'\n  ':'. ')+'Write "vi" on exactly '+nl+' lines too, separated by \\n, each Vietnamese line carrying the meaning of the same original line: where an original line ends a sentence, end the Vietnamese line there; where a sentence goes on to the next line, break the Vietnamese sentence at the matching place.\n':'')+whoRule()+glossHints(t)+context(t);
 }
 /* a line heard rather than read (speech recognition): the same rules, other mistakes to expect */
 function voicePrompt(t){
@@ -3899,6 +3915,16 @@ function tmPutLocal(kind,en,vi,who,gd){
   if(!S.tm.map[k]){ S.tm.n++; var b=Math.round(k.length/6); (S.tm.bk[b]=S.tm.bk[b]||[]).push(k); }
   S.tm.map[k]={en:en,vi:vi,who:who||'',gd:gd||''};
 }
+/* while translating: the lines other players of the same game added in the last minutes, every 3 minutes */
+async function tmTop(){
+  var my=S.tm; if(!S.running||!my||!my.g||my.loading||my.last==null) return;
+  try{ var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(my.g)+'&since='+my.last,{cache:'no-store'}); if(!r.ok) return;
+    var d=await r.json(); if(S.tm!==my) return; var got=0;
+    (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); got++; });
+    if(d.last) my.last=d.last; if(d.total!=null) my.total=d.total; if(got){ log('kho dịch chung: thêm '+got+' câu người khác vừa dịch'); tmUi(); }
+  }catch(e){}
+}
+setInterval(tmTop,180000);
 async function tmLoad(name){
   var g=tmGame(name); if(g===S.tm.g&&(S.tm.loading||S.tm.n||S.tm.total===0&&S.tm.g)) return;
   S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
@@ -3920,6 +3946,7 @@ async function tmLoad(name){
       since=d.last||since; tmUi();
       if(!d.more) break;
     }
+    my.last=since;
     log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept?' (lấy thêm '+got+' câu mới)':''));
     if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
   }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
@@ -4879,7 +4906,7 @@ function fsPrompt(list){
     'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
     list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
     '{{1}}, {{2}}... are PlayStation controller button icons: keep every one of them, unchanged, at the matching place in the Vietnamese ("Hold {{1}} to sprint" → "Giữ {{1}} để chạy nhanh", "{{1}} Select {{2}} Back" → "{{1}} Chọn {{2}} Quay lại").\n'+
-    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+glossHints(list.join('\n'))+context();
+    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+glossHints(list.join('\n'))+context(list.join(' '));
 }
 async function fsRun(){
   if(!S.stream||S.fs.busy) return;
