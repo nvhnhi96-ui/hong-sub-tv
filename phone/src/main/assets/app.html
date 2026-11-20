@@ -5907,6 +5907,13 @@ function fsIcLine(c,mine,ic){
   return c.replace(ZBTN1,function(x,a,tok){ if(x===''){ var u=mine[j++]; if(!u) return ' '; ic.push(u); return ' {{'+ic.length+'}} '; } ic.push('t:'+tok); return (a||'')+'{{'+ic.length+'}}'; })
     .replace(/\s+([.,!?;:])/g,'$1').replace(/\s{2,}/g,' ').trim();
 }
+/* screen text the AI translated goes into the shared store of the game too (like subtitles and areas): the same menu,
+   quest or phone page next time (on this machine or another player's) comes from the store, without an AI call */
+function fsKeep(b){
+  if(!b||!b.vi||b.ic&&b.ic.length||S.via==='free'||!S.tm||!S.tm.g) return;
+  if(String(b.en).replace(/\s/g,'').length<3) return;
+  tmAdd('z',b.en,b.vi,'','',S.via);
+}
 /* the text that goes to the translator: with its button markers when it has buttons */
 function fsT(b){ return b.ic&&b.ic.length?b.et:b.en; }
 function fsVi(b,vi){ vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(vi||'').trim()))); return b.ic&&b.ic.length?zIcFix(b.et,vi,b.ic):vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim(); }
@@ -6022,7 +6029,7 @@ async function fsRun(){
         vis=vis||[];
         var miss=[]; need.forEach(function(b,i){ if(!String(vis[i]||'').trim()) miss.push(i); });
         if(miss.length){ var gv=await Promise.all(miss.map(function(i){ return gtx(need[i].en).catch(function(){return '';}); })); miss.forEach(function(i,k){ vis[i]=gv[k]; }); }
-        need.forEach(function(b,i){ b.vi=fsVi(b,vis[i]); if(b.vi) S.fs.cache.set(norm(fsT(b)),b.vi); });
+        need.forEach(function(b,i){ b.vi=fsVi(b,vis[i]); if(b.vi){ S.fs.cache.set(norm(fsT(b)),b.vi); fsKeep(b); } });
         if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       }
     }
@@ -6207,7 +6214,7 @@ async function flRead(my){
     try{
       var r=await askText(fsPrompt(need.map(fsT)),need.map(fsT).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
       if(my!==S.fl.seq) return;
-      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsVi(b,it.vi); S.fs.cache.set(norm(fsT(b)),b.vi); });
+      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsVi(b,it.vi); S.fs.cache.set(norm(fsT(b)),b.vi); fsKeep(b); });
       if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       flDraw();
     }catch(e){}
