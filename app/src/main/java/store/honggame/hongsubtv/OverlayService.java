@@ -372,7 +372,8 @@ public class OverlayService extends Service {
         final boolean zgrow = j.optInt("zgrow", 0) == 1;
         final double zmaxw = j.optDouble("zmaxw", 0);
         final int zbg = j.has("zbg") ? Math.max(0, Math.min(100, j.optInt("zbg", 90))) : 90;
-        final Typeface face = faceFor(j.optString("zfont", j.optString("font", prefs.font())));   // the area's own font ("Kiểu chữ" of the area), else the subtitle's
+        final String fk = j.optString("zfont", j.optString("font", prefs.font()));
+        final Typeface face = j.optInt("zwt", 0) == 600 ? faceSemi(fk) : faceFor(fk);   // the area's own font ("Kiểu chữ" of the area), else the subtitle's; screen text a lighter weight like the computer's
         final boolean zauto = j.optInt("zauto", 1) == 1;   // size read from the original (not one chosen on the computer)
         final double zx = j.optDouble("zx", 0), zw = j.optDouble("zw", 0);   // the whole area: how far a box may widen
         final String zbgc = j.optString("zbgc", ""), zfgc = j.optString("zfg", "");   // "Theo màu game": colours around the original
@@ -532,26 +533,17 @@ public class OverlayService extends Service {
         boolean game = bgc != null && bgc.matches("#[0-9A-Fa-f]{6}");
         if (game) { try { bg = Color.parseColor(bgc); } catch (Exception e) { game = false; } }
         if (game) {
-            a = 255;   // the game's own colour: fully over the English, the soft edges blend it in
-            // "Theo màu game": the colour of the picture around the original text, the colour of its letters, and soft
-            // edges (three layers fading out around the box) so it blends into the game instead of a dark patch
-            int fe = Math.max(dp(2), Math.round(f * 0.3f));
-            fl.width = boxW + 2 * fe; fl.height = boxH + 2 * fe; fl.leftMargin -= fe; fl.topMargin -= fe;
-            tv.setLayoutParams(fl);
-            tv.setPadding(padH + fe, fe, padH + fe, fe);
-            int r = Color.red(bg), g = Color.green(bg), b = Color.blue(bg);
-            GradientDrawable l0 = new GradientDrawable(), l1 = new GradientDrawable(), l2 = new GradientDrawable();
-            l0.setColor(Color.argb(Math.round(a * 0.3f), r, g, b)); l0.setCornerRadius(fe * 1.5f);
-            l1.setColor(Color.argb(Math.round(a * 0.65f), r, g, b)); l1.setCornerRadius(fe);
-            l2.setColor(Color.argb(a, r, g, b)); l2.setCornerRadius(fe / 2f);
-            android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{l0, l1, l2});
-            ld.setLayerInset(1, fe / 2, fe / 2, fe / 2, fe / 2);
-            ld.setLayerInset(2, fe, fe, fe, fe);
-            tv.setBackground(ld);
+            // "Theo màu game": a flat patch of the picture's own colour, square-cornered and edge to edge with the
+            // text, like the computer draws it. (Soft fading edges were drawn by some TVs as a dark rim, so the
+            // box looked like a button.)
+            GradientDrawable zb = new GradientDrawable();
+            zb.setColor(Color.argb(255, Color.red(bg), Color.green(bg), Color.blue(bg)));
+            zb.setCornerRadius(dp(1));
+            tv.setBackground(zb);
             int fg = Color.WHITE;
             try { if (fgc != null && fgc.matches("#[0-9A-Fa-f]{6}")) fg = Color.parseColor(fgc); } catch (Exception ignored) { }
             tv.setTextColor(fg);
-            tv.setShadowLayer(dp(2), 0f, 0f, Color.argb(230, r, g, b));
+            tv.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT);
         } else {
             GradientDrawable zb = new GradientDrawable();
             zb.setColor(Color.argb(a, 8, 9, 12));
@@ -577,6 +569,18 @@ public class OverlayService extends Service {
             t = Typeface.create(fam, Typeface.BOLD);
         }
         faces.put(k, t);
+        return t;
+    }
+
+    /* the half-bold cut of a font (600, the weight the computer draws screen text in) when the app has it */
+    private synchronized Typeface faceSemi(String k) {
+        if (k == null || !k.matches("[a-z]{2,12}")) k = "bevn";
+        String key = k + "sb";
+        Typeface t = faces.get(key);
+        if (t != null) return t;
+        try { t = Typeface.createFromAsset(getAssets(), "fonts/" + key + ".ttf"); } catch (Exception e) { t = null; }
+        if (t == null) t = faceFor(k);
+        faces.put(key, t);
         return t;
     }
 
