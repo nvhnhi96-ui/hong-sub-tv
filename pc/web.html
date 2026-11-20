@@ -460,10 +460,9 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
           <p class="hs-note hs-web" id="hsVoiceTip" hidden>Máy chưa có giọng tiếng Việt. Mở trang này bằng Microsoft Edge để có giọng HoaiMy và NamMinh.</p>
         </div>
         <div class="hs-whobox">
-          <label class="hs-sw" style="margin:6px 0">Nhận ra ai đang nói (cả khi phụ đề không ghi tên) <input type="checkbox" id="hsWhoOn" checked></label>
           <label class="hs-sw" style="margin:6px 0">Câu của nhân vật chính có màu riêng <input type="checkbox" id="hsMainOn" checked></label>
           <div class="hs-row" style="align-items:center;gap:8px;margin:4px 0"><span class="hs-note" style="margin:0">Màu chữ nhân vật chính</span><input type="color" id="hsMainCol" value="#FFD54A" aria-label="Màu chữ nhân vật chính" style="width:44px;height:28px;padding:0;border:0;background:none"><span class="hs-note" id="hsMainWho" style="margin:0"></span></div>
-          <p class="hs-note" style="margin:4px 0 8px">Hóng Sub đoán người nói từ tên trên phụ đề, câu chuyện của game, ai đang nói với ai và giọng nghe được. Câu của nhân vật chính (nhân vật người chơi điều khiển) hiện màu riêng trên hình, cửa sổ phụ đề, điện thoại và TV. Tick "Chính" ở từng nhân vật để sửa.</p>
+          <p class="hs-note" style="margin:4px 0 8px">Khi phụ đề ghi tên người nói, câu của nhân vật chính (nhân vật người chơi điều khiển) hiện màu riêng trên hình, cửa sổ phụ đề, điện thoại và TV. Tick "Chính" ở từng nhân vật để sửa.</p>
         </div>
         <details class="hs-cast" id="hsCastBox" hidden>
           <summary>Nhân vật đã gặp (<span id="hsCastN">0</span>)</summary>
@@ -2080,7 +2079,7 @@ function splitSpeaker(res,raw){
 function jpeg(q){return cap.toDataURL('image/jpeg',q||.82).split(',')[1];}
 
 /* ---------- Gemini ---------- */
-var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},who:{type:'STRING'},role:{type:'STRING'},sure:{type:'STRING'},gender:{type:'STRING'},age:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
+var SCHEMA_SUB={type:'OBJECT',properties:{speaker:{type:'STRING'},gender:{type:'STRING'},age:{type:'STRING'},en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']};
 var SCHEMA_WHO={type:'OBJECT',properties:{who:{type:'STRING'},role:{type:'STRING'},sure:{type:'STRING'},gender:{type:'STRING'}},required:['who','role']};
 var SCHEMA_ALL={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']}}},required:['items']};
 var STYLES={
@@ -2368,7 +2367,7 @@ $('hsOrCheck').addEventListener('click',async function(){
   keyStats(); steps();
 });
 if(S.or.all.length) orFill();
-var SHAPE_SUB='{"speaker":"","who":"","role":"","sure":"","gender":"","age":"","en":"","vi":""}', SHAPE_WHO='{"who":"","role":"","sure":"","gender":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}', SHAPE_FS='{"items":[{"en":"","vi":"","box":[0,0,0,0]}]}', SHAPE_FSI='{"items":[{"i":1,"vi":""}]}';
+var SHAPE_SUB='{"speaker":"","gender":"","age":"","en":"","vi":""}', SHAPE_WHO='{"who":"","role":"","sure":"","gender":""}', SHAPE_ALL='{"items":[{"en":"","vi":""}]}', SHAPE_FS='{"items":[{"en":"","vi":"","box":[0,0,0,0]}]}', SHAPE_FSI='{"items":[{"i":1,"vi":""}]}';
 var SCHEMA_FS={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'},box:{type:'ARRAY',items:{type:'INTEGER'}}},required:['en','vi','box']}}},required:['items']};
 var SCHEMA_FSI={type:'OBJECT',properties:{items:{type:'ARRAY',items:{type:'OBJECT',properties:{i:{type:'INTEGER'},vi:{type:'STRING'}},required:['i','vi']}}},required:['items']};
 S.via='';
@@ -3059,7 +3058,7 @@ if($('hsEngine')) $('hsEngine').addEventListener('click',function(e){ var b=e.ta
    shared store get a small separate question. The main characters of a game come from the game list (or are
    ticked by hand in Nhân vật); their lines get their own subtitle colour everywhere (picture, windows, phone, TV). */
 S.whoMem={}; S.whoBusy=false;
-function whoOn(){ var c=$('hsWhoOn'); return c?c.checked:load('whoOn',true); }
+function whoOn(){ return false; }   /* guessing the speaker of unnamed lines: taken out, it made lines wait (names written on screen still count) */
 function mainOn(){ var c=$('hsMainOn'); return c?c.checked:load('mainOn',true); }
 function mainCol(){ var v=String(load('mainCol','')||''); if(/^#[0-9A-Fa-f]{6}$/.test(v)) return v;
   var b=String((load('ovStyle',{})||{}).color||'#FFFFFF'), r=parseInt(b.substr(1,2),16), g=parseInt(b.substr(3,2),16), bl=parseInt(b.substr(5,2),16);
