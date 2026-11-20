@@ -5727,8 +5727,19 @@ function flSkip(b){
   var R=S.region; if(R&&!b.panel&&flIn({x:R.x-0.01,y:R.y-0.015,w:R.w+0.02,h:R.h+0.03},b)>0.6) return true;   /* a paragraph that only reaches into the subtitle area (a phone held low) is screen text */
   if((S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })) return true;
   if(!b.panel&&S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
-  if(notiLike(b.en)||viPlain(b.en)) return true;
+  if(notiLike(b.en)||viPlain(b.en)||rpBanner(b)) return true;
   return false;
+}
+/* PS Remote Play's own bar at the top middle ("Đã kết nối Chơi từ xa" with a controller icon): the English reader
+   turns its Vietnamese into scraps like "atalan ke". It is not the game's text. */
+function rpBanner(b){
+  var d=deTone(b.en).toLowerCase();
+  if(/\b(da ket noi|ket noi|choi tu xa|remote play|connected to|ps remote)\b/.test(d)) return true;
+  if(!(b.y<0.1&&b.h<0.07&&Math.abs(b.x+b.w/2-0.5)<0.15&&b.w<0.35)) return false;   /* where the bar sits */
+  var w=String(b.en).toLowerCase().match(/[a-zà-ỹ]{2,}/g)||[];
+  if(!w.length) return true;
+  var known=DICT.common?w.filter(function(x){ return dictHas(x); }).length:w.length;
+  return w.length<=4&&known/w.length<0.6||/[à-ỹđ]/i.test(b.en);   /* a few words that are not English: the bar read wrongly */
 }
 function flTick(my){
   if(!S.fl.on||my!==S.fl.seq) return;
