@@ -683,7 +683,7 @@ $('bClose').onclick=function(){ panel(false); };
 var gearT=0;
 document.addEventListener('mousemove',function(){ if($('home').className!=='off'||panelOn) return; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },4000); });
 document.addEventListener('webOSRelaunch',function(){ var c=launchCode(), a=launchPc(); if(a&&a!==P.pc){ P.pc=a; save('pc',a); } if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; lanSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
-document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); if(P.src) setSource(P.src); } else sayStop(); });
+document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); if(P.src&&!(window.tizen&&srcOk&&Date.now()-(window.srcAt||0)<4000)) setSource(P.src); } else sayStop(); });
 
 function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }
 codeDraw(); applyLook(); hello(); poll(); lanPoll();

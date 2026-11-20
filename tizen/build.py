@@ -49,6 +49,10 @@ window.addEventListener('appcontrol',function(){ try{ var ev=document.createEven
 /* ---------- Samsung (Tizen) ----------
    The HDMI picture is drawn by the TV itself in a window under the page: the page turns see-through where the game shows. */
 function setSource(n){
+  /* some Samsung TVs report the app hidden for a moment while the HDMI picture opens: opening it again then hid it
+     again, and the screen went black. Asked again within 3 s for the same input: nothing to do. */
+  if(n&&n===window.srcN&&Date.now()-(window.srcAt||0)<3000) return;
+  window.srcN=n; window.srcAt=Date.now();
   srcOk=false;
   try{ video.style.display='none'; }catch(e){}
   if(!n||!window.tizen||!tizen.tvwindow){ document.documentElement.className=''; try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} if(!n) homeShow(); else srcFail(n); return; }
@@ -57,7 +61,9 @@ function setSource(n){
     try{
       tizen.tvwindow.setSource(src,function(){
         /* BEHIND: the game picture goes under the page, so the Vietnamese subtitles stay on top (the default, FRONT, covers them) */
-        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; document.documentElement.className='see'; homeHide(); },
+        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; window.srcAt=Date.now(); document.documentElement.className='see'; homeHide();
+          /* the first times: what to do if the game picture turns black (the PS5's HDCP protection) */
+          var nb=+load('hdcpTip',0); if(nb<3){ save('hdcpTip',nb+1); setTimeout(function(){ pill('Hình game bị đen? Trên PS5: Cài đặt › Hệ thống › HDMI › tắt "Bật HDCP"',false); },2500); } },
           fail,['0px','0px','100%','100%'],'MAIN','BEHIND');
       },fail,'MAIN');
     }catch(e){ fail(e); }
@@ -98,7 +104,9 @@ function ipAsk(){
   try{ tizen.systeminfo.getPropertyValue('WIFI_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
 }
 try{ ['ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','1','2','3','4'].forEach(function(k){ try{ tizen.tvinputdevice.registerKey(k); }catch(e){} }); }catch(e){}
-document.addEventListener('visibilitychange',function(){ if(document.hidden){ try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} } });
+/* the app really went to the background (not the short blink some TVs give while the HDMI picture opens): let the
+   TV's picture go */
+document.addEventListener('visibilitychange',function(){ if(document.hidden) setTimeout(function(){ if(document.hidden){ try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} srcOk=false; window.srcAt=0; } },1500); });
 """
 UPD = r"""
 /* ---------- staying up to date ----------
@@ -118,6 +126,8 @@ UPD = r"""
       $('hVer').textContent='Bản '+VERSION+' · có bản mới '+v+', app tự chuyển sang khi đang rảnh';
       var idle=$('home').className!=='off'||Date.now()-last>20*60e3;
       if(!idle) return;
+      /* switched over once already and still the old page (the internet copy not refreshed yet): no reopening in a loop */
+      var tr=load('updTry',{}); if(tr&&tr.v===v&&Date.now()-tr.t<6*3600e3) return; save('updTry',{v:v,t:Date.now()});
       pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
       setTimeout(function(){ location.replace('index.html'); },2500);
     };
