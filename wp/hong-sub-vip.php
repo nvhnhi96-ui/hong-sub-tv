@@ -121,7 +121,9 @@ if (!function_exists('hgs_vip_table')) {
         $body = array(
             'model'      => hgs_vip_model(),
             'max_tokens' => 1024,
-            'system'     => 'You translate video game text into natural Vietnamese for players. Follow the instructions in the message and reply with one JSON object only, no other words.',
+            'system'     => $req->get_param('mode') === 'hint'
+                ? 'You are a friendly video game guide for Vietnamese players. Look at the screenshot, work out the current quest, objective or puzzle, and help the player get past it. Follow the instructions in the message and reply with one JSON object only, no other words.'
+                : 'You translate video game text into natural Vietnamese for players. Follow the instructions in the message and reply with one JSON object only, no other words.',
             'messages'   => array(array('role' => 'user', 'content' => $content)),
         );
         $r = wp_remote_post('https://api.anthropic.com/v1/messages', array(

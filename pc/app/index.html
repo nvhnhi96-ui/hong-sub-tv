@@ -300,6 +300,7 @@ html,body{height:100%;overflow:hidden}
 .hs-stage{border-radius:12px;background:#07080A;box-shadow:0 0 0 1px var(--line)}
 
 /* parts only the Windows app can do; the web page shows .hs-web parts instead */
+.hs-vip{border:1px solid rgba(255,196,0,.45)!important;background:linear-gradient(160deg,rgba(255,196,0,.10),transparent 60%)!important}.hs-vip-tag{display:inline-block;background:#FFC400;color:#111;font-weight:800;font-size:12px;border-radius:5px;padding:1px 7px;margin-right:6px;vertical-align:2px}.hs-vip-list{margin:6px 0 10px;padding:0;list-style:none}.hs-vip-list li{position:relative;padding:3px 0 3px 22px;font-size:13.5px;line-height:1.45}.hs-vip-list li:before{content:"\2713";position:absolute;left:2px;color:#FFC400;font-weight:800}#hsVip::placeholder{text-transform:none}.hs-vip-btn{border-color:rgba(255,196,0,.6)!important;color:#FFC400!important}
 body:not(.desk) .dk-only{display:none!important}
 /* Mac: PS5 through Sony's PS Remote Play for Mac; the built-in player, AI voice pack and Windows firewall are Windows only */
 html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiCard,html.hs-mac .hs-win-only{display:none!important}
@@ -565,6 +566,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="dk-tg">
                 <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ gốc (F11)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 13h10M7 17h4"/></svg><span>Dịch cả màn hình</span></button>
                 <button class="hs-btn" id="dkNow" type="button" disabled title="Dịch ngay câu đang hiện (F8)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span>Dịch câu này</span></button>
+                <button class="hs-btn hs-vip-btn" id="hsHint" type="button" hidden title="VIP: gợi ý cách làm nhiệm vụ hoặc giải đố đang có trên màn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span>Gợi ý nhiệm vụ</span></button>
               </div>
               <div class="dk-tg">
                 <button class="hs-btn" id="hsDraw" type="button" disabled title="Kéo khung quanh dòng phụ đề"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 14h8"/></svg><span>Vùng phụ đề</span></button>
@@ -927,11 +929,21 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
       <section class="dk-page" id="p-dich">
         <div class="dk-cols">
           <div>
-            <div class="dk-card dk-only" id="hsVipSec">
-              <h2>Mã VIP</h2>
-              <p class="hs-note">Có mã VIP thì không cần mã Gemini: Hóng Sub dịch bằng AI Claude của Hóng Game Store, không lo hết lượt. Mỗi mã dùng trên một máy. Mua mã VIP tại Hóng Game Store, hỗ trợ 0367 879 283.</p>
-              <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsVip" type="text" spellcheck="false" autocomplete="off" placeholder="HSV-XXXX-XXXX" aria-label="Mã VIP" style="text-transform:uppercase"><button class="hs-btn pri" id="hsVipGo" type="button">Kích hoạt</button></div>
+            <div class="dk-card dk-only hs-vip" id="hsVipSec">
+              <h2><span class="hs-vip-tag">VIP</span> Gói thành viên VIP Hóng Sub</h2>
+              <ul class="hs-vip-list">
+                <li>Dịch bằng máy chủ riêng của shop: không cần mã Gemini, không lo hết lượt</li>
+                <li>Gợi ý làm nhiệm vụ khi bị kẹt (một số game giải đố)</li>
+                <li>Hỗ trợ kỹ thuật riêng cho thành viên VIP</li>
+                <li>Giảm 10% khi mua game, PS Plus tại Hóng Game Store (tối đa 50k)</li>
+              </ul>
+              <div id="hsVipBuy">
+                <p class="hs-note">Nhắn Zalo <b>0367 879 283</b> để nâng cấp và nhận mã VIP, rồi nhập mã vào ô bên dưới. Mỗi mã dùng trên một máy.</p>
+                <div class="hs-row"><button class="hs-btn pri" type="button" data-url="https://zalo.me/0367879283">Nâng cấp lên VIP</button></div>
+              </div>
+              <div class="hs-row" style="flex-wrap:nowrap;margin-top:10px"><input class="hs-in" id="hsVip" type="text" spellcheck="false" autocomplete="off" placeholder="Nhập mã VIP: HSV-XXXX-XXXX" aria-label="Mã VIP" style="text-transform:uppercase"><button class="hs-btn" id="hsVipGo" type="button">Kích hoạt</button></div>
               <div class="hs-msg" id="hsVipMsg" hidden></div>
+              <div class="hs-msg" id="hsHintOut" hidden></div>
             </div>
             <div class="dk-card" id="hsKeySec">
               <h2>Mã Gemini</h2>
@@ -1724,15 +1736,15 @@ function steps(){
 
 /* ---------- keys ---------- */
 function gKeys(){return $('hsKeys').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
-/* "is there an AI translator": the customer's own Gemini keys, or a working VIP code (Claude through honggame.store) */
+/* "is there an AI translator": the customer's own Gemini keys, or a working VIP code (the shop server, honggame.store) */
 function keys(){ var k=gKeys(); return k.length?k:(vipOn()?['VIP']:[]); }
-/* ---------- VIP: translation by Claude through the shop's server (honggame.store), with a VIP code bought at the shop.
-   The Claude key stays on the server; the app only sends the code, this computer's id and the line to translate. ---------- */
+/* ---------- VIP: translation through the shop's server (honggame.store), with a VIP code bought at the shop.
+   The AI key stays on the server; the app only sends the code, this computer's id and the line to translate. ---------- */
 var VIPAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/vip/';
 S.vip=load('vip',{code:'',ok:false,until:0}); S.vipDown=0;
 function vipDev(){ var d=load('vipdev',''); if(!d){ var a=new Uint8Array(12); (window.crypto||{getRandomValues:function(x){ for(var i=0;i<x.length;i++) x[i]=Math.random()*256|0; return x; }}).getRandomValues(a); d='d'+Array.prototype.map.call(a,function(b){ return ('0'+b.toString(16)).slice(-2); }).join(''); save('vipdev',d); } return d; }
 function vipOn(){ return !!(S.vip&&S.vip.ok&&S.vip.code&&(!S.vip.until||S.vip.until>Date.now())); }
-function vipShape(s){   /* the JSON shape Claude must answer in, from the Gemini schema */
+function vipShape(s){   /* the JSON shape the server must answer in, from the Gemini schema */
   if(!s||!s.type) return '';
   var ty=String(s.type).toUpperCase();
   if(ty==='OBJECT'){ var o={}; Object.keys(s.properties||{}).forEach(function(k){ o[k]=vipShape(s.properties[k]); }); return o; }
@@ -1741,11 +1753,15 @@ function vipShape(s){   /* the JSON shape Claude must answer in, from the Gemini
 }
 function vipMsg(cls,t){ var m=$('hsVipMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
 function vipUi(){
-  var el=$('hsVip'); if(!el) return;
+  var el=$('hsVip'), on=vipOn(); if(!el) return;
   if(!el.value&&S.vip.code) el.value=S.vip.code;
-  if(vipOn()) vipMsg('ok','VIP đang bật'+(S.vip.until?' đến '+new Date(S.vip.until).toLocaleDateString('vi-VN'):'')+'. Hóng Sub dịch bằng AI Claude của shop, không cần mã Gemini.');
+  if(on){ var left=S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.now())/864e5)):0;
+    vipMsg('ok','Bạn đang là thành viên VIP'+(S.vip.until?', còn '+left+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.'); }
   else if(S.vip.err) vipMsg('err',S.vip.err);
-  else vipMsg('',S.vip.code?'':'');
+  else vipMsg('','');
+  var b=$('hsVipBuy'); if(b) b.hidden=on;
+  var h=$('hsHint'); if(h) h.hidden=!on;
+  var sec=$('hsVipSec'); if(sec) sec.classList.toggle('on',on);
 }
 async function vipCall(path,body,ms){
   var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },ms||15000), r, j;
@@ -1766,15 +1782,15 @@ async function vipCheck(code){
     S.vip={code:code,ok:false,until:0,err:x.j.message||('Không kiểm tra được mã (lỗi '+x.r.status+').')}; save('vip',S.vip); vipUi(); steps(); keyNeed(); return false;
   }catch(e){ vipMsg('err',e.message+'. Thử lại sau.'); return false; }
 }
-async function vipAsk(prompt,b64,schema){
-  var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64;
+async function vipAsk(prompt,b64,schema,mode){
+  var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64; if(mode) body.mode=mode;
   var t0=performance.now(), x;
   try{ x=await vipCall('ask',body,15000); }catch(e){ S.vipDown=Date.now()+20e3; throw e; }
   if(x.r.ok&&x.j.ok){
-    count('vip-claude','v');
-    if(S.model!=='Claude (VIP)'){ S.model='Claude (VIP)'; $('hsModelTag').textContent=S.model; }
+    count('vip-server','v');
+    if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
     if(x.j.until) S.vip.until=x.j.until*1000;
-    log('VIP Claude '+Math.round(performance.now()-t0)+'ms');
+    log('VIP '+Math.round(performance.now()-t0)+'ms');
     return x.j.data||null;
   }
   var c=x.j.code||'', m=x.j.message||('VIP lỗi '+x.r.status);
@@ -1789,7 +1805,40 @@ async function vipAsk(prompt,b64,schema){
   if(go) go.addEventListener('click',function(){ vipCheck(el.value); });
   el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); vipCheck(el.value); } });
   if(S.vip.code&&S.vip.ok) setTimeout(function(){ vipCheck(S.vip.code); },4000);   /* still valid? (expired, moved to another computer) */
+  var hb=$('hsHint'); if(hb) hb.addEventListener('click',function(){ vipHint(); });
 })();
+/* VIP: "Gợi ý nhiệm vụ": the game picture now goes to the shop's server, which answers with a short hint in
+   Vietnamese for the puzzle or quest on screen. Shown like a subtitle (computer, floating window, TV) and in the VIP box. */
+S.hintBusy=false;
+function hintOut(cls,t){ var m=$('hsHintOut'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
+function hintShow(text){
+  var html='<span class="who" style="color:#FFC400">Gợi ý:</span> '+esc(text).replace(/\n/g,'<br>');
+  $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=html; $('hsEn').textContent='';
+  try{ pipRender(html,''); }catch(e){}
+  if(D) D.sub({html:html,en:'',size:+$('hsSize').value});
+  try{ phSub({who:'Gợi ý',c:'#FFC400',vi:text,en:''}); }catch(e){}
+  tvNotice('Gợi ý: '+text);
+  clearTimeout(S.hintT);
+  S.hintT=setTimeout(function(){ if($('hsVi').innerHTML!==html) return; $('hsVi').innerHTML=''; try{ pipRender('',''); }catch(e){} if(D) D.sub({html:'',en:''}); try{ phSub({vi:''}); }catch(e){} },Math.min(40000,8000+text.length*90));
+}
+async function vipHint(){
+  if(!vipOn()){ hintOut('err','Gợi ý nhiệm vụ dành cho thành viên VIP.'); return; }
+  if(S.hintBusy) return;
+  if(!grab({x:0,y:0,w:1,h:1},1280)){ hintOut('err','Chưa có hình game. Mở game trước rồi bấm Gợi ý nhiệm vụ.'); return; }
+  var img=jpeg(.82), g=(($('hsGame')&&$('hsGame').value)||'').trim();
+  S.hintBusy=true; var hb=$('hsHint'); if(hb) hb.disabled=true;
+  hintOut('','Đang xem màn hình để gợi ý...'); log('VIP: xin gợi ý nhiệm vụ');
+  try{
+    var r=await vipAsk((g?'Game: '+g+'\n':'')+'This is a screenshot of the video game the player is playing right now. The player is stuck on the current quest, objective or puzzle shown on screen. '+
+      'In Vietnamese, give a short, practical hint: first what to look for or think about, then the concrete next step. At most 3 short sentences. '+
+      'If it is a puzzle with a known solution in this game, you may give the solution as the last sentence. If you cannot tell what the player must do, say what on the screen to check. Keep names of characters, places and items as they are.',
+      img,{type:'OBJECT',properties:{hint:{type:'STRING'}},required:['hint']},'hint');
+    var h=String((r&&r.hint)||'').trim();
+    if(!h){ hintOut('warn','Chưa đưa ra được gợi ý cho màn hình này. Thử lại khi nhiệm vụ hoặc câu đố đang hiện rõ trên màn hình.'); return; }
+    hintOut('ok','Gợi ý: '+h); hintShow(h);
+  }catch(e){ hintOut('err',e.message||'Chưa lấy được gợi ý, thử lại sau.'); }
+  finally{ S.hintBusy=false; if(hb) hb.disabled=false; }
+}
 (function(){ var k=load('keys',[]); $('hsKeys').value=Array.isArray(k)?k.join('\n'):String(k||''); })();
 function groqKeys(){return $('hsGroq').value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>20;});}
 $('hsGroq').value=load('groq',[]).join('\n');
@@ -3225,7 +3274,7 @@ function count(key,kind){ if(!key) return; if(S.use.d!==today()) S.use={d:today(
 function keyStats(){
   var box=$('hsKeyStat'); if(!box) return; if(S.use.d!==today()) S.use={d:today(),k:{}};
   var now=Date.now(), rows=[];
-  if(S.use.k['vclaude']) rows.push('<div><span>VIP Claude</span><b>'+S.use.k['vclaude']+' câu hôm nay</b></div>');
+  if(S.use.k['vserver']) rows.push('<div><span>Máy chủ VIP</span><b>'+S.use.k['vserver']+' câu hôm nay</b></div>');
   gKeys().forEach(function(k,i){ var cu=keyCoolUntil(k), c=cu>now; rows.push('<div><span>Gemini '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['g'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(cu).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   groqKeys().forEach(function(k,i){ var c=S.gcool[k]&&S.gcool[k]>now; rows.push('<div><span>Groq '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['q'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>tạm hết lượt</em>':'')+'</div>'); });
   orKeys().forEach(function(k,i){ var c=S.or.cool[k]&&S.or.cool[k]>now; rows.push('<div><span>AI thông minh '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['o'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.or.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
