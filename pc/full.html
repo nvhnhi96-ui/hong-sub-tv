@@ -3,6 +3,8 @@
 <style>
 html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Be Vietnam Pro",system-ui,sans-serif;user-select:none}
 .b{position:absolute;box-sizing:border-box;width:max-content;background:rgba(12,14,18,.93);color:#fff;border-radius:3px;padding:1px 5px;line-height:1.22;font-weight:600;overflow:hidden;box-shadow:0 0 0 1px rgba(255,196,0,.35);white-space:normal;word-break:break-word}
+.hs-key{display:inline-block;height:1.08em;width:1.08em;vertical-align:-.2em;margin:0 .08em;border-radius:.2em}
+span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.25;border:.1em solid currentColor;border-radius:.35em;vertical-align:.05em}
 </style></head>
 <body>
 <div id="root"></div>
@@ -19,7 +21,7 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
       var el=document.createElement('div'); el.className='b';
       var L=it.x*W, w=Math.max(24,it.w*W); el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.minHeight=(it.h*H)+'px'; if(d.font) el.style.fontFamily=d.font; if(it.bg){ el.style.background=it.bg; el.style.boxShadow='none'; } if(it.fg) el.style.color=it.fg;
       var f=Math.max(10,Math.round(it.lh*H*0.7)); el.style.fontSize=f+'px';
-      el.innerHTML=esc(it.vi).replace(/\n/g,'<br>');
+      el.innerHTML=it.html&&/^[^<]*(?:<(?:br|img class="hs-key" src="data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]+" alt="[^"<>]*"|span class="hs-key")>[^<]*(?:<\/span>[^<]*)?)*$/.test(it.html)?it.html:esc(it.vi).replace(/\n/g,'<br>');   /* with the controller button pictures: only Hóng Sub's own markup */
       root.appendChild(el);
       /* Vietnamese is often longer: shrink until it fits about the space of the English */
       var maxH=it.h*H*1.15+6; while(f>9&&(el.scrollHeight>maxH||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; }
