@@ -3619,8 +3619,19 @@ function show(res,quiet){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
   vi=lineMatch()&&res._enl&&res._enl.length>1?alignVi(vi,res._enl):lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var pv=res._voice?ptVoice((res._t0||Date.now()-3000)-200,(res._t1||Date.now())+200):ptVoice(subSince(),Date.now());
-  var orig=quiet?null:JSON.parse(JSON.stringify(res));
+  /* a "name:" the AI found that is not written with a colon in what was read (a sticker, a sign: "BORN TO FISH")
+     is not a speaker label */
+  if(who&&!quiet&&S.lastRaw&&!res._voice){ var w1=who.split(/\s+/)[0].replace(/[^A-Za-z0-9']/g,''); if(w1&&!new RegExp(w1.replace(/'/g,"'?")+'[^:\\n]{0,24}:','i').test(S.lastRaw)){ res.who=res.who||''; res.speaker=''; who=''; } }
   var wm=S.whoMem[trKey(en)]; if(!who&&!res.who&&wm){ res.who=wm.who; res.role=wm.role; res.sure=wm.sure; if(!res.gender) res.gender=wm.gender; res._whoDone=true; }
+  /* a line from the shared store or the cache with no speaker yet: ask who says it first (Groq answers in about
+     0.4 s), and show it once with the name and colour; no answer within 0.7 s: shown without */
+  if(!quiet) S.showTok=(S.showTok||0)+1;
+  if(!quiet&&!res._whoDone&&!who&&!res.who&&!res.role&&en&&whoOn()&&!S.whoBusy&&(groqKeys().length||keys().length)){
+    var tok=S.showTok, gone=false, go=function(){ if(gone) return; gone=true; if(tok!==S.showTok) return; res._whoDone=true; show(res,false); };
+    whoAsk(res,pv).then(function(w){ if(w&&!gone){ res.who=w.who; res.role=w.role; res.sure=w.sure; if(!res.gender) res.gender=w.gender; } go(); },go);
+    setTimeout(go,700);
+    return;
+  }
   var lw=whoOn()||who?lineWho(res,pv,who):{who:'',guess:'',role:''};
   if(!who&&lw.who){ who=lw.who; res._who=who; }                /* the speaker worked out from the context: shown and voiced like a written name */
   var mcol=lw.role==='main'&&mainOn()?mainCol():'';
@@ -3640,7 +3651,7 @@ function show(res,quiet){
   if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
   phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent,vo:vl,mcol:mcol});
   tvPush(vi,en,who,false,vl,mcol);
-  if(orig&&!res._whoDone&&!res.speaker&&!lw.role&&en) whoAsk(orig,pv);   /* no speaker known for this line yet */
+
   if(quiet) return;   /* a corrected line: already read aloud, its time on screen goes on */
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
   speak(vi,res);
@@ -3871,8 +3882,8 @@ function lineWho(res,pv,printed){
 }
 /* a line from the shared store or the cache has no speaker yet: ask once, then colour the line if it is still on */
 function whoAsk(res,pv){
-  if(S.whoBusy||!whoOn()||!res||!res.en||(!groqKeys().length&&!keys().length)) return;
-  var k=trKey(res.en); if(S.whoMem[k]) return;
+  if(S.whoBusy||!whoOn()||!res||!res.en||(!groqKeys().length&&!keys().length)) return Promise.resolve(null);
+  var k=trKey(res.en); if(S.whoMem[k]) return Promise.resolve(S.whoMem[k]);
   S.whoBusy=true;
   var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim(), m=mainList();
   var recent=S.hist.slice(1,6).reverse().map(function(h){ return (h.who?h.who+': ':'(?): ')+h.en; }).join('\n');
@@ -3881,16 +3892,14 @@ function whoAsk(res,pv){
     'Line: <<<'+res.en+'>>>\n'+
     'Answer in JSON: "who" = the character who says this line ("" if you cannot tell); "role" = "main" if the speaker is the player\'s character / a protagonist, "side" for anyone else, "" if unknown; "sure" = "yes" only if the context leaves no doubt, else "no"; "gender" = "male", "female" or "".';
   var run=groqKeys().length?groq(p,null,SHAPE_WHO).catch(function(){ return keys().length?gemini(p,null,SCHEMA_WHO):null; }):gemini(p,null,SCHEMA_WHO);
-  Promise.resolve(run).then(function(r){
-    S.whoBusy=false; if(!r) return;
-    S.whoMem[k]={who:String(r.who||''),role:String(r.role||''),sure:String(r.sure||''),gender:String(r.gender||'')};
-    var h=S.hist[0]; if(!h||h.en!==String(res.en).trim()) return;
-    var r2=JSON.parse(JSON.stringify(res)); r2.who=S.whoMem[k].who; r2.role=S.whoMem[k].role; r2.sure=S.whoMem[k].sure; if(!r2.gender) r2.gender=S.whoMem[k].gender; r2._whoDone=true;
-    var lw=lineWho(r2,pv,'');
+  /* the answer comes before the line is shown (show() waits up to 0.7 s): never shown a second time with the name added */
+  return Promise.resolve(run).then(function(r){
+    S.whoBusy=false; if(!r) return null;
+    var w=S.whoMem[k]={who:String(r.who||''),role:String(r.role||''),sure:String(r.sure||''),gender:String(r.gender||'')};
+    var lw=lineWho({who:w.who,role:w.role,sure:w.sure},pv,'');
     log('người nói: '+(lw.guess||'?')+(lw.role==='main'?' (nhân vật chính)':lw.role==='side'?' (nhân vật phụ)':'')+(lw.who?'':' (chưa chắc)'));
-    if(!lw.role&&!lw.who) return;
-    if(S.lastHtml) show(r2,true); else { h.who=lw.who; h.role=lw.role; }
-  },function(){ S.whoBusy=false; });
+    return w;
+  },function(){ S.whoBusy=false; return null; });
 }
 
 /* --- characters met in this game: gender, voice and name colour per character --- */
