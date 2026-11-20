@@ -840,8 +840,9 @@ public class OverlayService extends Service {
             HttpURLConnection c = (HttpURLConnection) new URL(Prefs.RELAY.replace("pull?room=", "push")).openConnection();
             c.setConnectTimeout(5000); c.setReadTimeout(5000); c.setDoOutput(true); c.setRequestMethod("POST");
             c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            JSONObject o = new JSONObject().put("room", prefs.code() + "T").put("kind", kind).put("vi", "tv " + Updater.current(this)).put("ip", LanServer.ip());
-            if (crash != null && !crash.isEmpty()) o.put("en", "crash " + crash);
+            JSONObject x = new JSONObject().put("ip", LanServer.ip());
+            if (crash != null && !crash.isEmpty()) x.put("crash", crash.length() > 380 ? crash.substring(0, 380) : crash);
+            JSONObject o = new JSONObject().put("room", prefs.code() + "T").put("kind", kind).put("vi", "tv " + Updater.current(this)).put("en", pack(x));
             String body = o.toString();
             try (java.io.OutputStream os = c.getOutputStream()) { os.write(body.getBytes(StandardCharsets.UTF_8)); }
             c.getResponseCode(); c.disconnect();
@@ -882,9 +883,9 @@ public class OverlayService extends Service {
                         if (items != null && items.length() > 0) {
                             for (int i = 0; i < items.length(); i++) {
                                 JSONObject it = items.optJSONObject(i);
-                                if (it != null && it.optLong("seq", 0) > lastSeq) handle(it);
+                                if (it != null && it.optLong("seq", 0) > lastSeq) handle(unpack(it));
                             }
-                        } else handle(j);
+                        } else handle(unpack(j));
                         lastSeq = seq;
                     }
                 } catch (Exception e) {
@@ -895,6 +896,25 @@ public class OverlayService extends Service {
             }
         }, "hongsub-poll");
         poller.start();
+    }
+
+    /* honggame.store keeps only vi, en, who, size, pos, kind and mid: the computer packs the rest of a message into
+       "en" as HSX1:<base64 JSON> (place over the original, colours, font, area boxes, heartbeat...) */
+    static JSONObject unpack(JSONObject j) {
+        String en = j.optString("en", "");
+        if (!en.startsWith("HSX1:")) return j;
+        try {
+            JSONObject x = new JSONObject(new String(android.util.Base64.decode(en.substring(5), android.util.Base64.DEFAULT), "UTF-8"));
+            j.put("en", x.optString("en", "")); x.remove("en");
+            String k = x.optString("k", ""); if (!k.isEmpty()) { j.put("kind", k); x.remove("k"); }
+            java.util.Iterator<String> it = x.keys();
+            while (it.hasNext()) { String key = it.next(); j.put(key, x.get(key)); }
+        } catch (Exception e) { try { j.put("en", ""); } catch (Exception ignored) { } }
+        return j;
+    }
+
+    static String pack(JSONObject x) {
+        try { return "HSX1:" + android.util.Base64.encodeToString(x.toString().getBytes("UTF-8"), android.util.Base64.NO_WRAP); } catch (Exception e) { return ""; }
     }
 
     private static JSONObject fetch(String url) throws Exception {

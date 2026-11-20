@@ -501,9 +501,15 @@ setInterval(alive,20000);
 /* the computer also sees the TV through its home-network questions; this covers the quiet minutes */
 setInterval(function(){ if(packaged&&P.pc&&!document.hidden){ var x=new XMLHttpRequest(); x.open('GET','http://'+P.pc+'/alive?code='+P.code+'&ver='+VERSION,true); x.timeout=5000; x.onerror=x.ontimeout=function(){}; x.send(null); } },8000);
 /* newer senders list every message after the last one seen; older ones only send the latest */
+/* honggame.store keeps only vi, en, who, size, pos, kind and mid: the computer packs the rest into "en" as HSX1:<base64 JSON> */
+function unpack(j){
+  var e=String(j&&j.en||''); if(e.indexOf('HSX1:')!==0) return j;
+  try{ var x=JSON.parse(decodeURIComponent(escape(atob(e.slice(5))))); j.en=x.en||''; delete x.en; if(x.k){ j.kind=x.k; delete x.k; } for(var k in x) if(x.hasOwnProperty(k)) j[k]=x[k]; }catch(er){ j.en=''; }
+  return j;
+}
 function takeAll(j,after){
-  if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(it); }); return; }
-  handle(j);
+  if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(unpack(it)); }); return; }
+  handle(unpack(j));
 }
 var mids=[];
 function handle(j){

@@ -2591,7 +2591,28 @@ function relayPump(){
   var e=RQ.q.shift(), done=function(){ RQ.busy=false; relayPump(); };
   tvRelayNow(e.o).then(function(r){ e.res(r); done(); },function(err){ e.rej(err); done(); });
 }
-function tvRelayNow(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o.room=c;
+/* honggame.store keeps only vi, en, who, size, pos, kind and mid of a message (en and vi up to 600 letters, no tags):
+   everything else (place over the original, colours, font, area boxes, heartbeat...) is packed into "en" as
+   HSX1:<base64 JSON>, and the TV apps unpack it. Kinds the store does not know (hb, clr) travel as 'zone'. */
+function b64u(s){ return btoa(unescape(encodeURIComponent(s))); }
+function relayPack(o){
+  var keep={room:1,vi:1,en:1,who:1,size:1,pos:1,kind:1,mid:1}, x={}, any=false, kind=o.kind||'sub';
+  Object.keys(o).forEach(function(k){ if(!keep[k]&&o[k]!==undefined&&o[k]!==null){ x[k]=o[k]; any=true; } });
+  if(!{sub:1,zone:1,notice:1,hello:1,alive:1}[kind]){ x.k=kind; any=true; kind='zone'; }
+  var b={room:o.room,vi:String(o.vi||'').slice(0,600),who:o.who||'',size:o.size||0,pos:o.pos==='top'?'top':o.pos==='bottom'?'bottom':'',kind:kind,mid:o.mid,en:String(o.en||'').slice(0,600)};
+  if(!any) return b;
+  if(o.en) x.en=o.en;
+  var s='HSX1:'+b64u(JSON.stringify(x));
+  ['name','pc','en','zv','zic','appv'].forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
+  if(s.length<=600) b.en=s;
+  return b;
+}
+function relayUnpack(j){
+  var e=String(j&&j.en||''); if(e.indexOf('HSX1:')!==0) return j;
+  try{ var x=JSON.parse(decodeURIComponent(escape(atob(e.slice(5))))); j.en=x.en||''; delete x.en; if(x.k){ j.kind=x.k; delete x.k; } Object.keys(x).forEach(function(k){ j[k]=x[k]; }); }catch(er){ j.en=''; }
+  return j;
+}
+function tvRelayNow(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o=relayPack(Object.assign({},o,{room:c}));
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); S.relayBad=0; return r; }).catch(function(e){ S.relayBad=Date.now(); log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
 function tvSend(o){
@@ -2697,6 +2718,7 @@ function tvListen(){
   /* the TV's own room (code + T): the TV app says hello when it starts and "alive" every 30 s (newer builds), with its
      home-network address and the last crash of the app, if any */
   if(c.length>=4&&(!ip||S.tvOk!==true)) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    j=relayUnpack(j); if(j.crash) j.en='crash '+j.crash;
     var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65, tv=j.kind==='hello'||j.kind==='alive';
     var news=S.tvHello<0?(fresh&&tv):(seq!==S.tvHello&&tv), first=S.tvHello<0; S.tvHello=seq;
     if(!news) return;
