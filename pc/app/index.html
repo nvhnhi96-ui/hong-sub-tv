@@ -1926,6 +1926,15 @@ function letterBody(g,x,y,w,h){
   if(run<3||run<h*0.22||run>h*0.96) return 0;
   return run;
 }
+/* a turned text (a phone in the game held at an angle): turned straight first, then measured the same way;
+   cx, cy, w, h in pixels of the picture g draws on, a the angle */
+function letterBodyRot(g,cx,cy,w,h,a){
+  w=Math.round(w); h=Math.round(h); if(w<8||h<6) return 0;
+  try{ var cv=letterBodyRot.cv||(letterBodyRot.cv=document.createElement('canvas')); cv.width=w; cv.height=h;
+    var t=cv.getContext('2d',{willReadFrequently:true}); t.setTransform(1,0,0,1,0,0); t.clearRect(0,0,w,h);
+    t.translate(w/2,h/2); t.rotate(-a); t.drawImage(g.canvas,-cx,-cy); t.setTransform(1,0,0,1,0,0);
+    return letterBody(t,0,0,w,h); }catch(e){ return 0; }
+}
 /* how tall the lower-case letters (or the capitals) of a font are, as a part of its size */
 var FMET={};
 function fontRatio(css,caps){
@@ -2591,7 +2600,7 @@ function zShow(){
       tx.hidden=true;
       var zh=z.h*b.h, bgc='rgba(8,9,12,'+((z.bg==null?90:+z.bg)/100)+')', al=zAlignCss(z), ff=zFont(z).replace(/"/g,"'");
       its.innerHTML=z.items.map(function(it){
-        var f=+z.px>0?(+z.px*b.h/1080):Math.max(5,it.lh*zh*0.92*zSc(z));
+        var f=+z.px>0?(+z.px*b.h/1080):Math.max(5,viFz(it.lh,it.xb,it.caps,null,0.92)*zh*zSc(z));
         return '<div style="left:'+(it.x*100)+'%;top:'+(it.y*100)+'%;min-width:'+(it.w*100)+'%;max-width:'+((1-it.x)*100)+'%;min-height:'+(it.h*100)+'%;font-size:'+f+'px;text-align:'+al+';background:'+bgc+';font-family:'+ff+'">'+zIcHtml(it.vi,it.ic)+'</div>';
       }).join('');
       var zw=z.w*b.w; [].forEach.call(its.children,function(d,i){ spotFit(d,z.items[i],zw,zh,al,!(+z.px>0)&&zSc(z)<=1); zLook(d,z.items[i],z,parseFloat(d.style.fontSize)||14); });   /* the same rules as on the TV */
@@ -2889,7 +2898,8 @@ function zHintGroups(B,lines){
   }
   return B;
 }
-function zBlocks(o,zh){
+function zBlocks(o,zh,cv){
+  var zg=null; try{ zg=cv&&cv.getContext('2d'); }catch(e){}
   if(!o||!o.blocks||!o.W) return [];
   var src=o.blocks.filter(function(b){ return b.conf>=0.5; }).map(function(b){ return {x:b.x,y:b.y,w:b.w,h:b.h,lh:b.lh||b.h/(b.n||1),n:b.n||1,x0:b.x0,text:b.text,icons:b.icons||[],conf:b.conf}; });
   zHintGroups(src,(o.lines||[]).filter(function(l){ return l.conf>=0.5; }));
@@ -2905,7 +2915,10 @@ function zBlocks(o,zh){
     var lh=(b.lh||b.h/n)/o.H, py=Math.min(b.y/o.H,lh*0.18);   /* a little larger than the original, so no letter peeks out */
     /* the box starts where the words start: a button icon in front ("△ Hold to Charge") stays visible, not covered */
     var bx=b.x0!=null&&b.x0-b.x>(b.lh||b.h/n)*0.8?Math.min(b.x0,b.x+b.w*0.6):b.x, bw=b.x+b.w-bx, px=Math.min(bx/o.W,0.01);
-    return {x:bx/o.W-px,y:b.y/o.H-py,w:Math.min(1-(bx/o.W-px),bw/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,n:lines.length,en:lines.join('\n'),ic:P.ic};
+    /* the letters themselves of its first line, measured on the zone's picture (parts of the zone's height, like lh) */
+    var xb=0, caps=capsText(lines[0]);
+    if(zg){ var kx=cv.width/o.W, ky=cv.height/o.H, v=letterBody(zg,b.x*kx,b.y*ky,b.w*kx,(b.lh||b.h/n)*ky); if(v) xb=v/cv.height; }
+    return {x:bx/o.W-px,y:b.y/o.H-py,w:Math.min(1-(bx/o.W-px),bw/o.W+px*2),h:Math.min(1-(b.y/o.H-py),b.h/o.H+py*2),lh:lh,xb:xb,caps:caps,n:lines.length,en:lines.join('\n'),ic:P.ic};
   }).filter(Boolean).sort(function(a,b){ return a.y-b.y||a.x-b.x; });
 }
 function zText(o){
@@ -3001,7 +3014,7 @@ async function zoneTick(force,only){
       var text='', bl=null, zic=null;
       if(ocrOn()){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
-        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h).filter(function(b){ if(notiLike(b.en)){ log(zName(z)+': bỏ qua bảng thông báo: '+String(b.en).replace(/\n/g,' / ').slice(0,80)); return false; } return true; }); if(notiLike(text)) text=bl.length?bl.map(function(b){ return b.en; }).join('\n'):''; if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
+        S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h,zcv).filter(function(b){ if(notiLike(b.en)){ log(zName(z)+': bỏ qua bảng thông báo: '+String(b.en).replace(/\n/g,' / ').slice(0,80)); return false; } return true; }); if(notiLike(text)) text=bl.length?bl.map(function(b){ return b.en; }).join('\n'):''; if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
           if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
@@ -3091,7 +3104,7 @@ function zTv(z){
   if(spot){
     tvSend(Object.assign({},base0,{zid:z.id,vi:'',x:zr.x,y:zr.y,w:zr.w,h:zr.h})).catch(function(){});
     z.items.forEach(function(it,i){
-      var px=+z.px>0?+z.px:Math.max(5,Math.round(it.lh*zr.h*1080*0.92*zSc(z)));
+      var px=+z.px>0?+z.px:Math.max(5,Math.round(viFz(it.lh,it.xb,it.caps,null,0.92)*zr.h*1080*zSc(z)));
       var lk=(z.look||'auto')!=='dark'&&it.bg?{zbgc:it.bg,zfg:it.fg}:{};   /* "Theo màu game": the colours around the original */
       tvSend(Object.assign({},base0,lk,{zid:z.id+'_'+i,vi:zIcText(it.vi,it.ic,'●'),zv:it.ic&&it.ic.length?it.vi:undefined,zic:it.ic&&it.ic.length?it.ic:undefined,x:zr.x+it.x*zr.w,y:zr.y+it.y*zr.h,w:it.w*zr.w,h:it.h*zr.h,zpx:px,zauto:+z.px>0||zSc(z)>1?0:1,zgrow:1,zmaxw:Math.max(it.w*zr.w,zr.x+zr.w-(zr.x+it.x*zr.w)),speak:!!(i===0&&z.speak&&z.fresh&&$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()),rd:$('hsSpeak').checked})).catch(function(){});
     });
@@ -3145,7 +3158,7 @@ function zHold(z){
 /* the Windows app shows each area in its own floating window, placed over the original text by default */
 function zPush(){ var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;   /* PS5 inside Hóng Sub: the translation is already on the picture */
   if(PH){ try{ var pl=[]; S.zones.filter(function(z){return z.on;}).forEach(function(z){
-      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:zIcText(it.vi,it.ic,'●'),size:+z.px>0?Math.round(+z.px/2):Math.max(4,Math.round(it.lh*z.h*1080*0.46*zSc(z))),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
+      if(zSpot(z)&&z.items&&z.items.length&&z.vi&&!z.hide) z.items.forEach(function(it,i){ pl.push({id:z.id+'_'+i,vi:zIcText(it.vi,it.ic,'●'),size:+z.px>0?Math.round(+z.px/2):Math.max(4,Math.round(viFz(it.lh,it.xb,it.caps,null,0.92)*z.h*1080*0.5*zSc(z))),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x+it.x*z.w,y:z.y+it.y*z.h,w:it.w*z.w,h:it.h*z.h}); });
       else pl.push({id:z.id,vi:z.hide?'':zIcText(z.vi||'',z.ic,'●'),size:+z.px>0?Math.round(+z.px/2):Math.round((ZSIZE[z.size]||17)*zSc(z)),bg:(z.bg==null?90:+z.bg),font:zFontKey(z),x:z.x,y:z.y,w:z.w,h:z.h}); });
     PH.zones(JSON.stringify(pl)); }catch(e){} }
   if(D&&D.zones) D.zones(S.zones.filter(function(z){return z.on&&z.show==='float'&&!inApp;}).map(function(z){return {id:z.id,name:zName(z),kind:ZKINDS[z.kind].n,vi:z.hide?'':(z.vi||''),ic:z.ic||null,sc:zSc(z),items:zSpot(z)&&z.items&&!z.hide?z.items.map(function(it){ return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:it.vi,ic:it.ic||null,bg:(z.look||'auto')!=='dark'?it.bg:'',fg:(z.look||'auto')!=='dark'?it.fg:''}; }):null,c:zCol(z),size:ZSIZE[z.size]||17,px:+z.px||0,al:zAlignCss(z),bg:(z.bg==null?90:+z.bg)/100,font:zFont(z),fontUrl:fontUrl(zFontKey(z)),x:z.x,y:z.y,w:z.w,h:z.h};})); }
@@ -3738,7 +3751,7 @@ function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.app
   else if(o.cov){ o.cspot=1; o.cal='c'; o.cfs=48; }
   /* not over the English: the Vietnamese sits right above the game's own subtitle (like on the computer), not at the
      TV's fixed place where the two lines ran over each other */
-  if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; }
+  if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; var sb=S.subBox; if(o.abv&&sb&&sb.xb>0&&Date.now()-sb.at<60000){ o.axb=+(sb.xb*S.region.h*(o.abv.h/ar.h)).toFixed(5); o.acap=sb.caps?1:0; } }   /* above the English: as tall as the English letters too */
   if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
@@ -4091,7 +4104,7 @@ function subGone(){
 function coverOn(){ var c=$('hsCover'); return !!(c&&c.checked); }
 /* the floating subtitle on Windows goes over the game's own subtitle too (not when the PS5 plays inside Hóng Sub: the picture there is covered already) */
 function placeSync(){
-  if(PH){ var hk=Math.max(40,Math.min(300,+(load('ovStyle',{}).hgt)||100))/100, R0=subRect(), pr=coverOn()&&R0&&S.stream?{x:R0.x,y:Math.max(0,R0.y+R0.h/2-R0.h*hk/2),w:R0.w,h:Math.min(1,R0.h*hk)}:null, pk=JSON.stringify(pr); if(pk!==S.placeK){ S.placeK=pk; try{ PH.place(pk); }catch(e){} } return; }
+  if(PH){ var hk=Math.max(40,Math.min(300,+(load('ovStyle',{}).hgt)||100))/100, R0=subRect(), pr=coverOn()&&R0&&S.stream?{x:R0.x,y:Math.max(0,R0.y+R0.h/2-R0.h*hk/2),w:R0.w,h:Math.min(1,R0.h*hk),fz:R0.spot&&R0.xb>0?+viFz(R0.lh,R0.xb,R0.caps).toFixed(5):0}:null, pk=JSON.stringify(pr); if(pk!==S.placeK){ S.placeK=pk; try{ PH.place(pk); }catch(e){} } return; }
   if(!D||!D.subPlace) return;
   var inApp=typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream;
   var sr=coverOn()&&S.region&&S.stream&&!inApp?subRect():null, r=sr?{x:sr.x,y:sr.y,w:sr.w,h:sr.h,spot:!!sr.spot,al:sr.al||'c',lh:sr.lh||0,fz:sr.spot?viFz(sr.lh||0,sr.xb,sr.caps):0}:null, k=JSON.stringify(r);
@@ -4773,7 +4786,7 @@ function subBoxFrom(o,W,H){
   if(srt.length>=3) lh=srt[srt.length>>1]*H;
   /* the letters themselves (lower-case body, or capitals for ALL-CAPS subtitles), the middle of the last readings */
   var xs=[], nc=0;
-  L.forEach(function(l){ if(capsText(l.text)) nc++; if(l.rot) return; var v=letterBody(ocx2,l.x,l.y,l.w,l.h); if(v) xs.push(v); });
+  L.forEach(function(l){ if(capsText(l.text)) nc++; var v=l.rot?letterBodyRot(ocx2,l.rot.cx,l.rot.cy,l.rot.w,l.rot.h,l.rot.a):letterBody(ocx2,l.x,l.y,l.w,l.h); if(v) xs.push(v); });
   var caps=nc>L.length/2;
   if(xs.length){ xs.sort(function(a,b){ return a-b; }); S.xbs=(S.xbs||[]).concat([{v:xs[xs.length>>1]/H,c:caps}]).slice(-24); }
   var same=(S.xbs||[]).filter(function(e){ return e.c===caps; }).map(function(e){ return e.v; }).sort(function(a,b){ return a-b; });
@@ -6323,7 +6336,7 @@ function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
   var lay0=S.fs.on?fsLayer:flLayer, kids0=lay0&&!lay0.hidden?lay0.children:[], view=fsView(src);
   if(kids0.length===view.length) view=view.filter(function(it,i){ return !kids0[i].dataset.gone; });   /* a box the page did not show is not sent either */
-  var list=view.map(function(it){var ic=it.ic&&it.ic.length; var lo=fsLineGeom(it,(video.videoWidth||16)/(video.videoHeight||9)); return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,gb:it.gb,lg:lo,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
+  var list=view.map(function(it){var ic=it.ic&&it.ic.length; var lo=fsLineGeom(it,(video.videoWidth||16)/(video.videoHeight||9)); return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,fz:it.xb>0?+viFz(it.lh,it.xb,it.caps,null,0.74).toFixed(5):0,gb:it.gb,lg:lo,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
   if(on&&(tvIp()||tvCode().length>=4)){   /* the TV gets each box as the picture drawn here: the same letters, lines and colours */
     var lay=S.fs.on?fsLayer:flLayer, kids=lay&&!lay.hidden?[].filter.call(lay.children,function(el){ return !el.dataset.gone; }):[];
@@ -6544,9 +6557,11 @@ async function fsRead(sx,sy,sw,sh,maxW){
   });
   /* the letters themselves of each text (its first line), measured on the picture read: the Vietnamese gets their height */
   out.forEach(function(it){
-    if(it.rot) return; var l0=it.lr&&it.lr[0]?it.lr[0]:{x:it.x,y:it.y,w:it.w,h:it.lh||it.h};
-    var X=(l0.x*vw-sx)/sw*fsv.width, Y=(l0.y*vh-sy)/sh*fsv.height, Wd=l0.w*vw/sw*fsv.width, Ht=l0.h*vh/sh*fsv.height;
-    var v=letterBody(g,X,Y,Wd,Ht); it.caps=capsText(String(it.en||'').split('\n')[0]); if(v) it.xb=v/fsv.height*sh/vh;
+    var v, fx=fsv.width/sw, fy=fsv.height/sh; it.caps=capsText(String(it.en||'').split('\n')[0]);
+    if(it.rot){ var t=it.rot; v=letterBodyRot(g,(t.cx*vw-sx)*fx,(t.cy*vh-sy)*fy,t.w*vw*fx,t.h*vh*fy,t.a); }
+    else { var l0=it.lr&&it.lr[0]?it.lr[0]:{x:it.x,y:it.y,w:it.w,h:it.lh||it.h};
+      v=letterBody(g,(l0.x*vw-sx)*fx,(l0.y*vh-sy)*fy,l0.w*vw*fx,l0.h*vh*fy); }
+    if(v) it.xb=v/fy/vh;
   });
   return out;
 }
@@ -7055,7 +7070,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={lb:letterBody,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';

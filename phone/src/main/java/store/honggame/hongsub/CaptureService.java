@@ -394,8 +394,11 @@ public class CaptureService extends Service {
     private void styleSub() {
         if (subBox == null) return;
         double size = style.optDouble("size", 28);
-        subVi.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size));
-        subEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size) * 0.6f);
+        float vpx = px(size);
+        double fz = place != null ? place.optDouble("fz", 0) : 0;
+        if (fz > 0 && fz < 0.3) vpx = (float) (fz * sh * Math.max(0.4, Math.min(2.5, size / 28.0)));   // over the original: as tall as its letters (measured on the picture), "Cỡ chữ" 28 = the same
+        subVi.setTextSize(TypedValue.COMPLEX_UNIT_PX, vpx);
+        subEn.setTextSize(TypedValue.COMPLEX_UNIT_PX, vpx * 0.6f);
         int col = Color.WHITE; try { col = Color.parseColor(style.optString("col", "#FFFFFF")); } catch (Exception ignored) { }
         subVi.setTextColor(col);
         subVi.setTypeface(face(style.optString("font", "bevn")));
@@ -454,7 +457,7 @@ public class CaptureService extends Service {
         JSONArray it = fullData.optJSONArray("items"); if (it == null) return;
         for (int i = 0; i < it.length(); i++) {
             JSONObject b = it.optJSONObject(i); if (b == null) continue;
-            box(groups[1], b.optDouble("x"), b.optDouble("y"), b.optDouble("w"), b.optDouble("h"), b.optString("vi", ""), Math.max(dp(10), b.optDouble("lh", 0.03) * sh * 0.8), 235, fullData.optString("font", "bevn"));
+            box(groups[1], b.optDouble("x"), b.optDouble("y"), b.optDouble("w"), b.optDouble("h"), b.optString("vi", ""), Math.max(dp(10), b.optDouble("fz", 0) > 0 ? b.optDouble("fz", 0) * sh : b.optDouble("lh", 0.03) * sh * 0.8), 235, fullData.optString("font", "bevn"));
         }
     }
 

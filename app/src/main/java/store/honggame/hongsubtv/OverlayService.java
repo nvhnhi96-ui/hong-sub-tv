@@ -652,7 +652,8 @@ public class OverlayService extends Service {
     private double[] abv = null;
     // "đè đúng chỗ từng dòng": over the original text itself, its alignment and its letter size (on a 1080-line screen)
     private boolean covSpot = false; private String covAl = "c"; private int covFs = 0;
-    private double covXb = 0; private boolean covCaps = false;   // the original letters' own height (part of the screen) and whether they are capitals   // the original subtitle's place (x, y, w, h as parts of the screen), or null
+    private double covXb = 0; private boolean covCaps = false;
+    private double abvXb = 0; private boolean abvCaps = false;   // above the English: the English letters' own height   // the original letters' own height (part of the screen) and whether they are capitals   // the original subtitle's place (x, y, w, h as parts of the screen), or null
 
     private void applyStyle() {
         if (box == null) return;
@@ -717,6 +718,11 @@ public class OverlayService extends Service {
         boolean lm = prefs.lines() || (cov != null && covSpot);
         viView.setHorizontallyScrolling(false);   // never: with centred text it draws the words off screen
         viView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        if (cov == null && abv != null && abvXb > 0 && !prefs.top()) {   // right above the English: as tall as its letters, "Cỡ chữ" 30 = the same
+            DisplayMetrics dm = new DisplayMetrics();
+            wm.getDefaultDisplay().getRealMetrics(dm);
+            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, (float) (abvXb * dm.heightPixels) / letterRatio(abvCaps) * Math.max(0.4f, Math.min(2.5f, size / 30f)));
+        }
         if (cov != null && covSpot && covFs > 0) {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
@@ -897,6 +903,8 @@ public class OverlayService extends Service {
             // small moves of the found lines do not move the box (it would jump with every line)
             boolean far = na == null || abv == null || Math.abs(na[1] - abv[1]) > 0.015 || Math.abs((na[0] + na[2] / 2) - (abv[0] + abv[2] / 2)) > 0.03;
             if (far && !java.util.Arrays.equals(na, abv)) { abv = na; changed = true; }
+            double ax = na != null ? j.optDouble("axb", 0) : 0; if (!(ax > 0 && ax < 0.3)) ax = 0; boolean ac = j.optInt("acap", 0) == 1;
+            if (Math.abs(ax - abvXb) > 0.0008 || ac != abvCaps) { abvXb = ax; abvCaps = ac; changed = true; }
         }
         int pb = Updater.build(j.optString("appv", ""));
         if (pb > pcBuild) {
