@@ -1264,7 +1264,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
-                <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
+                <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản AI dịch xong trước</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Chữ Việt chỉ hiện khi AI đã dịch xong câu hoàn chỉnh (thường 1–2 giây). Máy dịch Google chỉ hiện thay khi AI chậm quá 4 giây hoặc bị lỗi, rồi AI tự sửa lại.</p></div>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí (DeepL nếu có mã, Google, Bing) <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
@@ -5434,16 +5434,23 @@ async function localAsk(text){
 function preferMode(){ return ($('hsPrefer')&&$('hsPrefer').value)||'fast'; }
 function speakPrefer(){ var p=preferMode(); return $('hsSpeak').checked&&fitOn()&&p==='balanced'?'fast':p; }   /* reading aloud: the voice must keep up, take the first good translation */
 function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
+/* how long the machine translation (ready in ~0.6 s) waits for the AI's finished line before it is shown instead */
+var FREE_WAIT=4000;
 function askText(prompt,text,schema,shape,plain,prefer,upgrade){
   schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
   var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady(), hasL=!!text&&shape===SHAPE_SUB&&localOk();
   return new Promise(function(resolve,reject){
     var done=false, live=0, errs=[], tms=[], held=null, oDead=false, t0=Date.now();
-    var started={g:false,q:false,o:false,l:false,f:false}, tookVia='', upgraded=false;
+    var started={g:false,q:false,o:false,l:false,f:false}, tookVia='', upgraded=false; var failed={};
     function clearAll(){ tms.forEach(function(id){ if(WT) WT.clear(id); else clearTimeout(id); }); tms=[]; }
     function accept(r,via){ if(done) return; done=true; tookVia=via; clearAll(); S.via=via; resolve(r); }
+    function aiLeft(){ return (hasG&&!failed.g)||(hasQ&&!failed.q)||(hasO&&!failed.o)||(hasL&&!failed.l); }
+    function holdFree(){ return held&&held.via==='free'; }
     function got(r,via){
       if(done){ if(upgrade&&tookVia==='free'&&via!=='free'&&!upgraded&&r&&r.vi){ upgraded=true; upgrade(r,via); } return; }   /* the machine translation showed first: the AI's line replaces it */
+      /* only the finished translation is shown: the machine translation waits for the AI (up to FREE_WAIT) and shows only when the AI is slow or fails */
+      if(via==='free'&&aiLeft()){ if(!held){ held={r:r,via:via}; tms.push(later(function(){ if(holdFree()) accept(held.r,held.via); },Math.max(0,FREE_WAIT-(Date.now()-t0)))); } return; }
+      if(holdFree()) held=null;
       if(via==='smart'||prefer==='fast'||!started.o||oDead) return accept(r,via);
       if(held) return;
       held={r:r,via:via};                                      /* keep it, give the smart AI a moment */
@@ -5451,9 +5458,9 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
       tms.push(later(function(){ if(held) accept(held.r,held.via); },wait));
     }
     function lose(k,e){
-      errs.push(e); live--; if(k==='o') oDead=true;
+      errs.push(e); live--; failed[k]=true; if(k==='o') oDead=true;
       if(done){ if(upgrade&&tookVia==='free'&&!upgraded&&hasL&&!started.l&&k!=='f') run('l',true); return; }   /* the machine translation is up and the online AI failed: the AI on this computer improves it */
-      if(held&&(k==='o'||live<=0)) return accept(held.r,held.via);
+      if(held&&(k==='o'||live<=0||(holdFree()&&!aiLeft()))) return accept(held.r,held.via);
       if(!startedAll()) startNext();
       else if(live<=0) reject(errs.filter(function(x){return !x.cool;})[0]||errs[0]||new Error('Không dịch được'));
     }
@@ -5469,9 +5476,9 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
     if(hasO) run('o');
     if(!hasG&&!hasO) startNext();
     /* Groq answers text in ~0.3s; start it at once when Gemini is missing or usually slow here */
-    if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(prefer==='fast'||!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held) run('q'); },qd)); else run('q'); }
+    if(hasQ&&(hasG||hasO)){ var gx=gExpect(); var qd=(prefer==='fast'||!hasG||!gx||gx>1600)?0:Math.round(Math.min(1200,gx+250)); if(qd) tms.push(later(function(){ if(!held||holdFree()) run('q'); },qd)); else run('q'); }
     /* AI on this computer: no quota; the first choice without keys, and a safety net when the online AI is slow */
-    if(hasL&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held) run('l'); },2500));
+    if(hasL&&(hasG||hasQ||hasO)) tms.push(later(function(){ if(!held||holdFree()) run('l'); },2500));
     if(S.allowFree&&(hasG||hasQ||hasO||hasL)){ var fd=upgrade&&prefer==='fast'?(hasQ?450:0):3500; if(fd) tms.push(later(function(){ if(!held) run('f'); },fd)); else run('f'); }   /* "Nhanh nhất": the free translator (~0.6s) races the AI (Gemini ~1.2s); Groq (~0.35s) gets a head start */
   });
 }

@@ -987,7 +987,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
               <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
-                <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản dịch về trước, AI sửa lại sau</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Nhanh nhất: chữ Việt hiện sau khoảng nửa giây (máy dịch Google hoặc Groq), AI dịch xong thì tự thay bằng câu đúng xưng hô hơn.</p></div>
+                <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản AI dịch xong trước</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Chữ Việt chỉ hiện khi AI đã dịch xong câu hoàn chỉnh (thường 1–2 giây). Máy dịch Google chỉ hiện thay khi AI chậm quá 4 giây hoặc bị lỗi, rồi AI tự sửa lại.</p></div>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí (DeepL nếu có mã, Google, Bing) <input type="checkbox" id="dkFree"></label>
               <p class="hs-note">Máy dịch của Google: không cần mã, nhưng câu cứng hơn và hay sai xưng hô.</p>
             </div>
