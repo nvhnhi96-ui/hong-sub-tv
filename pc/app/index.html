@@ -56,7 +56,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
 .hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
-.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:0;padding:.16em 3px 0}.hs-fs .hs-fsb.hs-flb[data-rot]{transform-origin:50% 50%;display:flex;flex-direction:column;justify-content:center}
+.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:0;padding:.16em 3px 0}.hs-fs .hs-fsb.hs-fll{background:transparent!important;box-shadow:none;padding:0;overflow:visible;width:auto}.hs-fll1{position:absolute;box-sizing:border-box;white-space:pre;padding:0 2px;background:rgba(12,14,18,.92);overflow:visible;font-weight:600}.hs-fs .hs-fsb.hs-flb[data-rot]{transform-origin:50% 50%;display:flex;flex-direction:column;justify-content:center}
 .hs-cover{position:absolute;z-index:7;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:4px 12px;background:rgba(6,7,9,.88);border-radius:6px;pointer-events:none;text-align:center}
 .hs-cover[hidden]{display:none}
 .hs-cover>div{color:#fff;font-weight:600;line-height:1.3;text-shadow:0 1px 2px #000;font-family:var(--fb)}
@@ -5911,12 +5911,13 @@ var GLOSS_UI_N={}; (function(){ for(var k in GLOSS_UI) if(GLOSS_UI.hasOwnPropert
 function fsDraw(){
   var b=videoBox(), html='', view=S.fs.on?fsView(S.fs.items):[];
   view.forEach(function(it){
+    var ln=fsLinesHtml(it,b,subFont().replace(/"/g,"'"),view); if(ln){ html+=ln; return; }
     var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w);
     html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;min-height:'+(it.h*b.h)+'px;max-height:'+fsMaxH(it,b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.7))+'px;font-family:'+subFont().replace(/"/g,"'")+'">'+fsHtml(it)+'</div>';
   });
   fsLayer.innerHTML=html; fsLayer.hidden=!S.fs.on||!html;
   /* shrink text that does not fit its box */
-  [].forEach.call(fsLayer.children,function(el){ fsFit(el); });
+  [].forEach.call(fsLayer.children,function(el){ if(el.dataset.lines) fsLinesFit(el); else fsFit(el); });
   fsUntangle(fsLayer);
   fsOverlaySync();
 }
@@ -5987,7 +5988,7 @@ function fsFit(el){
 /* the last check on the drawn page: two boxes that still touch (a label made wider) go back to their own width;
    if they still touch, the one with less text is not shown, so nothing is ever drawn over another box */
 function fsUntangle(layer){
-  var kids=[].filter.call(layer.children,function(el){ return !el.dataset.rot; });
+  var kids=[].filter.call(layer.children,function(el){ return !el.dataset.rot&&!el.dataset.lines; });
   function rc(el){ return el.getBoundingClientRect(); }
   function hit(a,b){ var r=rc(a), q=rc(b); return Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1; }
   function fitIn(el){ var f=parseFloat(el.style.fontSize); while(f>6&&(el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)){ f-=0.5; el.style.fontSize=f+'px'; } }
@@ -6009,6 +6010,91 @@ function fsUntangle(layer){
     else { var nw=Math.max(16,r.width-oh-1); if(r.left>=q.left) s.style.left=(left+oh+1)+'px'; s.style.width=nw+'px'; s.style.minWidth='0'; }
     fitIn(s);
   }
+}
+/* ---------- each Vietnamese line right over its English line, at the size of the English letters ----------
+   Where the reader knows where every English line is, the translation is not drawn as one box: each Vietnamese line
+   is put exactly over the English line it translates, as tall as the English letters, covering that line only (in
+   the colours of the game's own background). A longer Vietnamese line is drawn a little narrower (letters squeezed
+   sideways, down to 70%) so it keeps the English height and stays on the English line; only past that it gets smaller. */
+function fsLinesOf(it){
+  if(fsTurn(it)) return null;
+  var E=String(it.en||'').split('\n'), V=String(it.vi||'').split('\n'), lr=it.lr||(E.length===1?[{x:it.x,y:it.y,w:it.w,h:it.h}]:null);
+  return lr&&lr.length===E.length&&V.length===E.length?{lr:lr,vi:V}:null;
+}
+/* where the English letters really are in a line (their ink, read from the game's picture at full size): the
+   top of the tallest letter and the bottom of the lowest one. With the English words known, the Vietnamese gets the
+   letter size that makes the same words exactly that tall in Hóng Sub's font, and sits on the same baseline. */
+var fsInkCv=document.createElement('canvas'), fsInkG=fsInkCv.getContext('2d',{willReadFrequently:true});
+function fsInk(r){
+  try{
+    var vw=video.videoWidth, vh=video.videoHeight; if(!vw||!vh) return null;
+    var py=r.h*0.35, sx=Math.max(0,r.x*vw), sy=Math.max(0,(r.y-py)*vh), sw=Math.min(vw-sx,r.w*vw), sh=Math.min(vh-sy,(r.h+2*py)*vh);
+    if(sw<8||sh<6) return null;
+    var k=Math.min(1,600/sw,200/sh), W=Math.max(8,Math.round(sw*k)), H=Math.max(6,Math.round(sh*k));
+    fsInkCv.width=W; fsInkCv.height=H; fsInkG.drawImage(video,sx,sy,sw,sh,0,0,W,H);
+    var d=fsInkG.getImageData(0,0,W,H).data;
+    /* the background: the most common colour along the left and right ends */
+    var bins={}, best=null, bn=0;
+    for(var y=0;y<H;y++) [0,1,W-2,W-1].forEach(function(x){ var o=(y*W+x)*4, key=(d[o]>>4)+','+(d[o+1]>>4)+','+(d[o+2]>>4); bins[key]=(bins[key]||0)+1; if(bins[key]>bn){ bn=bins[key]; best=[d[o],d[o+1],d[o+2]]; } });
+    if(!best) return null;
+    var near=0; for(var y3=0;y3<H;y3++) [0,1,W-2,W-1].forEach(function(x){ var o=(y3*W+x)*4; if(Math.abs(d[o]-best[0])+Math.abs(d[o+1]-best[1])+Math.abs(d[o+2]-best[2])<70) near++; });
+    if(near<H*4*0.5) return null;                                         /* no plain background around the line: not measured */
+    var rows=[], need=Math.max(2,W*0.01);
+    for(var y2=0;y2<H;y2++){ var c=0; for(var x=0;x<W;x++){ var o2=(y2*W+x)*4; if(Math.abs(d[o2]-best[0])+Math.abs(d[o2+1]-best[1])+Math.abs(d[o2+2]-best[2])>110) c++; } rows.push(c>=need); }
+    /* the band of letter rows nearest the middle (small gaps inside allowed) */
+    var mid=Math.round(H/2), t=-1, bt=-1;
+    for(var a=0;a<H;a++){ if(!rows[a]) continue; var e=a; while(e+1<H&&(rows[e+1]||rows[e+2]&&e+2<H)) e++; if(a<=mid+H*0.2&&e>=mid-H*0.2&&(t<0||e-a>bt-t)){ t=a; bt=e; } a=e; }
+    if(t<0||bt-t<2) return null;
+    return {t:(sy+t/k)/vh, b:(sy+(bt+1)/k)/vh};
+  }catch(e){ return null; }
+}
+function fsInkAll(list){ list.forEach(function(it){ if(fsTurn(it)) return; var E=String(it.en||'').split('\n'), lr=it.lr||(E.length===1?[{x:it.x,y:it.y,w:it.w,h:it.h}]:null); if(!lr||lr.length!==E.length) return; if(!it.lr) it.lr=lr; lr.forEach(function(r){ if(!r.ink) r.ink=fsInk(r); }); }); }
+var fsMeasG=document.createElement('canvas').getContext('2d');
+/* each line's place, letter size and baseline, in parts of the picture (x and w of its width, the rest of its height),
+   so the window over the computer screen draws them the same */
+function fsLineGeom(it,vw2h){
+  var o=fsLinesOf(it); if(!o) return null;
+  var E=String(it.en||'').split('\n'), font=subFont();
+  fsMeasG.font='600 100px '+font; var vm=fsMeasG.measureText('ÀgÝy'), fa=(vm.fontBoundingBoxAscent||92)/100, fd=(vm.fontBoundingBoxDescent||24)/100;
+  var Fs=[], base=[];
+  o.lr.forEach(function(r,i){
+    if(r.ink){ var m=fsMeasG.measureText(String(E[i]||'').replace(/[^\x20-\x7E]/g,'')||'Ag'), a=(m.actualBoundingBoxAscent||72)/100, dd=Math.max(0,(m.actualBoundingBoxDescent||0)/100);
+      var F=(r.ink.b-r.ink.t)/Math.max(0.3,a+dd); Fs.push(F); base.push(r.ink.t+a*F); }
+    else { Fs.push(r.h*0.78); base.push(null); }   /* not measured: the reader's line box is a little taller than the letters */
+  });
+  var srt=Fs.slice().sort(function(a,b){ return a-b; }), F=srt[Math.floor(srt.length/2)];   /* one letter size for the whole text, like the English */
+  return o.lr.map(function(r,i){
+    var t=r.ink?r.ink.t:r.y, bt=r.ink?r.ink.b:r.y+r.h, pad=Math.max(0.0015,(bt-t)*0.14), bl=base[i]!=null?base[i]:(r.y+r.h/2+(fa-fd)*F/2);
+    var top=Math.min(t,bl-fa*F*0.8)-pad, bot=Math.max(bt,bl+fd*F*0.6)+pad, px=(bt-t)*0.25/vw2h;   /* the cover: the English letters and a little around them */
+    return {x:r.x-px,w:r.w+2*px,y:top,h:bot-top,f:F,pt:bl-fa*F-top,lh:(fa+fd)*F,vi:o.vi[i]};
+  });
+}
+function fsLinesHtml(it,b,font,list){
+  var G=fsLineGeom(it,b.w/b.h); if(!G) return '';
+  var x0=Math.min.apply(null,G.map(function(g){ return g.x; })), y0=Math.min.apply(null,G.map(function(g){ return g.y; }));
+  var x1=Math.max.apply(null,G.map(function(g){ return g.x+g.w; })), y1=Math.max.apply(null,G.map(function(g){ return g.y+g.h; }));
+  var al=it.al==='r'?'right':it.al==='c'?'center':'left', h='';
+  /* a longer Vietnamese line may first use the empty room beside it inside the same text (up to its widest line),
+     or beside a one-line label up to the next text on its row, before its letters are squeezed */
+  var fr=G.length===1&&list?fsFree(it,list):null, fr1=fr?Math.min(0.3*G[0].w,al==='right'?fr.l:al==='center'?2*Math.min(fr.l,fr.r):fr.r):0;
+  G.forEach(function(g){
+    var t=g.vi; if(!String(t).trim()) return;
+    var W=g.w*b.w, room=(G.length>1?(al==='right'?g.x-x0:al==='center'?2*Math.min(g.x-x0,x1-g.x-g.w):x1-g.x-g.w):fr1)*b.w;
+    h+='<div class="hs-fll1" data-w="'+W+'" data-room="'+Math.max(0,room)+'" data-al="'+al+'" style="left:'+((g.x-x0)*b.w)+'px;top:'+((g.y-y0)*b.h)+'px;height:'+(g.h*b.h)+'px;padding-top:'+Math.max(0,g.pt*b.h)+'px;line-height:'+(g.lh*b.h)+'px;min-width:'+W+'px;font-size:'+Math.max(7,g.f*b.h).toFixed(1)+'px;text-align:'+al+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(t,it.ic):esc(t))+'</div>';
+  });
+  return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;height:'+((y1-y0)*b.h)+'px;font-family:'+font+'">'+h+'</div>';
+}
+/* a line wider than its English line: squeezed sideways to fit (not below 70%), then smaller letters */
+function fsLinesFit(el){
+  [].forEach.call(el.children,function(d){
+    var W0=+d.dataset.w, Wmax=W0+(+d.dataset.room||0), f=parseFloat(d.style.fontSize), L0=parseFloat(d.style.left), al=d.dataset.al;
+    d.style.width='auto'; d.style.minWidth='0'; var nw=d.scrollWidth;
+    while(nw*0.7>Wmax&&f>7){ f--; d.style.fontSize=f+'px'; nw=d.scrollWidth; }
+    var ww=Math.max(nw,W0), vis=Math.min(Wmax,ww), sx=vis/ww;     /* the width it takes on screen; squeezed only past the room it has */
+    d.style.width=ww+'px';
+    if(sx<0.999){ d.style.transform='scaleX('+sx.toFixed(3)+')'; d.style.transformOrigin='0 50%'; }
+    d.style.left=(al==='right'?L0+W0-vis:al==='center'?L0+(W0-vis)/2:L0)+'px';
+  });
 }
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
 /* the colours of the original text and its background, read from the picture (once per box) */
@@ -6054,8 +6140,12 @@ function fsSnap1(el,it,raw){
   if(W*H>2.5e6) return null;
   var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   var g=cv.getContext('2d'), cs=getComputedStyle(el), rad=(parseFloat(cs.borderTopLeftRadius)||0)*k;
+  if(el.dataset&&el.dataset.lines){   /* line by line: only each line's own background, the rest of the picture stays clear */
+    [].forEach.call(el.children,function(d){ var q=d.getBoundingClientRect(); g.fillStyle=getComputedStyle(d).backgroundColor||it.bg||'rgba(12,14,18,.92)'; g.fillRect((q.left-r.left)*k,(q.top-r.top)*k,q.width*k,q.height*k); });
+  } else {
   g.fillStyle=it.bg||cs.backgroundColor||'rgba(12,14,18,.92)';
   g.beginPath(); if(g.roundRect) g.roundRect(0,0,W,H,rad); else g.rect(0,0,W,H); g.fill();
+  }
   var fs=parseFloat(cs.fontSize)*k;
   g.font=(cs.fontStyle==='italic'?'italic ':'')+cs.fontWeight+' '+fs+'px '+cs.fontFamily;
   g.fillStyle=it.fg||cs.color||'#fff'; g.textBaseline='alphabetic';
@@ -6069,19 +6159,25 @@ function fsSnap1(el,it,raw){
     for(var i=0;i<t.length;i++){
       var ch=t.charAt(i); rg.setStart(n,i); rg.setEnd(n,i+1); var q=rg.getClientRects()[0];
       if(!q||!q.width){ if(cur) cur.t+=ch; continue; }   /* a mark that sits on the letter before it */
-      if(!cur||Math.abs(q.top-cur.top)>q.height*0.5||q.left<cur.right-1){ flush(); cur={t:'',left:q.left,top:q.top,h:q.height,right:q.left}; }
+      if(!cur||Math.abs(q.top-cur.top)>q.height*0.5||q.left<cur.right-1){ flush(); cur={t:'',left:q.left,top:q.top,h:q.height,right:q.left,el:n.parentElement}; }
       cur.t+=ch; cur.right=q.right;
     }
   }
   flush();
-  runs.forEach(function(u){ var y=(u.top-r.top)*k+(u.h*k-(asc+dsc))/2+asc; g.fillText(u.t.replace(/\s+$/,''),(u.left-r.left)*k,y); });
+  runs.forEach(function(u){
+    var a=asc, d=dsc, t=u.t.replace(/\s+$/,'');
+    if(u.el&&u.el!==el){ var ce=getComputedStyle(u.el), f2=parseFloat(ce.fontSize)*k; g.font=(ce.fontStyle==='italic'?'italic ':'')+ce.fontWeight+' '+f2+'px '+ce.fontFamily; if(ce.color) g.fillStyle=it.fg||ce.color; var m2=g.measureText('ÀgÝy'); a=m2.fontBoundingBoxAscent||f2*0.9; d=m2.fontBoundingBoxDescent||f2*0.25; }
+    var y=(u.top-r.top)*k+(u.h*k-(a+d))/2+a, x=(u.left-r.left)*k, mw=g.measureText(t).width, tw=(u.right-u.left)*k, sx=mw>0?tw/mw:1;
+    if(Math.abs(sx-1)>0.03&&sx>0.4&&sx<1.2){ g.save(); g.translate(x,y); g.scale(sx,1); g.fillText(t,0,0); g.restore(); }   /* a line squeezed sideways on the page: the same here */
+    else g.fillText(t,x,y);
+  });
   return {cv:cv,x:(r.left-b.r.left-b.l)/b.w,y:(r.top-b.r.top-b.t)/b.h,w:r.width/b.w,h:r.height/b.h};
 }
 function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
   var lay0=S.fs.on?fsLayer:flLayer, kids0=lay0&&!lay0.hidden?lay0.children:[], view=fsView(src);
   if(kids0.length===view.length) view=view.filter(function(it,i){ return !kids0[i].dataset.gone; });   /* a box the page did not show is not sent either */
-  var list=view.map(function(it){var ic=it.ic&&it.ic.length; return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,gb:it.gb,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
+  var list=view.map(function(it){var ic=it.ic&&it.ic.length; var lo=fsLineGeom(it,(video.videoWidth||16)/(video.videoHeight||9)); return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,gb:it.gb,lg:lo,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
   if(on&&(tvIp()||tvCode().length>=4)){   /* the TV gets each box as the picture drawn here: the same letters, lines and colours */
     var lay=S.fs.on?fsLayer:flLayer, kids=lay&&!lay.hidden?[].filter.call(lay.children,function(el){ return !el.dataset.gone; }):[];
@@ -6295,7 +6391,9 @@ async function fsRead(sx,sy,sw,sh,maxW){
     if(keepI.length===1&&b.ls&&b.ls.length===raw.length){ var l1=b.ls[keepI[0]], w1=fsWords(l1,raw[keepI[0]]);   /* one line kept (the others were icons or scraps): that line's own box */
       put(cell({x:px(w1.x),y:py(l1.y),w:pw(w1.w),h:ph(l1.h),lh:ph(l1.h),en:lines[0],conf:b.conf,al:w1.al||''},l1),keepI,true); return; }
     if(raw.length===1&&b.ls&&b.ls[0]){ var w2=fsWords(b.ls[0],raw[0]); put(cell({x:px(w2.x),y:py(b.y),w:pw(w2.w),h:ph(b.h),lh:ph(b.lh),en:lines[0],conf:b.conf,al:w2.al||''},b.ls[0]),[0],true); return; }   /* one line: its words only, an icon beside it stays visible */
-    put(rotOf({x:px(b.x),y:py(b.y),w:pw(b.w),h:ph(b.h),lh:ph(b.lh),en:lines.join('\n'),conf:b.conf},b.rot),keepI,false);
+    var pit=rotOf({x:px(b.x),y:py(b.y),w:pw(b.w),h:ph(b.h),lh:ph(b.lh),en:lines.join('\n'),conf:b.conf},b.rot);
+    if(b.ls&&b.ls.length===raw.length&&keepI.length===lines.length) pit.lr=keepI.map(function(i){ var l=b.ls[i], wb=fsWords(l,raw[i]); return {x:px(wb.x),y:py(l.y),w:pw(wb.w),h:ph(l.h)}; });   /* where each English line is: each Vietnamese line goes right over it */
+    put(pit,keepI,false);
   });
   return out;
 }
@@ -6328,6 +6426,8 @@ function fsMergePara(list,cv){
       var et=function(k){ return k.ic&&k.ic.length?k.et:k.en; }, n=a.ic&&a.ic.length?a.ic.length:0;
       if((a.ic&&a.ic.length)||(b.ic&&b.ic.length)){ a.et=et(a)+'\n'+String(et(b)).replace(/\{\{(\d+)\}\}/g,function(m,d){ return '{{'+(+d+n)+'}}'; }); a.ic=(a.ic||[]).concat(b.ic||[]); }
       var x0=Math.min(a.x,b.x), x1=Math.max(a.x+a.w,b.x+b.w), y1=Math.max(a.y+a.h,b.y+b.h);
+      var lra=a.lr||(a.en.indexOf('\n')<0?[{x:a.x,y:a.y,w:a.w,h:a.h}]:null), lrb=b.lr||(b.en.indexOf('\n')<0?[{x:b.x,y:b.y,w:b.w,h:b.h}]:null);
+      a.lr=lra&&lrb?lra.concat(lrb):null;
       a.en=a.en+'\n'+b.en; a.lh=(la+lb)/2; a.x=x0; a.w=x1-x0; a.h=y1-a.y; a.al=''; a.conf=Math.min(a.conf||1,b.conf||1);
       gone.push(b);
     }
@@ -6401,7 +6501,7 @@ async function fsBlocks(){
     var dup=keep.some(function(k){ return fsDup(k,b); });
     if(!dup) keep.push(b);
   });
-  try{ var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); keep=fsMergePara(keep,flc); }catch(e){}
+  try{ var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); keep=fsMergePara(keep,flc); fsInkAll(keep); }catch(e){}
   fsRowsAlign(keep);
   return keep.filter(function(b){ return !notiLike(b.en); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
 }
@@ -6414,7 +6514,7 @@ function fsPrompt(list){
     'Translate only text written for the player to read: dialogue, messages and chats, notes, emails, posts, quest and mission text, item descriptions, tutorials, menus and button hints. '+
     (GUARD.kind==='map'?'':'Do NOT translate writing that is part of the game world: street and road signs, shop and business signs, billboards, posters, graffiti, logos and brand names, writing on buildings, vehicles, clothes or products, license plates: for such a block return "vi":"". ')+
     'Character names, nicknames, contact names, usernames and social media account names/handles (with or without @) stay exactly as they are, also inside a translated sentence; a block that is only a name or a handle gets "vi":"".\n'+
-    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (keep the same number of lines when you can, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+glossHints(list.join('\n'))+context(list.join(' '));
+    'Return "items" with one entry per block: "i" is the block number, "vi" is natural, short Vietnamese that fits the same space (exactly the same number of lines as the block, each Vietnamese line saying what the same English line says, joined with \\n). Keep names of characters, places, items and skills as they are; numbers and button names stay the same; button hints ("Back", "Select", "Restore Defaults") are translated short like a game menu; a line in CAPITALS stays in CAPITALS, a Title Case label stays Title Case. For a block that is not real text (numbers only, symbols, OCR junk) return "vi":"".\n'+glossHints(list.join('\n'))+context(list.join(' '));
 }
 async function fsRun(){
   if(!S.stream||S.fs.busy) return;
@@ -6485,6 +6585,7 @@ function flStop(){ if(!S.fl.on&&!S.fl.items.length) return; S.fl.on=false; S.fl.
 function flDraw(){
   var b=videoBox(), html='', show=S.fl.on&&!S.fs.on, view=show?fsView(S.fl.items):[];
   view.forEach(function(it){
+    var ln=fsLinesHtml(it,b,subFont().replace(/"/g,"'"),view); if(ln){ html+=ln; return; }   /* each line over its English line */
     var tr=fsTurn(it);
     if(tr){   /* a turned text (a phone held at an angle): a box of the same shape, turned the same way, over it */
       var TW=tr.w*b.w, TH=tr.h*b.h, same=it.vi.split('\n').length===it.en.split('\n').length;
@@ -6500,6 +6601,7 @@ function flDraw(){
   });
   flLayer.innerHTML=html; flLayer.hidden=!html;
   [].forEach.call(flLayer.children,function(el){
+    if(el.dataset.lines){ fsLinesFit(el); return; }
     var f=parseFloat(el.style.fontSize);
     if(el.dataset.rot){ var inn=el.firstChild, H0=el.clientHeight+1; while(f>8&&(inn.scrollHeight>H0||inn.scrollWidth>el.clientWidth-4)){ f--; el.style.fontSize=f+'px'; } return; }
     if(el.dataset.one){
@@ -6632,6 +6734,7 @@ async function flRead(my){
   blocks=blocks.filter(function(b){ return !blocks.some(function(k){ return k!==b&&norm(k.en).length>norm(b.en).length&&fsNear(k,b)&&fsSameText(b.en,k.en); }); });
   blocks=fsMergePara(blocks,flc);
   fsRowsAlign(blocks);
+  fsInkAll(blocks);
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
   S.fl.seen=blocks.slice(0,40);
