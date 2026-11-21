@@ -20,6 +20,11 @@ import java.nio.ByteOrder;
  */
 final class GameSound {
     static final int PORT = 8769;
+    /** how long the game's sound takes from arriving here to coming out of the speaker (ms), 0 when not playing:
+        the computer plays its own copy that much later, so the two are heard together */
+    static volatile int latencyMs = 0;
+    private static java.lang.reflect.Method trackLat;
+    static { try { trackLat = AudioTrack.class.getMethod("getLatency"); } catch (Throwable e) { trackLat = null; } }
     private volatile boolean on;
     private DatagramSocket sock;
     private MediaCodec dec;
@@ -34,6 +39,7 @@ final class GameSound {
     private final java.util.ArrayDeque<byte[]> pcm = new java.util.ArrayDeque<>();
     private int pcmBytes = 0;
     private Thread player;
+    private long latAt = 0;
 
     void start() {
         if (on) return;
@@ -207,6 +213,15 @@ final class GameSound {
                     chunk = pcm.pollFirst(); pcmBytes -= chunk.length;
                 }
                 tr.write(chunk, 0, chunk.length);   // waits for room in the speaker: keeps the pace even
+                long now = System.currentTimeMillis();
+                if (now - latAt > 500) {
+                    latAt = now;
+                    int dev = 0;
+                    try { if (trackLat != null) dev = (Integer) trackLat.invoke(tr); } catch (Throwable ignored) { dev = 0; }
+                    if (dev <= 0 || dev > 1500) dev = (int) (tr.getBufferSizeInFrames() * 1000L / 48000) + 40;
+                    int stored; synchronized (pcm) { stored = pcmBytes; }
+                    latencyMs = stored * 1000 / bps + dev;
+                }
             }
         } catch (Throwable ignored) { }
     }
@@ -215,7 +230,7 @@ final class GameSound {
         try { if (dec != null) { dec.stop(); dec.release(); } } catch (Throwable ignored) { }
         dec = null;
         try { if (track != null) { track.pause(); track.flush(); track.release(); } } catch (Throwable ignored) { }
-        track = null; chans = 0; lastSeq = -1; lastPkt = -1;
+        track = null; chans = 0; lastSeq = -1; lastPkt = -1; latencyMs = 0;
         synchronized (pcm) { pcm.clear(); pcmBytes = 0; pcm.notifyAll(); }
     }
 }
