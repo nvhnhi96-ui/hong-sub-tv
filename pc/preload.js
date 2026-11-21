@@ -11,8 +11,11 @@ let audio = null, seq = 0;
 const lines = []; let cur = null;
 /* the voice follows the character: a line whose subtitle came more than 3 s ago is not read any more, only the newest
    line waits, and a line still being read when the next one comes speeds up, or is cut if it has been going on long */
-const MAX_WAIT_MS = 3000, CUT_AFTER_MS = 2500;
-function lineDrop(L) { if (L && L.ai && L.id) ipcRenderer.send('aiv-drop', L.id); }
+const MAX_WAIT_MS = 3000, CUT_AFTER_MS = 2500, STUCK_MS = 9000;
+/* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
+   such line kept the reading silent for the rest of the session */
+setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - cur.at > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
+function lineDrop(L) { if (L) L.dropped = true; if (L && L.ai && L.id) ipcRenderer.send('aiv-drop', L.id); }
 function stopAll() {
   seq++; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } audio = null; }
   lineDrop(cur); lines.forEach(lineDrop);   /* only our own lines: a voice clip being made for the TV goes on */
@@ -34,7 +37,12 @@ function fallback(L, why) {
 function prepare(L) {
   L.id = ++seq; L.parts = []; L.ended = false; L.at = Date.now();
   if (L.pre) { L.parts.push({ wav: L.pre.b64, mime: L.pre.mime, rateApply: true, last: true }); L.ended = true; return; }   /* a clip made already (also sent to the TV) */
-  if (L.ai) { ipcRenderer.send('aiv-speak', { id: L.id, text: L.text, voice: L.voice }); return; }
+  if (L.ai) {
+    ipcRenderer.send('aiv-speak', { id: L.id, text: L.text, voice: L.voice });
+    /* the AI voice says nothing within 6 s (stopped, busy, starting): this computer's voice reads the line */
+    setTimeout(() => { if (!L.got && !L.fell && !L.dropped) { ipcRenderer.send('aiv-drop', L.id); fallback(L, 'giọng AI không trả lời'); } }, 6000);
+    return;
+  }
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
     if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true); }
     else if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; }
@@ -80,13 +88,14 @@ function enqueue(L, queue) {
   else {
     while (lines.length) lineDrop(lines.shift());        /* only the newest line waits: an older waiting one is already late */
     if (cur && cur.startAt && Date.now() - cur.startAt > CUT_AFTER_MS && !cur.pre) cutCur();   /* the character has moved on */
+    else if (cur && !cur.startAt && Date.now() - cur.at > STUCK_MS) cutCur();   /* a line whose voice never came: it never blocks the next ones */
     if (cur) { L.boost = 1.12; hurry(); }
   }
   prepare(L); lines.push(L); startNext();
 }
 ipcRenderer.on('aiv-audio', (e, m) => {
   const L = (cur && cur.id === m.id) ? cur : lines.find(x => x.id === m.id);
-  if (!L) return;
+  if (!L || L.fell) return;   /* already read by this computer's voice */
   if (m.type === 'error') { if (!L.got) { fallback(L, 'giọng AI lỗi'); return; } L.ended = true; if (cur === L && !L.playing) playPart(); return; }   /* the AI voice failed before saying anything: this computer's voice reads it */
   if (m.type !== 'audio') return;
   if (!L.got) said(L, true); L.got = true;

@@ -633,6 +633,9 @@ function aivPy() { const d = aivDir(); const py = path.join(d, 'python', 'python
 function aivState() { return { installed: !!aivPy(), running: !!aiv.proc, ready: aiv.ready, voices: aiv.voices, err: aiv.err, busy: aiv.busy, got: aiv.got, total: aiv.total, fast: !!cfg.aivFast, startMs: aiv.startMs }; }
 function aivSend(ch, m) { if (win && !win.isDestroyed()) win.webContents.send(ch, m); }
 function aivNotify() { aivSend('aiv-state', aivState()); }
+/* lines the AI voice is making for the subtitles: when it stops, each gets an error so this computer's voice reads it */
+const aivPend = new Set();
+function aivPendFail(why) { for (const id of aivPend) aivSend('aiv-audio', { type: 'error', id, err: why }); aivPend.clear(); }
 function aivStart() {
   const py = aivPy();
   if (!py || aiv.proc) return !!aiv.proc;
@@ -653,7 +656,7 @@ function aivStart() {
       if (aiv.tap) aiv.tap(m);
       if (m.type === 'ready') { aiv.ready = true; aiv.voices = m.voices || []; aiv.startMs = Date.now() - t0; aivNotify(); }
       else if ((m.type === 'audio' || m.type === 'error') && aivClips.has(m.id)) aivClips.get(m.id)(m);   /* a clip for the TV */
-      else if (m.type === 'audio' || m.type === 'error') aivSend('aiv-audio', m);
+      else if (m.type === 'audio' || m.type === 'error') { if (m.type === 'error' || m.last) aivPend.delete(m.id); aivSend('aiv-audio', m); }
       else if (m.type === 'fatal') { aiv.err = m.err || 'lỗi'; aivNotify(); }
       else if (m.type === 'cloned' || m.type === 'clonefail' || m.type === 'voices') {   /* a cloned voice added or removed */
         if (m.voices) { aiv.voices = m.voices; aivNotify(); }
@@ -662,7 +665,8 @@ function aivStart() {
     }
   });
   proc.stderr.on('data', () => {});
-  proc.on('exit', (code) => { if (aiv.proc === proc) { aiv.proc = null; aiv.ready = false; if (code && !aiv.err) aiv.err = 'Bộ giọng AI dừng (mã ' + code + ')'; aivNotify(); } });
+  proc.on('exit', (code) => { if (aiv.proc === proc) { aiv.proc = null; aiv.ready = false; if (code && !aiv.err) aiv.err = 'Bộ giọng AI dừng (mã ' + code + ')'; aivNotify(); }
+    aivPendFail('Bộ giọng AI dừng'); });   /* the lines it was making: read with this computer's voice, never left waiting */
   proc.on('error', (e) => { aiv.err = String(e.message || e); aivNotify(); });
   aivNotify();
   return true;
@@ -794,7 +798,11 @@ function setupIpc() {
     try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'unclone', name: String(name || '') }) + '\n'); } catch (x) { clearTimeout(t); done(false); }
   }));
   ipcMain.handle('aiv-remove', () => { aivStop(); setTimeout(() => { try { fs.rmSync(aivDir(), { recursive: true, force: true }); } catch (e) { /* ignore */ } aivNotify(); }, 1800); return true; });
-  ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart(); if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
+  ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart();
+    /* not ready (starting, or stopped): the line is read with this computer's voice now; it never waits for a voice that is not there */
+    if (!aiv.proc || !aiv.ready) { aivSend('aiv-audio', { type: 'error', id: m.id, err: 'Bộ giọng AI chưa sẵn sàng' }); return; }
+    aivPend.add(m.id);
+    if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-drop', (e, id) => { if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'drop', id }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-stop', () => { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"stop"}\n'); } catch (x) { /* ignore */ } } });
   ipcMain.handle('sources', async () => (await listSources(true)).map(s => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL() })));
