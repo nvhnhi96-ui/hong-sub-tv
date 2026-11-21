@@ -1371,15 +1371,29 @@ async function vipCheck(code){
     S.vip={code:code,ok:false,until:0,err:x.j.message||('Không kiểm tra được mã (lỗi '+x.r.status+').')}; save('vip',S.vip); vipUi(); steps(); keyNeed(); return false;
   }catch(e){ vipMsg('err',e.message+'. Thử lại sau.'); return false; }
 }
+/* the light VIP server: the same check and translation as the full one, without starting all of WordPress (about
+   half a second less a line). A file the full server writes; while it is missing or not ready, the full one for a while */
+var VIPLITE='https://honggame.store/hgs-vip.php'; S.vipLiteOff=0;
+async function vipAskCall(body,ms){
+  if(Date.now()>=S.vipLiteOff){
+    var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },ms||15000), r=null, j=null;
+    try{ r=await fetch(VIPLITE,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); j=await r.json().catch(function(){ return null; }); }
+    catch(e){ clearTimeout(to); if(e&&e.name==='AbortError'){ var n=new Error('VIP: máy chủ trả lời chậm'); n.net=true; throw n; } r=null; }   /* slow: the line is not sent twice */
+    clearTimeout(to);
+    if(r&&j&&(j.ok||(j.code&&j.code!=='vip_light'))) return {r:r,j:j,lite:1};
+    S.vipLiteOff=Date.now()+10*60e3; log('VIP: máy chủ nhanh chưa dùng được'+(r?' ('+r.status+')':'')+', dùng máy chủ thường 10 phút');
+  }
+  return vipCall('ask',body,ms);
+}
 async function vipAsk(prompt,b64,schema,mode){
   var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64; if(mode) body.mode=mode;
   var t0=performance.now(), x;
-  try{ x=await vipCall('ask',body,15000); }catch(e){ S.vipDown=Date.now()+20e3; throw e; }
+  try{ x=await vipAskCall(body,15000); }catch(e){ S.vipDown=Date.now()+20e3; throw e; }
   if(x.r.ok&&x.j.ok){
     count('vip-server','v');
     if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
     if(x.j.until) S.vip.until=x.j.until*1000;
-    log('VIP '+Math.round(performance.now()-t0)+'ms');
+    log('VIP '+Math.round(performance.now()-t0)+'ms'+(x.j.ms?' (AI '+x.j.ms+'ms'+(x.lite?', máy chủ nhanh':'')+')':''));
     return x.j.data||null;
   }
   var c=x.j.code||'', m=x.j.message||('VIP lỗi '+x.r.status);
@@ -5810,9 +5824,26 @@ function fsLinesLike(en,vi){
   return fsViLines(en,v.replace(/\s*\n\s*/g,' '));
 }
 function fsHtml(it){ return (it.ic&&it.ic.length?zIcHtml(it.vi,it.ic):esc(it.vi)).replace(/\n/g,'<br>'); }
+/* a still picture (a menu) from a stream is noisy where it was squeezed (Remote Play): a few frames laid over each
+   other cancel most of that noise, so the letters, their edges and the colours read the same every time. Only when
+   the frames are the same picture: anything moving (a highlight sliding, the game going on) takes the last frame alone */
+var fsAvgC=document.createElement('canvas'), fsAvgG=fsAvgC.getContext('2d',{willReadFrequently:true});
+function fsTiny(sx,sy,sw,sh){ fsAvgC.width=64; fsAvgC.height=36; fsAvgG.drawImage(video,sx,sy,sw,sh,0,0,64,36); return fsAvgG.getImageData(0,0,64,36).data; }
+function fsSame(a,b){ if(!a||!b||a.length!==b.length) return false; var s=0; for(var i=0;i<a.length;i+=4) s+=Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2]); return s/(a.length/4*3)<4; }
+async function fsFrames(g,sx,sy,sw,sh,W,H){
+  g.globalAlpha=1; g.drawImage(video,sx,sy,sw,sh,0,0,W,H);
+  if(!S.fl||!S.fl.on||!(video.readyState>=2)) return 1;
+  var t0=fsTiny(sx,sy,sw,sh), n=1;
+  for(var k=0;k<2;k++){
+    await new Promise(function(r){ later(r,45); });
+    var t1=fsTiny(sx,sy,sw,sh); if(!fsSame(t0,t1)){ g.globalAlpha=1; g.drawImage(video,sx,sy,sw,sh,0,0,W,H); return 1; }   /* it moved: the newest frame */
+    n++; g.globalAlpha=1/n; g.drawImage(video,sx,sy,sw,sh,0,0,W,H);
+  }
+  g.globalAlpha=1; return n;
+}
 async function fsRead(sx,sy,sw,sh,maxW){
   var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
-  var g=fsv.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(video,sx,sy,sw,sh,0,0,fsv.width,fsv.height);
+  var g=fsv.getContext('2d'); g.imageSmoothingQuality='high'; await fsFrames(g,sx,sy,sw,sh,fsv.width,fsv.height);
   var o=await HsOcr.read(fsv,{blocks:true,icons:true}), vw=video.videoWidth, vh=video.videoHeight, out=[];
   function px(v){ return (sx+v/o.W*sw)/vw; } function py(v){ return (sy+v/o.H*sh)/vh; } function pw(v){ return (v/o.W*sw)/vw; } function ph(v){ return (v/o.H*sh)/vh; }
   (o.blocks||[]).forEach(function(b){
@@ -6230,18 +6261,22 @@ async function flRead(my){
   log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
   S.fl.busy=false;
   if(!need.length) return;
-  /* the free translator first (about half a second), the AI's line replaces it */
+  /* only the finished translation shows, as with the subtitles: the free translator's line (about half a second) waits
+     for the AI's and shows only when the AI is slower than FREE_WAIT or fails; then the AI's line replaces it. A box that
+     changed its words a second after it showed made menus look restless */
+  var aiOn=!!(keys().length||groqKeys().length||orKeys().length), tF=Date.now(), freeVs=null, freeGo=false;
+  function freeShow(){ freeGo=true; if(!freeVs||my!==S.fl.seq) return; var ch=false;
+    need.forEach(function(b,k){ if(!b.vi&&freeVs[k]){ b.vi=fsVi(b,freeVs[k]); ch=true; } }); if(ch) flDraw(); }
   if(S.allowFree) Promise.all(need.map(function(b){ return gtx(fsT(b)).catch(function(){ return ''; }); })).then(function(vs){
-    if(my!==S.fl.seq) return; var ch=false;
-    need.forEach(function(b,k){ if(!b.vi&&vs[k]){ b.vi=fsVi(b,vs[k]); ch=true; } }); if(ch) flDraw(); });
-  if(keys().length||groqKeys().length||orKeys().length){
+    freeVs=vs; if(!aiOn||freeGo) freeShow(); else later(freeShow,Math.max(0,FREE_WAIT-(Date.now()-tF))); });
+  if(aiOn){
     try{
       var r=await askText(fsPrompt(need.map(fsT)),need.map(fsT).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
       if(my!==S.fl.seq) return;
       ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsVi(b,it.vi); S.fs.cache.set(norm(fsT(b)),b.vi); fsKeep(b); });
       if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
       flDraw();
-    }catch(e){}
+    }catch(e){ freeShow(); }   /* the AI failed: the free translator's line at once */
   }
 }
 $('hsFull').addEventListener('click',fullScreen);
@@ -6353,7 +6388,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
