@@ -62,7 +62,7 @@ final class LanServer {
     private String info() {
         try {
             return new JSONObject().put("app", "hongsubtv").put("name", Build.MANUFACTURER + " " + Build.MODEL)
-                    .put("code", prefs.code()).put("ip", ip()).put("port", HTTP_PORT).put("boot", boot).put("ver", Updater.current(ctx)).put("aud", 1).toString();   // aud: plays the game's sound sent by the computer
+                    .put("code", prefs.code()).put("ip", ip()).put("port", HTTP_PORT).put("boot", boot).put("ver", Updater.current(ctx)).put("aud", 2).toString();   // aud: plays the game's sound sent by the computer
         } catch (Exception e) { return "{}"; }
     }
 

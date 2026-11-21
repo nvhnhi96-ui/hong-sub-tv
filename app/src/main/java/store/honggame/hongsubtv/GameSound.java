@@ -27,6 +27,13 @@ final class GameSound {
     private int chans = 0;
     private long pts = 0;
     private volatile long lastAt = 0;
+    private int lastSeq = -1;
+    // a small store of decoded sound between the network and the speaker: the network brings packets in bursts
+    // (Wi-Fi), the speaker needs them evenly. Playing starts when ~0.12 s is stored; after a gap it fills up again
+    // first (a short silence instead of crackling); more than ~0.35 s stored and the oldest is dropped (no growing delay).
+    private final java.util.ArrayDeque<byte[]> pcm = new java.util.ArrayDeque<>();
+    private int pcmBytes = 0;
+    private Thread player;
 
     void start() {
         if (on) return;
@@ -72,8 +79,15 @@ final class GameSound {
     }
 
     private synchronized void handle(byte[] b, int n) {
+        if (n >= 6 && b[0] == 'I') { handleI(b, n); return; }
         if (n < 6 || b[0] != 'H') return;
         int ch = b[1] == 1 ? 1 : 2;
+        int seq = ((b[2] & 255) << 8) | (b[3] & 255);
+        if (lastSeq >= 0) {
+            int d = (seq - lastSeq) & 0xFFFF;
+            if (d == 0 || d > 0x8000) return;   // the same datagram twice, or an old one arriving late: played already
+        }
+        lastSeq = seq;
         if (dec == null || ch != chans) { close(); if (!open(ch)) return; }
         lastAt = System.currentTimeMillis();
         int o = 4;
@@ -81,6 +95,27 @@ final class GameSound {
             int len = ((b[o] & 255) << 8) | (b[o + 1] & 255); o += 2;
             if (len <= 0 || o + len > n) break;
             feed(b, o, len); o += len;
+        }
+        drain();
+    }
+
+    /* 'I': every packet has its own number, and each datagram also carries the packets of the one before it, so a
+       datagram lost on Wi-Fi costs nothing: 'I', channels, then per packet: number (2 bytes), length (2), bytes */
+    private int lastPkt = -1;
+    private void handleI(byte[] b, int n) {
+        int ch = b[1] == 1 ? 1 : 2;
+        if (dec == null || ch != chans) { close(); if (!open(ch)) return; }
+        lastAt = System.currentTimeMillis();
+        int o = 2;
+        while (o + 4 <= n) {
+            int seq = ((b[o] & 255) << 8) | (b[o + 1] & 255), len = ((b[o + 2] & 255) << 8) | (b[o + 3] & 255); o += 4;
+            if (len <= 0 || o + len > n) break;
+            int d = lastPkt < 0 ? 1 : (seq - lastPkt) & 0xFFFF;
+            if (d != 0 && d < 0x8000) {   // new: played in order (a repeat or an old one is skipped)
+                if (lastPkt >= 0 && d > 1 && d < 6) pts += 10_000L * (d - 1);
+                feed(b, o, len); lastPkt = seq;
+            }
+            o += len;
         }
         drain();
     }
@@ -103,11 +138,16 @@ final class GameSound {
             track = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                     .setAudioFormat(new AudioFormat.Builder().setSampleRate(48000).setChannelMask(cm).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
-                    .setBufferSizeInBytes(Math.max(min, 48000 * 2 * ch / 10))   // about 0.1 s
+                    .setBufferSizeInBytes(Math.max(min * 2, 48000 * 2 * ch / 8))   // about 0.12 s in the speaker itself
                     .setTransferMode(AudioTrack.MODE_STREAM)
                     .build();
-            track.play();
             chans = ch; pts = 0;
+            synchronized (pcm) { pcm.clear(); pcmBytes = 0; }
+            final AudioTrack tr = track;
+            final int bps = 48000 * 2 * ch;   // bytes a second
+            player = new Thread(() -> play(tr, bps), "hongsub-sound-play");
+            player.setDaemon(true);
+            player.start();
             return true;
         } catch (Throwable e) {
             close();
@@ -135,18 +175,47 @@ final class GameSound {
                 if (k < 0) continue;   // format or buffers changed
                 ByteBuffer out = dec.getOutputBuffer(k);
                 if (out != null && info.size > 0 && track != null) {
-                    out.position(info.offset); out.limit(info.offset + info.size);
-                    track.write(out, info.size, AudioTrack.WRITE_NON_BLOCKING);   // never waits: late sound is dropped, not delayed
+                    byte[] chunk = new byte[info.size];
+                    out.position(info.offset); out.limit(info.offset + info.size); out.get(chunk);
+                    synchronized (pcm) {
+                        pcm.addLast(chunk); pcmBytes += chunk.length;
+                        int max = 48000 * 2 * chans * 35 / 100, keep = 48000 * 2 * chans * 15 / 100;
+                        if (pcmBytes > max) while (pcmBytes > keep && pcm.size() > 1) pcmBytes -= pcm.pollFirst().length;
+                        pcm.notifyAll();
+                    }
                 }
                 dec.releaseOutputBuffer(k, false);
             }
         } catch (Throwable e) { close(); }
     }
 
+    /* the speaker side: evenly, from the store, waiting for ~0.12 s of sound before starting or after a gap */
+    private void play(AudioTrack tr, int bps) {
+        int start = bps * 12 / 100;
+        boolean filling = true;
+        try {
+            while (on && tr == track) {
+                byte[] chunk;
+                synchronized (pcm) {
+                    if (filling) {
+                        while (on && tr == track && pcmBytes < start) pcm.wait(200);
+                        if (!(on && tr == track)) break;
+                        filling = false;
+                        if (tr.getPlayState() != AudioTrack.PLAYSTATE_PLAYING) tr.play();
+                    }
+                    if (pcm.isEmpty()) { pcm.wait(60); if (pcm.isEmpty()) { filling = true; continue; } }   // a gap: fill up again
+                    chunk = pcm.pollFirst(); pcmBytes -= chunk.length;
+                }
+                tr.write(chunk, 0, chunk.length);   // waits for room in the speaker: keeps the pace even
+            }
+        } catch (Throwable ignored) { }
+    }
+
     private void close() {
         try { if (dec != null) { dec.stop(); dec.release(); } } catch (Throwable ignored) { }
         dec = null;
         try { if (track != null) { track.pause(); track.flush(); track.release(); } } catch (Throwable ignored) { }
-        track = null; chans = 0;
+        track = null; chans = 0; lastSeq = -1; lastPkt = -1;
+        synchronized (pcm) { pcm.clear(); pcmBytes = 0; pcm.notifyAll(); }
     }
 }

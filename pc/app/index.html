@@ -3829,7 +3829,7 @@ function tvListen(){
   }
   if(ip){
     TVD().ping(ip).then(function(r){
-      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); S.tvAud=!!r.aud; tvLan(true);
+      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); S.tvAud=+r.aud||0; tvLan(true);
         if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ: '+S.tvVer); status('warn','App Hóng Sub TV trên TV là bản cũ. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); tvNotice('App Hóng Sub TV có bản mới: mở app Hóng Sub TV trên TV rồi bấm Cập nhật.'); }
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
@@ -7771,6 +7771,16 @@ function tvSoundNow(){ return tvSoundOn()&&S.tvType==='android'&&!!S.tvAud&&S.tv
 var TA={q:[],seq:0,t:0,said:false};
 function tvAudioPush(pkt){
   if(!tvSoundNow()){ TA.q=[]; return; }
+  if(S.tvAud>=2){   /* each packet numbered, and each message also carries the two before it: one lost on Wi-Fi costs nothing */
+    TA.q=TA.q.filter(function(e){ return e&&e.p; }); TA.pn=((TA.pn||0)+1)&65535; TA.q.push({n:TA.pn,p:pkt});
+    if(TA.q.length<2) return;
+    var all=(TA.prev||[]).concat(TA.q), h2=PS.lastAh||{}, len2=2+all.reduce(function(a,e){ return a+4+e.p.length; },0), b2=new Uint8Array(len2), o2=2;
+    b2[0]=73; b2[1]=(h2.channels||2);
+    all.forEach(function(e){ b2[o2++]=(e.n>>8)&255; b2[o2++]=e.n&255; b2[o2++]=(e.p.length>>8)&255; b2[o2++]=e.p.length&255; b2.set(e.p,o2); o2+=e.p.length; });
+    TA.prev=TA.q; TA.q=[]; try{ D.tv.audio(tvIp(),b2); }catch(e){}
+    if(!TA.said){ TA.said=true; log('tiếng game: phát ở TV ('+(h2.channels||2)+' kênh, gửi kèm gói trước), máy tính im'); }
+    return;
+  }
   TA.q.push(pkt);
   if(TA.q.length>=2){   /* two packets (20 ms) a message */
     var h=PS.lastAh||{}, n=TA.q.length, len=4+n*2+TA.q.reduce(function(a,p){ return a+p.length; },0), b=new Uint8Array(len), o=4;
