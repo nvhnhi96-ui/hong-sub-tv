@@ -63,6 +63,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-cover>div{color:#fff;font-weight:600;line-height:1.3;text-shadow:0 1px 2px #000;font-family:var(--fb)}
 .hs-cover .who{color:#FFC400;margin-right:4px}
 .hs-cover .wait{opacity:.55;letter-spacing:.3em}
+.hs-prev{opacity:.5;font-size:.82em;line-height:1.25;margin-bottom:2px}
 .hs-fsb{position:absolute;box-sizing:border-box;width:max-content;background:rgba(12,14,18,.92);color:#fff;border-radius:3px;padding:1px 4px;line-height:1.22;font-weight:600;overflow:hidden;box-shadow:0 0 0 1px rgba(255,196,0,.35)}
 .hs-btn.on{background:var(--ink);color:var(--panel)!important;border-color:var(--ink)}
 .hs-zone{position:absolute;border:2px dashed #3FB6FF;border-radius:6px}
@@ -758,7 +759,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
-                <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở TV (cần app Hóng Sub TV cùng mạng nhà).">Tiếng game và giọng đọc phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
+                <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
@@ -3389,9 +3390,16 @@ function hedged(order,key,prompt,b64,schema){
 }
 async function gemini(prompt,b64,schema){
   if(vipOn()&&Date.now()>=S.vipDown){
-    try{ return await vipAsk(prompt,b64,schema); }
-    catch(e){ if(!gKeys().length) throw e; }   /* VIP busy: the customer's own Gemini keys go on */
+    if(gKeys().length){   /* VIP and the customer's own Gemini keys at the same time: the first good answer (VIP's server takes 2-8 s) */
+      var own=geminiOwn(prompt,b64,schema), vip=vipAsk(prompt,b64,schema);
+      return await new Promise(function(ok,bad){ var n=0, err=null; function f(e){ err=err||e; if(++n===2) bad(err); }
+        own.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); vip.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); });
+    }
+    return await vipAsk(prompt,b64,schema);
   }
+  return geminiOwn(prompt,b64,schema);
+}
+async function geminiOwn(prompt,b64,schema){
   if(!gKeys().length){ var nk=new Error(vipOn()?'VIP tạm bận, thử lại sau giây lát':'cool'); nk.cool=true; throw nk; }
   var models=S.models&&S.models.length?S.models:FALLBACK;
   var lastErr=null;
@@ -4111,16 +4119,26 @@ function show(res,quiet){
   var pv2=partView(vi,res,who,ch,mcol), lcs=null;
   if(pv2){ vi=pv2.vi; html=pv2.html; lcs=pv2.cols; mcol=''; }
   var vl=res._voice?voLook():null; if(vl&&!vl.on) vl=null;
+  /* several people talking: the line before stays above, dimmed, so who said what first is clear (the newest at the
+     bottom, bright). Only right after it (8 s) and when someone else speaks or nobody is named. */
+  var pr=null;
+  if(!quiet&&!vl&&S.prevLine&&Date.now()-S.prevLine.at<8000&&S.prevLine.en!==en&&(!(who||S.prevLine.who)||who.toLowerCase()!==String(S.prevLine.who).toLowerCase())) pr=S.prevLine;
+  if(quiet&&S.prevShown&&Date.now()-S.prevShown.at<8000) pr=S.prevShown;   /* a corrected line keeps the one above it */
+  if(!quiet){ S.prevShown=pr; S.prevLine={en:en,vi:vi,who:who,html:html,at:Date.now(),col:ch&&ch.c||''}; }
+  var html0=html; if(pr) html='<div class="hs-prev">'+pr.html+'</div>'+html;
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=vl?voWrap(html):html; if(vl) voApply($('hsVi').firstChild,vl);
   $('hsEn').textContent=$('hsShowEn').checked?(res._voice?'🔊 ':'')+en:'';
   if(quiet&&S.hist.length) S.hist[0]={en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}; else S.hist.unshift({en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
   $('hsHistN').textContent=S.hist.length;
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){ var mc=h.role==='main'&&mainOn()?mainCol():''; return '<li>'+(h.who?'<b>'+esc(h.who)+(h.role==='main'?' ★':'')+':</b> ':'')+(mc?'<span style="color:'+mc+'">'+esc(h.vi)+'</span>':esc(h.vi))+'<small>'+(h.voice?'🔊 ':'')+esc(h.en)+'</small></li>';}).join('');
   pipRender(vl?voWrap(html):html,$('hsEn').textContent,vl);
-  S.lastHtml=html; S.voHtml=vl?html:''; S.voCur=vl; coverShow(html,vl);
-  if(D) D.sub(stageFs()?{html:'',en:''}:{html:html,en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
+  S.lastHtml=html; S.voHtml=vl?html:''; S.voCur=vl; coverShow(html0,vl);   /* over the original subtitle: only the line said now */
+  if(D) D.sub(stageFs()?{html:'',en:''}:{html:coverOn()?html0:html,en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
   phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent,vo:vl,mcol:mcol});
-  tvPush(vi,en,who,false,vl,mcol,lcs);
+  if(pr&&!coverOn()&&!lcs){   /* the TV: the line before on top in grey, the new one under it */
+    var pl=(pr.who?pr.who+': ':'')+String(pr.vi||'').replace(/\n/g,' '), cl=String(vi||'').split('\n');
+    tvPush(pl+'\n'+(who?who+': ':'')+vi,en,'',false,vl,mcol,['#8f949c'].concat(cl.map(function(){ return mcol||''; })));
+  } else tvPush(vi,en,who,false,vl,mcol,lcs);
 
   if(quiet) return;   /* a corrected line: already read aloud, its time on screen goes on */
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
@@ -4605,7 +4623,7 @@ function sample(){
 }
 $('hsVoiceTest').addEventListener('click',sample);
 function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
-function speakWhere(){ var w=$('hsSpeakWhere'), v=(w&&w.value)||'pc'; return v==='pc'&&tvSoundNow()?'tv':v; }   /* the game's sound on the TV: so is the reading */
+function speakWhere(){ var w=$('hsSpeakWhere'); return (w&&w.value)||'pc'; }   /* where the person chose ("Đọc ở"): the game's sound playing on the TV does not take the reading away from this computer */
 /* since when the subtitle on screen has been there (its voice started about then) */
 function subSince(){ var L=S.subLines&&S.subLines[S.subLines.length-1]; return L&&Date.now()-L.from<9000?L.from-600:Date.now()-3500; }
 /* ---------- reading in step with the character ----------
@@ -4650,7 +4668,7 @@ function speak(t,res){
   if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true,src);
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
     return D.voiceClip(t,tvV).then(function(c){
-      if(!c||!c.ok){ if(where==='both'&&same) devSpeak(t,mode,g,who,null,true,src); return; }
+      if(!c||!c.ok){ if(where==='tv'||where==='both'&&same) devSpeak(t,mode,g,who,null,true,src); return; }   /* the TV's voice could not be made: this computer reads, the line is never silent */
       if(where==='both'&&same) D.playClip(c,rate,pitch,true);
       tvSay(c,rate,same?pitch:1);
     });
@@ -4883,7 +4901,7 @@ function textPrompt(t,nl,enl){
     'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
     '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the '+LN()+' dialogue/subtitle text in "en" (in the original language). Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not in the text.\n'+
-    '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Translate ALL of it: every word, clause, name, number, interjection (oh, hey, uh, huh), swear word and repetition; never shorten, summarize, soften or leave out any part, even a small one. Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender only when you really know it: from the speaker name (a known character of this game or of the notes) or because the line itself makes it certain; otherwise "". Do not guess from the topic of the line. In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
     (/\n/.test(t)?'Each new line of the text between <<< and >>> is a different character speaking (several people talk at once): translate each one on its own, never join two people\'s words into one sentence, and keep them on separate lines of "vi" in the same order.\n':'')+
@@ -5026,7 +5044,7 @@ function subPrompt(){
     'The image is a crop of the game screen where dialogue subtitles appear.\n'+
     '1. Copy ONLY the subtitle/dialogue text in '+LN()+' into "en", exactly as written in the original language. Ignore HUD, button prompts, icons, watermarks and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name (with a colon, e.g. "ATREUS: ...", or in capitals before the line, e.g. "BASIM Where is it?"), write it as "NAME: " at the start of "en". Never add a name that is not written on screen.\n'+
-    '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
+    '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Translate ALL of it: every word, clause, name, number, interjection (oh, hey, uh, huh), swear word and repetition; never shorten, summarize, soften or leave out any part, even a small one. Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender if a speaker name is shown: "male", "female", or "". In "age" put "child", "young", "adult" or "old", or "".\n'+
     '5. If there is no readable '+LN()+' subtitle, return "en":"" and "vi":"".\n'+whoRule()+context();
 }
@@ -5049,7 +5067,7 @@ function flushReady(){
   while(S.ready.length){
     var r=S.ready[0];
     var older=Object.keys(S.live).some(function(k){ return +k<r.seq; });
-    if(older&&now-r.at<1500){ S.readyT=setTimeout(flushReady,120); return; }      /* an earlier line is still being translated */
+    if(older&&now-r.at<2500){ S.readyT=setTimeout(flushReady,120); return; }      /* an earlier line is still being translated: lines come up in the order they were said */
     if(now<S.gate){ S.readyT=setTimeout(flushReady,S.gate-now+5); return; }        /* the line before is on screen a moment */
     S.ready.shift();
     var shown=takeOne(r.res,r.seq,r.raw);
@@ -5118,7 +5136,7 @@ function takeOne(res,seq,raw){
   var rawT=raw||res.en;
   if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return false; }
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return false; } /* waited too long for it: history only */
-  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=!!res._tm; show(res);
+  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=!!res._tm; show(res); speedLog(res);
   return true;
 }
 /* ---- translating one line of text (from the on-device reader) ---- */
@@ -5367,13 +5385,13 @@ function glossHints(text){
     if(new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)').test(t)){ seen[k]=1; if(m[e].toLowerCase()===k) keep.push(e); else use.push(e+' = '+m[e]); } } });
   return (use.length?'Dictionary for this game (use these Vietnamese words exactly): '+use.slice(0,25).join('; ')+'\n':'')+(keep.length?'Keep these names as they are: '+keep.slice(0,25).join(', ')+'\n':'');
 }
-function enqueue(text){
+function enqueue(text,seenAt){
   if(flOwns(text)){ S.saved++; if(!S.flOwnLog||Date.now()-S.flOwnLog>10000){ S.flOwnLog=Date.now(); log('phụ đề: dòng này là một phần chữ trên màn hình (điện thoại, thư...), để phần dịch chữ trên màn hình lo'); } return; }
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
   var nl=Math.max(1,Math.min(4,S.ocrLines||1)), el=enLinesFor(text,nl);
   var pr=S.ocrParts, lp=el&&pr&&pr.n>1&&pr.lp.length>=el.length?pr.lp.slice(0,el.length):null;
-  S.q.push({seq:++S.seq,text:text,nl:el?el.length:nl,enl:el,lp:lp,pc:lp?pr.pc.slice():null}); liveAdd(S.seq);
+  S.q.push({seq:++S.seq,text:text,nl:el?el.length:nl,enl:el,lp:lp,pc:lp?pr.pc.slice():null,t0:seenAt||Date.now(),tq:Date.now()}); liveAdd(S.seq);
   if(S.q.length>4) S.q.splice(0,S.q.length-4).forEach(function(j){ liveDone(j.seq); });   /* far behind: keep the newest lines */
   pump();
 }
@@ -5385,8 +5403,40 @@ function pump(){
 }
 /* the AI's translation came after the machine translation was shown: it replaces it (on screen if the line is still
    there, waiting in line, the cache and the shared store), without reading it aloud again */
+/* a translation that left part of the line out: far fewer Vietnamese syllables than the English has words (Vietnamese
+   normally has more). Short lines are not judged. */
+function viShort(en,vi){
+  var e=wordsOf(String(en||'').replace(/^[A-Z][A-Za-z .'\-]{0,24}:\s+/,'')), v=String(vi||'').split(/\s+/).filter(function(w){ return /[A-Za-zÀ-ỹ0-9]/.test(w); }).length;
+  return e>=5&&v<e*0.85;
+}
+/* the line came back with parts missing: asked once more, the whole line insisted on; the fuller one replaces it */
+function fullAgain(j,ck,res){
+  if(!res||!viShort(res.en||j.text,res.vi)||j._again) return;
+  j._again=true; log('bản dịch thiếu ý ('+wordsOf(res.en||j.text)+' từ tiếng Anh, '+String(res.vi).split(/\s+/).length+' tiếng Việt), dịch lại cho đủ');
+  askText(textPrompt(j.text,j.nl,j.enl)+'\nIMPORTANT: a previous translation left words out ("'+String(res.vi).replace(/"/g,"'")+'"). Translate EVERY part of the line, nothing left out.',j.text,null,null,false,'fast')
+    .then(function(r2){ if(r2&&r2.vi&&!viShort(r2.en||j.text,r2.vi)) aiUpgrade(j,ck,r2,S.via); },function(){});
+}
+/* how long a line took, from the moment its English was first seen on screen to the moment the Vietnamese showed:
+   reading it, translating it (and by what), waiting to come up in turn. Kept for the report (median, slowest). */
+S.speed=[];
+var VIA_N={tm:'kho dịch chung',gloss:'từ điển',free:'máy dịch miễn phí',groq:'Groq',gemini:'Gemini/VIP',smart:'AI thông minh',local:'AI trên máy'};
+function speedLog(res){
+  if(!res||!res._t0) return;
+  var now=Date.now(), s1=function(ms){ return (Math.max(0,ms)/1000).toFixed(1); }, via=res._via||S.via||'', vn=VIA_N[via]||via||'?';
+  var tot=now-res._t0;
+  log('tốc độ: '+s1(tot)+' giây từ lúc thấy chữ tới lúc hiện (đọc '+s1((res._tq||now)-res._t0)+'s, dịch '+s1((res._tr||now)-(res._tq||now))+'s bằng '+vn+(S.vip&&vipOn()&&via==='gemini'?' (VIP hoặc mã riêng)':'')+', chờ tới lượt '+s1(now-(res._tr||now))+'s)');
+  S.speed.push({ms:tot,via:via,at:now}); if(S.speed.length>300) S.speed.shift();
+}
+function speedSum(){
+  var a=S.speed.filter(function(x){ return Date.now()-x.at<6*3600e3; }); if(!a.length) return 'chưa có câu nào';
+  function st(l){ var v=l.map(function(x){ return x.ms; }).sort(function(p,q){ return p-q; }); return (v[v.length>>1]/1000).toFixed(1)+'s ('+v.length+' câu, chậm nhất '+(v[v.length-1]/1000).toFixed(1)+'s)'; }
+  var by={}; a.forEach(function(x){ (by[x.via]=by[x.via]||[]).push(x); });
+  return 'giữa '+st(a)+'; '+Object.keys(by).map(function(k){ return (VIA_N[k]||k)+' '+st(by[k]); }).join('; ');
+}
 function aiUpgrade(j,ck,r2,via2){
   if(!r2||!String(r2.vi||'').trim()) return;
+  if(j.t0) log('tốc độ: AI ('+(VIA_N[via2]||via2)+') sửa lại câu sau '+((Date.now()-j.t0)/1000).toFixed(1)+' giây từ lúc thấy chữ');
+  var cur=S.trCache[ck]; if(cur&&cur.vi&&viShort(j.text,r2.vi)&&!viShort(j.text,cur.vi)){ log('AI dịch thiếu ý hơn bản đang hiện, giữ bản đầy đủ'); return; }   /* never a shorter line over a full one */
   r2._nl=j.nl||1; r2._enl=j.enl||null; r2._lp=j.lp||null; r2._pc=j.pc||null;
   S.trCache[ck]=r2; tmAdd('s',j.text,r2.vi,r2.speaker||'',(r2.gender||'').toLowerCase(),via2);
   S.recent.forEach(function(x){ if(x.raw===j.text) x.res=r2; });
@@ -5412,6 +5462,7 @@ async function translateText(j){
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
       res=await specOr(j,ck,function(){ return askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); }); });
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
+      else fullAgain(j,ck,res);
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
         tmAdd('s',j.text,res.vi,res.speaker||'',(res.gender||'').toLowerCase(),S.via); }
     }
@@ -5420,7 +5471,7 @@ async function translateText(j){
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(res){ res._nl=j.nl||1; res._enl=j.enl||null; res._lp=j.lp||null; res._pc=j.pc||null; }
+    if(res){ res._nl=j.nl||1; res._enl=j.enl||null; res._lp=j.lp||null; res._pc=j.pc||null; res._t0=j.t0; res._tq=j.tq; res._tr=Date.now(); res._via=S.via; }
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -5570,6 +5621,7 @@ async function ocrStep(m,force){
   S.ocrBusy=true;
   ocv.width=cap.width; ocv.height=cap.height; ocx2.drawImage(cap,0,0);             /* the next tick redraws cap while we read */
   var o;
+  S.readT0=Date.now();   /* when this reading of the subtitle area began: a new line was first seen about then */
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(dictFix(ocrText(o)));
@@ -5607,8 +5659,9 @@ function ocrTake(txt,force){
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
-    if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now()}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
+    if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now(),t0:S.readT0}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
   }
+  var seenAt=S.cand&&S.cand.t0?S.cand.t0:(S.readT0||Date.now());
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
@@ -5620,7 +5673,7 @@ function ocrTake(txt,force){
   log('đọc được: '+part);
   if(viMode()){ viRead(part); return; }
   coverWait();
-  enqueue(part);
+  enqueue(part,seenAt);
 }
 /* ---------- only subtitles in the subtitle area ----------
    Titles, menu items and button labels ("BLACK MYTH", "Press Any Button", "Customize Controls", "Tùy chọn") are not
@@ -6986,7 +7039,7 @@ function reportVer(){ return (D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần m�
 function reportText(){
   var ver=reportVer();
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
-    'Game: '+$('hsGame').value, 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
+    'Game: '+$('hsGame').value, 'Tốc độ dịch (từ lúc thấy chữ tới lúc hiện): '+speedSum(), 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
@@ -8403,7 +8456,7 @@ function psInit(){
   });
   $('hsPsQ').addEventListener('change',playQSync);
   gameMuteSet(false);
-  if($('hsTvSound')){ $('hsTvSound').checked=load('tvSound',true); $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game và giọng đọc sẽ phát ở TV':'Tiếng game và giọng đọc phát ở máy tính'); }); }
+  if($('hsTvSound')){ $('hsTvSound').checked=load('tvSound',true); $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game sẽ phát ở TV (giọng đọc theo mục Đọc ở)':'Tiếng game phát ở máy tính'); }); }
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
