@@ -5274,7 +5274,7 @@ S.busyTexts=[]; S.trCache={}; S.trCacheN=[]; S.emptyTx={};
    When the game is chosen, its lines are fetched from honggame.store. A line that is already there shows at once,
    without asking the AI (and without using the player's quota). New translations are added for the next player. */
 var TMAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/tm/';
-S.tm={g:'',name:'',map:{},zmap:{},bk:{},n:0,total:0,loading:false,hits:0,out:[],outT:0,err:''};
+S.tm={g:'',name:'',map:{},zmap:{},bk:{},bg:{},seq:[],ix:{},n:0,total:0,loading:false,hits:0,out:[],outT:0,err:''};
 S.played=load('played',{});
 function tmGame(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim().slice(0,80); }
 function tmShare(){ var c=$('hsTmShare'); return !c||c.checked; }
@@ -5282,7 +5282,7 @@ function tmPutLocal(kind,en,vi,who,gd){
   var k=trKey(en); if(k.length<2||!vi) return;
   if(creditPair(en,vi)) return;
   if(kind==='z'){ S.tm.zmap[k]=vi; return; }
-  if(!S.tm.map[k]){ S.tm.n++; var b=Math.round(k.length/6); (S.tm.bk[b]=S.tm.bk[b]||[]).push(k); }
+  if(!S.tm.map[k]){ S.tm.n++; var b=Math.round(k.length/6); (S.tm.bk[b]=S.tm.bk[b]||[]).push(k); S.tm.ix[k]=S.tm.seq.length; S.tm.seq.push(k); }   /* the order players met the lines: what usually comes next */
   S.tm.map[k]={en:en,vi:vi,who:who||'',gd:gd||''};
 }
 /* while translating: the lines other players of the same game added in the last minutes, every 3 minutes */
@@ -5297,7 +5297,7 @@ async function tmTop(){
 setInterval(tmTop,180000);
 async function tmLoad(name){
   var g=tmGame(name); if(g===S.tm.g&&(S.tm.loading||S.tm.n||S.tm.total===0&&S.tm.g)) return;
-  S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
+  S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},bg:{},seq:[],ix:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
   tmUi(); if(g.length<2) return;
   var my=S.tm; my.loading=true; tmUi();
   /* the lines of this game kept on this machine from last time: ready at once, then only new lines are fetched */
@@ -5318,6 +5318,7 @@ async function tmLoad(name){
     }
     my.last=since;
     log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept?' (lấy thêm '+got+' câu mới)':''));
+    tmWarm(my);
     if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
   }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
   finally{ my.loading=false; if(S.tm===my) tmUi(); }
@@ -5335,7 +5336,7 @@ function tmFind(text,strict){
   if(parts.length>=2&&parts.length<=6){
     var vi=[], who='', gd='';
     for(var i=0;i<parts.length;i++){ var f=tmFind1(parts[i]); if(!f) return null; vi.push(f.vi); who=who||f.speaker; gd=gd||f.gender; }
-    return tmHit({en:text,vi:vi.join(' '),speaker:who,gender:gd,_tm:true});
+    return tmHit({en:text,vi:vi.join(' '),speaker:who,gender:gd,_tm:true,_parts:true});   /* lines put together: their pronouns may not agree */
   }
   return null;
 }
@@ -5356,22 +5357,30 @@ function nearRecent(text){
 }
 /* the store of the game is still coming down: wait for it (a few seconds) rather than spend an AI call */
 function tmWait(ms){ return new Promise(function(ok){ var t0=Date.now(); (function w(){ if(!S.tm.loading||Date.now()-t0>ms) ok(true); else setTimeout(w,150); })(); }); }
+/* the letter pairs of every stored line counted while nothing else runs, so the first near match is quick too */
+function tmWarm(my){ var ks=my.seq.slice(), i=0; (function step(){ if(S.tm!==my) return; var t0=performance.now(); while(i<ks.length&&performance.now()-t0<8){ var s=ks[i++]; if(!my.bg[s]) my.bg[s]=tmBg(s); } if(i<ks.length) setTimeout(step,30); })(); }
+function tmBg(s){ var o={}; for(var i=0;i<s.length-1;i++){ var x=s.substr(i,2); o[x]=(o[x]||0)+1; } return o; }
 function tmFind1(text,strict){
-  var k=trKey(text), e=S.tm.map[k];
+  var k=trKey(text), e=S.tm.map[k], ek=k, fz=0;
   if(e&&tmJunk(e)) e=null;
   if(!e&&k.length>=(strict?14:10)){
-    var b=Math.round(k.length/6), best=0, need=strict?0.92:k.length>=18?0.78:0.86;
-    for(var d=-2;d<=2;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>6000) continue;
-      for(var i=0;i<list.length;i++){ var c=S.tm.map[list[i]]; if(!c) continue; var sc=dice(c.en,text); if(sc>best){ best=sc; if(sc>=need) e=c; } } }
+    /* the same as dice() on every line of about this length, ~10x quicker: each stored line's letter pairs are counted
+       once and kept, and a line whose length alone cannot reach the score is not compared (was ~250 ms a line in GTA) */
+    var b=Math.round(k.length/6), best=0, need=strict?0.92:k.length>=18?0.78:0.86, qb=tmBg(k), qk=Object.keys(qb), la=k.length;
+    for(var d=-2;d<=2;d++){ var list=S.tm.bk[b+d]||[]; if(list.length>12000) continue;
+      for(var i=0;i<list.length;i++){ var s=list[i], lb=s.length; if(lb<2) continue;
+        var tot=la+lb-2, top=2*(Math.min(la,lb)-1)/tot; if(top<need||top<=best) continue;
+        var cb=S.tm.bg[s]||(S.tm.bg[s]=tmBg(s)), h=0; for(var j=0;j<qk.length;j++){ var y=cb[qk[j]]; if(y) h+=Math.min(y,qb[qk[j]]); }
+        var sc=2*h/tot; if(sc>best){ best=sc; if(sc>=need){ var c=S.tm.map[s]; if(c){ e=c; ek=s; fz=sc; } } } } }
   }
   if(!e||tmJunk(e)) return null;
-  return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true};
+  return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true,_k:ek,_fz:fz};   /* _fz: only nearly the same line (a misread letter, or another player's line with more words) */
 }
 function tmAdd(kind,en,vi,who,gd,via){
   if(!S.tm.g||S.tm.g.length<2||!en||!vi||creditPair(en,vi)) return;
   tmPutLocal(kind,en,vi,who,gd);
   if(!tmShare()) return;
-  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:via==='free'?1:2}});
+  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:via==='free'?1:2,fx:via==='fix'?1:0}});   /* fx: a stored line checked and fixed, it replaces the old one */
   if(S.tm.out.length>200) S.tm.out.splice(0,S.tm.out.length-200);
   clearTimeout(S.tm.outT); S.tm.outT=setTimeout(tmFlush,S.tm.out.length>=20?500:6000);
 }
@@ -5412,29 +5421,80 @@ function tmFitAsk(prompt){
   if(!ps.length) return Promise.reject(new Error('no AI'));
   return new Promise(function(ok,no){ var left=ps.length; ps.forEach(function(p){ p.then(function(r){ if(r&&String(r.vi||'').trim()) ok(r); else if(--left<=0) no(new Error('trống')); },function(e){ if(--left<=0) no(e); }); }); });   /* the first good answer */
 }
+/* why a line of the store should be checked before it shows: "bạn" as "you" in a game whose notes give its characters
+   other pronouns (a machine-like line: "Bạn sẽ không bao giờ tin được điều này"), a near match (another player's line
+   with words this one does not have: "... 00:11", "của Chuck"), lines put together, numbers the English does not have */
+function tmPronOff(vi){
+  var n=$('hsNotes')?$('hsNotes').value:''; if(!n.trim()||/(xưng|gọi)[^.;,]{0,12}\bbạn\b/i.test(n)) return false;
+  return /(^|[^\p{L}])(?<!anh |người |các |hai )[Bb]ạn(?! (thân|bè|gái|trai|cũ|học|đời|tù|đồng|nhậu|chí|tốt))([^\p{L}]|$)/u.test(String(vi||''));
+}
+function tmOddNum(en,vi){ var d=String(vi||'').match(/\d+([:.,]\d+)*/g)||[], e=String(en||''); return d.some(function(x){ return e.indexOf(x)<0; }); }
+function tmDiffers(){ var pr=presetOf($('hsGame').value), stNow=$('hsStyle')?$('hsStyle').value:'';   /* this player changed the game's style or notes */
+  return pr?(stNow!==(pr.style||'')||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!(stNow||$('hsNotes').value.trim()); }
+function tmNeedFix(en,vi,r){ return !!(r&&(r._fz||r._parts))||tmPronOff(vi)||tmOddNum(en,vi)||glossMiss(en,vi); }
+/* a fixed line that came back after the stored one was shown: put it in place if that line is still on screen */
+function tmSwap(j,v,r0){
+  S.recent.forEach(function(x){ if(x.raw===j.text&&x.res) x.res.vi=v; });
+  var w=S.ready.filter(function(x){ return x.seq===j.seq; })[0]; if(w&&w.res){ w.res.vi=v; return; }
+  if(S.shownSeq!==j.seq||!S.lastHtml||S.voCur) return;
+  var res=splitSpeaker(JSON.parse(JSON.stringify(r0)),j.text); if(!res) return; res.vi=punctFix(res.en||j.text,v); res._fit=1;
+  ['_nl','_enl','_lp','_pc'].forEach(function(k){ res[k]=r0[k]; });
+  log('câu trong kho, đã chỉnh xong, thay câu đang hiện: '+res.vi); show(res,true);
+}
 async function tmFit(j,res){
   if(!res||!res.vi||!tmFitOn()) return res;
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{2,})$/.exec(String(j.text).trim()), en=m?m[2]:String(j.text).trim(), ck=trKey(j.text);
-  var F=tmFitStore();
-  if(F.m[ck]){ res.vi=F.m[ck]; res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
-  if(!groqKeys().length&&!keys().length&&!orReady()) return res;              /* no AI key: the stored line, laid out like this screen */
-  /* the store's lines are written with the game's own settings (its notes, its style): with those, the line shows at
-     once (0 ms). Only a player who changed them, or whose dictionary the line does not follow, gets it rewritten. */
-  var pr=presetOf($('hsGame').value), stNow=$('hsStyle')?$('hsStyle').value:'';
-  var differs=(pr?(stNow!==(pr.style||'')||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!(stNow||$('hsNotes').value.trim()))||glossMiss(en,res.vi);
-  if(!differs) return res;
+  var F=tmFitStore(), ai=groqKeys().length||keys().length||orReady();
+  var kept=F.m[ck]||(!res._fz&&res._k&&F.m[res._k]);
+  if(kept){ if(ai&&res._k) tmAhead(res._k,j,res,true); res.vi=kept; res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
+  if(!ai) return res;                                                       /* no AI key: the stored line, laid out like this screen */
+  /* the store's lines are written with the game's own settings (its notes, its style). A line that follows them shows
+     at once (0 ms) and is checked in the background with the next ones; a player who changed the settings, or a line
+     that surely needs it (tmNeedFix), gets it rewritten first (at most ~1.2 s, then the line shows and is swapped). */
+  var differs=tmDiffers();
+  var why=differs?'cài đặt của bạn khác cài đặt của game':res._fz?'câu gần giống trong kho':res._parts?'ghép từ nhiều câu trong kho':tmPronOff(res.vi)?'xưng hô chưa theo ghi chú nhân vật':tmOddNum(en,res.vi)?'có số không có trong câu gốc':glossMiss(en,res.vi)?'chưa theo từ điển':'';
+  if(res._k) tmAhead(res._k,j,res,!!why);                                   /* the next lines of the store (and this one, when it is not fixed here), checked while it shows */
+  if(!why) return res;
   var t0=Date.now(), vi0=res.vi;
-  var prompt='A Vietnamese translation of this video game line already exists. Bring it to THIS player\'s settings below.\n'+
+  var prompt='A Vietnamese translation of this video game line already exists (written by another player, sometimes for a slightly different English line or by a machine translator). Bring it to THIS player\'s settings below.\n'+
     'Original ('+LN()+'):\n<<<\n'+en+'\n>>>\nExisting Vietnamese:\n<<<\n'+vi0+'\n>>>\n'+
-    'Rewrite the Vietnamese so it follows the translation style, the character / pronoun notes and the dictionary given below, and the pronoun pairs of the recent lines. '+
-    'Keep the meaning, the same sentences in the same order, the punctuation and the line breaks; change only what these settings require (pronouns, tone, word choice, dictionary words). '+
-    'If the existing Vietnamese already fits, return it unchanged. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
+    'Rewrite the Vietnamese so it translates exactly the original above (drop anything it does not say, e.g. a name or a number that is not in it; fix a wrong meaning or a word-for-word machine wording) and follows the translation style, the character / pronoun notes and the dictionary given below, and the pronoun pairs of the recent lines. '+
+    'Keep the same sentences in the same order, the punctuation and the line breaks; if the existing Vietnamese already fits, return it unchanged. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
     glossHints(en)+context(en);
-  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; tmFitKeep(ck,v); return v; },function(){ return null; });
-  var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },450); })]);   /* never more than about half a second: the store is for speed */
-  if(v===undefined){ log('chỉnh câu trong kho theo cài đặt của bạn chưa xong: hiện câu trong kho ngay, lần sau dùng câu đã chỉnh'); p.then(function(v2){ if(v2) S.recent.forEach(function(x){ if(x.raw===j.text&&x.res) x.res.vi=v2; }); }); return res; }
-  if(v){ if(v!==vi0) log('câu trong kho, chỉnh theo cài đặt của bạn ('+(Date.now()-t0)+'ms): '+v); res.vi=v; res._fit=1; }
+  var share=!differs&&!res._fz&&!res._parts;
+  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
+  var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },1200); })]);
+  if(v===undefined){ log('chỉnh câu trong kho ('+why+') chưa xong sau 1.2 giây: hiện câu trong kho, chỉnh xong sẽ thay'); p.then(function(v2){ if(v2&&v2!==vi0) tmSwap(j,v2,res); }); return res; }
+  if(v){ log('câu trong kho, chỉnh vì '+why+' ('+(Date.now()-t0)+'ms)'+(v!==vi0?': '+v:', giữ nguyên')); res.vi=v; res._fit=1; }
   return res;
+}
+/* ---------- the next lines of the store, checked ahead ----------
+   Players meet a game's lines in about the order they went into the store, so while a line of it shows, the next
+   ones are sent to the AI together (one call for up to 8 lines) to be checked and fixed for this player's settings.
+   When the game gets there they show at once, already fixed. */
+S.tmAh={busy:false,done:{},last:-1,calls:0};
+async function tmAhead(k,j,r0,self){
+  var T=S.tm, i0=T.ix[k]; if(i0==null||S.tmAh.busy||!tmFitOn()) return;
+  if(Math.abs(i0-S.tmAh.last)<3&&S.tmAh.done[T.seq[i0+3]]) return;           /* still ahead of the player */
+  var F=tmFitStore(), pick=[];
+  for(var i=self?i0+1:i0;i<T.seq.length&&i<i0+14&&pick.length<8;i++){ var s=T.seq[i], e=T.map[s]; if(!e||F.m[s]||S.tmAh.done[s]||tmJunk(e)) continue; if(T.zmap[s]) continue; pick.push(s); }
+  if(!pick.length) return;
+  S.tmAh.busy=true; S.tmAh.last=i0; pick.forEach(function(s){ S.tmAh.done[s]=1; });
+  var en0=T.map[pick[0]].en, list=pick.map(function(s,n){ var e=T.map[s]; return (n+1)+'. '+(e.who?'['+e.who+'] ':'')+'EN: '+String(e.en).replace(/\s+/g,' ')+'\n   VI: '+String(e.vi).replace(/\n/g,' / '); }).join('\n');
+  var prompt='These lines of a video game come one after another (a scene; [Name] is the speaker when known). Each already has a Vietnamese translation written by other players, sometimes by a machine translator.\n'+
+    'Check every translation against its English and fix it for THIS player\'s settings below: a wrong meaning, a word-for-word machine wording, pronouns that break the character / pronoun notes or the pronoun pairs between the same two characters, the translation style, the dictionary, anything (a name, a number) the English does not say. '+
+    'Keep a good translation unchanged. Keep "/" where the Vietnamese has it (a line break). Never write the speaker name in the translation.\n'+
+    'Return "items": one {"i": number, "vi": translation} for every line, in order.\n\n'+list+'\n\n'+glossHints(pick.map(function(s){ return T.map[s].en; }).join(' '))+context(en0);
+  var t0=Date.now(), share=!tmDiffers();
+  try{
+    var r=groqKeys().length?await groq(prompt,null,SHAPE_FSI):await gemini(prompt,null,SCHEMA_FSI);
+    if(S.tm!==T) return;
+    var got=0, chg=0; (r&&r.items||[]).forEach(function(it){ var s=pick[(+it.i||0)-1], e=s&&T.map[s], v=String(it.vi||'').trim(); if(!e||!v||junkPair(e.en,v)) return;
+      v=v.replace(/\s*\/\s*/g,'\n'); if(String(e.vi).indexOf('\n')<0) v=v.replace(/\n/g,' '); tmFitKeep(s,v); got++;
+      if(v!==e.vi){ chg++; if(share) tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); if(j&&s===k&&!r0._fit) tmSwap(j,v,r0); } });   /* the line on screen itself: swapped if still there */   /* with the game's own settings, the fixed line goes back to the store for everyone */
+    S.tmAh.calls++; log('kho dịch chung: kiểm tra trước '+got+'/'+pick.length+' câu sắp tới ('+chg+' câu sửa, '+(Date.now()-t0)+'ms)');
+  }catch(e){ pick.forEach(function(s){ delete S.tmAh.done[s]; }); }
+  finally{ S.tmAh.busy=false; }
 }
 async function tmFlush(){
   var q=S.tm.out; if(!q.length) return;
@@ -5795,15 +5855,17 @@ function promptOnly(t){
   return !/[.,!?…'"“”]/.test(t)&&w.length>=2&&w.length<=6&&w.every(function(x){ return /^[A-Z]/.test(x)&&ZPROMPT.test(x); });   /* prompts are short words in Title Case, no sentence marks */
 }
 /* a line the reader found in the subtitle area: new, complete, worth translating? */
+/* a line read but not translated, written in the log (once per text) so a report shows why a line was missed */
+function skipLog(why,t){ var k=why+'|'+norm(t); S.skipL=S.skipL||[]; if(S.skipL.indexOf(k)>=0) return; S.skipL.push(k); if(S.skipL.length>60) S.skipL.shift(); log(why+': '+String(t).replace(/\s+/g,' ').slice(0,90)); }
 function ocrTake(txt,force){
   OCR.miss=0;
   if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
-  if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; return; }   /* the line on screen, read again */
+  if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; if(!similar(txt,S.lastRaw)) skipLog('coi là câu đang hiện (đọc lệch), không dịch lại',txt); return; }   /* the line on screen, read again */
   if(!viMode()&&(viPlain(txt)||viLike(txt))){ S.cand=null; S.lastOcr=txt; return; }   /* Vietnamese: the console's own menus, or a game already in Vietnamese */
-  if(!force&&promptOnly(txt)){ S.cand=null; S.lastOcr=txt; return; }               /* "Skip □  Restart ✕": button prompts, not a subtitle */
+  if(!force&&promptOnly(txt)){ S.cand=null; S.lastOcr=txt; skipLog('bỏ qua dòng nút bấm',txt); return; }               /* "Skip □  Restart ✕": button prompts, not a subtitle */
   if(!force&&hintRow(txt)){ S.cand=null; S.lastOcr=txt; if(!S.hintLog||Date.now()-S.hintLog>30000){ S.hintLog=Date.now(); log('bỏ qua dòng nút của menu, không phải phụ đề: '+txt.slice(0,60)); } return; }
   if(!force&&S.micMenu){ S.cand=null; S.lastOcr=txt; return; }                    /* translating a menu (mic): no subtitle is read or read aloud meanwhile */
-  if(!force&&guardOn()&&S.running&&PS_STRONG.test(txt.toLowerCase())){ S.cand=null; S.lastOcr=txt; guardSet('ps'); return; }   /* PS5 words: its own screen */
+  if(!force&&guardOn()&&S.running&&PS_STRONG.test(txt.toLowerCase())){ S.cand=null; S.lastOcr=txt; guardSet('ps'); skipLog('bỏ qua: chữ của màn hình PS5',txt); return; }   /* PS5 words: its own screen */
   if(!force&&guardOn()&&S.running&&ocrOn()&&guardHint(txt)){                       /* maybe a map's button hints: check the screen before translating */
     if(!S.hintAt) S.hintAt=Date.now();
     if(!(GUARD.st>S.hintAt&&GUARD.at>GUARD.st)){ S.cand=null; GUARD.next=0; S.forceOcr=true; return; }
@@ -5817,7 +5879,7 @@ function ocrTake(txt,force){
   var seenAt=S.cand&&S.cand.t0?S.cand.t0:(S.readT0||Date.now());
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
-  if(!part){ S.saved++; runStatus(); return; }
+  if(!part){ S.saved++; runStatus(); if(!similar(txt,S.lastRaw||'')) skipLog('đã dịch rồi, không dịch lại',txt); return; }
   if(!force&&notiSub(part)){ log('bỏ qua bảng thông báo: '+part); S.saved++; return; }
   if(!force&&uiLike(part)){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
   if(!force&&tmStrict()&&shortLine(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
@@ -7078,10 +7140,10 @@ function flSkip(b){
   if(hintLow(b)) return true;
   return false;
 }
-/* the controller hints along the bottom of the screen (the lowest fifth: "✕ Select  ○ Back", "DIVE R1  SURFACE",
+/* the controller hints along the bottom of the screen (the lowest tenth: "✕ Select  ○ Back", "DIVE R1  SURFACE",
    the map's "Recenter L3 / 2D View R3 / Add Marker / Exit"): left as they are, not translated. A sentence down there
    (a mission objective, a message) is still translated. */
-/* a column of hints reaching up out of the lowest fifth (the map's list on the right): the rows above go with it */
+/* a column of hints reaching up out of the lowest tenth (the map's list on the right): the rows above go with it */
 function fsLowCol(list){
   var low=list.filter(function(b){ return hintLow(b); });
   list.slice().sort(function(a,b){ return b.y-a.y; }).forEach(function(b){
@@ -7093,7 +7155,7 @@ function fsLowCol(list){
 }
 function hintLow(b){
   if(b&&b.lowCol) return true;
-  if(!b||b.y+b.h/2<0.8) return false;
+  if(!b||b.y+b.h/2<0.9) return false;
   var en=String(b.en||'').trim(), lines=en.split('\n');
   if(b.ic&&b.ic.length) return !lines.some(function(l){ return wordsOf(l)>=5&&/[.!?…]["”’)\]]*$/.test(l.trim()); });
   return lines.every(function(l){ var t=l.trim(); return !(wordsOf(t)>=4&&/[.!?…]["”’)\]]*$/.test(t)) && (zHintRow(t)||uiLike(t)||wordsOf(t)<=4); });

@@ -65,11 +65,12 @@ if (!function_exists('hgs_tm_table')) {
             $who  = hgs_tm_clean(isset($it['who']) ? $it['who'] : '', 60);
             $gd   = (isset($it['gd']) && in_array($it['gd'], array('male', 'female'), true)) ? $it['gd'] : '';
             $q    = (isset($it['q']) && (int) $it['q'] === 2) ? 2 : 1;
+            $fx   = ($q === 2 && !empty($it['fx'])) ? 1 : 0;   // a stored line checked and fixed by AI: replaces a line of the same level (not an imported one)
             $k    = sha1($g . '|' . $kind . '|' . $nm);
             $wpdb->query($wpdb->prepare(
                 "INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,n,t) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%d,1,%s)
-                 ON DUPLICATE KEY UPDATE n=n+1, vi=IF(VALUES(q)>q,VALUES(vi),vi), who=IF(VALUES(q)>q,VALUES(who),who), gd=IF(VALUES(q)>q AND VALUES(gd)<>'',VALUES(gd),gd), q=GREATEST(q,VALUES(q))",
-                $g, $gn, $k, $kind, $en, $vi, $who, $gd, $q, $now));
+                 ON DUPLICATE KEY UPDATE n=n+1, vi=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(vi),vi), who=IF(VALUES(q)>q,VALUES(who),who), gd=IF(VALUES(q)>q AND VALUES(gd)<>'',VALUES(gd),gd), q=GREATEST(q,VALUES(q))",
+                $g, $gn, $k, $kind, $en, $vi, $who, $gd, $q, $now, $fx));
             $ok++;
         }
         set_transient($rk, $used + max(1, $ok), 600);
