@@ -6127,6 +6127,7 @@ bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty(
 (function(){
   /* where lines are read aloud: the same choice on the Voice page and in the TV card */
   var els=['hsSpeakWhere','hsTvRead'].map(function(id){return $(id);}).filter(Boolean); if(!els.length) return;
+  if(!load('spkFix1',false)){ save('spkFix1',true); if(load('speakWhere','pc')==='tv') save('speakWhere','pc'); }   /* once: "Đọc ở: TV" left the app silent for players who expect the voice on the computer; it reads here again (TV can be chosen again) */
   var v=load('speakWhere','pc')||'pc'; els.forEach(function(e){ e.value=v; });
   els.forEach(function(w){ w.addEventListener('change',function(){
     var val=this.value; save('speakWhere',val); els.forEach(function(e){ e.value=val; });
