@@ -6418,6 +6418,41 @@ async function fsRead(sx,sy,sw,sh,maxW){
   });
   return out;
 }
+/* ---------- one panel of text, one box ----------
+   The reader often cuts one panel of text (a mission card: "Lucia will appreciate this" and the paragraph under it)
+   into several pieces where the lines are far apart, and each piece got its own box: a staircase of boxes of different
+   widths. Pieces one under the other on the same plain background, with about the same letter size and lined up, are
+   joined into one block before translating: one box for the whole text. A heading in CAPITALS over normal text, a
+   list (menu rows), a tab or button, a turned text, and pieces on different backgrounds (chat bubbles: the phone's
+   background shows between them) stay apart. */
+function hexRgb(h){ var n=parseInt(String(h||'#000').slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function colNear(a,b,lim){ if(!a||!b) return false; var A=hexRgb(a), B=hexRgb(b); return Math.abs(A[0]-B[0])+Math.abs(A[1]-B[1])+Math.abs(A[2]-B[2])<=(lim||60); }
+function capsOnly(t){ var L=String(t||'').replace(/[^A-Za-z]/g,''); return L.length>=3&&L===L.toUpperCase(); }
+function fsMergePara(list,cv){
+  var cand=list.filter(function(b){ return !b.row&&!fsCell(b)&&!fsTurn(b); }).sort(function(a,b){ return a.y-b.y; });
+  function bgOf(r){ try{ var c=zColors(cv,r); return c&&c.plain>=0.45?c.bg:''; }catch(e){ return ''; } }
+  var gone=[];
+  for(var i=0;i<cand.length;i++){ var a=cand[i]; if(gone.indexOf(a)>=0) continue;
+    for(var j=i+1;j<cand.length;j++){ var b=cand[j]; if(gone.indexOf(b)>=0) continue;
+      var la=a.lh||a.h, lb=b.lh||b.h, lm=Math.max(la,lb), gap=b.y-(a.y+a.h);
+      if(gap>lm*1.3) break;                                                    /* too far below: the rest is lower still */
+      if(gap<-lm*0.4||la/lb>1.3||lb/la>1.3) continue;
+      if(capsOnly(a.en)!==capsOnly(b.en)) continue;                            /* a heading and its text */
+      var ox=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
+      if(!(Math.abs(a.x-b.x)<lm*1.5||ox>=Math.min(a.w,b.w)*0.6)) continue;      /* not lined up */
+      if(!cv) continue;
+      var ba=bgOf(a), bb=bgOf(b); if(!ba||!bb||!colNear(ba,bb)) continue;      /* not one plain panel */
+      if(gap>lm*0.15){ var gx=Math.max(a.x,b.x), gw=Math.max(0.01,ox), bg=bgOf({x:gx,y:a.y+a.h,w:gw,h:gap}); if(!bg||!colNear(bg,ba)) continue; }   /* the panel goes on between them */
+      /* join b into a */
+      var et=function(k){ return k.ic&&k.ic.length?k.et:k.en; }, n=a.ic&&a.ic.length?a.ic.length:0;
+      if((a.ic&&a.ic.length)||(b.ic&&b.ic.length)){ a.et=et(a)+'\n'+String(et(b)).replace(/\{\{(\d+)\}\}/g,function(m,d){ return '{{'+(+d+n)+'}}'; }); a.ic=(a.ic||[]).concat(b.ic||[]); }
+      var x0=Math.min(a.x,b.x), x1=Math.max(a.x+a.w,b.x+b.w), y1=Math.max(a.y+a.h,b.y+b.h);
+      a.en=a.en+'\n'+b.en; a.lh=(la+lb)/2; a.x=x0; a.w=x1-x0; a.h=y1-a.y; a.al=''; a.conf=Math.min(a.conf||1,b.conf||1);
+      gone.push(b);
+    }
+  }
+  return gone.length?list.filter(function(b){ return gone.indexOf(b)<0; }):list;
+}
 /* one-line labels stacked in a column with their right ends (or left ends) lined up: a list of hints or a menu.
    The reader does not always see each icon, so the column's side decides for every label in it. */
 function fsRowsAlign(list){
@@ -6485,6 +6520,7 @@ async function fsBlocks(){
     var dup=keep.some(function(k){ return fsDup(k,b); });
     if(!dup) keep.push(b);
   });
+  try{ var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); keep=fsMergePara(keep,flc); }catch(e){}
   fsRowsAlign(keep);
   return keep.filter(function(b){ return !notiLike(b.en); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
 }
@@ -6713,6 +6749,7 @@ async function flRead(my){
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsDup(k,b); })) blocks.push(b); });
   /* the same text read as a paragraph and as one of its lines (or a piece of it) close by: only the paragraph */
   blocks=blocks.filter(function(b){ return !blocks.some(function(k){ return k!==b&&norm(k.en).length>norm(b.en).length&&fsNear(k,b)&&fsSameText(b.en,k.en); }); });
+  blocks=fsMergePara(blocks,flc);
   fsRowsAlign(blocks);
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
@@ -7910,7 +7947,10 @@ function psFreezeTick(){
 setInterval(psFreezeTick,1000);
 /* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
    sound back) */
-function gameMuted(){ return tvSoundNow(); }
+function gameMuted(){ return tvSoundNow()||camOnTv(); }
+/* a capture card with the TV on the PS5's own HDMI: the TV has the game's sound already, so this computer stays quiet
+   (it only listens, for reading the characters' voices) */
+function camOnTv(){ return !!S.camSrc&&tvSoundOn()&&S.tvOk===true; }
 /* "Tiếng game và giọng đọc phát ở TV": the PS turns its own sound on the TV off while it plays through Remote Play, so
    the game's sound (the PS's Opus packets, as they come) goes on to the Hóng Sub TV app over the home network and is
    played there; this computer stays quiet, and reading aloud goes to the TV too. Only when the TV app can play it
@@ -7940,7 +7980,8 @@ function tvAudioPush(pkt){
   }
 }
 function tvSoundApply(){ if(typeof PS!=='undefined'&&PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(gameMuted()?0:1,PS.actx.currentTime,0.05); }catch(e){} }
-setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); } },1000);
+setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); }
+  var cm=camOnTv(); if(cm!==TA.cam){ TA.cam=cm; tvSoundApply(); if(S.camSrc) log(cm?'capture card: tiếng game đã có ở TV, máy tính im':'capture card: tiếng game phát ở máy tính'); } },1000);
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.again.connect(PS.actx.destination); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 function gameMuteSet(on){
   save('gameMute',!!on);
