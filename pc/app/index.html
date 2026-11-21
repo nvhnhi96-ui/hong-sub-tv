@@ -4503,7 +4503,7 @@ function sample(){
   stopSpeak(); devSpeak(SAMPLE,mode,'');
 }
 $('hsVoiceTest').addEventListener('click',sample);
-function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
+function setSpeak(on){ log((on?'bật':'tắt')+' đọc phụ đề'+(new Error().stack.indexOf('hotkey')>=0?' (phím R)':'')); var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
 function speakWhere(){ var w=$('hsSpeakWhere'); return (w&&w.value)||'pc'; }   /* where the person chose ("Đọc ở"): the game's sound playing on the TV does not take the reading away from this computer */
 /* since when the subtitle on screen has been there (its voice started about then) */
 function subSince(){ var L=S.subLines&&S.subLines[S.subLines.length-1]; return L&&Date.now()-L.from<9000?L.from-600:Date.now()-3500; }
@@ -4533,7 +4533,9 @@ function fitRate(vi,src,voice){
   return Math.round(r*20)/20;
 }
 function speak(t,res){
-  if(!$('hsSpeak').checked||!t) return;
+  if(!t) return;
+  if(!$('hsSpeak').checked){ if(!S.speakOffLog||Date.now()-S.speakOffLog>60000){ S.speakOffLog=Date.now(); log('không đọc: mục Đọc phụ đề đang tắt'); } return; }
+  log('đọc ('+speakWhere()+'): '+String(t).replace(/\s+/g,' ').slice(0,60));
   var where=speakWhere(), mode=voiceMode(), who=(res&&(res.speaker||res._who||res._vk))||'', g=((res&&res.gender)||'').toLowerCase();
   if(mode==='ai') mode='auto';
   var ch=castOf(who);
@@ -6922,7 +6924,7 @@ function reportText(){
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
     'Game: '+$('hsGame').value, 'Tốc độ dịch (từ lúc thấy chữ tới lúc hiện): '+speedSum(), 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
-    'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
+    'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length+', đọc phụ đề: '+($('hsSpeak').checked?'bật':'TẮT')+', đọc ở: '+speakWhere()+', giọng dùng: '+(D?devPick(voiceMode()==='ai'?'auto':voiceMode(),'',''):'trình duyệt')+(D&&D.speakState?', lần đọc gần nhất: '+JSON.stringify(D.speakState()):''),
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
@@ -7342,7 +7344,7 @@ function hotkey(e){
   else if((e.key==='f'||e.key==='F')&&S.stream&&!PH){e.preventDefault(); stageFull();}
   else if((e.key==='n'||e.key==='N')&&S.stream){e.preventDefault(); zoneTick(true);}
   else if(e.key==='Escape'){$('hsModal').classList.remove('open'); if(S.fs.on) fsStop();}
-  else if((e.key==='r'||e.key==='R')&&S.stream){e.preventDefault(); setSpeak(!$('hsSpeak').checked);}
+  else if((e.key==='r'||e.key==='R')&&S.stream&&!(typeof PS!=='undefined'&&PS.stream&&S.stream===PS.stream)){e.preventDefault(); setSpeak(!$('hsSpeak').checked);}   /* not while the PS is played here: R could turn reading off by mistake */
 }
 document.addEventListener('keydown',hotkey);
 

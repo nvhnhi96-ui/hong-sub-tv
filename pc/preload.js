@@ -19,14 +19,28 @@ function stopAll() {
   cur = null; lines.length = 0;
 }
 /* start making the voice of a line now (it plays later) */
+/* what happened to the last line read aloud (for the problem report) */
+let lastSpeak = null;
+function said(L, ok, err) { lastSpeak = { at: new Date().toTimeString().slice(0, 8), voice: (L.ai ? 'ai:' : '') + (L.voice || 'mặc định'), ok: !!ok, err: err || '' }; }
+/* the chosen voice made nothing: the line is read again with this computer's own Vietnamese voice, never silent */
+function fallback(L, why) {
+  if (L.fell) { said(L, false, why); L.ended = true; if (cur === L) playPart(); return; }
+  L.fell = true; L.ai = false; L.voice = '';
+  ipcRenderer.invoke('speak', L.text, '', L.rate).then((res) => {
+    if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true, why + ', đọc bằng giọng máy'); } else said(L, false, why + ', giọng máy cũng không đọc được');
+    L.ended = true; if (cur === L) playPart();
+  }).catch((e) => { said(L, false, why + ': ' + (e && e.message)); L.ended = true; if (cur === L) playPart(); });
+}
 function prepare(L) {
   L.id = ++seq; L.parts = []; L.ended = false; L.at = Date.now();
   if (L.pre) { L.parts.push({ wav: L.pre.b64, mime: L.pre.mime, rateApply: true, last: true }); L.ended = true; return; }   /* a clip made already (also sent to the TV) */
   if (L.ai) { ipcRenderer.send('aiv-speak', { id: L.id, text: L.text, voice: L.voice }); return; }
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
-    if (res && res.wav) L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true });
+    if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true); }
+    else if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; }
+    else said(L, !!(res && res.ok !== false), res && res.err ? String(res.err) : '');
     L.ended = true; if (cur === L) playPart();
-  }).catch(() => { L.ended = true; if (cur === L) playPart(); });
+  }).catch((e) => { if (L.voice) { fallback(L, 'giọng lỗi: ' + (e && e.message)); return; } said(L, false, e && e.message); L.ended = true; if (cur === L) playPart(); });
 }
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
 function speedOf(c) { return Math.max(1, Math.min(1.6, c.boost * (c.hurry || 1), 2.3 / Math.max(1, c.rate || 1))); }   /* never faster than 2.3x in all */
@@ -73,8 +87,9 @@ function enqueue(L, queue) {
 ipcRenderer.on('aiv-audio', (e, m) => {
   const L = (cur && cur.id === m.id) ? cur : lines.find(x => x.id === m.id);
   if (!L) return;
-  if (m.type === 'error') { L.ended = true; if (cur === L && !L.playing) playPart(); return; }
+  if (m.type === 'error') { if (!L.got) { fallback(L, 'giọng AI lỗi'); return; } L.ended = true; if (cur === L && !L.playing) playPart(); return; }   /* the AI voice failed before saying anything: this computer's voice reads it */
   if (m.type !== 'audio') return;
+  if (!L.got) said(L, true); L.got = true;
   L.parts.push({ wav: m.wav, last: !!m.last }); if (m.last) L.ended = true;
   if (cur === L) playPart();
 });
@@ -133,6 +148,7 @@ const api = {
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
   /* queue=true for subtitles (wait for the line being read), false for samples and tests (cut in right away) */
+  speakState: () => lastSpeak,
   speak: async (text, voice, rate, pitch, queue) => {
     if (!text) { stopAll(); return; }
     const v = String(voice || '');
