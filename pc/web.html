@@ -2926,6 +2926,9 @@ function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.app
      (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
      hides the English like the dark box on the picture */
   else if(o.cov){ o.cspot=1; o.cal='c'; o.cfs=48; }
+  /* not over the English: the Vietnamese sits right above the game's own subtitle (like on the computer), not at the
+     TV's fixed place where the two lines ran over each other */
+  if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; }
   if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
@@ -2964,7 +2967,7 @@ function relayPack(o){
   /* an area box (screen text, an area's paragraph): the subtitle's own settings that ride along on every message
      (its cover, colours, size, volume...) go first; the box's place, size and colours stay */
   var drop=o.kind==='zone'&&o.zid?['cov','cspot','cal','cfs','cn','vol','wid','col','bg','sen','hdmi','font','pc','appv','name','en','zv','zic','zfit','zs']:['name','pc','en','zv','zic','appv','zfit','zs','font'];
-  if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
+  if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','abv','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
   drop.forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
   if(s.length>600&&x.zgrow&&x.zmaxw!=null&&x.zx===x.x&&x.zw===x.w){ ['zx','zy','zw','zh'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* the box's own place as its room: the TV gets the same from zmaxw */
   if(s.length<=600) b.en=s;
@@ -3947,6 +3950,12 @@ function subBoxFrom(o,W,H){
   S.subBox={x:x1/W,y:y1/H,w:(x2-x1)/W,h:(y2-y1)/H,lh:lh/H,n:L.length,al:linesAlign(L,W)||'c',at:Date.now()};
 }
 /* the place of the Vietnamese line on the picture: the original text with a little room around it, or the drawn area */
+/* where the game's subtitle lines are now (the lines found lately), else the subtitle area */
+function subAbove(){
+  var R0=S.region; if(!R0) return null; var b=S.subBox;
+  if(!b||Date.now()-b.at>60000) return {x:R0.x,y:R0.y,w:R0.w,h:R0.h};
+  return {x:R0.x+b.x*R0.w,y:R0.y+b.y*R0.h,w:b.w*R0.w,h:b.h*R0.h};
+}
 function subRect(){
   var R0=S.region; if(!R0) return null;
   var b=S.subBox;

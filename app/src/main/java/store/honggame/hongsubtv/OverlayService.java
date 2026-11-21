@@ -644,6 +644,8 @@ public class OverlayService extends Service {
     }
 
     private double[] cov = null;
+    // the game's own subtitle when the Vietnamese does not cover it: the Vietnamese goes right above it
+    private double[] abv = null;
     // "đè đúng chỗ từng dòng": over the original text itself, its alignment and its letter size (on a 1080-line screen)
     private boolean covSpot = false; private String covAl = "c"; private int covFs = 0;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
 
@@ -688,6 +690,15 @@ public class OverlayService extends Service {
             viView.setMaxWidth(lp.width); enView.setMaxWidth(lp.width);
             lp.gravity = (prefs.top() ? Gravity.TOP : Gravity.BOTTOM) | Gravity.CENTER_HORIZONTAL;
             lp.y = dp(prefs.top() ? 36 : 46);
+            if (abv != null && !prefs.top()) {
+                // right above the game's own (English) subtitle, centred on it: the two never run over each other
+                DisplayMetrics dm = new DisplayMetrics();
+                wm.getDefaultDisplay().getRealMetrics(dm);
+                lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                lp.y = Math.max(0, (int) ((1 - abv[1]) * dm.heightPixels) + dp(2));
+                int cx = (int) ((abv[0] + abv[2] / 2) * dm.widthPixels);
+                lp.x = Math.max(-(dm.widthPixels - lp.width) / 2, Math.min((dm.widthPixels - lp.width) / 2, cx - dm.widthPixels / 2));
+            }
             float k = prefs.boxH() / 100f;
             box.setPadding(dp(22), (int) (dp(10) * k), dp(22), (int) (dp(12) * k));
         }
@@ -854,6 +865,14 @@ public class OverlayService extends Service {
             if (!java.util.Arrays.equals(nc, cov)) { cov = nc; changed = true; }
             boolean sp = nc != null && j.optInt("cspot", 0) == 1; String al = j.optString("cal", "c"); int fs = j.optInt("cfs", 0);
             if (sp != covSpot || !al.equals(covAl) || fs != covFs) { covSpot = sp; covAl = al; covFs = fs; changed = true; }
+        }
+        if (j.has("abv")) {
+            JSONObject c = j.optJSONObject("abv");
+            double[] na = c != null && c.optDouble("w", 0) > 0.02 && c.optDouble("y", 0) > 0.1
+                    ? new double[]{c.optDouble("x", 0), c.optDouble("y", 0), c.optDouble("w", 0), c.optDouble("h", 0)} : null;
+            // small moves of the found lines do not move the box (it would jump with every line)
+            boolean far = na == null || abv == null || Math.abs(na[1] - abv[1]) > 0.015 || Math.abs((na[0] + na[2] / 2) - (abv[0] + abv[2] / 2)) > 0.03;
+            if (far && !java.util.Arrays.equals(na, abv)) { abv = na; changed = true; }
         }
         int pb = Updater.build(j.optString("appv", ""));
         if (pb > pcBuild) {
