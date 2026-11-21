@@ -394,8 +394,8 @@ function showMain() { if (!win) return; if (win.isMinimized()) win.restore(); wi
 
 /* ---------- hotkeys ---------- */
 function hotkey(k) { if (win && !win.isDestroyed()) win.webContents.send('hotkey', k); }
-const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11', zones: 'F6', speak: 'F5' };
-const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full'), zones: () => hotkey('zones'), speak: () => hotkey('speak') };
+const KEY_DEFAULT = { toggle: 'F7', now: 'F8', ovl: 'F9', move: 'F10', full: 'F11', zones: 'F6', speak: 'F5', menu: 'F4' };
+const KEY_ACT = { toggle: () => hotkey('toggle'), now: () => hotkey('now'), ovl: () => overlayCmd('toggle'), move: () => overlayCmd('move'), full: () => hotkey('full'), zones: () => hotkey('zones'), speak: () => hotkey('speak'), menu: () => hotkey('menu') };
 function keys() { return Object.assign({}, KEY_DEFAULT, cfg.hotkeys || {}); }
 function registerKeys() {
   globalShortcut.unregisterAll();

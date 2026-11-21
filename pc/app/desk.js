@@ -8,7 +8,7 @@ window.hsDeskApi=window.hsDesktop||{
   openUrl:function(u){ window.open(u,'_blank','noopener'); },
   sonyRp:function(){ return Promise.resolve({path:''}); }, openSonyRp:function(){ return Promise.resolve({ok:false}); }, windows:function(){ return Promise.resolve([]); },
   sub:function(){}, overlay:function(){}, overlaySize:function(){}, overlayReset:function(){ return Promise.resolve(); }, onOverlay:function(){},
-  hotkeys:function(){ return Promise.resolve({keys:{toggle:'Space',full:'T',zones:'N',speak:'R'},state:{}}); }, pauseHotkeys:function(){}, setHotkeys:function(){ return this.hotkeys(); },
+  hotkeys:function(){ return Promise.resolve({keys:{toggle:'Space',full:'T',zones:'N',speak:'R',menu:'M'},state:{}}); }, pauseHotkeys:function(){}, setHotkeys:function(){ return this.hotkeys(); },
   version:function(){ return Promise.resolve('trên web'); },
   update:function(){ return Promise.resolve({}); }, updateInstall:function(){ return Promise.resolve({ok:false,err:'web'}); }
 };
@@ -140,7 +140,7 @@ function castEmpty(){ $('dkCastEmpty').hidden=!$('hsCastBox').hidden; }
 new MutationObserver(castEmpty).observe($('hsCastBox'),{attributes:true,attributeFilter:['hidden']}); castEmpty();
 
 /* ---------- shortcuts ---------- */
-var KEYN={toggle:'Bật / tắt dịch',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',move:'Di chuyển khung vùng dịch nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
+var KEYN={toggle:'Bật / tắt dịch',menu:'Dịch menu (như bấm nút mic trên tay cầm)',now:'Dịch ngay câu đang hiện',full:'Bật / tắt dịch cả màn hình (đè lên chữ Anh)',move:'Di chuyển khung vùng dịch nổi',zones:'Dịch các vùng nhiệm vụ, vật phẩm',speak:'Bật / tắt đọc phụ đề'};
 var KEYS={}, KST={}, rec=null;
 function keysDraw(){
   $('dkKeys').innerHTML=Object.keys(KEYN).map(function(id){

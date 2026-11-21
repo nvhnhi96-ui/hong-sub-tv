@@ -331,6 +331,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
       <div class="hs-ctrl">
         <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch <kbd>Space</kbd></button>
         <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm đang có trên màn hình">Dịch cả màn hình <kbd>T</kbd></button>
+        <button class="hs-btn" id="hsMenuBtn" type="button" disabled title="Dịch menu đang mở, tự dịch tiếp khi chuyển trang, bấm lần nữa để tắt. Giống bấm nút mic trên tay cầm">Dịch menu <kbd>M</kbd></button>
         <span class="hs-sp"></span>
         <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
         <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối</button>
@@ -1229,7 +1230,7 @@ function steps(){
   });
   if(first) first.classList.add('on');
   var ready=!!S.stream;
-  ['hsPick2','hsDraw','hsFull','hsPip','hsRun'].forEach(function(id){$(id).disabled=!ready;});
+  ['hsPick2','hsDraw','hsFull','hsPip','hsRun','hsMenuBtn'].forEach(function(id){ if($(id)) $(id).disabled=!ready;});
   $('hsRun').innerHTML=S.running?'Tạm dừng <kbd>Space</kbd>':'Bắt đầu dịch <kbd>Space</kbd>';
   $('hsRun').classList.toggle('pri',true);
   reg.classList.toggle('scan',S.running);
@@ -4906,6 +4907,15 @@ async function ocrStep(m,force){
   ocrTake(txt,force);
 }
 /* only button prompts ("Skip  Restart", "✕ Select  ○ Back"): every word a prompt word, two words or more */
+/* a menu's row of button hints with its title ("PHOTO STUDIO ○ SELECT ✕ BACK ○"): at least two prompt words, and
+   with the icons read as stray letters they make up most of the row; no sentence marks */
+function hintRow(t){
+  if(/[.,!?…'"“”]/.test(t)) return false;
+  var T=String(t||'').replace(/\uE000/g,' ').split(/[\s\/|]+/).filter(Boolean); if(T.length<3||T.length>12) return false;
+  var p=0, junk=0, small={up:1,on:1,off:1,and:1,or:1,to:1,the:1,a:1,of:1,all:1,in:1};
+  T.forEach(function(x){ var w=x.replace(/[^A-Za-z]/g,''); if(w.length<2){ if(!/^[aAI]$/.test(w)) junk++; } else if(!small[w.toLowerCase()]&&ZPROMPT.test(w)) p++; });   /* an icon read as a stray letter: "○" as O, "✕" as X */
+  return p>=2&&junk>=1&&(p+junk)/T.length>=0.5;
+}
 function promptOnly(t){
   var w=String(t||'').replace(/\uE000/g,' ').split(/[\s\/|]+/).map(function(x){ return x.replace(/[^A-Za-z]/g,''); }).filter(function(x){ return x.length>=2; });
   return !/[.,!?…'"“”]/.test(t)&&w.length>=2&&w.length<=6&&w.every(function(x){ return /^[A-Z]/.test(x)&&ZPROMPT.test(x); });   /* prompts are short words in Title Case, no sentence marks */
@@ -4917,6 +4927,8 @@ function ocrTake(txt,force){
   if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; return; }   /* the line on screen, read again */
   if(!viMode()&&(viPlain(txt)||viLike(txt))){ S.cand=null; S.lastOcr=txt; return; }   /* Vietnamese: the console's own menus, or a game already in Vietnamese */
   if(!force&&promptOnly(txt)){ S.cand=null; S.lastOcr=txt; return; }               /* "Skip □  Restart ✕": button prompts, not a subtitle */
+  if(!force&&hintRow(txt)){ S.cand=null; S.lastOcr=txt; if(!S.hintLog||Date.now()-S.hintLog>30000){ S.hintLog=Date.now(); log('bỏ qua dòng nút của menu, không phải phụ đề: '+txt.slice(0,60)); } return; }
+  if(!force&&S.micMenu){ S.cand=null; S.lastOcr=txt; return; }                    /* translating a menu (mic): no subtitle is read or read aloud meanwhile */
   if(!force&&guardOn()&&S.running&&PS_STRONG.test(txt.toLowerCase())){ S.cand=null; S.lastOcr=txt; guardSet('ps'); return; }   /* PS5 words: its own screen */
   if(!force&&guardOn()&&S.running&&ocrOn()&&guardHint(txt)){                       /* maybe a map's button hints: check the screen before translating */
     if(!S.hintAt) S.hintAt=Date.now();
@@ -5128,6 +5140,18 @@ function micAreas(){ return S.zones.some(function(z){ return z.on&&z.mode==='key
    - areas set to "Khi bấm nút mic": those areas
    - no such area: the whole screen ("Dịch cả màn hình") */
 S.micAt=0; S.micMenu=null;
+/* the same as the mic button, from a key, the app's "Dịch menu" button or the phone: translation is started if needed */
+function micPress(how){ if(!S.stream){ status('warn','Chọn nguồn hình trước rồi bấm Dịch menu.'); return; } if(!S.running) startRun(); S.micAt=0; micPressed(how); }
+/* a small sign on the picture while a menu is being translated, and the button's look */
+function micBadge(){
+  var on=!!S.micMenu, b=$('hsMenuBtn'); if(b){ b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); }
+  var v=typeof video!=='undefined'?video:null, host=v&&v.parentNode; if(!host) return;
+  var MB='hsMic'+'Badge', el=document.getElementById(MB);
+  if(!el){ el=document.createElement('div'); el.id=MB; el.setAttribute('role','status');
+    el.style.cssText='position:absolute;left:10px;top:10px;z-index:40;background:rgba(10,10,14,.72);color:#fff;font:600 13px/1.25 "Be Vietnam Pro",system-ui,sans-serif;padding:5px 11px;border-radius:999px;pointer-events:none;display:none';
+    if(getComputedStyle(host).position==='static') host.style.position='relative'; host.appendChild(el); }
+  el.textContent='Đang dịch menu · bấm mic lần nữa để tắt'; el.style.display=on?'block':'none';
+}
 function micFollowing(){ return !!S.micMenu; }
 function micPressed(how){
   if(!S.stream||Date.now()-S.micAt<1500) return;
@@ -5137,13 +5161,22 @@ function micPressed(how){
   if(S.micMenu){ micMenuEnd('bấm nút mic lần nữa'); return; }
   S.micMenu={at:Date.now(),moving:0,zones:micAreas()};
   if(S.micMenu.zones){ log('nút mic ('+how+'): dịch các vùng, tự dịch tiếp khi menu đổi'); status('busy','Đang dịch menu (nút mic). Bấm mic lần nữa để tắt.'); zoneTick(true); }
-  else{ log('nút mic ('+how+'): dịch cả màn hình, tự dịch tiếp khi menu đổi'); S.fs.mic=true; if(!S.fs.on) fullScreen(); else if(!S.fs.busy) fsRun(); }
+  else{   /* the live screen-text reader: only what changed is read again, the boxes that stay the same stay put,
+             moving scenery (palms, a turning gun) is left alone. The one-shot whole-screen translation started over on
+             every small change, and never read a menu whose background moves */
+    log('nút mic ('+how+'): dịch menu, tự dịch tiếp khi menu đổi'); status('busy','Đang dịch menu. Bấm mic lần nữa để tắt.');
+    if(S.fs.on) fsStop(); S.fl.mic=true; S.fl.micRead=false; S.micMenu.fl=true;
+    if(!S.fl.on) flStart(); else { S.fl.last=0; if(S.fl.dirty) S.fl.dirty.fill(1); flDraw(); }
+  }
+  micBadge();
   later(function(){ if(S.running&&!S.micMenu) runStatus(); },2500);
 }
 function micMenuEnd(why){
   var mm=S.micMenu; if(!mm) return; S.micMenu=null; log('dịch menu bằng nút mic: tắt ('+why+')');
   if(mm.zones) S.zones.forEach(function(z){ if(z.mode==='key'&&(z.vi||z.items)) zWipe(z); });
   if(S.fs.mic){ S.fs.mic=false; if(S.fs.on) fsStop(); }
+  if(mm.fl){ S.fl.mic=false; S.fl.micRead=false; if(!fsLiveOn()&&!mapOn()) flStop(); else flDraw(); }   /* the live reader goes on: labels go back to "Chỉ dịch câu" */
+  micBadge();
   if(S.running) runStatus();
 }
 /* back in the game: the picture has been moving for about 2 seconds */
@@ -5151,7 +5184,12 @@ setInterval(function(){
   var mm=S.micMenu; if(!mm) return;
   if(!S.stream){ micMenuEnd('không có hình'); return; }
   if(Date.now()-mm.at<2500) return;
-  mm.moving=playing()?mm.moving+1:0;
+  if(mm.fl){   /* the menu over moving scenery stays on; back in the game is the whole picture moving a lot AND most of the
+                  menu's boxes gone (the game's own still text, money or a minimap label, does not keep it on) */
+    mm.peak=Math.max(mm.peak||0,S.fl.items.length);
+    var hh=S.mv.hist.slice(-3), big=hh.length>=3&&hh.every(function(f){ return f>=0.2; }), gone=S.fl.items.length<=(mm.peak||0)*0.4;
+    mm.moving=big&&gone?mm.moving+1:big?mm.moving:0;
+  } else mm.moving=playing()?mm.moving+1:0;
   if(mm.moving>=4) micMenuEnd('đã vào lại game');
   else if(Date.now()-mm.at>10*60000) micMenuEnd('quá 10 phút');
 },500);
@@ -5319,6 +5357,29 @@ var fsLayer=document.createElement('div'); fsLayer.className='hs-fs'; fsLayer.hi
 var fsv=document.createElement('canvas'), fsSm=document.createElement('canvas'); fsSm.width=160; fsSm.height=90;
 var fsSx=fsSm.getContext('2d',{willReadFrequently:true});
 S.fs={on:false,items:[],busy:false,sig:null,still:0,timer:0,cache:new Map(),seq:0};
+/* the menu translations kept on this computer for each game (also after the app is closed): a menu seen before shows
+   at once, with no AI and no wait. Only the AI's lines are kept. */
+function fscKey(){ var g=$('hsGame'), n=g&&g.value.trim(); return n?'fsc_'+gameKey(n):''; }
+function fscLoad(){ var k=fscKey(); if(k===S.fs.cacheK) return; S.fs.cacheK=k; S.fs.cache=new Map(); if(!k) return;
+  var o=load(k,null); if(o&&typeof o==='object') Object.keys(o).forEach(function(e){ if(typeof o[e]==='string') S.fs.cache.set(e,o[e]); }); }
+var fscT=0;
+function fscSave(){ clearTimeout(fscT); fscT=setTimeout(function(){ var k=S.fs.cacheK; if(!k||k!==fscKey()) return; var o={};
+  Array.from(S.fs.cache.entries()).slice(-800).forEach(function(e){ o[e[0]]=e[1]; }); try{ save(k,o); }catch(e){} },1500); }
+setTimeout(function(){ fscLoad(); var g=$('hsGame'); if(g){ g.addEventListener('change',function(){ setTimeout(fscLoad,0); }); g.addEventListener('input',function(){ clearTimeout(fscLoad.t); fscLoad.t=setTimeout(fscLoad,800); }); } },0);
+/* which screen text is translated first: the highlighted row, then a description, then the rest */
+function flPri(b){ return b.panel?3:String(b.en||'').length>40?2:1; }
+/* a misreading of stylised letters ("BREAY", "KIIN", "DREAATAJI KUN", "ngesofipile"): most of its words are no English
+   word and no name of this game. Not translated (no box, no AI turn spent). Names alone ("Lucia") stay as they are. */
+var GAMEW={k:'',s:null};
+function gameWords(){ var k=fscKey(); if(GAMEW.k===k&&GAMEW.s) return GAMEW.s; var s={};
+  try{ [glossMine(),glossGame(),glossGameUi()].forEach(function(m){ Object.keys(m||{}).forEach(function(e){ (e.toLowerCase().match(/[a-z']{3,}/g)||[]).forEach(function(w){ s[w]=1; }); }); }); }catch(e){}
+  GAMEW={k:k,s:s}; return s; }
+function dictJunk(t){
+  if(!DICT.common) return false;
+  var W=String(t||'').toLowerCase().match(/[a-z']{3,}/g)||[]; if(!W.length) return false;
+  var gw=gameWords(), known=W.filter(function(w){ w=w.replace(/'s$/,'').replace(/'/g,''); return DICT.common[w]||DICT.rare[w]||gw[w]||DICT.common[w.replace(/s$/,'')]; }).length;
+  return known/W.length<0.5;
+}
 /* the Windows app keeps an icon in the button: only the word changes there, the button stays the same size */
 function fsLabel(on){ var b=$('hsFull'), sp=b.querySelector('span'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); if(sp) b.title=on?'Đang dịch cả màn hình. Bấm để tắt (F11)':'Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ gốc (F11)'; else b.textContent=on?'Tắt dịch cả màn hình':'Dịch cả màn hình'; }
 function fsAuto(){ return !$('hsFsAuto')||$('hsFsAuto').checked; }
@@ -5342,7 +5403,7 @@ function fsWorth(it){
   /* "Chỉ dịch câu": contact names (Rusty Anchor, Donnie), headers and labels (Suggested, Messages) stay as in the
      game; only what is written to be read (messages, notices, quest text) gets a box. Common game menu words that
      the dictionary knows (Unarmed, In Hand, Continue...) are still translated. */
-  if(fsSentOnly()&&GUARD.kind!=='map'&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]) return false;
+  if(fsSentOnly()&&!S.micMenu&&GUARD.kind!=='map'&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]) return false;   /* a menu the player asked for (mic, "Dịch menu"): all of it */
   return true;
 }
 function fsSentOnly(){ var c=$('hsFsSent'); return c?c.checked:load('fsSent',true); }
@@ -5370,7 +5431,16 @@ function fsDraw(){
    - two different texts whose boxes only touch: the strip they share is split between them; the letters keep their size.
    Each box also gets the empty room under it ("gb"): a longer Vietnamese may take a little more height only there. */
 function fsArea(v){ return v.w*v.h; }
-function fsSameText(a,b){ var A=norm(a), B=norm(b); return !!A&&!!B&&(B.indexOf(A)>=0||flWordsIn(a,b)>=0.7||dice(a,b)>0.75); }   /* a's words are in b */
+function fsSameText(a,b){ var A=norm(a), B=norm(b); if(!A||!B) return false; if(B.indexOf(A)>=0) return true;   /* a's words are in b */
+  /* b has several lines (menu rows read as one block): a must match one of its lines, or two that follow each other (a
+     sentence across a line break). Rows sharing words ("Horizontal Look / Vertical Look / Horizontal Aim Sensitivity")
+     are different texts */
+  var L=String(b).split('\n').filter(function(l){ return norm(l); });
+  if(L.length>1){ for(var i=0;i<L.length;i++){ var one=L[i], two=i+1<L.length?L[i]+' '+L[i+1]:'';
+      var d1=dice(a,one), w1=flWordsIn(a,one);   /* one changed word = another row ("Horizontal Look" ≠ "Horizontal Aim"); a typo still matches */
+      if(w1>=0.7&&(norm(one).length<=A.length*1.6||d1>0.6)||d1>0.88||two&&(norm(two).indexOf(A)>=0||dice(a,two)>0.88)) return true; }
+    return flWordsIn(a,b)>=0.7&&A.length>=B.length*0.6; }
+  return flWordsIn(a,b)>=0.7||dice(a,b)>0.75; }
 function fsNear(a,b){ var p=Math.max(a.lh||a.h,b.lh||b.h)*1.2; return Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>-p&&Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>-p; }
 function fsNoOverlap(list){
   var V=list.map(function(it,i){ return {it:it,i:i,x:it.x,y:it.y,w:it.w,h:it.h}; });
@@ -5523,10 +5593,14 @@ function fsLinesHtml(it,b,font,list){
   /* a longer Vietnamese line may first use the empty room beside it inside the same text (up to its widest line),
      or beside a one-line label up to the next text on its row, before its letters are squeezed */
   var fr=G.length===1&&list?fsFree(it,list):null, fr1=fr?Math.min(0.3*G[0].w,al==='right'?fr.l:al==='center'?2*Math.min(fr.l,fr.r):fr.r):0;
-  G.forEach(function(g){
+  /* a list read as one block (menu rows next to each other): each row takes its own colours from the picture, so the
+     highlighted row keeps its light box and the others their dark one, and they follow the cursor */
+  if(G.length>1&&S.fl.items.indexOf(it)>=0&&it.lcN!==FLC_N){ it.lcN=FLC_N; try{ it.lc=G.map(function(g){ var c=zColors(flc,{x:g.x,y:g.y,w:g.w,h:g.h}); return c&&c.bg&&c.plain>=0.5?{bg:c.bg,fg:c.fg||''}:null; }); }catch(e){ it.lc=null; } }
+  G.forEach(function(g,gi){
     var t=g.vi; if(!String(t).trim()) return;
+    var lc=it.lc&&it.lc[gi], lbg=lc?lc.bg:it.bg, lfg=lc?lc.fg:it.fg;
     var W=g.w*b.w, room=(G.length>1?(al==='right'?g.x-x0:al==='center'?2*Math.min(g.x-x0,x1-g.x-g.w):x1-g.x-g.w):fr1)*b.w;
-    h+='<div class="hs-fll1" data-w="'+W+'" data-room="'+Math.max(0,room)+'" data-al="'+al+'" style="left:'+((g.x-x0)*b.w)+'px;top:'+((g.y-y0)*b.h)+'px;height:'+(g.h*b.h)+'px;padding-top:'+Math.max(0,g.pt*b.h)+'px;line-height:'+(g.lh*b.h)+'px;min-width:'+W+'px;font-size:'+Math.max(7,g.f*b.h).toFixed(1)+'px;text-align:'+al+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(t,it.ic):esc(t))+'</div>';
+    h+='<div class="hs-fll1" data-w="'+W+'" data-room="'+Math.max(0,room)+'" data-al="'+al+'" style="left:'+((g.x-x0)*b.w)+'px;top:'+((g.y-y0)*b.h)+'px;height:'+(g.h*b.h)+'px;padding-top:'+Math.max(0,g.pt*b.h)+'px;line-height:'+(g.lh*b.h)+'px;min-width:'+W+'px;font-size:'+Math.max(7,g.f*b.h).toFixed(1)+'px;text-align:'+al+(lbg?';background:'+lbg:'')+(lfg?';color:'+lfg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(t,it.ic):esc(t))+'</div>';
   });
   return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;height:'+((y1-y0)*b.h)+'px;font-family:'+font+'">'+h+'</div>';
 }
@@ -6056,6 +6130,7 @@ async function fullScreen(){
 var flLayer=document.createElement('div'); flLayer.className='hs-fs hs-fl'; flLayer.hidden=true; $('hsStage').appendChild(flLayer);
 var flc=document.createElement('canvas'), flcx=flc.getContext('2d',{willReadFrequently:true});
 S.fl={on:false,items:[],prev:null,still:null,dirty:null,last:0,busy:false,timer:0,seq:0,reads:0};
+var FLC_N=0;   /* how many times the picture for the screen text's colours was taken */
 function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
 (function(){ var c=$('hsMapTr'); if(!c) return; c.checked=load('mapTr',true); c.addEventListener('change',function(){ save('mapTr',c.checked); if(GUARD.kind==='map'){ if(c.checked) flStart(); else if(!fsLiveOn()) flStop(); } }); })();
 (function(){ var c=$('hsFsSent'); if(!c) return; c.checked=load('fsSent',true); c.addEventListener('change',function(){ save('fsSent',c.checked); S.fsOvK=''; try{ fsDraw(); flDraw(); fsOverlaySync(); }catch(e){} }); })();
@@ -6063,7 +6138,7 @@ function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
    streets, shops and map signs stay as in the game. Works without "Tự dịch chữ khác" too (only while the map is open). */
 function mapOn(){ return GUARD.kind==='map'&&mapTrOn(); }
 function mapTrOn(){ var c=$('hsMapTr'); return c?c.checked:load('mapTr',true); }
-function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn())||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
+function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn()||S.fl.mic)||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
 function flStop(){ if(!S.fl.on&&!S.fl.items.length) return; S.fl.on=false; S.fl.seq++; S.fl.busy=false; WT?WT.clear(S.fl.timer):clearTimeout(S.fl.timer); S.fl.items=[]; flDraw(); }
 function flDraw(){
   var b=videoBox(), html='', show=S.fl.on&&!S.fs.on, view=show?fsView(S.fl.items):[];
@@ -6188,29 +6263,37 @@ function flTick(my){
   if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0; }); flDraw(); }
   else ch.forEach(function(it){ it.chk=true; });
   if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||(GUARD.kind&&GUARD.kind!=='map')) return;   /* the game map: its text is translated (not the place names) */
+  if(S.fl.mic&&!S.fl.micRead){ S.fl.micRead=true; S.fl.dirty.fill(1); flRead(my,true); return; }   /* the mic: read at once, not after the picture was seen still */
   if(S.fl.items.some(function(it){ return it.chk; })){ flVerify(my); return; }
-  var now=Date.now(); if(now-S.fl.last<900) return;
+  var now=Date.now(); if(now-S.fl.last<(S.fl.mic?400:900)) return;
   var fresh=0; for(i=0;i<N;i++) if(S.fl.dirty[i]&&S.fl.still[i]>=2) fresh++;
-  if(fresh>=40||(fresh>0&&now-S.fl.last>6000)) flRead(my);
+  if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my);
 }
 /* the boxes whose picture changed, read again one by one: same text -> it stays (new picture kept), else it goes */
 async function flVerify(my){
   S.fl.busy=true; S.ocrBusy=true;
-  var vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk; }).slice(0,4), gone=[];
+  var vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk; }).slice(0,4), gone=[], recol=false;
   try{
+    var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours now */
     for(var k=0;k<list.length;k++){
       var it=list[k], px=it.w*0.15, py=it.h*0.35, x=Math.max(0,it.x-px), y=Math.max(0,it.y-py), w=Math.min(1-x,it.w+2*px), h=Math.min(1-y,it.h+2*py);
       var got=await fsRead(x*vw,y*vh,w*vw,h*vh,900), txt=got.map(function(b){ return b.en; }).join('\n');
       var a=norm(it.en), bb=norm(txt);
-      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.sig=flPatch(S.fl.prev,it); }
+      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.sig=flPatch(S.fl.prev,it);
+        /* the same text, another look: the menu's highlight moved onto it or off it. Its box takes the new colours, the
+           translation stays (no AI, no flicker) */
+        if(it.lc) recol=true;   /* rows of a list: each row's colours are taken again when drawn */
+        try{ var c2=zColors(flc,it); if(c2&&c2.bg&&c2.plain>=0.5&&(c2.bg!==it.bg||(c2.fg||'')!==(it.fg||''))){ it.bg=c2.bg; it.fg=c2.fg||''; recol=true; }
+          else if(c2&&c2.bg&&c2.plain<0.35&&it.bg){ delete it.bg; delete it.fg; recol=true; } }catch(e){} }
       else gone.push(it);
     }
   }catch(e){}
   finally{ S.ocrBusy=false; S.fl.busy=false; }
   if(my!==S.fl.seq) return;
   if(gone.length){ S.fl.items=S.fl.items.filter(function(it){ return gone.indexOf(it)<0; }); flDraw(); }
+  else if(recol) flDraw();
 }
-async function flRead(my){
+async function flRead(my,first){
   S.fl.busy=true; S.fl.last=Date.now(); S.fl.reads++;
   var vw=video.videoWidth, vh=video.videoHeight, g=S.fl.prev, still=S.fl.still;
   /* the region that changed and is still now: read it again, larger, so small text is not missed */
@@ -6221,10 +6304,11 @@ async function flRead(my){
   if(S.ocrBusy||my!==S.fl.seq){ S.fl.busy=false; return; }
   S.ocrBusy=true; var all=[];
   try{
-    all=all.concat(await fsRead(0,0,vw,vh,1600));
+    var part=S.fl.items.length&&x1>=x0&&(x1-x0+1)*(y1-y0+1)<160*90*0.35;   /* boxes up, a small part changed (the cursor moved): that part only */
+    if(!part) all=all.concat(await fsRead(0,0,vw,vh,1600));
     if(x1>=x0){ var bx=Math.max(0,(x0-4)/160*vw), by=Math.max(0,(y0-3)/90*vh), bw=Math.min(vw-bx,(x1-x0+9)/160*vw), bh=Math.min(vh-by,(y1-y0+7)/90*vh);
       if(bw*bh<vw*vh*0.5&&bw>40&&bh>20) all=all.concat(await fsRead(bx,by,bw,bh,1400)); }
-    var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height);   /* for the colours */
+    var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours */
   }catch(e){ all=[]; }
   finally{ S.ocrBusy=false; }
   if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
@@ -6243,7 +6327,9 @@ async function flRead(my){
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
   S.fl.seen=blocks.slice(0,40);
   blocks.forEach(function(b){
-    if(flSkip(b)||flStill(b)<0.7) return;                       /* moving things (signs going past) are not read */
+    if(flSkip(b)||!first&&flStill(b)<0.7) return;               /* moving things (signs going past) are not read */
+    if(dictJunk(b.en)) return;                                    /* a misreading ("BREAY", "DREAATAJI KUN"): not translated, no box */
+    var gx=glossExact(b.en); if(gx&&norm(gx)===norm(b.en)) return;   /* a name or brand kept as it is in this game: nothing to cover */
     if(S.fl.items.some(function(it){ return fsNear(it,b)&&fsSameText(b.en,it.en); })) return;   /* already on screen in a box with this text (a fuller one) */
     S.fl.items=S.fl.items.filter(function(it){ return !(fsNear(it,b)&&fsSameText(it.en,b.en)); });   /* a box with a piece of this text: the fuller new one replaces it */
     var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
@@ -6256,7 +6342,7 @@ async function flRead(my){
   });
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
-  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
+  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c==null&&!(b.ic&&b.ic.length)){ var gq=glossExact(b.en); if(gq) c=gq; } if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
   S.fl.items=S.fl.items.concat(add); flDraw();
   log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
   S.fl.busy=false;
@@ -6270,16 +6356,24 @@ async function flRead(my){
   if(S.allowFree) Promise.all(need.map(function(b){ return gtx(fsT(b)).catch(function(){ return ''; }); })).then(function(vs){
     freeVs=vs; if(!aiOn||freeGo) freeShow(); else later(freeShow,Math.max(0,FREE_WAIT-(Date.now()-tF))); });
   if(aiOn){
-    try{
-      var r=await askText(fsPrompt(need.map(fsT)),need.map(fsT).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
-      if(my!==S.fl.seq) return;
-      ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=need[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsVi(b,it.vi); S.fs.cache.set(norm(fsT(b)),b.vi); fsKeep(b); });
-      if(S.fs.cache.size>500) S.fs.cache.delete(S.fs.cache.keys().next().value);
-      flDraw();
-    }catch(e){ freeShow(); }   /* the AI failed: the free translator's line at once */
+    /* what the player looks at first goes first, in its own small request (it comes back sooner): the highlighted
+       row, then descriptions, then the rest; each part shows as soon as it is translated */
+    var order=need.slice().sort(function(a,b){ return flPri(b)-flPri(a)||a.y-b.y; });
+    var groups=order.length>5?[order.slice(0,4),order.slice(4)]:[order], fails=0;
+    await Promise.all(groups.map(async function(G){
+      try{
+        var r=await askText(fsPrompt(G.map(fsT)),G.map(fsT).join('\n'),SCHEMA_FSI,SHAPE_FSI,false,'fast');
+        if(my!==S.fl.seq) return;
+        ((r&&r.items)||[]).forEach(function(it){ var k=(+it.i||0)-1, b=G[k]; if(!b||!String(it.vi||'').trim()) return; b.vi=fsVi(b,it.vi); S.fs.cache.set(norm(fsT(b)),b.vi); fsKeep(b); });
+        while(S.fs.cache.size>800) S.fs.cache.delete(S.fs.cache.keys().next().value);
+        fscSave(); flDraw();
+      }catch(e){ fails++; }
+    }));
+    if(fails) freeShow();   /* the AI failed: the free translator's line at once */
   }
 }
 $('hsFull').addEventListener('click',fullScreen);
+if($('hsMenuBtn')) $('hsMenuBtn').addEventListener('click',function(){ micPress('nút Dịch menu'); });
 $('hsModalX').addEventListener('click',function(){$('hsModal').classList.remove('open');});
 $('hsModal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 
@@ -6388,7 +6482,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={view:function(){ return fsView(S.fl.items).map(function(i){ return i.en.slice(0,20); }); },worth:function(){ return S.fl.items.map(function(i){ return i.en.slice(0,14)+":"+fsWorth(i); }); },vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
@@ -6710,6 +6804,7 @@ window.hsPhoneEvt=function(type,data){
     else if(k==='now'){ if(S.stream){ if(!S.running) startRun(); tick(true); } }
     else if(k==='full'){ if(S.stream) fullScreen(); }
     else if(k==='zones'){ if(S.stream) zoneTick(true); }
+    else if(k==='menu'){ micPress('nút Dịch menu'); }
     else if(k==='speak'){ setSpeak(!$('hsSpeak').checked); }
     phState(S.running);
   }
@@ -6788,7 +6883,8 @@ function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) tr
 function hotkey(e){
   var t=e.target, tag=t&&t.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(e.code==='Space'&&S.stream){e.preventDefault(); S.running?stopRun():startRun();}
-  else if((e.key==='t'||e.key==='T'||e.key==='m'||e.key==='M')&&S.stream){e.preventDefault(); fullScreen();}
+  else if((e.key==='t'||e.key==='T')&&S.stream){e.preventDefault(); fullScreen();}
+  else if((e.key==='m'||e.key==='M')&&S.stream){e.preventDefault(); micPress('phím M');}
   else if((e.key==='f'||e.key==='F')&&S.stream&&!PH){e.preventDefault(); stageFull();}
   else if((e.key==='n'||e.key==='N')&&S.stream){e.preventDefault(); zoneTick(true);}
   else if(e.key==='Escape'){$('hsModal').classList.remove('open'); if(S.fs.on) fsStop();}
@@ -7894,6 +7990,7 @@ if(D){
     else if(k==='now'){ if(S.stream) tick(true); }
     else if(k==='full'){ if(S.stream) fullScreen(); }
     else if(k==='zones'){ if(S.stream) zoneTick(true); }
+    else if(k==='menu'){ micPress('phím tắt'); }
     else if(k==='speak'){ setSpeak(!$('hsSpeak').checked); }
   });
   if(D.version) D.version().then(function(v){S.appVer=v;}).catch(function(){});
