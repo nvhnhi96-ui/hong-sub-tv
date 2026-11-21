@@ -16,7 +16,7 @@ jobs:
           const res={};
           for(const [k,u] of urls){ const t=[]; const st={}; for(let i=0;i<15;i++){ const t0=Date.now(); try{ const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body}); const tx=await r.text(); t.push(Date.now()-t0); const key=r.status+' '+(/recaptcha|not a robot/i.test(tx)?'CAPTCHA':(tx.slice(0,60))); st[key]=(st[key]||0)+1; }catch(e){ st['ERR '+e.message]=(st['ERR '+e.message]||0)+1; } await new Promise(r=>setTimeout(r,300)); } t.sort((a,b)=>a-b); res[k]={median:t[Math.floor(t.length/2)],min:t[0],max:t[t.length-1],st}; }
           const t0=Date.now(); const h=await fetch('https://honggame.store/robots.txt'); await h.text(); res.ping=Date.now()-t0;
-          console.log(JSON.stringify(res,null,1));
+          console.log('::notice title=vip::'+JSON.stringify(res));
           const bad=Object.values(res).some(v=>v&&v.st&&Object.keys(v.st).some(s=>/CAPTCHA|^403|^5\d\d|ERR/.test(s)));
           if(res.lite.median>1500) { console.log('SLOW'); }
           process.exit(bad?1:0);
