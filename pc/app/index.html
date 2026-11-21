@@ -5017,7 +5017,7 @@ function takeOne(res,seq,raw){
   var rawT=raw||res.en;
   if(S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(rawT,S.lastRaw)&&!(res._tm&&!S.lastTm)){ coverBack(); return false; }
   if(seq<S.shownSeq){ S.hist.splice(1,0,{en:res.en,vi:res.vi,who:res.speaker||''}); return false; } /* waited too long for it: history only */
-  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=!!res._tm; show(res);
+  S.shownSeq=seq; S.lastEn=res.en; S.lastRaw=rawT; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=!!res._tm; show(res); speedLog(res);
   return true;
 }
 /* ---- translating one line of text (from the on-device reader) ---- */
@@ -5266,13 +5266,13 @@ function glossHints(text){
     if(new RegExp('(^|[^a-z0-9])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^a-z0-9]|$)').test(t)){ seen[k]=1; if(m[e].toLowerCase()===k) keep.push(e); else use.push(e+' = '+m[e]); } } });
   return (use.length?'Dictionary for this game (use these Vietnamese words exactly): '+use.slice(0,25).join('; ')+'\n':'')+(keep.length?'Keep these names as they are: '+keep.slice(0,25).join(', ')+'\n':'');
 }
-function enqueue(text){
+function enqueue(text,seenAt){
   if(flOwns(text)){ S.saved++; if(!S.flOwnLog||Date.now()-S.flOwnLog>10000){ S.flOwnLog=Date.now(); log('phụ đề: dòng này là một phần chữ trên màn hình (điện thoại, thư...), để phần dịch chữ trên màn hình lo'); } return; }
   if(S.busyTexts.some(function(x){return sameLine(text,x);})||S.q.some(function(j){return sameLine(text,j.text);})){ S.saved++; return; }
   var ek=trKey(text); if(S.emptyTx[ek]&&Date.now()-S.emptyTx[ek]<180000){ S.saved++; return; }   /* the AI found nothing to translate here a moment ago */
   var nl=Math.max(1,Math.min(4,S.ocrLines||1)), el=enLinesFor(text,nl);
   var pr=S.ocrParts, lp=el&&pr&&pr.n>1&&pr.lp.length>=el.length?pr.lp.slice(0,el.length):null;
-  S.q.push({seq:++S.seq,text:text,nl:el?el.length:nl,enl:el,lp:lp,pc:lp?pr.pc.slice():null}); liveAdd(S.seq);
+  S.q.push({seq:++S.seq,text:text,nl:el?el.length:nl,enl:el,lp:lp,pc:lp?pr.pc.slice():null,t0:seenAt||Date.now(),tq:Date.now()}); liveAdd(S.seq);
   if(S.q.length>4) S.q.splice(0,S.q.length-4).forEach(function(j){ liveDone(j.seq); });   /* far behind: keep the newest lines */
   pump();
 }
@@ -5297,8 +5297,26 @@ function fullAgain(j,ck,res){
   askText(textPrompt(j.text,j.nl,j.enl)+'\nIMPORTANT: a previous translation left words out ("'+String(res.vi).replace(/"/g,"'")+'"). Translate EVERY part of the line, nothing left out.',j.text,null,null,false,'fast')
     .then(function(r2){ if(r2&&r2.vi&&!viShort(r2.en||j.text,r2.vi)) aiUpgrade(j,ck,r2,S.via); },function(){});
 }
+/* how long a line took, from the moment its English was first seen on screen to the moment the Vietnamese showed:
+   reading it, translating it (and by what), waiting to come up in turn. Kept for the report (median, slowest). */
+S.speed=[];
+var VIA_N={tm:'kho dịch chung',gloss:'từ điển',free:'máy dịch miễn phí',groq:'Groq',gemini:'Gemini/VIP',smart:'AI thông minh',local:'AI trên máy'};
+function speedLog(res){
+  if(!res||!res._t0) return;
+  var now=Date.now(), s1=function(ms){ return (Math.max(0,ms)/1000).toFixed(1); }, via=res._via||S.via||'', vn=VIA_N[via]||via||'?';
+  var tot=now-res._t0;
+  log('tốc độ: '+s1(tot)+' giây từ lúc thấy chữ tới lúc hiện (đọc '+s1((res._tq||now)-res._t0)+'s, dịch '+s1((res._tr||now)-(res._tq||now))+'s bằng '+vn+(S.vip&&vipOn()&&via==='gemini'?' (VIP hoặc mã riêng)':'')+', chờ tới lượt '+s1(now-(res._tr||now))+'s)');
+  S.speed.push({ms:tot,via:via,at:now}); if(S.speed.length>300) S.speed.shift();
+}
+function speedSum(){
+  var a=S.speed.filter(function(x){ return Date.now()-x.at<6*3600e3; }); if(!a.length) return 'chưa có câu nào';
+  function st(l){ var v=l.map(function(x){ return x.ms; }).sort(function(p,q){ return p-q; }); return (v[v.length>>1]/1000).toFixed(1)+'s ('+v.length+' câu, chậm nhất '+(v[v.length-1]/1000).toFixed(1)+'s)'; }
+  var by={}; a.forEach(function(x){ (by[x.via]=by[x.via]||[]).push(x); });
+  return 'giữa '+st(a)+'; '+Object.keys(by).map(function(k){ return (VIA_N[k]||k)+' '+st(by[k]); }).join('; ');
+}
 function aiUpgrade(j,ck,r2,via2){
   if(!r2||!String(r2.vi||'').trim()) return;
+  if(j.t0) log('tốc độ: AI ('+(VIA_N[via2]||via2)+') sửa lại câu sau '+((Date.now()-j.t0)/1000).toFixed(1)+' giây từ lúc thấy chữ');
   var cur=S.trCache[ck]; if(cur&&cur.vi&&viShort(j.text,r2.vi)&&!viShort(j.text,cur.vi)){ log('AI dịch thiếu ý hơn bản đang hiện, giữ bản đầy đủ'); return; }   /* never a shorter line over a full one */
   r2._nl=j.nl||1; r2._enl=j.enl||null; r2._lp=j.lp||null; r2._pc=j.pc||null;
   S.trCache[ck]=r2; tmAdd('s',j.text,r2.vi,r2.speaker||'',(r2.gender||'').toLowerCase(),via2);
@@ -5334,7 +5352,7 @@ async function translateText(j){
     if(S.via==='free') countFree();
     rememberSents(j.text);
     log('dịch ('+S.via+', '+S.perf.t+'ms): '+(res?res.vi:'(trống)'));
-    if(res){ res._nl=j.nl||1; res._enl=j.enl||null; res._lp=j.lp||null; res._pc=j.pc||null; }
+    if(res){ res._nl=j.nl||1; res._enl=j.enl||null; res._lp=j.lp||null; res._pc=j.pc||null; res._t0=j.t0; res._tq=j.tq; res._tr=Date.now(); res._via=S.via; }
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
@@ -5484,6 +5502,7 @@ async function ocrStep(m,force){
   S.ocrBusy=true;
   ocv.width=cap.width; ocv.height=cap.height; ocx2.drawImage(cap,0,0);             /* the next tick redraws cap while we read */
   var o;
+  S.readT0=Date.now();   /* when this reading of the subtitle area began: a new line was first seen about then */
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(dictFix(ocrText(o)));
@@ -5521,8 +5540,9 @@ function ocrTake(txt,force){
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
   if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
-    if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now()}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
+    if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now(),t0:S.readT0}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
   }
+  var seenAt=S.cand&&S.cand.t0?S.cand.t0:(S.readT0||Date.now());
   S.cand=null; S.lastOcr=txt;
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); return; }
@@ -5534,7 +5554,7 @@ function ocrTake(txt,force){
   log('đọc được: '+part);
   if(viMode()){ viRead(part); return; }
   coverWait();
-  enqueue(part);
+  enqueue(part,seenAt);
 }
 /* ---------- only subtitles in the subtitle area ----------
    Titles, menu items and button labels ("BLACK MYTH", "Press Any Button", "Customize Controls", "Tùy chọn") are not
@@ -6900,7 +6920,7 @@ function reportVer(){ return (D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần m�
 function reportText(){
   var ver=reportVer();
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
-    'Game: '+$('hsGame').value, 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
+    'Game: '+$('hsGame').value, 'Tốc độ dịch (từ lúc thấy chữ tới lúc hiện): '+speedSum(), 'Mã Gemini: '+gKeys().length+' mã'+(vipOn()?' + VIP':'')+', mã Groq: '+groqKeys().length+' mã (đã che)', 'Cách đọc: '+readMode()+(ocrOn()?' (bộ đọc chữ sẵn sàng)':''),
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length,
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
