@@ -3218,6 +3218,8 @@ function voApply(el,vl){
   el.style.padding='.1em .45em'; el.style.borderRadius='8px'; el.style.lineHeight='1.5'; el.style.webkitBoxDecorationBreak='clone'; el.style.boxDecorationBreak='clone';
 }
 function voWrap(html){ return '<span class="vo-line">'+html+'</span>'; }
+/* the previous speaker's line, dimmed above the new one: off (the user wants the old line gone when the next speaker talks) */
+var PREV_DIM=false;
 function show(res,quiet){
   var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
   var multi=!!(res._lp&&res._lp.length>1&&res._lp[res._lp.length-1]>0);   /* several people talking at once: always line by line */
@@ -3250,8 +3252,8 @@ function show(res,quiet){
   /* several people talking: the line before stays above, dimmed, so who said what first is clear (the newest at the
      bottom, bright). Only right after it (8 s) and when someone else speaks or nobody is named. */
   var pr=null;
-  if(!quiet&&!vl&&S.prevLine&&Date.now()-S.prevLine.at<8000&&S.prevLine.en!==en&&(!(who||S.prevLine.who)||who.toLowerCase()!==String(S.prevLine.who).toLowerCase())) pr=S.prevLine;
-  if(quiet&&S.prevShown&&Date.now()-S.prevShown.at<8000) pr=S.prevShown;   /* a corrected line keeps the one above it */
+  if(PREV_DIM&&!quiet&&!vl&&S.prevLine&&Date.now()-S.prevLine.at<8000&&S.prevLine.en!==en&&(!(who||S.prevLine.who)||who.toLowerCase()!==String(S.prevLine.who).toLowerCase())) pr=S.prevLine;
+  if(PREV_DIM&&quiet&&S.prevShown&&Date.now()-S.prevShown.at<8000) pr=S.prevShown;   /* a corrected line keeps the one above it */
   if(!quiet){ S.prevShown=pr; S.prevLine={en:en,vi:vi,who:who,html:html,at:Date.now(),col:ch&&ch.c||''}; }
   var html0=html; if(pr) html='<div class="hs-prev">'+pr.html+'</div>'+html;
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=vl?voWrap(html):html; if(vl) voApply($('hsVi').firstChild,vl);
