@@ -728,7 +728,6 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <button class="hs-btn" id="hsPick2" type="button" disabled title="Chọn lại nguồn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a8 8 0 0 0 14 2M19 9A8 8 0 0 0 5 7"/></svg><span>Đổi nguồn</span></button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
-                <button class="hs-btn hs-dk hs-off" id="hsPsMute" type="button" aria-pressed="false" title="Tắt hoặc bật tiếng game phát trên máy này (phím M khi đang chơi)">Tắt tiếng game</button>
                 <span class="hs-dk hs-off dk-q" id="hsPlayQW" title="Hình giật, trễ hoặc hay đứng: chọn thấp hơn. Mạng dây, máy mạnh: chọn nét cao. Đổi xong Hóng Sub tự kết nối lại."><label for="hsPlayQ">Chất lượng hình</label><select class="hs-in" id="hsPlayQ"></select></span>
                 <button class="hs-btn hs-web" id="hsPip" type="button" disabled title="Cửa sổ nhỏ luôn nằm trên game, hiện phụ đề tiếng Việt"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg><span>Cửa sổ nổi</span></button>
               </div>
@@ -759,7 +758,6 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                 <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
-                <label class="hs-sw">Tắt tiếng game (khi chơi PS5 / PS4 trong Hóng Sub) <input type="checkbox" id="hsGameMute"></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
@@ -1606,13 +1604,17 @@ async function init(base,ortBase){
     ort=window.ort;
     ort.env.wasm.wasmPaths=ORT;
     ort.env.wasm.numThreads=(self.crossOriginIsolated&&navigator.hardwareConcurrency)?Math.min(4,navigator.hardwareConcurrency):1;
+    /* the reader runs in its own worker when its files come from this app (computer, phone): reading a busy screen
+       took up to 1.5 s of the page at a time, and the PS picture stood still meanwhile ("Hình từ máy PS bị đứng") */
+    try{ ort.env.wasm.proxy=new URL(ORT).origin===location.origin&&typeof Worker!=='undefined'; }catch(e){ ort.env.wasm.proxy=false; }
     var opt={executionProviders:['wasm'],graphOptimizationLevel:'all'};
     var r=await Promise.all([
       fetch(BASE+'det.onnx').then(function(x){if(!x.ok) throw new Error('det '+x.status); return x.arrayBuffer();}),
       fetch(BASE+'rec.onnx').then(function(x){if(!x.ok) throw new Error('rec '+x.status); return x.arrayBuffer();}),
       fetch(BASE+'keys.txt').then(function(x){if(!x.ok) throw new Error('keys '+x.status); return x.text();})
     ]);
-    det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt);
+    try{ det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt); }
+    catch(e){ if(!ort.env.wasm.proxy) throw e; ort.env.wasm.proxy=false; det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt); }   /* no worker: on the page as before */
     rec=await ort.InferenceSession.create(new Uint8Array(r[1]),opt);
     chars=['']; r[2].split(/\r?\n/).forEach(function(c){ if(c!=='') chars.push(c); }); chars.push(' ');
     base0={rec:rec,chars:chars};
@@ -2463,7 +2465,7 @@ function camAudioPlay(st){
     if(!st||!st.getAudioTracks().length) return;
     if(!PS.actx) PS.actx=new AudioContext({sampleRate:48000,latencyHint:'interactive'});
     if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
-    var src=PS.actx.createMediaStreamSource(st); src.connect(psOut());   /* "Tắt tiếng game" works here too */
+    var src=PS.actx.createMediaStreamSource(st); src.connect(psOut());
     if(PS.vtap) src.connect(PS.vtap);                                     /* the voice reader hears the characters */
     S.camSrc=src;
     st.getAudioTracks()[0].addEventListener('ended',function(){ if(S.camSrc===src){ try{ src.disconnect(); }catch(e){} S.camSrc=null; } });
@@ -3795,6 +3797,9 @@ function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.app
      (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
      hides the English like the dark box on the picture */
   else if(o.cov){ o.cspot=1; o.cal='c'; o.cfs=48; }
+  /* not over the English: the Vietnamese sits right above the game's own subtitle (like on the computer), not at the
+     TV's fixed place where the two lines ran over each other */
+  if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; }
   if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
@@ -3833,7 +3838,7 @@ function relayPack(o){
   /* an area box (screen text, an area's paragraph): the subtitle's own settings that ride along on every message
      (its cover, colours, size, volume...) go first; the box's place, size and colours stay */
   var drop=o.kind==='zone'&&o.zid?['cov','cspot','cal','cfs','cn','vol','wid','col','bg','sen','hdmi','font','pc','appv','name','en','zv','zic','zfit','zs']:['name','pc','en','zv','zic','appv','zfit','zs','font'];
-  if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
+  if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','abv','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
   drop.forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
   if(s.length>600&&x.zgrow&&x.zmaxw!=null&&x.zx===x.x&&x.zw===x.w){ ['zx','zy','zw','zh'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* the box's own place as its room: the TV gets the same from zmaxw */
   if(s.length<=600) b.en=s;
@@ -4816,6 +4821,12 @@ function subBoxFrom(o,W,H){
   S.subBox={x:x1/W,y:y1/H,w:(x2-x1)/W,h:(y2-y1)/H,lh:lh/H,n:L.length,al:linesAlign(L,W)||'c',at:Date.now()};
 }
 /* the place of the Vietnamese line on the picture: the original text with a little room around it, or the drawn area */
+/* where the game's subtitle lines are now (the lines found lately), else the subtitle area */
+function subAbove(){
+  var R0=S.region; if(!R0) return null; var b=S.subBox;
+  if(!b||Date.now()-b.at>60000) return {x:R0.x,y:R0.y,w:R0.w,h:R0.h};
+  return {x:R0.x+b.x*R0.w,y:R0.y+b.y*R0.h,w:b.w*R0.w,h:b.h*R0.h};
+}
 function subRect(){
   var R0=S.region; if(!R0) return null;
   var b=S.subBox;
@@ -6016,16 +6027,74 @@ function fsWorth(it){
 function fsSentOnly(){ var c=$('hsFsSent'); return c?c.checked:load('fsSent',true); }
 var GLOSS_UI_N={}; (function(){ for(var k in GLOSS_UI) if(GLOSS_UI.hasOwnProperty(k)) GLOSS_UI_N[glossNorm(k)]=1; })();
 function fsDraw(){
-  var b=videoBox(), html='';
-  S.fs.items.forEach(function(it){
-    if(!it.vi||!fsWorth(it)) return;
-    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w);
-    html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.7))+'px;font-family:'+subFont().replace(/"/g,"'")+'">'+fsHtml(it)+'</div>';
+  var b=videoBox(), html='', view=S.fs.on?fsView(S.fs.items):[];
+  view.forEach(function(it){
+    var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), same=it.vi.split('\n').length===String(it.en||'').split('\n').length;
+    html+='<div class="hs-fsb" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;width:'+W+'px;height:'+fsBoxH(it,b.h)+'px'+(same?';white-space:nowrap':'')+';font-size:'+Math.max(10,Math.round(it.lh*b.h*0.7))+'px;font-family:'+subFont().replace(/"/g,"'")+'">'+fsHtml(it)+'</div>';
   });
   fsLayer.innerHTML=html; fsLayer.hidden=!S.fs.on||!html;
-  /* shrink text that does not fit its box */
-  [].forEach.call(fsLayer.children,function(el){ var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6; while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; } });
+  /* shrink text that does not fit its box: never taller or wider than the box, so never over the next one */
+  [].forEach.call(fsLayer.children,function(el){ fsFit(el,7); });
+  fsUntangle(fsLayer);
   fsOverlaySync();
+}
+/* ---------- boxes never cover each other ----------
+   The screen is read twice (whole and the changed part) and again later, so one paragraph can come as one box and
+   as its single lines, or a box can reach a little into its neighbour. Before anything is drawn (here, the window
+   over the computer screen, the phone, the TV):
+   - the same text read twice (a paragraph and one of its lines, a part of it): the fuller reading stays, the other goes;
+   - a box mostly under another one goes;
+   - two different texts that only touch share the space: each loses half of the overlap, on the side they meet.
+   Each box also knows how much empty room there is under it ("gb"), so the Vietnamese may take a little more height
+   only where nothing is below. */
+function fsArea(v){ return v.w*v.h; }
+function fsNoOverlap(list){
+  var V=list.map(function(it,i){ return {it:it,i:i,x:it.x,y:it.y,w:it.w,h:it.h}; });
+  var ord=V.slice().sort(function(a,b){ var la=norm(a.it.en).length, lb=norm(b.it.en).length; return lb-la||fsArea(b)-fsArea(a)||b.i-a.i; });
+  var keep=[];
+  ord.forEach(function(c){
+    for(var i=0;i<keep.length&&!c.drop;i++){ var k=keep[i];
+      var ix=Math.min(c.x+c.w,k.x+k.w)-Math.max(c.x,k.x), iy=Math.min(c.y+c.h,k.y+k.h)-Math.max(c.y,k.y);
+      if(ix<=0.001||iy<=0.001) continue;
+      var frac=ix*iy/Math.max(1e-6,Math.min(fsArea(c),fsArea(k))), ce=norm(c.it.en), ke=norm(k.it.en);
+      if(frac>0.45||ke.indexOf(ce)>=0||flWordsIn(c.it.en,k.it.en)>=0.6||dice(c.it.en,k.it.en)>0.6){ c.drop=true; break; }
+      if(iy/Math.min(c.h,k.h)<=ix/Math.min(c.w,k.w)){ var cy=iy/2+0.0008; if(c.y<k.y){ c.h-=cy; k.y+=cy; k.h-=cy; } else { k.h-=cy; c.y+=cy; c.h-=cy; } }
+      else { var cx=ix/2+0.0008; if(c.x<k.x){ c.w-=cx; k.x+=cx; k.w-=cx; } else { k.w-=cx; c.x+=cx; c.w-=cx; } }
+      if(c.h<0.006||c.w<0.012) c.drop=true;
+    }
+    if(!c.drop) keep.push(c);
+  });
+  keep.sort(function(a,b){ return a.i-b.i; });
+  return keep.map(function(v){
+    var o=v.x===v.it.x&&v.y===v.it.y&&v.w===v.it.w&&v.h===v.it.h?v.it:Object.create(v.it);
+    if(o!==v.it){ o.x=v.x; o.y=v.y; o.w=v.w; o.h=v.h; o.lh=Math.min(v.it.lh||v.h,v.h/Math.max(1,String(v.it.en||'').split('\n').length)*1.05); }
+    var gb=Infinity;
+    keep.forEach(function(k){ if(k===v) return; var ix=Math.min(v.x+v.w,k.x+k.w)-Math.max(v.x,k.x); if(ix>0.002&&k.y>=v.y+v.h-0.001) gb=Math.min(gb,k.y-(v.y+v.h)); });
+    o.gb=gb; return o;
+  });
+}
+/* what is drawn of a list of boxes: with a translation, worth showing, not over another box */
+function fsView(src){ fsTint(src); return fsNoOverlap(src.filter(function(it){ return it.vi&&fsWorth(it); })); }
+/* the height a box may take: its own, a little more (letters with marks above) only into empty room below */
+function fsBoxH(it,bh){ var h=it.h*bh, more=Math.min(h*0.15+6,it.gb===Infinity||it.gb==null?1e9:Math.max(0,it.gb*bh-2)); return h+more; }
+/* letters smaller until the text fits its box; lines kept as lines while possible, wrapped only as the last resort */
+function fsFit(el,minF){
+  var f=parseFloat(el.style.fontSize); minF=minF||7;
+  function over(){ return el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1; }
+  while(f>minF&&over()){ f--; el.style.fontSize=f+'px'; }
+  if(over()&&el.style.whiteSpace==='nowrap'){ el.style.whiteSpace='normal'; el.style.wordBreak='break-word'; while(f>minF&&over()){ f--; el.style.fontSize=f+'px'; } }
+}
+/* the last check on the page itself: two drawn boxes that still touch (a label widened sideways) go back to their own
+   width; if they still touch, the smaller one is not shown */
+function fsUntangle(layer){
+  var kids=[].filter.call(layer.children,function(el){ return !el.dataset.rot; });
+  function hit(a,b){ var r=a.getBoundingClientRect(), q=b.getBoundingClientRect(); return Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1; }
+  for(var i=0;i<kids.length;i++) for(var j=i+1;j<kids.length;j++){
+    var a=kids[i], b=kids[j]; if(a.dataset.gone||b.dataset.gone||!hit(a,b)) continue;
+    [a,b].forEach(function(el){ if(el.dataset.one&&el.offsetWidth>+el.dataset.w+1){ var f=parseFloat(el.style.fontSize), W=+el.dataset.w, L=+el.dataset.l;
+      while(f>7&&el.offsetWidth>W){ f--; el.style.fontSize=f+'px'; } var ow=el.offsetWidth, al=el.dataset.al; el.style.left=(al==='r'?L+W-ow:al==='l'?L:L+W/2-ow/2)+'px'; } });
+    if(hit(a,b)){ var s=a.offsetWidth*a.offsetHeight<b.offsetWidth*b.offsetHeight?a:b; s.dataset.gone='1'; s.style.visibility='hidden'; }
+  }
 }
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
 /* the colours of the original text and its background, read from the picture (once per box) */
@@ -6096,11 +6165,12 @@ function fsSnap1(el,it,raw){
 }
 function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
-  fsTint(src);
-  var list=src.filter(function(it){return it.vi&&fsWorth(it);}).map(function(it){var ic=it.ic&&it.ic.length; return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
+  var lay0=S.fs.on?fsLayer:flLayer, kids0=lay0&&!lay0.hidden?lay0.children:[], view=fsView(src);
+  if(kids0.length===view.length) view=view.filter(function(it,i){ return !kids0[i].dataset.gone; });   /* a box the page could not fit without covering another is not sent either */
+  var list=view.map(function(it){var ic=it.ic&&it.ic.length; return {x:it.x,y:it.y,w:it.w,h:it.h,lh:it.lh,gb:it.gb===Infinity?1:it.gb,vi:ic?zIcText(it.vi,it.ic,''):it.vi,html:ic?fsHtml(it):'',bg:it.bg||'',fg:it.fg||'',al:it.al||'',en:it.en||'',cl:it.cl,cr:it.cr};});
   var k=JSON.stringify(on?list:null); if(k===S.fsOvK) return; S.fsOvK=k;
   if(on&&(tvIp()||tvCode().length>=4)){   /* the TV gets each box as the picture drawn here: the same letters, lines and colours */
-    var lay=S.fs.on?fsLayer:flLayer, kids=lay&&!lay.hidden?lay.children:[];
+    var lay=S.fs.on?fsLayer:flLayer, kids=lay&&!lay.hidden?[].filter.call(lay.children,function(el){ return !el.dataset.gone; }):[];
     if(kids.length===list.length) list.forEach(function(it,i){ try{ it.snap=fsSnap(kids[i],it); }catch(e){ it.snap=null; } });
   }
   if(PH){ try{ PH.full(JSON.stringify(on?{items:list,font:subFontKey()}:null)); }catch(e){} }
@@ -6460,9 +6530,8 @@ function mapTrOn(){ var c=$('hsMapTr'); return c?c.checked:load('mapTr',true); }
 function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn())||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
 function flStop(){ if(!S.fl.on&&!S.fl.items.length) return; S.fl.on=false; S.fl.seq++; S.fl.busy=false; WT?WT.clear(S.fl.timer):clearTimeout(S.fl.timer); S.fl.items=[]; flDraw(); }
 function flDraw(){
-  var b=videoBox(), html='', show=S.fl.on&&!S.fs.on;
-  if(show) S.fl.items.forEach(function(it){
-    if(!it.vi||!fsWorth(it)) return;
+  var b=videoBox(), html='', show=S.fl.on&&!S.fs.on, view=show?fsView(S.fl.items):[];
+  view.forEach(function(it){
     var tr=fsTurn(it);
     if(tr){   /* a turned text (a phone held at an angle): a box of the same shape, turned the same way, over it */
       var TW=tr.w*b.w, TH=tr.h*b.h, same=it.vi.split('\n').length===it.en.split('\n').length;
@@ -6472,23 +6541,24 @@ function flDraw(){
     var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), one=it.en.indexOf('\n')<0&&it.vi.indexOf('\n')<0;
     /* a one-line label ("EXIT", "ADD MARKER") stays on one line: the Vietnamese is longer, so the box grows sideways
        (to the left for a list lined up on the right) instead of wrapping into tiny letters */
-    var fr=one?fsFree(it,S.fl.items):null, room=fr?Math.min(W*1.12+8,W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w):0;
+    var fr=one?fsFree(it,view):null, room=fr?Math.min(W*1.12+8,W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w):0;
     if(fr&&fsCell(it)) room=W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w;   /* a tab or button: its own frame */
-    html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-room="'+room+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px'+(it.vi.split('\n').length===it.en.split('\n').length?';white-space:nowrap':''))+';min-height:'+(it.h*b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+fsHtml(it)+'</div>';
+    html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-room="'+room+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px'+(it.vi.split('\n').length===it.en.split('\n').length?';white-space:nowrap':''))+';height:'+fsBoxH(it,b.h)+'px;font-size:'+Math.max(10,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+fsHtml(it)+'</div>';
   });
   flLayer.innerHTML=html; flLayer.hidden=!html;
   [].forEach.call(flLayer.children,function(el){
-    var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6;
+    var f=parseFloat(el.style.fontSize);
     if(el.dataset.rot){ var inn=el.firstChild, H0=el.clientHeight+1; while(f>8&&(inn.scrollHeight>H0||inn.scrollWidth>el.clientWidth-4)){ f--; el.style.fontSize=f+'px'; } return; }
     if(el.dataset.one){
       var W=+el.dataset.w, L=+el.dataset.l, maxW=Math.max(W,+el.dataset.room||W*1.12+8);   /* the size of the original (or its tab's frame), never over the next label: smaller letters rather than spilling over it */
-      while(f>9&&el.offsetWidth>maxW){ f--; el.style.fontSize=f+'px'; }
+      while(f>7&&(el.offsetWidth>maxW||el.scrollHeight>el.clientHeight+1)){ f--; el.style.fontSize=f+'px'; }
       var ow=el.offsetWidth, al=el.dataset.al, x=al==='r'?L+W-ow:al==='l'?L:L+W/2-ow/2;
       el.style.left=Math.max(b.l,Math.min(b.l+b.w-ow,x))+'px';
       return;
     }
-    while(f>9&&(el.scrollHeight>h||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; }
+    fsFit(el,7);
   });
+  fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
@@ -6587,7 +6657,8 @@ async function flRead(my){
   finally{ S.ocrBusy=false; }
   if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
   if(guardOn()&&S.running){ var gk=guardKind([].concat.apply([],all.map(function(b){ return b.en.split('\n'); })));   /* the whole picture: the PS5 or PS4 home screen, the store, settings, or a map */
-    if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
+    if(gk==='map'&&mapTrOn()) guardSet('map');   /* the game map with "Dịch bản đồ game" on: its text is translated (the place names stay), not dropped */
+    else if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
   all=fsSplitWins(all); all.sort(fsDupOrder);
   var blocks=[];
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsDup(k,b); })) blocks.push(b); });
@@ -6597,7 +6668,7 @@ async function flRead(my){
   S.fl.seen=blocks.slice(0,40);
   blocks.forEach(function(b){
     if(flSkip(b)||flStill(b)<0.7) return;                       /* moving things (signs going past) are not read */
-    var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
+    var same=S.fl.items.filter(function(it){ var o=fsOverlap(it,b); return o>0.15||o>0.03&&(flWordsIn(it.en,b.en)>=0.3||flWordsIn(b.en,it.en)>=0.3); });   /* an older box under the new one (the page scrolled), or one with the same words that the new one reaches into (read a little off before): it goes */   /* an older box under the new one (the page scrolled): it goes */
     if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0||flWordsIn(b.en,it.en)>=0.75&&fsOverlap(it,b)>0.4; })) return;   /* already on screen (also read as one line or two, or only part of it this time) */   /* already on screen (also read as one line or two) */
     if(same.length) S.fl.items=S.fl.items.filter(function(it){ return same.indexOf(it)<0; });
     b.sig=flPatch(g2,b);
@@ -7758,7 +7829,18 @@ function psFreezeTick(){
   var now=Date.now(), fr=now-(PS.lastFr||now), pk=now-(PS.lastPk||now);
   if(fr<2500){ if(PS.frz) log('PS: hình chạy lại'); PS.frz=0; return; }
   PS.frz=(PS.frz||0)+1;
-  if(PS.frz===1){ log('PS: hình đứng '+Math.round(fr/100)/10+' giây (gói hình gần nhất: '+Math.round(pk/100)/10+' giây trước), xin hình mới'); PS.lastIdr=0; psIdr(); status('busy','Hình từ máy PS bị đứng, đang lấy lại hình...'); }
+  if(PS.frz===1){ log('PS: hình đứng '+Math.round(fr/100)/10+' giây (gói hình gần nhất: '+Math.round(pk/100)/10+' giây trước), xin hình mới'); PS.lastIdr=0; psIdr(); status('busy','Hình từ máy PS bị đứng, đang lấy lại hình...');
+    /* "nét cao" (30 Mbps) is more than the home network carries: the picture keeps standing still. After 3 times in
+       3 minutes Hóng Sub goes back to 15 Mbps by itself and connects again (a few seconds), and says so. */
+    var q30=(PS.q?+PS.q.br:+((($('hsPsQ')&&$('hsPsQ').value)||'').split('/')[2]||0))>=30000;
+    S.frz30=(S.frz30||[]).filter(function(t){ return now-t<180000; }); if(q30) S.frz30.push(now);
+    if(q30&&S.frz30.length>=3&&PS.last){ S.frz30=[]; var hq=PS.last;
+      save('psq','1080/60/15000'); save('psq15',true); if($('hsPsQ')) $('hsPsQ').value='1080/60/15000';
+      var tq='Hình đứng nhiều lần ở chất lượng nét cao (30 Mbps): mạng nhà không kịp. Hóng Sub đã chuyển về 15 Mbps và đang kết nối lại.';
+      log('PS: '+tq); status('busy',tq); psMsg('ok',tq); tvNotice('Hóng Sub chuyển về chất lượng hình 15 Mbps cho mượt hơn');
+      PS.frz=0; PS.retrying=true; try{ DPS.stop(false); }catch(e){} psStopView(); PS.retrying=true;
+      setTimeout(function(){ psPlay(hq,PS.q?{res:1080,fps:60,br:15000}:null); },2500); return; }
+  }
   if(PS.frz===3){ log('PS: mở lại bộ giải hình'); if(PS.dec){ try{PS.dec.close();}catch(e){} } PS.dec=null; PS.waitKey=true; if(pk<1500) PS.sw=!PS.sw; PS.lastIdr=0; psIdr(); }
   if(PS.frz>=7){
     PS.frz=0; var h=PS.last; if(!h) return;
@@ -7773,14 +7855,13 @@ function psFreezeTick(){
   }
 }
 setInterval(psFreezeTick,1000);
-/* "Tắt tiếng game": the game's sound goes through one volume knob, turned to 0 or back (reading aloud is not affected) */
-function gameMuted(){ return !!load('gameMute',false); }
+/* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
+   sound back) */
+function gameMuted(){ return false; }
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.again.connect(PS.actx.destination); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 function gameMuteSet(on){
   save('gameMute',!!on);
   if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(on?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=on?0:1; }
-  var b=$('hsPsMute'); if(b){ b.textContent=on?'Bật tiếng game':'Tắt tiếng game'; b.setAttribute('aria-pressed',on?'true':'false'); b.classList.toggle('on',!!on); }
-  var c=$('hsGameMute'); if(c) c.checked=!!on;
 }
 function playQSync(){ var a=$('hsPsQ'), b=$('hsPlayQ'); if(!a||!b) return; if(b.options.length!==a.options.length) b.innerHTML=a.innerHTML; b.value=a.value; }
 /* The PS refused the session at once and said why (RP-Application-Reason). A lower quality does not help: tell the
@@ -7881,7 +7962,7 @@ function psStartView(){
   PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
   if(window.hsGo&&!(D&&D.selftest)) hsGo('choi');
   S.offlineDemo=false; setStream(PS.stream,null);
-  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
+  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
   psPadStart();
 }
 function psStopView(){
@@ -7891,7 +7972,7 @@ function psStopView(){
   if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; } PS.lastAh=null;
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
-  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
+  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
   if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
   PS.host=null;
 }
@@ -8014,7 +8095,6 @@ function psPadPoll(){
 }
 function psKey(e,down){
   if(!PS.host||($('hsPsWatch')&&$('hsPsWatch').checked)) return; var t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
-  if(down&&e.code==='KeyM'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); gameMuteSet(!gameMuted()); return; }   /* M: game sound off / on */
   if(KEY_BTN[e.code]){ e.preventDefault(); e.stopPropagation(); PS.keys[e.code]=down; }
 }
 function psPadStart(){ psPadStop(); PS.padTimer=setInterval(psPadPoll,8); }
@@ -8062,9 +8142,7 @@ function psInit(){
     setTimeout(function(){ psPlay(h); },1800);
   });
   $('hsPsQ').addEventListener('change',playQSync);
-  $('hsPsMute').addEventListener('click',function(){ gameMuteSet(!gameMuted()); status('run',gameMuted()?'Đã tắt tiếng game':'Đã bật tiếng game'); later(function(){ if(S.running) runStatus(); },2000); });
-  if($('hsGameMute')) $('hsGameMute').addEventListener('change',function(){ gameMuteSet(this.checked); });
-  gameMuteSet(gameMuted());
+  gameMuteSet(false);
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});

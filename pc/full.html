@@ -19,13 +19,21 @@ span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.
     var W=window.innerWidth, H=window.innerHeight;
     d.items.forEach(function(it){
       var el=document.createElement('div'); el.className='b';
-      var L=it.x*W, w=Math.max(24,it.w*W); el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.minHeight=(it.h*H)+'px'; if(d.font) el.style.fontFamily=d.font; if(it.bg){ el.style.background=it.bg; el.style.boxShadow='none'; } if(it.fg) el.style.color=it.fg;
+      var L=it.x*W, w=Math.max(24,it.w*W), h=it.h*H, gb=it.gb==null?1:it.gb; el.style.left=L+'px'; el.style.top=(it.y*H)+'px'; el.style.width=w+'px'; el.style.height=(h+Math.min(h*0.15+6,Math.max(0,gb*H-2)))+'px';   /* the box's own size (a little taller only into empty room below): never over the next box */
+      if(String(it.vi||'').split('\n').length===String(it.en||'').split('\n').length) el.style.whiteSpace='nowrap'; if(d.font) el.style.fontFamily=d.font; if(it.bg){ el.style.background=it.bg; el.style.boxShadow='none'; } if(it.fg) el.style.color=it.fg;
       var f=Math.max(10,Math.round(it.lh*H*0.7)); el.style.fontSize=f+'px';
       el.innerHTML=it.html&&/^[^<]*(?:<(?:br|img class="hs-key" src="data:image\/[a-z]+;base64,[A-Za-z0-9+\/=]+" alt="[^"<>]*"|span class="hs-key")>[^<]*(?:<\/span>[^<]*)?)*$/.test(it.html)?it.html:esc(it.vi).replace(/\n/g,'<br>');   /* with the controller button pictures: only Hóng Sub's own markup */
       root.appendChild(el);
       /* Vietnamese is often longer: shrink until it fits about the space of the English */
-      var maxH=it.h*H*1.15+6; while(f>9&&(el.scrollHeight>maxH||el.scrollWidth>el.clientWidth+1)){ f--; el.style.fontSize=f+'px'; }
+      function over(){ return el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1; }
+      while(f>7&&over()){ f--; el.style.fontSize=f+'px'; }
+      if(over()&&el.style.whiteSpace==='nowrap'){ el.style.whiteSpace='normal'; while(f>7&&over()){ f--; el.style.fontSize=f+'px'; } }
     });
+    /* two boxes that still touch: the smaller one is not shown */
+    var ks=[].slice.call(root.children);
+    for(var i=0;i<ks.length;i++) for(var j=i+1;j<ks.length;j++){ var r=ks[i].getBoundingClientRect(), q=ks[j].getBoundingClientRect();
+      if(ks[i].style.visibility==='hidden'||ks[j].style.visibility==='hidden') continue;
+      if(Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1){ (r.width*r.height<q.width*q.height?ks[i]:ks[j]).style.visibility='hidden'; } }
   });
 })();
 </script>
