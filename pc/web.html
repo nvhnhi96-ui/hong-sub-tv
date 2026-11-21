@@ -5718,7 +5718,8 @@ async function flRead(my){
   finally{ S.ocrBusy=false; }
   if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
   if(guardOn()&&S.running){ var gk=guardKind([].concat.apply([],all.map(function(b){ return b.en.split('\n'); })));   /* the whole picture: the PS5 or PS4 home screen, the store, settings, or a map */
-    if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
+    if(gk==='map'&&mapTrOn()) guardSet('map');   /* the game map with "Dịch bản đồ game" on: its text is translated (the place names stay), not dropped */
+    else if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
   all=fsSplitWins(all); all.sort(fsDupOrder);
   var blocks=[];
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsDup(k,b); })) blocks.push(b); });
