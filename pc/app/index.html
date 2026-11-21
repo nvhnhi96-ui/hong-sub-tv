@@ -609,7 +609,6 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <button class="hs-btn" id="hsPick2" type="button" disabled title="Chọn lại nguồn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a8 8 0 0 0 14 2M19 9A8 8 0 0 0 5 7"/></svg><span>Đổi nguồn</span></button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
-                <button class="hs-btn hs-dk hs-off" id="hsPsMute" type="button" aria-pressed="false" title="Tắt hoặc bật tiếng game phát trên máy này (phím M khi đang chơi)">Tắt tiếng game</button>
                 <span class="hs-dk hs-off dk-q" id="hsPlayQW" title="Hình giật, trễ hoặc hay đứng: chọn thấp hơn. Mạng dây, máy mạnh: chọn nét cao. Đổi xong Hóng Sub tự kết nối lại."><label for="hsPlayQ">Chất lượng hình</label><select class="hs-in" id="hsPlayQ"></select></span>
                 <button class="hs-btn hs-web" id="hsPip" type="button" disabled title="Cửa sổ nhỏ luôn nằm trên game, hiện phụ đề tiếng Việt"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg><span>Cửa sổ nổi</span></button>
               </div>
@@ -640,7 +639,6 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
-                <label class="hs-sw">Tắt tiếng game (khi chơi PS5 / PS4 trong Hóng Sub) <input type="checkbox" id="hsGameMute"></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
@@ -2348,7 +2346,7 @@ function camAudioPlay(st){
     if(!st||!st.getAudioTracks().length) return;
     if(!PS.actx) PS.actx=new AudioContext({sampleRate:48000,latencyHint:'interactive'});
     if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
-    var src=PS.actx.createMediaStreamSource(st); src.connect(psOut());   /* "Tắt tiếng game" works here too */
+    var src=PS.actx.createMediaStreamSource(st); src.connect(psOut());
     if(PS.vtap) src.connect(PS.vtap);                                     /* the voice reader hears the characters */
     S.camSrc=src;
     st.getAudioTracks()[0].addEventListener('ended',function(){ if(S.camSrc===src){ try{ src.disconnect(); }catch(e){} S.camSrc=null; } });
@@ -7669,14 +7667,13 @@ function psFreezeTick(){
   }
 }
 setInterval(psFreezeTick,1000);
-/* "Tắt tiếng game": the game's sound goes through one volume knob, turned to 0 or back (reading aloud is not affected) */
-function gameMuted(){ return !!load('gameMute',false); }
+/* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
+   sound back) */
+function gameMuted(){ return false; }
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.again.connect(PS.actx.destination); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 function gameMuteSet(on){
   save('gameMute',!!on);
   if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(on?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=on?0:1; }
-  var b=$('hsPsMute'); if(b){ b.textContent=on?'Bật tiếng game':'Tắt tiếng game'; b.setAttribute('aria-pressed',on?'true':'false'); b.classList.toggle('on',!!on); }
-  var c=$('hsGameMute'); if(c) c.checked=!!on;
 }
 function playQSync(){ var a=$('hsPsQ'), b=$('hsPlayQ'); if(!a||!b) return; if(b.options.length!==a.options.length) b.innerHTML=a.innerHTML; b.value=a.value; }
 /* The PS refused the session at once and said why (RP-Application-Reason). A lower quality does not help: tell the
@@ -7777,7 +7774,7 @@ function psStartView(){
   PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
   if(window.hsGo&&!(D&&D.selftest)) hsGo('choi');
   S.offlineDemo=false; setStream(PS.stream,null);
-  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
+  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
   psPadStart();
 }
 function psStopView(){
@@ -7787,7 +7784,7 @@ function psStopView(){
   if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; } PS.lastAh=null;
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
-  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
+  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
   if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
   PS.host=null;
 }
@@ -7910,7 +7907,6 @@ function psPadPoll(){
 }
 function psKey(e,down){
   if(!PS.host||($('hsPsWatch')&&$('hsPsWatch').checked)) return; var t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
-  if(down&&e.code==='KeyM'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); gameMuteSet(!gameMuted()); return; }   /* M: game sound off / on */
   if(KEY_BTN[e.code]){ e.preventDefault(); e.stopPropagation(); PS.keys[e.code]=down; }
 }
 function psPadStart(){ psPadStop(); PS.padTimer=setInterval(psPadPoll,8); }
@@ -7958,9 +7954,7 @@ function psInit(){
     setTimeout(function(){ psPlay(h); },1800);
   });
   $('hsPsQ').addEventListener('change',playQSync);
-  $('hsPsMute').addEventListener('click',function(){ gameMuteSet(!gameMuted()); status('run',gameMuted()?'Đã tắt tiếng game':'Đã bật tiếng game'); later(function(){ if(S.running) runStatus(); },2000); });
-  if($('hsGameMute')) $('hsGameMute').addEventListener('change',function(){ gameMuteSet(this.checked); });
-  gameMuteSet(gameMuted());
+  gameMuteSet(false);
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
