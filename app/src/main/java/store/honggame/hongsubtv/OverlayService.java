@@ -70,6 +70,7 @@ public class OverlayService extends Service {
     private final HashMap<String, TextView> zoneViews = new HashMap<>();
     private final HashMap<String, Runnable> zoneOff = new HashMap<>();
     /* a line that arrives two ways is shown once */
+    private GameSound sound;
     private final ArrayDeque<String> mids = new ArrayDeque<>();
     private final ArrayDeque<String> midsImg = new ArrayDeque<>();
     private Prefs prefs;
@@ -194,6 +195,8 @@ public class OverlayService extends Service {
         main.postDelayed(watch, 4000);
         lan = new LanServer(this, prefs, this::handle);
         lan.start();
+        sound = new GameSound();   // the game's sound from the computer while the PS plays through Hóng Sub
+        sound.start();
         Watchdog.arm(this);
         String ip = LanServer.ip();
         showLine("", "Hóng Sub TV đang chờ phụ đề · Mã " + prefs.code() + (ip.isEmpty() ? "" : " · IP " + ip), null, 8000, false);
@@ -223,6 +226,7 @@ public class OverlayService extends Service {
         clipStop();
         if (louder != null) { try { louder.release(); } catch (Exception ignored) { } louder = null; }
         if (lan != null) lan.stop();
+        if (sound != null) sound.stop();
         if (poller != null) poller.interrupt();
         main.removeCallbacksAndMessages(null);
         if (box != null && wm != null) {

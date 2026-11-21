@@ -123,7 +123,8 @@ const api = {
     ping: (ip) => ipcRenderer.invoke('tv-ping', ip),
     send: (ip, msg) => ipcRenderer.invoke('tv-send', ip, msg),
     relay: (msg) => ipcRenderer.invoke('tv-relay', msg),
-    say: (ip, msg) => ipcRenderer.invoke('tv-say', ip, msg)
+    say: (ip, msg) => ipcRenderer.invoke('tv-say', ip, msg),
+    audio: (ip, bytes) => ipcRenderer.send('tv-audio', ip, bytes)
   },
   onFull: (cb) => ipcRenderer.on('full', (e, d) => cb(d)),
   onZone: (cb) => ipcRenderer.on('zone', (e, d) => cb(d)),

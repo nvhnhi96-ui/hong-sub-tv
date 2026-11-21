@@ -866,6 +866,15 @@ function setupIpc() {
   }
   ipcMain.handle('tv-ping', (e, ip) => tvHttp(ip, '/ping'));
   ipcMain.handle('tv-send', (e, ip, msg) => tvHttp(ip, '/sub', msg));
+  /* the game's sound to the Hóng Sub TV app (UDP 8769): the PS's Opus packets, 20 ms a datagram */
+  let audSock = null;
+  ipcMain.on('tv-audio', (e, ip, bytes) => {
+    try {
+      if (!/^\d+\.\d+\.\d+\.\d+$/.test(String(ip || ''))) return;
+      if (!audSock) { audSock = require('dgram').createSocket('udp4'); audSock.on('error', () => { try { audSock.close(); } catch (x) { /* ignore */ } audSock = null; }); }
+      audSock.send(Buffer.from(bytes), 8769, ip, () => {});
+    } catch (x) { /* ignore */ }
+  });
   /* the TV code way, through honggame.store: sent from here so the page's app:// address never meets CORS */
   ipcMain.handle('tv-relay', async (e, msg) => {
     try {

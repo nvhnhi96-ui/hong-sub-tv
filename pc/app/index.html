@@ -639,6 +639,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw dk-only" hidden>Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
+                <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game và giọng đọc tiếng Việt phát ở loa TV (cần app Hóng Sub TV cùng mạng nhà), máy tính im.">Tiếng game và giọng đọc phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
@@ -3828,7 +3829,7 @@ function tvListen(){
   }
   if(ip){
     TVD().ping(ip).then(function(r){
-      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); tvLan(true);
+      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); S.tvAud=!!r.aud; tvLan(true);
         if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ: '+S.tvVer); status('warn','App Hóng Sub TV trên TV là bản cũ. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); tvNotice('App Hóng Sub TV có bản mới: mở app Hóng Sub TV trên TV rồi bấm Cập nhật.'); }
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
@@ -4485,7 +4486,7 @@ function sample(){
 }
 $('hsVoiceTest').addEventListener('click',sample);
 function setSpeak(on){ var c=$('hsSpeak'); c.checked=!!on; save('hsSpeak',c.checked); if(!on) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); c.dispatchEvent(new Event('hs-speak')); status(S.running?'run':'idle',on?'Đã bật đọc phụ đề':'Đã tắt đọc phụ đề'); }
-function speakWhere(){ var w=$('hsSpeakWhere'); return (w&&w.value)||'pc'; }
+function speakWhere(){ var w=$('hsSpeakWhere'), v=(w&&w.value)||'pc'; return v==='pc'&&tvSoundNow()?'tv':v; }   /* the game's sound on the TV: so is the reading */
 /* since when the subtitle on screen has been there (its voice started about then) */
 function subSince(){ var L=S.subLines&&S.subLines[S.subLines.length-1]; return L&&Date.now()-L.from<9000?L.from-600:Date.now()-3500; }
 /* ---------- reading in step with the character ----------
@@ -7738,7 +7739,27 @@ function psFreezeTick(){
 setInterval(psFreezeTick,1000);
 /* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
    sound back) */
-function gameMuted(){ return false; }
+function gameMuted(){ return tvSoundNow(); }
+/* "Tiếng game và giọng đọc phát ở TV": the PS turns its own sound on the TV off while it plays through Remote Play, so
+   the game's sound (the PS's Opus packets, as they come) goes on to the Hóng Sub TV app over the home network and is
+   played there; this computer stays quiet, and reading aloud goes to the TV too. Only when the TV app can play it
+   (answers aud:1) and is reached on the home network; otherwise the sound stays here. */
+function tvSoundOn(){ var c=$('hsTvSound'); return c?c.checked:load('tvSound',true); }
+function tvSoundNow(){ return tvSoundOn()&&S.tvType==='android'&&!!S.tvAud&&S.tvOk===true&&!!tvIp()&&!!(D&&D.tv&&D.tv.audio)&&typeof PS!=='undefined'&&!!PS.host; }
+var TA={q:[],seq:0,t:0,said:false};
+function tvAudioPush(pkt){
+  if(!tvSoundNow()){ TA.q=[]; return; }
+  TA.q.push(pkt);
+  if(TA.q.length>=2){   /* two packets (20 ms) a message */
+    var h=PS.lastAh||{}, n=TA.q.length, len=4+n*2+TA.q.reduce(function(a,p){ return a+p.length; },0), b=new Uint8Array(len), o=4;
+    b[0]=72; b[1]=(h.channels||2); b[2]=(TA.seq>>8)&255; b[3]=TA.seq&255; TA.seq=(TA.seq+1)&65535;
+    TA.q.forEach(function(p){ b[o++]=(p.length>>8)&255; b[o++]=p.length&255; b.set(p,o); o+=p.length; });
+    TA.q=[]; try{ D.tv.audio(tvIp(),b); }catch(e){}
+    if(!TA.said){ TA.said=true; log('tiếng game: phát ở TV ('+(h.channels||2)+' kênh), máy tính im'); }
+  }
+}
+function tvSoundApply(){ if(typeof PS!=='undefined'&&PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(gameMuted()?0:1,PS.actx.currentTime,0.05); }catch(e){} }
+setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); } },1000);
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.again.connect(PS.actx.destination); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 function gameMuteSet(on){
   save('gameMute',!!on);
@@ -7942,6 +7963,7 @@ function psAudio(pkt){
   if((!PS.adec||PS.adec.state!=='configured')&&PS.lastAh&&Date.now()-(PS.aRe||0)>1000){ PS.aRe=Date.now(); psAudioHeader(PS.lastAh); }   /* the decoder stopped: start it again */
   if(!PS.adec||PS.adec.state!=='configured') return;
   if(!pkt||!pkt.length) return;
+  tvAudioPush(pkt instanceof Uint8Array?pkt:new Uint8Array(pkt));
   try{ PS.adec.decode(new EncodedAudioChunk({type:'key',timestamp:(PS.ats+=Math.round(PS.aframe/PS.arate*1e6)),data:pkt})); }catch(e){}
 }
 /* no sound 15 s after the picture came: say so in the log and send a report, so it can be fixed from the shop */
@@ -8024,6 +8046,7 @@ function psInit(){
   });
   $('hsPsQ').addEventListener('change',playQSync);
   gameMuteSet(false);
+  if($('hsTvSound')){ $('hsTvSound').checked=load('tvSound',true); $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game và giọng đọc sẽ phát ở TV':'Tiếng game và giọng đọc phát ở máy tính'); }); }
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
