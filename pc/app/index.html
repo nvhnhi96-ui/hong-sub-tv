@@ -56,7 +56,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
 .hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
-.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:2px;padding:0 3px}
+.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:0;padding:0 3px}.hs-fs .hs-fsb.hs-flb[data-rot]{transform-origin:50% 50%;display:flex;flex-direction:column;justify-content:center}
 .hs-cover{position:absolute;z-index:7;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:4px 12px;background:rgba(6,7,9,.88);border-radius:6px;pointer-events:none;text-align:center}
 .hs-cover[hidden]{display:none}
 .hs-cover>div{color:#fff;font-weight:600;line-height:1.3;text-shadow:0 1px 2px #000;font-family:var(--fb)}
@@ -1537,12 +1537,12 @@ async function detect(src,W,H){
   var out=await det.run({x:new ort.Tensor('float32',t,[1,3,dh,dw])});
   var p=out[det.outputNames[0]].data;
   /* connected regions of the probability map */
-  var lab=new Int32Array(n), boxes=[], stack=new Int32Array(n), id=0;
+  var lab=new Int32Array(n), boxes=[], stack=new Int32Array(n), pix=new Int32Array(n), id=0;
   for(var k=0;k<n;k++){
     if(lab[k]||p[k]<0.3) continue;
     id++; var sp=0, x0=1e9,y0=1e9,x1=-1,y1=-1,sum=0,cnt=0; stack[sp++]=k; lab[k]=id;
     while(sp){
-      var q=stack[--sp], qx=q%dw, qy=(q/dw)|0; sum+=p[q]; cnt++;
+      var q=stack[--sp], qx=q%dw, qy=(q/dw)|0; sum+=p[q]; pix[cnt]=q; cnt++;
       if(qx<x0)x0=qx; if(qx>x1)x1=qx; if(qy<y0)y0=qy; if(qy>y1)y1=qy;
       if(qx>0&&!lab[q-1]&&p[q-1]>=0.3){lab[q-1]=id; stack[sp++]=q-1;}
       if(qx<dw-1&&!lab[q+1]&&p[q+1]>=0.3){lab[q+1]=id; stack[sp++]=q+1;}
@@ -1551,6 +1551,8 @@ async function detect(src,W,H){
     }
     var bw=x1-x0+1, bh=y1-y0+1;
     if(Math.min(bw,bh)<3||sum/cnt<0.5) continue;
+    var rb=bw>bh*3?tilted(pix,cnt,dw,W/dw,H/dh):null;   /* a line on a phone held at an angle: read straightened */
+    if(rb){ boxes.push(rb); continue; }
     var dist=bw*bh*1.6/(2*(bw+bh)); /* "unclip" like DBNet */
     boxes.push({x:(x0-dist)/dw*W, y:(y0-dist)/dh*H, w:(bw+2*dist)/dw*W, h:(bh+2*dist)/dh*H});
   }
@@ -1558,10 +1560,34 @@ async function detect(src,W,H){
   return boxes.filter(function(b){return b.w>4&&b.h>4;});
 }
 
+/* a text line that is not level (a phone in the character's hand, a sign at an angle): its slope from the spread of
+   its pixels, and the turned rectangle around it. Returned box: rot (centre, length, thickness, angle in the picture),
+   and x/y/w/h as if the line were turned level about its centre, so rows and blocks are found as for level text. */
+function tilted(pix,cnt,dw,sx,sy){
+  var mx=0,my=0,i,q,x,y; for(i=0;i<cnt;i++){ q=pix[i]; mx+=(q%dw)*sx; my+=((q/dw)|0)*sy; } mx/=cnt; my/=cnt;
+  var cxx=0,cyy=0,cxy=0; for(i=0;i<cnt;i++){ q=pix[i]; x=(q%dw)*sx-mx; y=((q/dw)|0)*sy-my; cxx+=x*x; cyy+=y*y; cxy+=x*y; }
+  var a=0.5*Math.atan2(2*cxy,cxx-cyy), deg=Math.abs(a*180/Math.PI);
+  if(deg<2||deg>35) return null;
+  var c=Math.cos(a), sn=Math.sin(a), u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+  for(i=0;i<cnt;i++){ q=pix[i]; x=(q%dw)*sx-mx; y=((q/dw)|0)*sy-my; var u=x*c+y*sn, v=-x*sn+y*c; if(u<u0)u0=u; if(u>u1)u1=u; if(v<v0)v0=v; if(v>v1)v1=v; }
+  var px=(sx+sy)/2, L=u1-u0+px, T=v1-v0+px, dist=L*T*1.6/(2*(L+T)), rw=L+2*dist, rh=T+2*dist;
+  var uc=(u0+u1)/2, vc=(v0+v1)/2, cx=mx+uc*c-vc*sn, cy=my+uc*sn+vc*c;
+  return {x:cx-rw/2,y:cy-rh/2,w:rw,h:rh,rot:{a:a,cx:cx,cy:cy,w:rw,h:rh}};
+}
+/* the pixels of a turned rectangle, turned level */
+function pixelsRot(src,r,dw,dh){
+  cv.width=dw; cv.height=dh; cx.setTransform(1,0,0,1,0,0); cx.fillStyle='#000'; cx.fillRect(0,0,dw,dh);
+  cx.imageSmoothingEnabled=true; cx.imageSmoothingQuality='high';
+  cx.translate(dw/2,dh/2); cx.scale(dw/r.w,dh/r.h); cx.rotate(-r.a); cx.translate(-r.cx,-r.cy);
+  cx.drawImage(src,0,0); cx.setTransform(1,0,0,1,0,0);
+  return cx.getImageData(0,0,dw,dh).data;
+}
+
 /* ---- recognition ---- */
 async function recognize(src,b,icons){
   var IH=48, IW=Math.min(1600,Math.max(48,Math.ceil(IH*b.w/b.h/8)*8));
-  var d=pixels(src,b.x,b.y,b.w,b.h,IW,IH), n=IW*IH, t=new Float32Array(3*n);
+  if(b.rot) icons=false;   /* a turned line: the words only */
+  var d=b.rot?pixelsRot(src,b.rot,IW,IH):pixels(src,b.x,b.y,b.w,b.h,IW,IH), n=IW*IH, t=new Float32Array(3*n);
   for(var i=0;i<n;i++){ t[i]=d[i*4+2]/127.5-1; t[n+i]=d[i*4+1]/127.5-1; t[2*n+i]=d[i*4]/127.5-1; }
   var out=await rec.run({x:new ort.Tensor('float32',t,[1,3,IH,IW])});
   var o=out[rec.outputNames[0]], T=o.dims[1], C=o.dims[2], p=o.data;
@@ -1575,7 +1601,7 @@ async function recognize(src,b,icons){
   /* where the words start: a button icon before the text ("△ Hold to Charge") is read as a stray letter or not at all,
      so the first real word (2+ letters, not a button name) tells where the original text really begins */
   var x0=null, re=/\S+/g, mt, cut=0;
-  while((mt=re.exec(s))){ var w=mt[0].replace(/^[^A-Za-zÀ-ỹ0-9]+/,''), k=mt.index+(mt[0].length-w.length);
+  while(!b.rot&&(mt=re.exec(s))){ var w=mt[0].replace(/^[^A-Za-zÀ-ỹ0-9]+/,''), k=mt.index+(mt[0].length-w.length);
     if(w.length>=2&&/[A-Za-zÀ-ỹ]{2}|\d/.test(w)&&!/^([LR][123]|[LR][BTS]|Z[LR]|OK)$/i.test(w)){
       x0=b.x+Math.max(0,(at[k]+0.5)/T*b.w-b.h*0.22);
       /* what came before it is the button icon read as a letter or a sign ("O Hold to Charge", "④ Hold..."):
@@ -1668,6 +1694,14 @@ function sideSame(src,a,b,h,y0,hh,bl,br){
   var A=col(a.x+a.w-3), B=col(b.x+2);   /* inside the boxes' own margin, before the letters */
   return !(A.sd<20&&Math.abs(A.m-br)<20)&&!(B.sd<20&&Math.abs(B.m-bl)<20);   /* the colour of the other side comes back right inside: only an icon in between */
 }
+/* how far apart two boxes are across the line: straight up and down for level text, across the slope when one of them
+   is a turned line (a short word read level beside it is then measured the same way) */
+function rowDy(it,last,L){
+  var r=it.rot||last.rot;
+  if(!r) return Math.abs((it.y+it.h/2)-(L.y+L.h/2));
+  var sA=Math.sin(r.a), cA=Math.cos(r.a), vc=function(q){ var cx=q.rot?q.rot.cx:q.x+q.w/2, cy=q.rot?q.rot.cy:q.y+q.h/2; return -cx*sA+cy*cA; };
+  return Math.abs(vc(it)-vc(last));
+}
 /* a menu label: short, starts with a capital (or a number), not the middle of a sentence ("to", "and the...") */
 function labelish(t){
   t=String(t||'').replace(/\uE000/g,' ').replace(/\s+/g,' ').trim();
@@ -1695,7 +1729,7 @@ function blockUp(items,wide,src){
   items.forEach(function(it){
     var hit=null;
     for(var i=rows.length-1;i>=0&&i>=rows.length-6;i--){ var L=rows[i], last=L.parts[L.parts.length-1];
-      if(Math.abs((it.y+it.h/2)-(L.y+L.h/2))<Math.min(it.h,L.h)*0.5&&it.x>=last.x&&it.x-(last.x+last.w)<Math.max(it.h,L.h)*(wide?3.2:1.6)){
+      if(rowDy(it,last,L)<Math.min(it.h,L.h)*0.5&&it.x>=last.x&&it.x-(last.x+last.w)<Math.max(it.h,L.h)*(wide?3.2:1.6)){
         var hh=Math.min(it.h,L.h), gp=it.x-(last.x+last.w), cut=null;
         var btn=function(t){ return String(t||'').replace(/\uE000/g,'').trim().length<=2; };   /* a button read as text ("R3", "×") or an icon box */
         if(gp>=hh*0.5&&!btn(last.text)&&!btn(it.text)&&!/\uE000\s*$/.test(last.text)&&!/^\s*\uE000/.test(it.text)){   /* boxes close together are one text */   /* an icon between them ("Press" ◉ "to...") joins them */
@@ -1713,7 +1747,8 @@ function blockUp(items,wide,src){
     var x=L.parts[0].x, x2=Math.max.apply(null,L.parts.map(function(p){return p.x+p.w;}));
     var tl=L.parts.reduce(function(a,p){return a+p.text.length;},0);
     var x0=null; for(var q=0;q<L.parts.length;q++){ if(L.parts[q].x0!=null){ x0=L.parts[q].x0; break; } }
-    return {text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h,x0:x0,cl:L.parts[0].cl,cr:L.parts[L.parts.length-1].cr,icons:[].concat.apply([],L.parts.map(function(p){ return p.icons||[]; }))};
+    var rt=L.parts.length===1?L.parts[0].rot:null;
+    return {rot:rt,text:L.parts.map(function(p){return p.text;}).join(' ').replace(/\s+/g,' ').trim(),conf:L.parts.reduce(function(a,p){return a+p.conf*p.text.length;},0)/Math.max(1,tl),x:x,y:L.y,w:x2-x,h:L.h,x0:x0,cl:L.parts[0].cl,cr:L.parts[L.parts.length-1].cr,icons:[].concat.apply([],L.parts.map(function(p){ return p.icons||[]; }))};
   }).filter(function(l){return l.text;});
   lines.sort(function(a,b){return a.y-b.y;});
   var blocks=[];
@@ -1721,6 +1756,9 @@ function blockUp(items,wide,src){
     var best=null;
     blocks.forEach(function(b){
       var last=b.lines[b.lines.length-1], gap=l.y-(last.y+last.h), hr=Math.max(l.h,last.h)/Math.min(l.h,last.h);
+      if(last.rot){   /* lines turned (a phone at an angle): the gap measured across the lines, not straight down */
+        var A=last.rot.a, sA=Math.sin(A), cA=Math.cos(A), vc=function(q){ var cx=q.rot?q.rot.cx:q.x+q.w/2, cy=q.rot?q.rot.cy:q.y+q.h/2; return -cx*sA+cy*cA; };
+        gap=(vc(l)-l.h/2)-(vc(last)+last.h/2); }
       var overlap=Math.min(l.x+l.w,b.x+b.w)-Math.max(l.x,b.x);
       var aligned=Math.abs(l.x-b.x)<last.h*1.5||Math.abs((l.x+l.w/2)-(b.x+b.w/2))<last.h*1.5||Math.abs((l.x+l.w)-(b.x+b.w))<last.h*0.8;   /* left, centred, or right-aligned (a list of button hints on the right) */
       if(gap>-last.h*0.3&&gap<last.h*0.55&&hr<1.3&&overlap>0&&aligned&&l.cl==null&&l.cr==null&&last.cl==null&&last.cr==null) best=b;   /* a tab of a tab bar is a text of its own */
@@ -1731,8 +1769,21 @@ function blockUp(items,wide,src){
   return blocks.map(function(b){
     var tl=b.lines.reduce(function(a,l){return a+l.text.length;},0);
     var xs=b.lines.map(function(l){ return l.x0; }).filter(function(v){ return v!=null; });
-    return {ls:b.lines.map(function(l){ return {x:l.x,y:l.y,w:l.w,h:l.h,x0:l.x0,cl:l.cl,cr:l.cr}; }),x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl),icons:[].concat.apply([],b.lines.map(function(l){ return l.icons||[]; }))};
+    return {rot:rotUnion(b.lines),ls:b.lines.map(function(l){ return {x:l.x,y:l.y,w:l.w,h:l.h,x0:l.x0,cl:l.cl,cr:l.cr,rot:l.rot}; }),x:b.x,y:b.y,w:b.w,h:b.h,x0:xs.length?Math.min.apply(null,xs):null,n:b.lines.length,lh:b.h/b.lines.length,text:b.lines.map(function(l){return l.text;}).join('\n'),conf:b.lines.reduce(function(a,l){return a+l.conf*l.text.length;},0)/Math.max(1,tl),icons:[].concat.apply([],b.lines.map(function(l){ return l.icons||[]; }))};
   });
+}
+/* the turned rectangle around all the lines of a block, when they are all turned the same way */
+function rotUnion(lines){
+  var rl=lines.filter(function(l){ return l.rot; });
+  if(!rl.length||rl.length*2<lines.length) return null;   /* most lines turned (a short word like "down." may be read level) */
+  var as=rl.map(function(l){ return l.rot.a; }).sort(function(p,q){ return p-q; }), A=as[as.length>>1];
+  if(as[as.length-1]-as[0]>0.06) return null;
+  var c=Math.cos(A), sn=Math.sin(A), u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+  lines.forEach(function(l){ var r=l.rot||{a:0,cx:l.x+l.w/2,cy:l.y+l.h/2,w:l.w,h:l.h}, rc=Math.cos(r.a), rs=Math.sin(r.a);
+    [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(k){ var x=r.cx+k[0]*r.w/2*rc-k[1]*r.h/2*rs, y=r.cy+k[0]*r.w/2*rs+k[1]*r.h/2*rc, u=x*c+y*sn, v=-x*sn+y*c;
+      if(u<u0)u0=u; if(u>u1)u1=u; if(v<v0)v0=v; if(v>v1)v1=v; }); });
+  var uc=(u0+u1)/2, vc=(v0+v1)/2;
+  return {a:A,cx:uc*c-vc*sn,cy:uc*sn+vc*c,w:u1-u0,h:v1-v0};
 }
 async function read(src,opts){
   if(!det||!rec) throw new Error('OCR chưa sẵn sàng');
@@ -1762,6 +1813,7 @@ function bgStep(src,a,b){
   return l.sd<20&&r.sd<20&&Math.abs(l.m-r.m)>40&&sideSame(src,a,b,h,y0,hh,l.m,r.m);
 }
 function iconsFind(src,items){
+  items=items.filter(function(it){ return !it.rot; });
   items.forEach(function(a){   /* the icon found as a text box of its own, read as a sign or a single O/X */
     var r=a.w/Math.max(1,a.h), t=String(a.text||'').trim();
     if(r>0.6&&r<1.7&&((/^[^A-Za-zÀ-ỹ0-9]{1,2}$/.test(t)||/^[\u0370-\u04FF]$/.test(t))&&!/^[.,!?;:'"…\-–—]+$/.test(t)||/^[OoXx0@]$/.test(t))&&items.some(function(c){ return c!==a&&Math.abs((c.y+c.h/2)-(a.y+a.h/2))<Math.min(a.h,c.h)*0.5&&c.w>a.w*2&&c.x<a.x; })){   /* inside the sentence: an icon in front of a line stays visible, not covered */
@@ -5800,17 +5852,41 @@ function fsDraw(){
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
 /* the colours of the original text and its background, read from the picture (once per box) */
 var fsCv=document.createElement('canvas');
+/* a box turned with its text when the text is clearly not level (2.5° or more) */
+function fsTurn(it){ var r=it&&it.rot; return r&&Math.abs(r.a)>=0.044?r:null; }
+/* the colours under a turned box: the picture turned level first, so the edge is the bubble, not what is around it */
+var fsRc=document.createElement('canvas');
+function zColorsRot(cv,r){
+  var W=r.w*cv.width, H=r.h*cv.height, sc=Math.min(1,160/Math.max(1,W)), g=fsRc.getContext('2d');
+  fsRc.width=Math.max(4,Math.round(W*sc)); fsRc.height=Math.max(4,Math.round(H*sc));
+  g.setTransform(1,0,0,1,0,0); g.translate(fsRc.width/2,fsRc.height/2); g.scale(sc,sc); g.rotate(-r.a); g.translate(-r.cx*cv.width,-r.cy*cv.height);
+  g.drawImage(cv,0,0); g.setTransform(1,0,0,1,0,0);
+  return zColors(fsRc,{x:0,y:0,w:1,h:1});
+}
 function fsTint(items){
   var miss=items.filter(function(it){ return it.vi&&!it.bg&&!it.tinted; }); if(!miss.length) return;
   try{ var vw=video.videoWidth, vh=video.videoHeight; if(!vw||!vh) return; var sc=Math.min(1,960/vw);
     fsCv.width=Math.round(vw*sc); fsCv.height=Math.round(vh*sc); fsCv.getContext('2d').drawImage(video,0,0,fsCv.width,fsCv.height);
-    miss.forEach(function(it){ it.tinted=true; try{ var c=zColors(fsCv,{x:it.x,y:it.y,w:it.w,h:it.h}); if(c&&c.bg){ it.bg=c.bg; it.fg=c.fg||''; } }catch(e){} });
+    miss.forEach(function(it){ it.tinted=true; try{ var tr=fsTurn(it), c=tr?zColorsRot(fsCv,tr):zColors(fsCv,{x:it.x,y:it.y,w:it.w,h:it.h}); if(c&&c.bg){ it.bg=c.bg; it.fg=c.fg||''; } }catch(e){} });
   }catch(e){}
 }
 /* a screen-text box exactly as this computer draws it (its lines, letters, colours and button icons), as a picture
    for the TV at the TV's size (1080 lines): the TV puts the picture at the same place over the game, so what is seen on
    the TV is what is seen here. Each run of letters is drawn where the page put it, in the page's own font. */
 function fsSnap(el,it){
+  if(el.dataset&&el.dataset.rot){   /* a turned box: drawn level, then turned like on the page */
+    var tf=el.style.transform, ang=parseFloat((/rotate\(([-\d.e]+)rad\)/.exec(tf)||[])[1])||0;
+    el.style.transform='none'; var lv; try{ lv=fsSnap1(el,it,true); } finally { el.style.transform=tf; }
+    if(!lv||!ang) return lv&&{img:lv.cv.toDataURL('image/png'),x:lv.x,y:lv.y,w:lv.w,h:lv.h};
+    var c=Math.abs(Math.cos(ang)), sn=Math.abs(Math.sin(ang)), W=lv.cv.width, H=lv.cv.height, BW=Math.ceil(W*c+H*sn), BH=Math.ceil(W*sn+H*c);
+    var out=document.createElement('canvas'); out.width=BW; out.height=BH; var g=out.getContext('2d');
+    g.translate(BW/2,BH/2); g.rotate(ang); g.drawImage(lv.cv,-W/2,-H/2);
+    var vb=videoBox(), pw=lv.w*vb.w, ph=lv.h*vb.h, bw=pw*c+ph*sn, bh=pw*sn+ph*c, mx=lv.x*vb.w+pw/2, my=lv.y*vb.h+ph/2;
+    return {img:out.toDataURL('image/png'),x:(mx-bw/2)/vb.w,y:(my-bh/2)/vb.h,w:bw/vb.w,h:bh/vb.h};
+  }
+  var s1=fsSnap1(el,it,false); return s1&&{img:s1.cv.toDataURL('image/png'),x:s1.x,y:s1.y,w:s1.w,h:s1.h};
+}
+function fsSnap1(el,it,raw){
   var b=videoBox(), r=el.getBoundingClientRect();
   if(!b.w||!b.h||r.width<2||r.height<2) return null;
   var k=Math.max(1,Math.min(6,1080/b.h)), W=Math.ceil(r.width*k), H=Math.ceil(r.height*k);
@@ -5838,7 +5914,7 @@ function fsSnap(el,it){
   }
   flush();
   runs.forEach(function(u){ var y=(u.top-r.top)*k+(u.h*k-(asc+dsc))/2+asc; g.fillText(u.t.replace(/\s+$/,''),(u.left-r.left)*k,y); });
-  return {img:cv.toDataURL('image/png'),x:(r.left-b.r.left-b.l)/b.w,y:(r.top-b.r.top-b.t)/b.h,w:r.width/b.w,h:r.height/b.h};
+  return {cv:cv,x:(r.left-b.r.left-b.l)/b.w,y:(r.top-b.r.top-b.t)/b.h,w:r.width/b.w,h:r.height/b.h};
 }
 function fsOverlaySync(){
   var src=S.fs.on?S.fs.items:(S.fl&&S.fl.on?S.fl.items:[]), on=S.fs.on||(S.fl&&S.fl.on&&src.some(function(it){return it.vi;}));
@@ -6042,7 +6118,8 @@ async function fsRead(sx,sy,sw,sh,maxW){
     var raw=String(b.text||'').split('\n'), icA=b.icons||[], off=[], k=0;
     raw.forEach(function(l){ off.push(k); k+=(l.match(//g)||[]).length; });
     function icOf(i){ return icA.slice(off[i],off[i]+(raw[i].match(//g)||[]).length); }
-    function cell(it,l){ if(l&&l.cl!=null) it.cl=px(l.cl); if(l&&l.cr!=null) it.cr=px(l.cr); return it; }   /* the frame of a tab or button the text sits in */
+    function cell(it,l){ if(l&&l.cl!=null) it.cl=px(l.cl); if(l&&l.cr!=null) it.cr=px(l.cr); return rotOf(it,l&&l.rot); }   /* the frame of a tab or button the text sits in */
+    function rotOf(it,r){ if(r) it.rot={a:r.a,cx:px(r.cx),cy:py(r.cy),w:pw(r.w),h:ph(r.h)}; return it; }   /* a turned text (a phone held at an angle): the box is turned the same way */
     function put(it,ri,edge){ var p=fsIcPrep(ri.map(function(i){ return raw[i]; }),[].concat.apply([],ri.map(icOf)),edge); if(p.ic.length&&p.et){ it.et=p.et; it.ic=p.ic; } out.push(it); }
     var lines=raw.map(function(l){ return fsOk(l,b.conf); }).filter(Boolean);
     if(!lines.length) return;
@@ -6056,7 +6133,7 @@ async function fsRead(sx,sy,sw,sh,maxW){
     if(keepI.length===1&&b.ls&&b.ls.length===raw.length){ var l1=b.ls[keepI[0]], w1=fsWords(l1,raw[keepI[0]]);   /* one line kept (the others were icons or scraps): that line's own box */
       put(cell({x:px(w1.x),y:py(l1.y),w:pw(w1.w),h:ph(l1.h),lh:ph(l1.h),en:lines[0],conf:b.conf,al:w1.al||''},l1),keepI,true); return; }
     if(raw.length===1&&b.ls&&b.ls[0]){ var w2=fsWords(b.ls[0],raw[0]); put(cell({x:px(w2.x),y:py(b.y),w:pw(w2.w),h:ph(b.h),lh:ph(b.lh),en:lines[0],conf:b.conf,al:w2.al||''},b.ls[0]),[0],true); return; }   /* one line: its words only, an icon beside it stays visible */
-    put({x:px(b.x),y:py(b.y),w:pw(b.w),h:ph(b.h),lh:ph(b.lh),en:lines.join('\n'),conf:b.conf},keepI,false);
+    put(rotOf({x:px(b.x),y:py(b.y),w:pw(b.w),h:ph(b.h),lh:ph(b.lh),en:lines.join('\n'),conf:b.conf},b.rot),keepI,false);
   });
   return out;
 }
@@ -6208,6 +6285,12 @@ function flDraw(){
   var b=videoBox(), html='', show=S.fl.on&&!S.fs.on;
   if(show) S.fl.items.forEach(function(it){
     if(!it.vi||!fsWorth(it)) return;
+    var tr=fsTurn(it);
+    if(tr){   /* a turned text (a phone held at an angle): a box of the same shape, turned the same way, over it */
+      var TW=tr.w*b.w, TH=tr.h*b.h, same=it.vi.split('\n').length===it.en.split('\n').length;
+      html+='<div class="hs-fsb hs-flb" data-rot="1" style="left:'+(b.l+tr.cx*b.w-TW/2)+'px;top:'+(b.t+tr.cy*b.h-TH/2)+'px;width:'+TW+'px;height:'+TH+'px;transform:rotate('+tr.a+'rad)'+(same?';white-space:nowrap':'')+';font-size:'+Math.max(9,Math.round(it.lh*b.h*0.74))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'"><div>'+fsHtml(it)+'</div></div>';
+      return;
+    }
     var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), one=it.en.indexOf('\n')<0&&it.vi.indexOf('\n')<0;
     /* a one-line label ("EXIT", "ADD MARKER") stays on one line: the Vietnamese is longer, so the box grows sideways
        (to the left for a list lined up on the right) instead of wrapping into tiny letters */
@@ -6218,6 +6301,7 @@ function flDraw(){
   flLayer.innerHTML=html; flLayer.hidden=!html;
   [].forEach.call(flLayer.children,function(el){
     var f=parseFloat(el.style.fontSize), h=parseFloat(el.style.minHeight)*1.15+6;
+    if(el.dataset.rot){ var inn=el.firstChild, H0=el.clientHeight+1; while(f>8&&(inn.scrollHeight>H0||inn.scrollWidth>el.clientWidth-4)){ f--; el.style.fontSize=f+'px'; } return; }
     if(el.dataset.one){
       var W=+el.dataset.w, L=+el.dataset.l, maxW=Math.max(W,+el.dataset.room||W*1.12+8);   /* the size of the original (or its tab's frame), never over the next label: smaller letters rather than spilling over it */
       while(f>9&&el.offsetWidth>maxW){ f--; el.style.fontSize=f+'px'; }
