@@ -3772,6 +3772,37 @@ function keyStats(){
 /* ---------- send to TV (relay on honggame.store) ---------- */
 var RELAY=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/push';
 function tvCode(){return ($('hsTv').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
+/* the new relay (Cloudflare, relay/ in the repo): one WebSocket per room instead of asking honggame.store again and
+   again. NR.tx: into the TV code, sends the lines and is told how many TVs listen there (newer TV apps).
+   NR.rx: the TV's own room (code + T), hears the TV's hello / alive. honggame.store stays the way to older TV apps
+   (they only ask honggame.store, which passes lines on to the new relay too) and the backup when no WebSocket opens. */
+var NR_HOST='hongsub-relay.nvhnhi96.workers.dev';
+function nrSock(room,listen,onMsg){
+  var s={open:false,fails:0,closed:false,ws:null,pt:0};
+  function retry(){ if(s.closed) return; s.fails++; setTimeout(go,Math.min(30000,1000*Math.pow(2,Math.min(s.fails,5)))); }
+  function go(){
+    if(s.closed) return; var ws;
+    try{ ws=new WebSocket('wss://'+NR_HOST+'/ws?room='+room+(listen?'':'&listen=0')); }catch(e){ retry(); return; }
+    s.ws=ws;
+    ws.onopen=function(){ s.open=true; s.fails=0; clearInterval(s.pt); s.pt=setInterval(function(){ try{ ws.send('ping'); }catch(e){} },25000); };
+    ws.onmessage=function(e){ if(e.data==='pong') return; var j; try{ j=JSON.parse(e.data); }catch(er){ return; } if(j) onMsg(j); };
+    ws.onclose=function(){ s.open=false; clearInterval(s.pt); if(s.ws===ws) retry(); };
+    ws.onerror=function(){ try{ ws.close(); }catch(e){} };
+  }
+  s.send=function(o){ if(!s.open) return false; try{ s.ws.send(JSON.stringify(o)); return true; }catch(e){ return false; } };
+  s.close=function(){ s.closed=true; s.open=false; clearInterval(s.pt); try{ if(s.ws) s.ws.close(); }catch(e){} };
+  go(); return s;
+}
+var NR={code:'',tx:null,rx:null,tv:0};
+function nrSync(){
+  var c=tvCode(); if(c===NR.code) return;
+  NR.code=c; NR.tv=0; if(NR.tx) NR.tx.close(); if(NR.rx) NR.rx.close(); NR.tx=NR.rx=null;
+  if(c.length<4||typeof WebSocket==='undefined') return;
+  NR.tx=nrSock(c,false,function(j){ if(typeof j.listeners==='number'){ var was=NR.tv; NR.tv=j.listeners; if(NR.tv>0) S.tvSeen=Date.now(); if((NR.tv>0)!==(was>0)) log(NR.tv>0?'TV đang nhận qua máy chủ trung chuyển mới':'TV rời máy chủ trung chuyển mới'); tvState(); } });
+  NR.rx=nrSock(c+'T',true,function(j){ (j.items||[]).forEach(function(it){ var x=relayUnpack(it); if(x.kind==='hello'||x.kind==='alive') tvBack(x,false); }); });
+}
+/* the TV app listens on the new relay right now: honggame.store is not needed to reach it */
+function nrTv(){ return !!(NR.tx&&NR.tx.open&&NR.tv>0); }
 /* the kind of TV picked on the Connect page: Android TV (Hóng Sub TV app, home network or code), LG (webOS app, code),
    or any other TV through its web browser (code). Each kind keeps its own code, so switching does not lose it. */
 var TVK={android:'Android TV',lg:'TV LG',samsung:'TV Samsung'};   /* 'TV khác' (browser on the TV) removed: no game picture behind the text */
@@ -3922,6 +3953,7 @@ function relayUnpack(j){
   return j;
 }
 function tvRelayNow(o){ var c=tvCode(); if(c.length<4) return Promise.reject(new Error('code')); o=relayPack(Object.assign({},o,{room:c}));
+  nrSync(); if(nrTv()&&NR.tx.send(o)){ S.relayBad=0; return Promise.resolve({ok:true,nr:true}); }   /* a newer TV app: straight through the new relay */
   if(D&&D.tv&&D.tv.relay) return D.tv.relay(o).then(function(r){ if(!r||!r.ok){ var e='gửi qua mã TV lỗi '+((r&&(r.status||r.err))||'')+' '+((r&&r.body)||''); if(e!==S.tvRelayErr){ S.tvRelayErr=e; log(e); } throw new Error(e); } S.tvRelayErr=''; return r; });
   return fetch(RELAY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); S.relayBad=0; return r; }).catch(function(e){ S.relayBad=Date.now(); log('gửi qua mã TV lỗi: '+e.message); throw e; }); }
 function tvSend(o){
@@ -3996,6 +4028,18 @@ function tvFindUi(silent){
    honggame.store): the computer then wakes the PS5 */
 S.tvHello=-1; S.tvBoot='';
 function tvHello(){ log('TV vừa mở app Hóng Sub TV'); if(typeof psWakeUp==='function') psWakeUp('tv'); else tvNotice('Đã kết nối với Hóng Sub trên '+(PH||IOS?'điện thoại':'máy tính')+'.'); }
+/* the TV said hello / alive in its own room (code + T): through the new relay, or honggame.store for older TV apps */
+function tvBack(j,first){
+  var c=tvCode(), ip=tvIp(); if(j.crash) j.en='crash '+j.crash;
+    S.tvSeen=Date.now();
+  var tvv=(String(j.vi||'').match(/^tv (\S+)/)||[])[1]; if(tvv&&(!S.tvVer||!S.tvOk)){ S.tvVer=tvv;   /* the app's version, also when the TV is reached only through the TV code */
+    if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ (qua mã TV): '+tvv); status('warn','App Hóng Sub TV trên TV là bản cũ ('+tvv+'). Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); } }
+  tvState();
+  if(!first&&j.kind==='hello'&&D) tvHello();
+  if(/^crash /.test(j.en||'')&&j.en!==S.tvCrash){ S.tvCrash=j.en; log('app trên TV đã bị lỗi và tự mở lại: '+String(j.en).slice(6,600)); }
+  var tip=String(j.ip||''); if(S.tvType==='android'&&TVD()&&/^\d{1,3}(\.\d{1,3}){3}$/.test(tip)&&tip!==tvIp())
+    TVD().ping(tip).then(function(r){ if(r&&r.ok&&r.app==='hongsubtv'){ log('TV báo địa chỉ mới qua mã '+c+': '+tip); tvUse(tip,r); } }).catch(function(){});
+}
 function tvListen(){
   var ip=tvIp(), c=tvCode();
   if(lanTv()&&LGP()&&LGP().seen&&c.length>=4) LGP().seen(c).then(function(at){ if(at&&at>(S.tvLanSeen||0)){ S.tvLanSeen=at; tvState(); } }).catch(function(){});
@@ -4026,19 +4070,12 @@ function tvListen(){
   }
   /* the TV's own room (code + T): the TV app says hello when it starts and "alive" every 30 s (newer builds), with its
      home-network address and the last crash of the app, if any */
-  if(c.length>=4&&(!ip||S.tvOk!==true)) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    j=relayUnpack(j); if(j.crash) j.en='crash '+j.crash;
+  nrSync();
+  if(c.length>=4&&(!ip||S.tvOk!==true)&&!nrTv()) fetch(RELAY.replace('/push','/pull')+'?room='+c+'T&t='+Date.now(),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    j=relayUnpack(j);
     var seq=+j.seq||0, fresh=j.t&&Math.abs(Date.now()/1000-j.t)<65, tv=j.kind==='hello'||j.kind==='alive';
     var news=S.tvHello<0?(fresh&&tv):(seq!==S.tvHello&&tv), first=S.tvHello<0; S.tvHello=seq;
-    if(!news) return;
-    S.tvSeen=Date.now();
-    var tvv=(String(j.vi||'').match(/^tv (\S+)/)||[])[1]; if(tvv&&(!S.tvVer||!S.tvOk)){ S.tvVer=tvv;   /* the app's version, also when the TV is reached only through the TV code */
-      if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ (qua mã TV): '+tvv); status('warn','App Hóng Sub TV trên TV là bản cũ ('+tvv+'). Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); } }
-    tvState();
-    if(!first&&j.kind==='hello'&&D) tvHello();
-    if(/^crash /.test(j.en||'')&&j.en!==S.tvCrash){ S.tvCrash=j.en; log('app trên TV đã bị lỗi và tự mở lại: '+String(j.en).slice(6,600)); }
-    var tip=String(j.ip||''); if(S.tvType==='android'&&TVD()&&/^\d{1,3}(\.\d{1,3}){3}$/.test(tip)&&tip!==tvIp())
-      TVD().ping(tip).then(function(r){ if(r&&r.ok&&r.app==='hongsubtv'){ log('TV báo địa chỉ mới qua mã '+c+': '+tip); tvUse(tip,r); } }).catch(function(){});
+    if(news) tvBack(j,first);
   }).then(function(){ S.relayBad=0; },function(){ S.relayBad=Date.now(); });
   later(tvListen,4000);
 }
