@@ -734,13 +734,17 @@ async function init(base,ortBase){
     ort=window.ort;
     ort.env.wasm.wasmPaths=ORT;
     ort.env.wasm.numThreads=(self.crossOriginIsolated&&navigator.hardwareConcurrency)?Math.min(4,navigator.hardwareConcurrency):1;
+    /* the reader runs in its own worker when its files come from this app (computer, phone): reading a busy screen
+       took up to 1.5 s of the page at a time, and the PS picture stood still meanwhile ("Hình từ máy PS bị đứng") */
+    try{ ort.env.wasm.proxy=new URL(ORT).origin===location.origin&&typeof Worker!=='undefined'; }catch(e){ ort.env.wasm.proxy=false; }
     var opt={executionProviders:['wasm'],graphOptimizationLevel:'all'};
     var r=await Promise.all([
       fetch(BASE+'det.onnx').then(function(x){if(!x.ok) throw new Error('det '+x.status); return x.arrayBuffer();}),
       fetch(BASE+'rec.onnx').then(function(x){if(!x.ok) throw new Error('rec '+x.status); return x.arrayBuffer();}),
       fetch(BASE+'keys.txt').then(function(x){if(!x.ok) throw new Error('keys '+x.status); return x.text();})
     ]);
-    det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt);
+    try{ det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt); }
+    catch(e){ if(!ort.env.wasm.proxy) throw e; ort.env.wasm.proxy=false; det=await ort.InferenceSession.create(new Uint8Array(r[0]),opt); }   /* no worker: on the page as before */
     rec=await ort.InferenceSession.create(new Uint8Array(r[1]),opt);
     chars=['']; r[2].split(/\r?\n/).forEach(function(c){ if(c!=='') chars.push(c); }); chars.push(' ');
     base0={rec:rec,chars:chars};
@@ -6886,7 +6890,18 @@ function psFreezeTick(){
   var now=Date.now(), fr=now-(PS.lastFr||now), pk=now-(PS.lastPk||now);
   if(fr<2500){ if(PS.frz) log('PS: hình chạy lại'); PS.frz=0; return; }
   PS.frz=(PS.frz||0)+1;
-  if(PS.frz===1){ log('PS: hình đứng '+Math.round(fr/100)/10+' giây (gói hình gần nhất: '+Math.round(pk/100)/10+' giây trước), xin hình mới'); PS.lastIdr=0; psIdr(); status('busy','Hình từ máy PS bị đứng, đang lấy lại hình...'); }
+  if(PS.frz===1){ log('PS: hình đứng '+Math.round(fr/100)/10+' giây (gói hình gần nhất: '+Math.round(pk/100)/10+' giây trước), xin hình mới'); PS.lastIdr=0; psIdr(); status('busy','Hình từ máy PS bị đứng, đang lấy lại hình...');
+    /* "nét cao" (30 Mbps) is more than the home network carries: the picture keeps standing still. After 3 times in
+       3 minutes Hóng Sub goes back to 15 Mbps by itself and connects again (a few seconds), and says so. */
+    var q30=(PS.q?+PS.q.br:+((($('hsPsQ')&&$('hsPsQ').value)||'').split('/')[2]||0))>=30000;
+    S.frz30=(S.frz30||[]).filter(function(t){ return now-t<180000; }); if(q30) S.frz30.push(now);
+    if(q30&&S.frz30.length>=3&&PS.last){ S.frz30=[]; var hq=PS.last;
+      save('psq','1080/60/15000'); save('psq15',true); if($('hsPsQ')) $('hsPsQ').value='1080/60/15000';
+      var tq='Hình đứng nhiều lần ở chất lượng nét cao (30 Mbps): mạng nhà không kịp. Hóng Sub đã chuyển về 15 Mbps và đang kết nối lại.';
+      log('PS: '+tq); status('busy',tq); psMsg('ok',tq); tvNotice('Hóng Sub chuyển về chất lượng hình 15 Mbps cho mượt hơn');
+      PS.frz=0; PS.retrying=true; try{ DPS.stop(false); }catch(e){} psStopView(); PS.retrying=true;
+      setTimeout(function(){ psPlay(hq,PS.q?{res:1080,fps:60,br:15000}:null); },2500); return; }
+  }
   if(PS.frz===3){ log('PS: mở lại bộ giải hình'); if(PS.dec){ try{PS.dec.close();}catch(e){} } PS.dec=null; PS.waitKey=true; if(pk<1500) PS.sw=!PS.sw; PS.lastIdr=0; psIdr(); }
   if(PS.frz>=7){
     PS.frz=0; var h=PS.last; if(!h) return;
