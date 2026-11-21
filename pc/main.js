@@ -195,7 +195,7 @@ function applyPlace() {
     if (subPlace.spot && subPlace.al === 'r') left = b.x + (subPlace.x + subPlace.w) * b.width - bw;
     overlay.setBounds({ x: Math.round(Math.max(b.x, Math.min(b.x + b.width - bw, left))), y: Math.round(cy - bh / 2),
       width: bw, height: bh });
-    overlay.webContents.send('sub', { cover: true, spot: !!subPlace.spot, al: subPlace.al, fs: subPlace.spot ? Math.max(9, Math.round(subPlace.lh * b.height * 0.82)) : 0 });
+    overlay.webContents.send('sub', { cover: true, spot: !!subPlace.spot, al: subPlace.al, fs: subPlace.spot ? Math.max(9, Math.round((subPlace.fz > 0 ? subPlace.fz : subPlace.lh * 0.82) * b.height)) : 0 });   // fz: the letters measured on the picture, in the app's font
   } else {
     overlay.setBounds(overlayBounds());
     overlay.webContents.send('sub', { cover: false });
@@ -898,7 +898,7 @@ function setupIpc() {
   ipcMain.on('overlay', (e, cmd) => overlayCmd(cmd));
   ipcMain.on('sub-place', (e, r) => {
     const ok = r && [r.x, r.y, r.w, r.h].every((v) => typeof v === 'number' && v >= 0 && v <= 1.01) && r.w > 0.02 && r.h > 0.02;
-    subPlace = ok ? { x: r.x, y: r.y, w: r.w, h: r.h, spot: !!r.spot, al: /^[lcr]$/.test(r.al || '') ? r.al : 'c', lh: +r.lh || 0 } : null; applyPlace();
+    subPlace = ok ? { x: r.x, y: r.y, w: r.w, h: r.h, spot: !!r.spot, al: /^[lcr]$/.test(r.al || '') ? r.al : 'c', lh: +r.lh || 0, fz: +r.fz > 0 && +r.fz < 0.5 ? +r.fz : 0 } : null; applyPlace();
   });
   ipcMain.handle('voices', async () => {
     const list = [];

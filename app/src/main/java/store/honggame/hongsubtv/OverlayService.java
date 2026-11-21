@@ -651,7 +651,8 @@ public class OverlayService extends Service {
     // the game's own subtitle when the Vietnamese does not cover it: the Vietnamese goes right above it
     private double[] abv = null;
     // "đè đúng chỗ từng dòng": over the original text itself, its alignment and its letter size (on a 1080-line screen)
-    private boolean covSpot = false; private String covAl = "c"; private int covFs = 0;   // the original subtitle's place (x, y, w, h as parts of the screen), or null
+    private boolean covSpot = false; private String covAl = "c"; private int covFs = 0;
+    private double covXb = 0; private boolean covCaps = false;   // the original letters' own height (part of the screen) and whether they are capitals   // the original subtitle's place (x, y, w, h as parts of the screen), or null
 
     private void applyStyle() {
         if (box == null) return;
@@ -720,7 +721,12 @@ public class OverlayService extends Service {
             DisplayMetrics dm = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(dm);
             // the original letters' size, made bigger or smaller by "Cỡ chữ" on the computer (28 there = 30 here = as the original)
-            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, covFs * dm.heightPixels / 1080f * Math.max(0.4f, Math.min(2.5f, size / 30f)));
+            float k = Math.max(0.4f, Math.min(2.5f, size / 30f)), px = covFs * dm.heightPixels / 1080f;
+            if (covXb > 0) {   // the letters as tall as the original's, measured with this TV's own font
+                float r = letterRatio(covCaps), want = (float) (covXb * dm.heightPixels) / r;
+                px = Math.max(px * 0.6f, Math.min(px * 1.5f, want));
+            }
+            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, px * k);
             float need = 0;
             for (String line : viView.getText().toString().split("\\n")) need = Math.max(need, viView.getPaint().measureText(line));
             int base = (int) (cov[2] * dm.widthPixels), maxW = (int) (prefs.width() / 100f * dm.widthPixels);
@@ -746,6 +752,19 @@ public class OverlayService extends Service {
                 viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, viView.getTextSize() * 0.9f);
         }
         coverHeight();
+    }
+
+    /* how tall this TV's font draws a lower-case "x" (or a capital "H"), as a part of the font size */
+    private float letterRatio(boolean caps) {
+        try {
+            android.graphics.Paint p = new android.graphics.Paint(viView.getPaint());
+            p.setTextSize(200f);
+            android.graphics.Rect r = new android.graphics.Rect();
+            p.getTextBounds(caps ? "H" : "x", 0, 1, r);
+            float v = -r.top / 200f;
+            if (v > 0.3f && v < 0.95f) return v;
+        } catch (Exception ignored) { }
+        return caps ? 0.72f : 0.53f;
     }
 
     /* how many lines the Vietnamese takes in this width (its own line breaks, plus words wrapped onto a new line) */
@@ -868,7 +887,8 @@ public class OverlayService extends Service {
                     ? new double[]{c.optDouble("x", 0), c.optDouble("y", 0), c.optDouble("w", 0), c.optDouble("h", 0)} : null;
             if (!java.util.Arrays.equals(nc, cov)) { cov = nc; changed = true; }
             boolean sp = nc != null && j.optInt("cspot", 0) == 1; String al = j.optString("cal", "c"); int fs = j.optInt("cfs", 0);
-            if (sp != covSpot || !al.equals(covAl) || fs != covFs) { covSpot = sp; covAl = al; covFs = fs; changed = true; }
+            double xb = j.optDouble("cxb", 0); if (!(xb > 0 && xb < 0.3)) xb = 0; boolean cp = j.optInt("ccap", 0) == 1;
+            if (sp != covSpot || !al.equals(covAl) || fs != covFs || xb != covXb || cp != covCaps) { covSpot = sp; covAl = al; covFs = fs; covXb = xb; covCaps = cp; changed = true; }
         }
         if (j.has("abv")) {
             JSONObject c = j.optJSONObject("abv");
