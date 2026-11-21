@@ -7791,7 +7791,10 @@ function psFreezeTick(){
 setInterval(psFreezeTick,1000);
 /* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
    sound back) */
-function gameMuted(){ return tvSoundNow(); }
+function gameMuted(){ return tvSoundNow()||camOnTv(); }
+/* a capture card with the TV on the PS5's own HDMI: the TV has the game's sound already, so this computer stays quiet
+   (it only listens, for reading the characters' voices) */
+function camOnTv(){ return !!S.camSrc&&tvSoundOn()&&S.tvOk===true; }
 /* "Tiếng game và giọng đọc phát ở TV": the PS turns its own sound on the TV off while it plays through Remote Play, so
    the game's sound (the PS's Opus packets, as they come) goes on to the Hóng Sub TV app over the home network and is
    played there; this computer stays quiet, and reading aloud goes to the TV too. Only when the TV app can play it
@@ -7821,7 +7824,8 @@ function tvAudioPush(pkt){
   }
 }
 function tvSoundApply(){ if(typeof PS!=='undefined'&&PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(gameMuted()?0:1,PS.actx.currentTime,0.05); }catch(e){} }
-setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); } },1000);
+setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); }
+  var cm=camOnTv(); if(cm!==TA.cam){ TA.cam=cm; tvSoundApply(); if(S.camSrc) log(cm?'capture card: tiếng game đã có ở TV, máy tính im':'capture card: tiếng game phát ở máy tính'); } },1000);
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.again.connect(PS.actx.destination); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 function gameMuteSet(on){
   save('gameMute',!!on);
