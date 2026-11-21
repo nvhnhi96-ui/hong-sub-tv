@@ -6582,14 +6582,15 @@ async function fsBlocks(){
   });
   try{ var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); keep=fsMergePara(keep,flc); fsInkAll(keep); }catch(e){}
   fsRowsAlign(keep);
-  return keep.filter(function(b){ return !notiLike(b.en); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
+  fsLowCol(keep);
+  return keep.filter(function(b){ return !notiLike(b.en)&&!hintLow(b); }).sort(function(a,b){ return a.y-b.y||a.x-b.x; });   /* pop-up notifications are left alone */
 }
 function fsPrompt(list){
   return 'You translate '+LN()+' text on a video game screen (menus, quest logs, item descriptions, tutorials, dialogue) for a Vietnamese player.\n'+
     'On-device OCR read these text blocks; each block keeps its line breaks. Fix obvious OCR mistakes before translating.\n'+
     list.map(function(t,i){ return '['+(i+1)+']\n'+t; }).join('\n')+'\n'+
     '{{1}}, {{2}}... are PlayStation controller button icons: keep every one of them, unchanged, at the matching place in the Vietnamese ("Hold {{1}} to sprint" → "Giữ {{1}} để chạy nhanh", "{{1}} Select {{2}} Back" → "{{1}} Chọn {{2}} Quay lại").\n'+
-    (GUARD.kind==='map'?'This is the game\'s MAP screen. Do NOT translate place names (cities, districts, streets, islands, beaches, parks), shop, business and brand names, or map labels and markers: for such a block return "vi":"". Translate the quest/mission list, the mission card and its description, the legend and filter names, and the button hints (Recenter, 2D View, Add Marker, Set Destination, Close Menu).\n':'')+
+    (GUARD.kind==='map'?'This is the game\'s MAP screen. Do NOT translate place names (cities, districts, streets, islands, beaches, parks), shop, business and brand names, or map labels and markers: for such a block return "vi":"". Translate the quest/mission list, the mission card and its description, the legend and filter names, (the controller hints along the bottom are left out before this list).\n':'')+
     'Translate only text written for the player to read: dialogue, messages and chats, notes, emails, posts, quest and mission text, item descriptions, tutorials, menus and button hints. '+
     (GUARD.kind==='map'?'':'Do NOT translate writing that is part of the game world: street and road signs, shop and business signs, billboards, posters, graffiti, logos and brand names, writing on buildings, vehicles, clothes or products, license plates: for such a block return "vi":"". ')+
     'Character names, nicknames, contact names, usernames and social media account names/handles (with or without @) stay exactly as they are, also inside a translated sentence; a block that is only a name or a handle gets "vi":"".\n'+
@@ -6722,7 +6723,28 @@ function flSkip(b){
   if(!b.panel&&S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
   if(notiLike(b.en)||viPlain(b.en)||rpBanner(b)) return true;
   if(signLike(b)) return true;
+  if(hintLow(b)) return true;
   return false;
+}
+/* the controller hints along the bottom of the screen (the lowest fifth: "✕ Select  ○ Back", "DIVE R1  SURFACE",
+   the map's "Recenter L3 / 2D View R3 / Add Marker / Exit"): left as they are, not translated. A sentence down there
+   (a mission objective, a message) is still translated. */
+/* a column of hints reaching up out of the lowest fifth (the map's list on the right): the rows above go with it */
+function fsLowCol(list){
+  var low=list.filter(function(b){ return hintLow(b); });
+  list.slice().sort(function(a,b){ return b.y-a.y; }).forEach(function(b){
+    if(b.lowCol||hintLow(b)||String(b.en).indexOf('\n')>=0||wordsOf(b.en)>4) return;
+    var m=low.some(function(l){ var lh=l.lh||l.h; return l.y>b.y&&l.y-(b.y+b.h)<lh*2.5&&(Math.abs((l.x+l.w)-(b.x+b.w))<0.015||Math.abs(l.x-b.x)<0.015); });
+    if(m){ b.lowCol=true; low.push(b); }
+  });
+  return list;
+}
+function hintLow(b){
+  if(b&&b.lowCol) return true;
+  if(!b||b.y+b.h/2<0.8) return false;
+  var en=String(b.en||'').trim(), lines=en.split('\n');
+  if(b.ic&&b.ic.length) return !lines.some(function(l){ return wordsOf(l)>=5&&/[.!?…]["”’)\]]*$/.test(l.trim()); });
+  return lines.every(function(l){ var t=l.trim(); return !(wordsOf(t)>=4&&/[.!?…]["”’)\]]*$/.test(t)) && (zHintRow(t)||uiLike(t)||wordsOf(t)<=4); });
 }
 /* a sign, a shop board, a billboard, a poster or writing on a car or a wall: a few words straight on the game's
    picture (no panel, no phone, no note behind them), not a sentence and not a button hint. Not translated. */
@@ -6812,7 +6834,7 @@ async function flRead(my){
   /* the same text read as a paragraph and as one of its lines (or a piece of it) close by: only the paragraph */
   blocks=blocks.filter(function(b){ return !blocks.some(function(k){ return k!==b&&norm(k.en).length>norm(b.en).length&&fsNear(k,b)&&fsSameText(b.en,k.en); }); });
   blocks=fsMergePara(blocks,flc);
-  fsRowsAlign(blocks);
+  fsRowsAlign(blocks); fsLowCol(blocks);
   fsInkAll(blocks);
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
