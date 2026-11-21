@@ -5188,7 +5188,7 @@ function fsNoOverlap(list){
       if(fsNear(c,k)&&fsSameText(c.it.en,k.it.en)){ c.drop=true; break; }
       var ix=Math.min(c.x+c.w,k.x+k.w)-Math.max(c.x,k.x), iy=Math.min(c.y+c.h,k.y+k.h)-Math.max(c.y,k.y);
       if(ix<=0.001||iy<=0.001) continue;
-      if(ix*iy/Math.max(1e-6,Math.min(fsArea(c),fsArea(k)))>0.25){ c.drop=true; break; }
+      if(ix*iy/Math.max(1e-6,Math.min(fsArea(c),fsArea(k)))>0.25){ fsShare(c,k); continue; }   /* two different texts much over each other: they share the place, neither loses its translation */
       if(iy/Math.min(c.h,k.h)<=ix/Math.min(c.w,k.w)){ var cy=iy/2+0.0006; if(c.y<k.y){ c.h-=cy; k.y+=cy; k.h-=cy; } else { k.h-=cy; c.y+=cy; c.h-=cy; } }
       else { var cx=ix/2+0.0006; if(c.x<k.x){ c.w-=cx; k.x+=cx; k.w-=cx; } else { k.w-=cx; c.x+=cx; c.w-=cx; } }
     }
@@ -5202,6 +5202,22 @@ function fsNoOverlap(list){
     keep.forEach(function(k){ if(k===v) return; var ix=Math.min(v.x+v.w,k.x+k.w)-Math.max(v.x,k.x); if(ix>0.002&&k.y>=v.y+v.h-0.002) gb=Math.min(gb,Math.max(0,k.y-(v.y+v.h))); });
     o.gb=gb; return o;
   });
+}
+/* two different texts whose boxes are much over each other (read off): the place they cover together is cut in two,
+   one above the other (or side by side), each part as big as its share of the words; both keep their translation */
+function fsShare(c,k){
+  var ly=Math.max(c.y+c.h,k.y+k.h)-Math.min(c.y,k.y), lx=Math.max(c.x+c.w,k.x+k.w)-Math.min(c.x,k.x);
+  var dy=Math.abs((c.y+c.h/2)-(k.y+k.h/2))/ly, dx=Math.abs((c.x+c.w/2)-(k.x+k.w/2))/lx, onY=dy>=dx||ly>=lx*0.5;
+  var lc=Math.max(1,norm(c.it.en).length), lk=Math.max(1,norm(k.it.en).length);
+  var cFirst=onY?(c.y+c.h/2<k.y+k.h/2||c.y+c.h/2===k.y+k.h/2&&lc<lk):(c.x+c.w/2<k.x+k.w/2);
+  var A=cFirst?c:k, B=cFirst?k:c, la=cFirst?lc:lk, lb=cFirst?lk:lc;
+  if(onY){
+    var y0=Math.min(c.y,k.y), y1=Math.max(c.y+c.h,k.y+k.h), m=y0+(y1-y0)*Math.max(0.3,Math.min(0.7,la/(la+lb))), x0=Math.min(c.x,k.x), x1=Math.max(c.x+c.w,k.x+k.w);
+    A.y=y0; A.h=m-y0-0.0006; B.y=m+0.0006; B.h=y1-m-0.0006; A.x=B.x=x0; A.w=B.w=x1-x0;
+  } else {
+    var X0=Math.min(c.x,k.x), X1=Math.max(c.x+c.w,k.x+k.w), M=X0+(X1-X0)*Math.max(0.3,Math.min(0.7,la/(la+lb))), Y0=Math.min(c.y,k.y), Y1=Math.max(c.y+c.h,k.y+k.h);
+    A.x=X0; A.w=M-X0-0.0006; B.x=M+0.0006; B.w=X1-M-0.0006; A.y=B.y=Y0; A.h=B.h=Y1-Y0;
+  }
 }
 /* what is drawn of a list of boxes: translated, worth showing, one box per text, none over another */
 function fsView(src){ fsTint(src); return fsNoOverlap(src.filter(function(it){ return it.vi&&fsWorth(it); })); }
@@ -5219,12 +5235,26 @@ function fsFit(el){
    if they still touch, the one with less text is not shown, so nothing is ever drawn over another box */
 function fsUntangle(layer){
   var kids=[].filter.call(layer.children,function(el){ return !el.dataset.rot; });
-  function hit(a,b){ var r=a.getBoundingClientRect(), q=b.getBoundingClientRect(); return Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1; }
+  function rc(el){ return el.getBoundingClientRect(); }
+  function hit(a,b){ var r=rc(a), q=rc(b); return Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1; }
+  function fitIn(el){ var f=parseFloat(el.style.fontSize); while(f>6&&(el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)){ f-=0.5; el.style.fontSize=f+'px'; } }
   for(var i=0;i<kids.length;i++) for(var j=i+1;j<kids.length;j++){
-    var a=kids[i], b=kids[j]; if(a.dataset.gone||b.dataset.gone||!hit(a,b)) continue;
+    var a=kids[i], b=kids[j]; if(!hit(a,b)) continue;
+    /* 1. a label made wider goes back to its own width */
     [a,b].forEach(function(el){ if(el.dataset.one&&el.offsetWidth>+el.dataset.w+1){ var f=parseFloat(el.style.fontSize), W=+el.dataset.w, L=+el.dataset.l;
       while(f>7&&el.offsetWidth>W){ f--; el.style.fontSize=f+'px'; } var ow=el.offsetWidth, al=el.dataset.al; el.style.left=(al==='r'?L+W-ow:al==='l'?L:L+W/2-ow/2)+'px'; } });
-    if(hit(a,b)){ var s=a.textContent.length<b.textContent.length?a:b; s.dataset.gone='1'; s.style.visibility='hidden'; }
+    if(!hit(a,b)) continue;
+    /* 2. the box with less text keeps exactly its own place (no extra height) and gets smaller letters */
+    var s=a.textContent.length<b.textContent.length?a:b, o=s===a?b:a;
+    s.style.maxHeight=s.style.minHeight; s.style.height=s.style.minHeight; if(s.dataset.one){ s.style.minWidth='0'; s.style.width=s.dataset.w+'px'; s.style.left=s.dataset.l+'px'; }
+    fitIn(s);
+    if(!hit(s,o)) continue;
+    /* 3. still touching: it gives up the strip it shares with the other box (letters smaller again), it is never hidden */
+    var r=rc(s), q=rc(o), top=parseFloat(s.style.top), left=parseFloat(s.style.left);
+    var ov=Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top), oh=Math.min(r.right,q.right)-Math.max(r.left,q.left);
+    if(ov/r.height<=oh/r.width){ var nh=Math.max(8,r.height-ov-1); if(r.top>=q.top) s.style.top=(top+ov+1)+'px'; s.style.height=s.style.maxHeight=s.style.minHeight=nh+'px'; }
+    else { var nw=Math.max(16,r.width-oh-1); if(r.left>=q.left) s.style.left=(left+oh+1)+'px'; s.style.width=nw+'px'; s.style.minWidth='0'; }
+    fitIn(s);
   }
 }
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */

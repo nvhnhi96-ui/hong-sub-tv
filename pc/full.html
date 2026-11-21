@@ -28,11 +28,16 @@ span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.
       while(f>9&&over()){ f--; el.style.fontSize=f+'px'; }
       while(f>7&&over()){ f--; el.style.fontSize=f+'px'; }
     });
-    /* two boxes that still touch: the one with less text is not shown */
+    /* two boxes that still touch */
     var ks=[].slice.call(root.children);
-    for(var i=0;i<ks.length;i++) for(var j=i+1;j<ks.length;j++){ if(ks[i].style.visibility==='hidden'||ks[j].style.visibility==='hidden') continue;
+    for(var i=0;i<ks.length;i++) for(var j=i+1;j<ks.length;j++){ 
       var r=ks[i].getBoundingClientRect(), q=ks[j].getBoundingClientRect();
-      if(Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1) (ks[i].textContent.length<ks[j].textContent.length?ks[i]:ks[j]).style.visibility='hidden'; }
+      if(Math.min(r.right,q.right)-Math.max(r.left,q.left)>1&&Math.min(r.bottom,q.bottom)-Math.max(r.top,q.top)>1){
+        /* the box with less text keeps only its own place, smaller letters; never hidden (its translation is not lost) */
+        var sm=ks[i].textContent.length<ks[j].textContent.length?ks[i]:ks[j], ot=sm===ks[i]?ks[j]:ks[i], rs=sm.getBoundingClientRect(), ro=ot.getBoundingClientRect();
+        var ov=Math.min(rs.bottom,ro.bottom)-Math.max(rs.top,ro.top);
+        if(ov>0){ var nh=Math.max(8,rs.height-ov-1); if(rs.top>=ro.top) sm.style.top=(parseFloat(sm.style.top)+ov+1)+'px'; sm.style.minHeight='0'; sm.style.height=sm.style.maxHeight=nh+'px'; }
+        var fz=parseFloat(sm.style.fontSize); while(fz>6&&(sm.scrollHeight>sm.clientHeight+1||sm.scrollWidth>sm.clientWidth+1)){ fz-=0.5; sm.style.fontSize=fz+'px'; } } }
   });
 })();
 </script>
