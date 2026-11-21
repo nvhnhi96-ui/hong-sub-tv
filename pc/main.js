@@ -562,41 +562,48 @@ function rpLaunch(opengl) {
 
 // Piper: offline Vietnamese voice. One process stays loaded; each stdin line becomes one wav file.
 const VOICE_NAME = 'Giọng Việt Hóng Sub (có sẵn)';
-let piper = null, piperRate = null, piperOut = '', piperQ = [];
+/* Piper (the voice that comes with the app): one process, always at normal speed; the speed of each line is applied
+   where it is played (the player sends rateApply). Before, a new speed (each subtitle line has its own, to keep up
+   with the character) closed Piper and opened it again, and the old one closing took the new one's line with it:
+   every line failed and nothing was read ("giọng hs:piper không đọc được"). */
+let piper = null;
 function piperPaths() {
   const dir = resDir('voices');
   return { exe: findFile(dir, n => /^piper\.exe$/i.test(n)), model: findFile(dir, n => /\.onnx$/i.test(n)) };
 }
-function piperStart(rate) {
+function piperStart() {
+  if (piper) return true;
   const { exe, model } = piperPaths();
   if (!exe || !model) return false;
-  if (piper && piperRate === rate) return true;
-  if (piper) { try { piper.kill(); } catch (e) { /* ignore */ } piper = null; }
   const out = path.join(os.tmpdir(), 'hongsub-voice'); fs.mkdirSync(out, { recursive: true });
-  piper = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', (1 / Math.max(0.5, rate || 1)).toFixed(2), '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true });
-  piperRate = rate; piperOut = '';
-  piper.stdout.setEncoding('utf8');
-  piper.stdout.on('data', (d) => {
-    piperOut += d; let i;
-    while ((i = piperOut.indexOf('\n')) >= 0) {
-      const line = piperOut.slice(0, i).trim(); piperOut = piperOut.slice(i + 1);
+  let p;
+  try { p = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', '1.00', '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true }); }
+  catch (e) { return false; }
+  p.q = []; p.out = ''; piper = p;
+  p.stdout.setEncoding('utf8');
+  p.stdout.on('data', (d) => {
+    p.out += d; let i;
+    while ((i = p.out.indexOf('\n')) >= 0) {
+      const line = p.out.slice(0, i).trim(); p.out = p.out.slice(i + 1);
       if (!/\.wav$/i.test(line)) continue;
-      const done = piperQ.shift(); if (!done) continue;
-      try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64') }); } catch (e) { done({ err: String(e) }); }
+      const done = p.q.shift(); if (!done) continue;
+      try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64'), rateApply: true }); } catch (e) { done({ err: String(e) }); }
     }
   });
-  piper.stderr.on('data', () => {});
-  piper.on('exit', () => { piper = null; while (piperQ.length) piperQ.shift()({ err: 'voice stopped' }); });
+  p.stderr.on('data', () => {});
+  p.stdin.on('error', () => {});
+  const gone = () => { if (piper === p) piper = null; while (p.q.length) p.q.shift()({ err: 'voice stopped' }); };   /* only this process's own lines */
+  p.on('exit', gone); p.on('error', gone);
   return true;
 }
-function piperSpeak(text, rate) {
-  const r = Math.round((rate || 1) * 10) / 10;
-  if (!piperStart(r)) return Promise.resolve({ err: 'novoice' });
+function piperSpeak(text) {
+  if (!piperStart()) return Promise.resolve({ err: 'novoice' });
+  const p = piper;
   return new Promise((done) => {
-    const t = setTimeout(() => { const i = piperQ.indexOf(fin); if (i >= 0) piperQ.splice(i, 1); done({ err: 'timeout' }); }, 20000);
     const fin = (m) => { clearTimeout(t); done(m); };
-    piperQ.push(fin);
-    piper.stdin.write(String(text).replace(/[\r\n]+/g, ' ').trim() + '\n');
+    const t = setTimeout(() => { const i = p.q.indexOf(fin); if (i >= 0) p.q.splice(i, 1); done({ err: 'timeout' }); if (!p.q.length) { try { p.kill(); } catch (e) { /* ignore */ } } }, 12000);   /* stuck: a fresh one next time */
+    p.q.push(fin);
+    try { p.stdin.write(String(text).replace(/[\r\n]+/g, ' ').trim() + '\n'); } catch (e) { const i = p.q.indexOf(fin); if (i >= 0) p.q.splice(i, 1); fin({ err: String(e) }); }
   });
 }
 
@@ -942,9 +949,16 @@ function setupIpc() {
         console.warn('online voice ' + voice + ': ' + (err && err.message));   /* offline or refused: read it with the voice on this computer */
       }
     }
-    const r = await piperSpeak(text, rate);
-    if (r.wav || voice === 'hs:piper') return r;
-    return ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
+    const r = await piperSpeak(text);
+    if (r.wav) return r;
+    /* Piper could not read it: the online voice (no key, while the computer is online), then Windows' own voice */
+    if (Date.now() > (onlineOff['gg:'] || 0)) {
+      try { const mp3 = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); onlineFails['gg:'] = 0; return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: true }; }
+      catch (err) { onlineFails['gg:'] = (onlineFails['gg:'] || 0) + 1; if (onlineFails['gg:'] >= 3) { onlineOff['gg:'] = Date.now() + 10 * 60 * 1000; onlineFails['gg:'] = 0; } }
+    }
+    const w = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
+    if (!(w && w.wav)) console.warn('voice: piper ' + (r.err || '') + ', windows ' + ((w && w.err) || 'no sound'));
+    return w && w.wav ? w : { err: 'piper: ' + (r.err || '?') + '; windows: ' + ((w && w.err) || 'no sound') };
   });
   ipcMain.handle('az-set', (e, key, region) => {
     key = String(key || '').trim(); region = String(region || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -991,7 +1005,7 @@ function setupIpc() {
       else if (voice.startsWith('gg:')) { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; }
       else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
       else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
-      if (!buf) { const r = await piperSpeak(text, 1); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+      if (!buf) { const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
       if (!buf) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
       if (!buf || buf.length < 200) return { ok: false };
       const id = lgApi && lgApi.clipPut ? lgApi.clipPut(buf, mime) : '';
@@ -1147,9 +1161,9 @@ async function runSelftest() {
   const img = await win.webContents.capturePage(); fs.writeFileSync(path.join(out, 'main.png'), img.toPNG());
   const oimg = await overlay.webContents.capturePage(); fs.writeFileSync(path.join(out, 'overlay.png'), oimg.toPNG());
   const v = await ttsCall({ cmd: 'voices' }, 30000); log('voices', JSON.stringify(v));
-  const pv = Date.now(); const pw = await piperSpeak('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.', 1.1);
+  const pv = Date.now(); const pw = await piperSpeak('Xin chào, đây là giọng đọc phụ đề của Hóng Sub.');
   log('piper', pw.err ? 'ERR ' + pw.err : 'wav bytes ' + Math.round((pw.wav || '').length * 0.75) + ' in ' + (Date.now() - pv) + 'ms');
-  const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.', 1.1);
+  const pv2 = Date.now(); const pw2 = await piperSpeak('Chúng ta phải rời khỏi đây trước khi trời sáng.');
   log('piper2', pw2.err ? 'ERR ' + pw2.err : 'wav bytes ' + Math.round((pw2.wav || '').length * 0.75) + ' in ' + (Date.now() - pv2) + 'ms');
   if (pw.wav) fs.writeFileSync(path.join(out, 'voice-vi.wav'), Buffer.from(pw.wav, 'base64'));
   if (pw.wav && pw2.wav) { const j = wavJoin([Buffer.from(pw.wav, 'base64'), Buffer.from(pw2.wav, 'base64')]); log('wav join', j ? j.length + ' bytes (' + Math.round(pw.wav.length * 0.75) + '+' + Math.round(pw2.wav.length * 0.75) + ')' : 'ERR'); if (j) fs.writeFileSync(path.join(out, 'voice-join.wav'), j); }
