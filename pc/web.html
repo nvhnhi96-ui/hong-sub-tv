@@ -5343,10 +5343,15 @@ function fsLineGeom(it,vw2h){
     else { Fs.push(r.h*0.78); base.push(null); }   /* not measured: the reader's line box is a little taller than the letters */
   });
   var srt=Fs.slice().sort(function(a,b){ return a-b; }), F=srt[Math.floor(srt.length/2)];   /* one letter size for the whole text, like the English */
+  var one=o.lr.length===1, icR=one&&it.al==='r', icL=one&&it.al==='l';   /* a label with a button icon after it (or before it): the icon stays visible */
   return o.lr.map(function(r,i){
     var t=r.ink?r.ink.t:r.y, bt=r.ink?r.ink.b:r.y+r.h, pad=Math.max(0.0015,(bt-t)*0.14), bl=base[i]!=null?base[i]:(r.y+r.h/2+(fa-fd)*F/2);
     var top=Math.min(t,bl-fa*F*0.8)-pad, bot=Math.max(bt,bl+fd*F*0.6)+pad, px=(bt-t)*0.25/vw2h;   /* the cover: the English letters and a little around them */
-    return {x:r.x-px,w:r.w+2*px,y:top,h:bot-top,f:F,pt:bl-fa*F-top,lh:(fa+fd)*F,vi:o.vi[i]};
+    var v=o.vi[i];
+    if(icR) v=String(v).replace(/(\s*(\{\{\d+\}\}|\[?\(?\b[LRC][123]\b\)?\]?|[✕○□△◯⨯]))+\s*$/,'');   /* the game's button stays, not drawn again */
+    if(icL) v=String(v).replace(/^\s*((\{\{\d+\}\}|\[?\(?\b[LRC][123]\b\)?\]?|[✕○□△◯⨯])\s*)+/,'');
+    var pl=icL?0:px, pr=icR?0:px;
+    return {x:r.x-pl,w:r.w+pl+pr,y:top,h:bot-top,f:F,pt:bl-fa*F-top,lh:(fa+fd)*F,vi:v};
   });
 }
 function fsLinesHtml(it,b,font,list){
@@ -5374,7 +5379,17 @@ function fsLinesFit(el){
     d.style.width=ww+'px';
     if(sx<0.999){ d.style.transform='scaleX('+sx.toFixed(3)+')'; d.style.transformOrigin='0 50%'; }
     d.style.left=(al==='right'?L0+W0-vis:al==='center'?L0+(W0-vis)/2:L0)+'px';
+    d.dataset.vis=vis;
   });
+  /* the outer box holds every line as drawn (a right-aligned line grown to the left too): its picture for the TV is
+     made from this box, so nothing may stick out of it */
+  var mn=0, mx=parseFloat(el.style.width)||0;
+  [].forEach.call(el.children,function(d){ var l=parseFloat(d.style.left)||0; mn=Math.min(mn,l); mx=Math.max(mx,l+(+d.dataset.vis||d.offsetWidth)); });
+  if(mn<0){ el.style.left=(parseFloat(el.style.left)+mn)+'px'; [].forEach.call(el.children,function(d){ d.style.left=(parseFloat(d.style.left)-mn)+'px'; }); }
+  el.style.width=(mx-mn)+'px';
+  /* room above the first line for the marks over Vietnamese capitals (Ấ, Ể): they are part of the picture too */
+  var c0=el.children[0], m=c0?Math.ceil(parseFloat(c0.style.fontSize)*0.3):0;
+  if(m){ el.style.top=(parseFloat(el.style.top)-m)+'px'; el.style.height=(parseFloat(el.style.height)+m)+'px'; [].forEach.call(el.children,function(d){ d.style.top=(parseFloat(d.style.top)+m)+'px'; }); }
 }
 /* the window over the game (Windows, Mac) and the phone get the boxes of whichever is showing: "Dịch cả màn hình" or the automatic one */
 /* the colours of the original text and its background, read from the picture (once per box) */
@@ -5584,7 +5599,7 @@ function fsList(lines){
 function fsWords(l,raw){
   var t=String(raw||''), m, first=-1, last=-1, re=/\S+/g;
   while((m=re.exec(t))){ var w=m[0].replace(/[^A-Za-zÀ-ỹ0-9']/g,'');
-    if(w.length>=2&&/[A-Za-zÀ-ỹ]/.test(w)&&!/^([LR][123]|[LR][BTS]|Z[LR]|[OC]\)?)$/i.test(w)){ if(first<0) first=m.index; last=m.index+m[0].length; } }
+    if(w.length>=2&&/[A-Za-zÀ-ỹ]/.test(w)&&!/^([LRC][123]|[LR][BTS]|Z[LR]|[OC]\)?|L3R3|R3L3)$/i.test(w)){ if(first<0) first=m.index; last=m.index+m[0].length; } }
   var n=Math.max(1,t.length), x=l.x, x2=l.x+l.w;
   if(first<0) return {x:x,w:l.w};
   var lead=first>0, trail=t.slice(last).trim().length>0;
