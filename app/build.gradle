@@ -47,3 +47,8 @@ android {
         abortOnError false
     }
 }
+
+dependencies {
+    // WebSocket to the new relay (NrRelay)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}

@@ -222,6 +222,7 @@ public class OverlayService extends Service {
     public void onDestroy() {
         alive = false;
         polling = false;
+        nr.close();
         main.removeCallbacks(updLook);
         clipStop();
         if (louder != null) { try { louder.release(); } catch (Exception ignored) { } louder = null; }
@@ -967,7 +968,20 @@ public class OverlayService extends Service {
         tell("alive", Crash.take(this));
     }
 
+    /* the new relay: lines come over one WebSocket; honggame.store only while it is down */
+    private final NrRelay nr = new NrRelay(it -> handle(unpack(it)));
+    private int tells = 0;
+
     private void tell(String kind, String crash) {
+        boolean viaNr = false;
+        try {
+            nr.sync(prefs.code());
+            JSONObject x = new JSONObject().put("ip", LanServer.ip());
+            if (crash != null && !crash.isEmpty()) x.put("crash", crash.length() > 380 ? crash.substring(0, 380) : crash);
+            viaNr = nr.tell(new JSONObject().put("kind", kind).put("vi", "tv " + Updater.current(this)).put("en", pack(x)));
+        } catch (Exception ignored) { }
+        /* honggame.store too, for a computer still on an older Hóng Sub: every hello, every other alive */
+        if (viaNr && !"hello".equals(kind) && (tells++ % 2) != 0) return;
         try {
             HttpURLConnection c = (HttpURLConnection) new URL(Prefs.RELAY.replace("pull?room=", "push")).openConnection();
             c.setConnectTimeout(5000); c.setReadTimeout(5000); c.setDoOutput(true); c.setRequestMethod("POST");
@@ -1002,6 +1016,12 @@ public class OverlayService extends Service {
             while (polling) {
                 long wait = POLL_MS;
                 alive();
+                nr.sync(prefs.code());
+                if (nr.listening()) {   /* the WebSocket brings every line: nothing to ask */
+                    lastSeq = -1;
+                    try { Thread.sleep(1500); } catch (InterruptedException ie) { nr.close(); return; }
+                    continue;
+                }
                 try {
                     JSONObject j = fetch(Prefs.RELAY + prefs.code() + (lastSeq >= 0 ? "&since=" + lastSeq : "") + "&t=" + System.currentTimeMillis());
                     long seq = j.optLong("seq", 0);
