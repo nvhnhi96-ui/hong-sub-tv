@@ -4593,7 +4593,8 @@ function tmPronOff(vi){
 }
 function tmOddNum(en,vi){ var d=String(vi||'').match(/\d+([:.,]\d+)*/g)||[], e=String(en||''); return d.some(function(x){ return e.indexOf(x)<0; }); }
 function tmDiffers(){ var pr=presetOf($('hsGame').value), stNow=$('hsStyle')?$('hsStyle').value:'';   /* this player changed the game's style or notes */
-  return pr?(stNow!==(pr.style||'')||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!(stNow||$('hsNotes').value.trim()); }
+  var G=GAMES[gameKey($('hsGame').value)]||{};   /* a game not in the list: its looked-up notes and style are what the store was made with */
+  return pr?(stNow!==(pr.style||'')||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!((stNow&&stNow!==(G.style||''))||($('hsNotes').value.trim()&&!G.notesAuto)); }
 function tmNeedFix(en,vi,r){ return !!(r&&(r._fz||r._parts))||tmPronOff(vi)||tmOddNum(en,vi)||glossMiss(en,vi); }
 /* a fixed line that came back after the stored one was shown: put it in place if that line is still on screen */
 function tmSwap(j,v,r0){
@@ -6765,7 +6766,7 @@ $('hsGame').addEventListener('change',function(){
 })();
 $('hsNotes').addEventListener('change',function(){
   save('hsNotes',this.value); setsChanged(); var n=$('hsGame').value.trim();
-  if(n){GAMES[gameKey(n)]={name:n,notes:this.value}; save('games',GAMES); gameList();}
+  if(n){ var G=GAMES[gameKey(n)]||{}; G.name=n; G.notes=this.value; G.notesAuto=false; GAMES[gameKey(n)]=G; save('games',GAMES); gameList(); }   /* the game's rules, words and style from the look-up stay */
 });
 function notesMsg(cls,t){var m=$('hsNotesMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
 /* game notes from the web: Gemini looks the game up with Google Search (wikis, fan sites) for its characters,
@@ -6844,7 +6845,7 @@ async function aiNotes(name,auto){
   if(!got||(!got.notes&&!got.rules)){ notesMsg('err','Chưa tìm được thông tin về '+name+', thử lại sau.'); return; }
   if(gameKey($('hsGame').value)!==k) return;   /* the person switched game meanwhile */
   var G=GAMES[k]||{name:name}, kept=auto&&G.notes;   /* notes the person wrote stay */
-  if(needNotes&&got.notes&&!kept){ G.notes=got.notes; $('hsNotes').value=got.notes; save('hsNotes',got.notes); }
+  if(needNotes&&got.notes&&!kept){ G.notes=got.notes; G.notesAuto=true; $('hsNotes').value=got.notes; save('hsNotes',got.notes); }
   if(got.rules&&!(auto&&G.rulesOwn)){ G.rules=got.rules; G.rulesOwn=false; }
   if(Object.keys(got.terms).length) G.terms=got.terms;
   if(got.style) G.style=got.style;
