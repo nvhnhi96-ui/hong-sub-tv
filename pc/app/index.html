@@ -56,7 +56,7 @@ html,body{margin:0;background:#ECEEF1}
 .hs-region.scan{animation:hsScan 1.6s ease-in-out infinite}
 .hs-zones{position:absolute;inset:0;pointer-events:none}
 .hs-fs{position:absolute;inset:0;pointer-events:none;z-index:3}
-.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:0;padding:.16em 3px 0}.hs-fs .hs-fsb.hs-fll{background:transparent!important;box-shadow:none;padding:0;overflow:visible;width:auto}.hs-fll1{position:absolute;box-sizing:border-box;white-space:pre;padding:0 2px;background:rgba(12,14,18,.92);overflow:visible;font-weight:600}.hs-fs .hs-fsb.hs-flb[data-rot]{transform-origin:50% 50%;display:flex;flex-direction:column;justify-content:center}
+.hs-fs .hs-fsb.hs-flb{box-shadow:none;border-radius:0;padding:.16em 3px 0}.hs-fs .hs-fsb.hs-fll{background:transparent!important;box-shadow:none;padding:0;overflow:visible;width:auto}.hs-fll1{position:absolute;box-sizing:border-box;white-space:pre;padding:0 2px;background:rgba(12,14,18,.92);overflow:visible;font-weight:600}.hs-fllp{position:relative;box-sizing:border-box;white-space:normal;overflow-wrap:break-word;padding:0 3px .1em;background:rgba(12,14,18,.92);font-weight:600}.hs-fs .hs-fsb.hs-flb[data-rot]{transform-origin:50% 50%;display:flex;flex-direction:column;justify-content:center}
 .hs-cover{position:absolute;z-index:7;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:4px 12px;background:rgba(6,7,9,.88);border-radius:6px;pointer-events:none;text-align:center}
 .hs-cover[hidden]{display:none}
 .hs-cover>div{color:#fff;font-weight:600;line-height:1.3;text-shadow:0 1px 2px #000;font-family:var(--fb)}
@@ -1798,10 +1798,10 @@ function rotUnion(lines){
 async function read(src,opts){
   if(!det||!rec) throw new Error('OCR chưa sẵn sàng');
   var t0=performance.now(), W=src.width, H=src.height;
-  var boxes=await detect(src,W,H), items=[];
+  var boxes=await detect(src,W,H), items=[], pz=opts&&opts.pause;   /* pause: a longer reading (the whole screen) steps aside between its boxes for a subtitle line */
   if(opts&&opts.maxBoxes) boxes=boxes.slice(0,opts.maxBoxes);
   var ic=!!(opts&&opts.icons);
-  for(var i=0;i<boxes.length;i++){ var r=await recognize(src,boxes[i],ic); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; boxes[i].x0=r.x0; boxes[i].slots=r.slots||[]; items.push(boxes[i]); } }
+  for(var i=0;i<boxes.length;i++){ if(pz) await pz(); var r=await recognize(src,boxes[i],ic); if(r.text){ boxes[i].text=r.text; boxes[i].conf=r.conf; boxes[i].x0=r.x0; boxes[i].slots=r.slots||[]; items.push(boxes[i]); } }
   if(ic) iconsFind(src,items);
   if(opts&&opts.raw) return {items:items, W:W, H:H, ms:Math.round(performance.now()-t0)};   /* every text box on its own (button hints, menu words) */
   if(opts&&opts.blocks) return {blocks:blockUp(items.slice(),!!opts.icons,src), lines:lineUp(items.slice()), W:W, H:H, ms:Math.round(performance.now()-t0)};
@@ -3866,6 +3866,12 @@ function tvSend(o){
   }
   /* Android TV with its code known: both ways at once (the TV shows a line once, by its mid), so a TV whose address
      changed or a home network that keeps devices apart still gets every line through honggame.store */
+  /* a screen-text box while the home network works: over the home network only (the box as drawn here, with the
+     game's button icons), honggame.store only if that fails. Both at once, the copy through the internet (text only:
+     no picture fits there) often came first and the TV drew that one: other letters, blank holes for the icons */
+  if(ip&&o.kind==='zone'&&S.tvOk===true){
+    return TVD().send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); throw new Error((r&&r.err)||'TV không trả lời'); }).catch(function(){ return tvCode().length>=4?tvRelay(o):Promise.reject(new Error('TV không trả lời')); });
+  }
   if(ip&&tvCode().length>=4){
     var lan=TVD().send(ip,o).then(function(r){ if(r&&r.ok){ tvLan(true); return r; } tvLan(false); throw new Error((r&&r.err)||'TV không trả lời'); },function(e){ tvLan(false); throw e; });
     var rel=tvRelay(o);
@@ -5211,16 +5217,32 @@ async function tmLoad(name){
 /* a line read now that is in the store: the same words, or almost (the reader missed a letter) */
 /* a line from the shared store: the whole line, or without the speaker's name in front, or sentence by sentence
    (the screen often shows two lines of the store together). Every line found here costs no AI call. */
+function tmExact(t){ var e=S.tm.map[trKey(t)]; return e&&!tmJunk(e)?e:null; }
+/* the stored Vietnamese laid out like the English on this screen: a line break another player's screen had (the line
+   wrapped there) is not kept when the English here is one line, or has another number of lines */
+function tmLay(en,vi){ var n=String(en||'').split('\n').length, v=String(vi||''); return v.split('\n').length===n?v:v.replace(/\s*\n\s*/g,' '); }
 function tmFind(text,strict){
   if(!S.tm.n||!text) return null;
+  var r=tmFind0(text,strict); if(r) r.vi=tmLay(text,r.vi); return r;
+}
+function tmFind0(text,strict){
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{4,})$/.exec(String(text).trim());   /* "NAME: line": the name on screen wins */
+  var ex=tmExact(text)||(m&&tmExact(m[2]));
+  if(ex) return tmHit({en:text,vi:ex.vi,speaker:m?m[1]:ex.who,gender:ex.gd,_tm:true,_k:trKey(m&&!tmExact(text)?m[2]:text),_fz:0});
+  /* a line and the mission's objective under it ("... I am not diving in there!" / "Collect the package"): each line is
+     its own line in the store; found exactly, not as one near match that needs a fix */
+  var L=String(text).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if(L.length>=2&&L.length<=4){ var ev=[], ek='', ew='', eg='';
+    var FF=tmFitOn()?tmFitStore().m:{};
+    for(var j=0;j<L.length;j++){ var e1=tmExact(L[j]); if(!e1){ ev=null; break; } ev.push(String(FF[trKey(L[j])]||e1.vi).replace(/\s*\n\s*/g,' '));   /* each line as already fixed for this player, if it was */ if(!ek){ ek=trKey(L[j]); ew=e1.who; eg=e1.gd; } }
+    if(ev) return tmHit({en:text,vi:ev.join('\n'),speaker:ew,gender:eg,_tm:true,_k:ek,_fz:0,_ml:1}); }
   var r=tmFind1(text,strict); if(r){ if(m) r.speaker=m[1]; return tmHit(r); }
   if(m&&(r=tmFind1(m[2],strict))){ r.speaker=m[1]; r.en=text; return tmHit(r); }
   if(strict) return null;
   var parts=String(text).replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…。！？])\s+(?=[A-Z"'“(¿¡]|$)/).map(function(s){return s.trim();}).filter(function(s){return s.length>1;});
   if(parts.length>=2&&parts.length<=6){
     var vi=[], who='', gd='';
-    for(var i=0;i<parts.length;i++){ var f=tmFind1(parts[i]); if(!f) return null; vi.push(f.vi); who=who||f.speaker; gd=gd||f.gender; }
+    for(var i=0;i<parts.length;i++){ var f=tmFind1(parts[i]); if(!f) return null; vi.push(String(f.vi).replace(/\s*\n\s*/g,' ')); who=who||f.speaker; gd=gd||f.gender; }
     return tmHit({en:text,vi:vi.join(' '),speaker:who,gender:gd,_tm:true,_parts:true});   /* lines put together: their pronouns may not agree */
   }
   return null;
@@ -5330,14 +5352,14 @@ async function tmFit(j,res){
   if(!res||!res.vi||!tmFitOn()) return res;
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{2,})$/.exec(String(j.text).trim()), en=m?m[2]:String(j.text).trim(), ck=trKey(j.text);
   var F=tmFitStore(), ai=groqKeys().length||keys().length||orReady();
-  var kept=F.m[ck]||(!res._fz&&res._k&&F.m[res._k]);
-  if(kept){ if(ai&&res._k) tmAhead(res._k,j,res,true); res.vi=kept; res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
+  var kept=F.m[ck]||(!res._fz&&!res._ml&&res._k&&F.m[res._k]);
+  if(kept){ if(ai&&res._k) tmAhead(res._k,j,res,true); res.vi=tmLay(j.text,kept); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
   if(!ai) return res;                                                       /* no AI key: the stored line, laid out like this screen */
   /* the store's lines are written with the game's own settings (its notes, its style). A line that follows them shows
      at once (0 ms) and is checked in the background with the next ones; a player who changed the settings, or a line
      that surely needs it (tmNeedFix), gets it rewritten first (at most ~1.2 s, then the line shows and is swapped). */
   var differs=tmDiffers();
-  var why=differs?'cài đặt của bạn khác cài đặt của game':res._fz?'câu gần giống trong kho':res._parts?'ghép từ nhiều câu trong kho':tmPronOff(res.vi)?'xưng hô chưa theo ghi chú nhân vật':tmOddNum(en,res.vi)?'có số không có trong câu gốc':glossMiss(en,res.vi)?'chưa theo từ điển':'';
+  var why=differs?'cài đặt của bạn khác cài đặt của game':res._fz&&res._fz<0.9?'câu gần giống trong kho':res._parts?'ghép từ nhiều câu trong kho':tmPronOff(res.vi)?'xưng hô chưa theo ghi chú nhân vật':tmOddNum(en,res.vi)?'có số không có trong câu gốc':glossMiss(en,res.vi)?'chưa theo từ điển':'';
   if(res._k) tmAhead(res._k,j,res,!!why);                                   /* the next lines of the store (and this one, when it is not fixed here), checked while it shows */
   if(!why) return res;
   var t0=Date.now(), vi0=res.vi;
@@ -5348,9 +5370,12 @@ async function tmFit(j,res){
     glossHints(en)+context(en);
   var share=!differs&&!res._fz&&!res._parts;
   var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
-  var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },1200); })]);
-  if(v===undefined){ log('chỉnh câu trong kho ('+why+') chưa xong sau 1.2 giây: hiện câu trong kho, chỉnh xong sẽ thay'); p.then(function(v2){ if(v2&&v2!==vi0) tmSwap(j,v2,res); }); return res; }
-  if(v){ log('câu trong kho, chỉnh vì '+why+' ('+(Date.now()-t0)+'ms)'+(v!==vi0?': '+v:', giữ nguyên')); res.vi=v; res._fit=1; }
+  /* the line shows once: the fixed one if it comes in time, else the stored one (the fix is kept for the next time).
+     Swapping a line already on screen made the subtitles jump */
+  var wait=res._fz&&res._fz<0.9?1500:1000;
+  var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },wait); })]);
+  if(v===undefined){ log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, lần sau dùng câu đã chỉnh'); return res; }
+  if(v){ log('câu trong kho, chỉnh vì '+why+' ('+(Date.now()-t0)+'ms)'+(v!==vi0?': '+v:', giữ nguyên')); res.vi=tmLay(j.text,v); res._fit=1; }
   return res;
 }
 /* ---------- the next lines of the store, checked ahead ----------
@@ -5376,7 +5401,7 @@ async function tmAhead(k,j,r0,self){
     if(S.tm!==T) return;
     var got=0, chg=0; (r&&r.items||[]).forEach(function(it){ var s=pick[(+it.i||0)-1], e=s&&T.map[s], v=String(it.vi||'').trim(); if(!e||!v||junkPair(e.en,v)) return;
       v=v.replace(/\s*\/\s*/g,'\n'); if(String(e.vi).indexOf('\n')<0) v=v.replace(/\n/g,' '); tmFitKeep(s,v); got++;
-      if(v!==e.vi){ chg++; if(share) tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); if(j&&s===k&&!r0._fit) tmSwap(j,v,r0); } });   /* the line on screen itself: swapped if still there */   /* with the game's own settings, the fixed line goes back to the store for everyone */
+      if(v!==e.vi){ chg++; if(share) tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); } });   /* with the game's own settings, the fixed line goes back to the store for everyone */
     S.tmAh.calls++; log('kho dịch chung: kiểm tra trước '+got+'/'+pick.length+' câu sắp tới ('+chg+' câu sửa, '+(Date.now()-t0)+'ms)');
   }catch(e){ pick.forEach(function(s){ delete S.tmAh.done[s]; }); }
   finally{ S.tmAh.busy=false; }
@@ -5700,9 +5725,10 @@ function send(force){ return sendImage(); }   /* kept for older callers */
 /* on-device reading: read again whenever the subtitle area changes, translate when the text is new and complete */
 async function ocrStep(m,force){
   var noKey=!keys().length&&!groqKeys().length;
-  if(m.ink<MW*MH*0.003){ S.subLive=false; S.cand=null; S.ocrMask=m; if(!S.noInkAt) S.noInkAt=Date.now(); else if(Date.now()-S.noInkAt>600) subGone(); return; }   /* no text on screen */
+  if(m.ink<MW*MH*0.003){ S.subLive=false; var c0=S.cand; S.cand=null; S.ocrMask=m; if(c0&&!S.ocrBusy&&Date.now()-c0.at<5000) ocrTake(c0.t,false,true); if(!S.noInkAt) S.noInkAt=Date.now(); else if(Date.now()-S.noInkAt>600) subGone(); return; }   /* no text on screen: a line read once and gone before a second look (a short "Shit", "Okay") is still a line */
   S.noInkAt=0;
-  if(S.ocrBusy){ if((S.forceOcr||force)&&!S.quick) S.quick=later(function(){ S.quick=null; tick(force); },120); return; }   /* the reader is busy (the screen check, screen text): the second look waits for it, it is not lost */
+  if(S.ocrMask&&maskDiff(m,S.ocrMask)>=0.06) S.subChgAt=Date.now();             /* the subtitle area changed: a line is coming, it goes before the screen text */
+  if(S.ocrBusy){ if(!S.quick) S.quick=later(function(){ S.quick=null; tick(force); },60); return; }   /* the reader is busy (the screen check, screen text): the subtitle is read the moment it is free */
   var again=S.forceOcr; S.forceOcr=false;
   if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
   S.ocrBusy=true;
@@ -5710,7 +5736,7 @@ async function ocrStep(m,force){
   var o;
   S.readT0=Date.now();   /* when this reading of the subtitle area began: a new line was first seen about then */
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
-  S.ocrBusy=false; S.perf.o=o.ms; S.ocrMask=m;
+  S.ocrBusy=false; S.subReadEnd=Date.now(); S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(dictFix(ocrText(o)));
   S.subLive=!!(txt&&subLike(txt));
   if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
@@ -5741,9 +5767,12 @@ function promptOnly(t){
 }
 /* a line the reader found in the subtitle area: new, complete, worth translating? */
 /* a line read but not translated, written in the log (once per text) so a report shows why a line was missed */
+/* a HUD word read with the line ("... for that brick. TRACK", "meet'em. d TRACK"): capitals after the end of a sentence
+   in mixed case are not part of what the character says */
+function hudTail(t){ var s=String(t||''); if(!/[a-z]/.test(s)) return s; return s.split('\n').map(function(l){ return l.replace(/([.!?…"”])(?:\s+[A-Za-z]\b)?(?:\s+[A-Z][A-Z0-9]{2,}){1,2}\s*$/,'$1'); }).filter(function(l){ return !/^\s*(?:[A-Za-z]\s+)?[A-Z][A-Z0-9]{2,}\s*$/.test(l)||!/[a-z]/.test(s.replace(l,'')); }).join('\n'); }
 function skipLog(why,t){ var k=why+'|'+norm(t); S.skipL=S.skipL||[]; if(S.skipL.indexOf(k)>=0) return; S.skipL.push(k); if(S.skipL.length>60) S.skipL.shift(); log(why+': '+String(t).replace(/\s+/g,' ').slice(0,90)); }
-function ocrTake(txt,force){
-  OCR.miss=0;
+function ocrTake(txt,force,done){
+  OCR.miss=0; txt=hudTail(txt);
   if(!force&&similar(txt,S.lastOcr)){ S.cand=null; return; }                        /* same subtitle, only the picture behind it moved */
   if(!force&&S.lastShownAt&&Date.now()-S.lastShownAt<12000&&sameLine(txt,S.lastRaw)){ S.cand=null; S.lastOcr=txt; S.saved++; if(!similar(txt,S.lastRaw)) skipLog('coi là câu đang hiện (đọc lệch), không dịch lại',txt); return; }   /* the line on screen, read again */
   if(!viMode()&&(viPlain(txt)||viLike(txt))){ S.cand=null; S.lastOcr=txt; return; }   /* Vietnamese: the console's own menus, or a game already in Vietnamese */
@@ -5757,8 +5786,10 @@ function ocrTake(txt,force){
   }
   S.hintAt=0;
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
-  if(!force&&!complete){                                                           /* maybe still typing out: confirm with one more reading */
+  if(!force&&!complete&&!done){                                                   /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
+    /* another line already (not the same words growing): the line read before was whole, it is translated first */
+    if(S.cand&&!stable&&norm(txt).indexOf(norm(S.cand.t).slice(0,12))!==0&&dice(S.cand.t,txt)<0.5){ var c1=S.cand; S.cand=null; ocrTake(c1.t,false,true); tooLong=false; }
     if(!stable&&!tooLong){ if(!S.cand){ S.cand={t:txt,at:Date.now(),t0:S.readT0}; specStart(txt); } else S.cand.t=txt; S.forceOcr=true; if(!S.quick) S.quick=later(function(){S.quick=null; tick();},preferMode()==='fast'?100:200); return; }
   }
   var seenAt=S.cand&&S.cand.t0?S.cand.t0:(S.readT0||Date.now());
@@ -5766,8 +5797,8 @@ function ocrTake(txt,force){
   var part=force?txt:freshPart(txt);
   if(!part){ S.saved++; runStatus(); if(!similar(txt,S.lastRaw||'')) skipLog('đã dịch rồi, không dịch lại',txt); return; }
   if(!force&&notiSub(part)){ log('bỏ qua bảng thông báo: '+part); S.saved++; return; }
-  if(!force&&uiLike(part)){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
-  if(!force&&tmStrict()&&shortLine(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
+  if(!force&&uiLike(part)&&!talkWord(part)&&!(S.tm.n&&tmExact(part))){ log('bỏ qua chữ giao diện, không phải phụ đề: '+part); S.saved++; return; }
+  if(!force&&tmStrict()&&shortLine(part)&&/^[^a-z]*$/.test(part)&&!tmFind(part)){ log('bỏ qua: câu ngắn không có trong kho dịch của game, không giống lời thoại: '+part); S.saved++; return; }
   if(/^(press|hold|tap|click|use|select)\b.{0,30}\bto\b/i.test(part)||/^[+\-]?\d[\d,.]*\s*(xp|exp|gold|hp|mp)\b/i.test(part)){ log('bỏ qua chữ hệ thống: '+part); return; }   /* button prompts, rewards */
   if(!force&&voHeard(part)){ log('phụ đề trùng lời nói vừa dịch, không dịch lại: '+part.slice(0,80)); S.saved++; return; }
   log('đọc được: '+part);
@@ -5780,6 +5811,9 @@ function ocrTake(txt,force){
    what a character says. A subtitle is a sentence: it ends with . ! ? … or has ordinary lower-case words.
    A label is a few words that all start with a capital (or all capitals), with no sentence ending. */
 var SMALLW=/^(of|the|a|an|and|to|in|on|for|or|by|at|with|from|de|la|le|des|du|von|der)$/i;
+/* one or two words a character says ("Shit", "Okay", "Yeah right"): dialogue, not a label */
+var TALKW=/^(ok(ay)?|alright|all right|yeah|yep|yes|yo|no|nope|nah|shit|fuck|fuck you|damn|dammit|what|hey|wait|come on|go|run|stop|help|thanks|thank you|sorry|please|right|sure|fine|hello|hi|bye|man|dude|bro|oh|ah|uh|huh|hmm|whoa|wow|look|listen|really|seriously|whatever|great|cool|nice|jesus|god|fuck me|holy shit|oh shit|oh god|oh no|move|now|go go|let's go|hurry|easy|shut up|get down|freeze|idiot|asshole|bitch|motherfucker|son of a bitch|cheers|congrats|copy|roger|understood|got it|never|maybe|later|here|there|me|you|us|him|her)$/i;
+function talkWord(t){ var s=String(t||'').replace(/[^A-Za-z' ]+/g,' ').replace(/\s+/g,' ').trim(); return !!s&&s.split(' ').length<=3&&TALKW.test(s); }
 function uiLike(t){
   var s=String(t||'').replace(/\s+/g,' ').trim(); if(!s) return true;
   if(/^[A-Z][A-Za-z0-9' .\-]{1,24}:\s+\S/.test(s)) return false;                 /* "NAME: line" */
@@ -5790,6 +5824,25 @@ function uiLike(t){
   return false;
 }
 /* a game with a big shared store (the game's own lines): a short line that is not in it and is not a sentence is not dialogue */
+/* the subtitle goes first: while a line is coming (the subtitle area just changed, a line half read) the reader is kept
+   for it, and while characters are talking the screen text is read less often. Before, the screen text (read over the
+   whole picture, up to ~1 s) and the screen check took the reader just when a line came, and the Vietnamese came a
+   line late on the TV */
+function subPrio(){ return !!S.running&&!!(S.cand||S.forceOcr||Date.now()-(S.subChgAt||0)<1200); }
+/* a reading of the screen text or the screen check that began before a subtitle line appeared: between two of its
+   boxes it gives the reader to the subtitle (read at once), then goes on where it was. Waiting for the whole screen to
+   be read put ~0.5-1 s on every line while the screen text was on */
+function ocrYield(t0){
+  return async function(){
+    if(!S.running||!((S.subChgAt||0)>t0)||S.subYield===S.subChgAt) return;
+    S.subYield=S.subChgAt; var at=Date.now(), since=S.subReadEnd||0;
+    S.ocrBusy=false; if(!S.quick) S.quick=later(function(){ S.quick=null; tick(); },0);
+    while(Date.now()-at<1500){ await new Promise(function(r){ later(r,25); }); if(!S.ocrBusy&&(S.subReadEnd||0)>since) break; }
+    while(S.ocrBusy&&Date.now()-at<3000) await new Promise(function(r){ later(r,25); });
+    S.ocrBusy=true;
+  };
+}
+function subTalk(){ return Date.now()-(S.lastShownAt||0)<6000; }
 function tmStrict(){ return S.tm&&S.tm.n>=3000&&!S.tm.loading; }
 function shortLine(t){ var s=String(t||'').trim(); return s.split(/\s+/).length<3&&!/[.!?…,;—–-]["”'’)\]]?$/.test(s); }
 /* ---------- games already in Vietnamese: read the subtitle aloud as it is ----------
@@ -6071,7 +6124,7 @@ async function guardProbe(){
     for(var i=0;i<parts.length;i++){
       var q=parts[i], sc=Math.min(1.5,Math.max(0.5,960/q[2]));
       gcv.width=Math.round(q[2]*sc); gcv.height=Math.round(q[3]*sc); gcx.drawImage(video,q[0],q[1],q[2],q[3],0,0,gcv.width,gcv.height);
-      var o=await HsOcr.read(gcv,{raw:true,maxBoxes:24});
+      var o=await HsOcr.read(gcv,{raw:true,maxBoxes:24,pause:ocrYield(Date.now())});
       (o.items||[]).forEach(function(it){ if(it.conf>=0.6&&it.text) texts.push(it.text); });
     }
     if(guardOn()&&S.running) guardSet(guardKind(texts));
@@ -6091,7 +6144,7 @@ async function tick(force){
   motionSample();
   micPadPoll(); micIconLook();   /* the mic button: areas set to it, or the whole screen when in a menu */
   if(guardOn()&&!force){
-    if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()) guardProbe();
+    if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()&&!subPrio()) guardProbe();
     if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */
   } else if(GUARD.kind){ GUARD.kind=''; GUARD.neg=0; }
   if(readMode()==='local'&&!ocrOn()&&OCR.loading){ if(!S.ocrWait){ S.ocrWait=true; status('busy','Đang chuẩn bị bộ đọc chữ...'); } return; }
@@ -6417,6 +6470,14 @@ function fsLinesHtml(it,b,font,list){
   /* a list read as one block (menu rows next to each other): each row takes its own colours from the picture, so the
      highlighted row keeps its light box and the others their dark one, and they follow the cursor */
   if(G.length>1&&S.fl.items.indexOf(it)>=0&&it.lcN!==FLC_N){ it.lcN=FLC_N; try{ it.lc=G.map(function(g){ var c=zColors(flc,{x:g.x,y:g.y,w:g.w,h:g.h}); return c&&c.bg&&c.plain>=0.5?{bg:c.bg,fg:c.fg||''}:null; }); }catch(e){ it.lc=null; } }
+  /* a paragraph (lines that run on into each other: a warning, a mission's description): the Vietnamese wraps as one
+     text over the paragraph's width with ONE letter size, instead of each line squeezed on its own (lines of all
+     sizes, some squeezed into dots, a short last line in huge letters) */
+  if(fsPara(it,G)){
+    var Fm=G[0].f, LH=G[0].lh, H0=(y1-y0)*b.h, tx=G.map(function(g){ return String(g.vi||'').trim(); }).filter(Boolean).join(' ');
+    var pi='<div class="hs-fllp" style="width:'+((x1-x0)*b.w)+'px;font-size:'+Math.max(7,Fm*b.h).toFixed(1)+'px;line-height:'+(LH*b.h).toFixed(1)+'px;padding-top:'+Math.max(0,G[0].pt*b.h).toFixed(1)+'px;text-align:'+al+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(tx,it.ic):esc(tx))+'</div>';
+    return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" data-para="1" data-maxh="'+(H0*1.35).toFixed(1)+'" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;font-family:'+font+'">'+pi+'</div>';
+  }
   G.forEach(function(g,gi){
     var t=g.vi; if(!String(t).trim()) return;
     var lc=it.lc&&it.lc[gi], lbg=lc?lc.bg:it.bg, lfg=lc?lc.fg:it.fg;
@@ -6426,7 +6487,23 @@ function fsLinesHtml(it,b,font,list){
   return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;height:'+((y1-y0)*b.h)+'px;font-family:'+font+'">'+h+'</div>';
 }
 /* a line wider than its English line: squeezed sideways to fit (not below 70%), then smaller letters */
+/* lines that run on: a line ending without a full stop and the next starting in small letters, or long lines of text */
+function fsPara(it,G){
+  if(!G||G.length<2||it.al==='r') return false;
+  var E=String(it.en||'').split('\n').map(function(s){ return s.trim(); });
+  if(E.length!==G.length) return false;
+  var run=E.slice(0,-1).some(function(l,i){ return !/[.!?:…"”)]$/.test(l)&&/^[a-z(,]/.test(E[i+1]||''); });
+  var avg=E.reduce(function(a,l){ return a+l.length; },0)/E.length;
+  return run||avg>=34&&E.filter(function(l){ return wordsOf(l)>=5; }).length>=E.length-1;
+}
 function fsLinesFit(el){
+  if(el.dataset.para){   /* a paragraph: smaller letters (all of them) only when it is much taller than the original */
+    var d=el.firstChild, f=parseFloat(d.style.fontSize), r=parseFloat(d.style.lineHeight)/f||1.25, mh=+el.dataset.maxh||1e9;
+    while(d.scrollHeight>mh&&f>8){ f-=0.5; d.style.fontSize=f+'px'; d.style.lineHeight=(f*r).toFixed(1)+'px'; }
+    el.style.height=d.scrollHeight+'px';
+    var m0=Math.ceil(f*0.3); el.style.top=(parseFloat(el.style.top)-m0)+'px'; d.style.paddingTop=(parseFloat(d.style.paddingTop)+m0)+'px'; el.style.height=d.scrollHeight+'px';
+    return;
+  }
   [].forEach.call(el.children,function(d){
     var W0=+d.dataset.w, Wmax=W0+(+d.dataset.room||0), f=parseFloat(d.style.fontSize), L0=parseFloat(d.style.left), al=d.dataset.al;
     d.style.width='auto'; d.style.minWidth='0'; var nw=d.scrollWidth;
@@ -6739,7 +6816,7 @@ async function fsFrames(g,sx,sy,sw,sh,W,H){
 async function fsRead(sx,sy,sw,sh,maxW){
   var sc=Math.min(2,maxW/sw); fsv.width=Math.round(sw*sc); fsv.height=Math.round(sh*sc);
   var g=fsv.getContext('2d'); g.imageSmoothingQuality='high'; await fsFrames(g,sx,sy,sw,sh,fsv.width,fsv.height);
-  var o=await HsOcr.read(fsv,{blocks:true,icons:true}), vw=video.videoWidth, vh=video.videoHeight, out=[];
+  var o=await HsOcr.read(fsv,{blocks:true,icons:true,pause:ocrYield(Date.now())}), vw=video.videoWidth, vh=video.videoHeight, out=[];
   function px(v){ return (sx+v/o.W*sw)/vw; } function py(v){ return (sy+v/o.H*sh)/vh; } function pw(v){ return (v/o.W*sw)/vw; } function ph(v){ return (v/o.H*sh)/vh; }
   (o.blocks||[]).forEach(function(b){
     var raw=String(b.text||'').split('\n'), icA=b.icons||[], off=[], k=0;
@@ -7039,6 +7116,7 @@ function fsLowCol(list){
   return list;
 }
 function hintLow(b){
+  return false;   /* every text is translated, the controller hints at the bottom too (was: the lowest tenth left out) */
   if(b&&b.lowCol) return true;
   if(!b||b.y+b.h/2<0.9) return false;
   var en=String(b.en||'').trim(), lines=en.split('\n');
@@ -7084,9 +7162,11 @@ function flTick(my){
   if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0; }); flDraw(); }
   else ch.forEach(function(it){ it.chk=true; });
   if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||(GUARD.kind&&GUARD.kind!=='map')) return;   /* the game map: its text is translated (not the place names) */
+  if(!S.fl.mic&&subPrio()) return;                                                  /* a subtitle line is coming: it is read first */
   if(S.fl.mic&&!S.fl.micRead){ S.fl.micRead=true; S.fl.dirty.fill(1); flRead(my,true); return; }   /* the mic: read at once, not after the picture was seen still */
-  if(S.fl.items.some(function(it){ return it.chk; })){ flVerify(my); return; }
-  var now=Date.now(); if(now-S.fl.last<(S.fl.mic?400:900)) return;
+  var now=Date.now(), talk=!S.fl.mic&&subTalk();
+  if(S.fl.items.some(function(it){ return it.chk; })){ if(!talk||now-(S.fl.vAt||0)>1500){ S.fl.vAt=now; flVerify(my); } return; }
+  if(now-S.fl.last<(S.fl.mic?400:talk?2500:900)) return;                            /* characters talking: the screen text every 2.5 s, not every 0.9 s */
   var fresh=0; for(i=0;i<N;i++) if(S.fl.dirty[i]&&S.fl.still[i]>=2) fresh++;
   if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my);
 }
