@@ -2050,7 +2050,7 @@ function vipBuyMode(){ var pl=vipPlanList()[S.vipPlan]; return !!(S.vipCanBuy&&p
 function vipPlansUi(){
   var box=$('hsVipPlans'); if(!box) return;
   var pl=vipPlanList(); if(S.vipPlan>=pl.length) S.vipPlan=0;
-  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per+(x.days<60?' / '+(x.days===30?'tháng':x.days+' ngày'):''):'Đang cập nhật giá')+'</span>'+(Array.isArray(x.perks)&&x.perks.length?'<ul>'+x.perks.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join('')+'</ul>':'')+'</button>'; }).join('');
+  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per+(x.days<60&&!x.once?' / '+(x.days===30?'tháng':x.days+' ngày'):''):'Đang cập nhật giá')+'</span>'+(Array.isArray(x.perks)&&x.perks.length?'<ul>'+x.perks.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join('')+'</ul>':'')+'</button>'; }).join('');
   var pk=$('hsVipPerks'); if(pk) pk.hidden=pl.some(function(x){ return Array.isArray(x.perks)&&x.perks.length; });
   box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
   var on=vipOn(), buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
