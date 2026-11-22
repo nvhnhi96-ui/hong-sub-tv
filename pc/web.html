@@ -8109,7 +8109,10 @@ function psSteps(){
   var st=[
     {t:'Đăng nhập tài khoản PSN',ok:!!acc.loggedIn,d:acc.loggedIn?('PSN: '+(acc.onlineId||'đã đăng nhập')):'làm một lần',a:'Đăng nhập PSN',f:psLogin,
      how:'Bấm <b>Đăng nhập PSN</b>: cửa sổ của Sony hiện ra, đăng nhập tài khoản PSN (nhập mã xác minh nếu Sony hỏi). Xong cửa sổ tự đóng.'+
-       '<br>Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+(DPS.loginBrowser?'<div class="hs-row" style="margin-top:6px"><button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button></div>':'')},
+       '<br>Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+
+       (DPS.loginUrl?'<div style="margin-top:8px"><b>Đăng nhập thành công mà hiện ra trang trắng</b> (cửa sổ không tự đóng): copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>) rồi dán vào ô bên dưới, bấm <b>Xong</b>.</div>'+
+         '<div class="hs-row" style="margin-top:6px"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div>':'')+
+       (DPS.loginBrowser?'<div class="hs-row" style="margin-top:6px"><button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button></div>':'')},
     {t:'Ghép Hóng Sub với máy PS',ok:reg.length>0,d:reg.length?reg.map(function(h){return h.name;}).join(', '):found.length?('thấy '+found.map(function(h){ return h.name; }).join(', ')+', chưa ghép'):'làm một lần',a:'Tìm máy PS',f:function(){ psFind(); var l=$('hsPsList'); if(l) l.scrollIntoView({behavior:'smooth',block:'center'}); },
      how:'<ol><li>Trên máy PS mở '+(ps5?PATH5+', bật <b>Enable Remote Play</b>, rồi chọn <b>Link Device</b>':PATH4+', bật <b>Enable Remote Play</b>, rồi chọn <b>Add Device</b>')+': màn hình hiện <b>mã 8 số</b>.'+
        (ps5&&found.length?'':'<br><small>PS4: '+PATH4+' › Add Device.</small>')+'</li>'+
@@ -8126,7 +8129,20 @@ function psSteps(){
   var html=st.map(function(x,i){ var cls=x.ok?'ok':x.bad?'bad':i===cur?'now':cur>=0&&i>cur&&i<4?'fut':'';
     var btn=!x.ok&&(i===cur||x.bad||i===4)&&!(i===3&&!live)?'<button class="hs-btn'+(i===cur?' pri':'')+'" type="button" data-s="'+i+'"'+(i===2&&PSST.running?' disabled':'')+'>'+x.a+'</button>':'<span></span>';
     return '<li class="'+cls+'"><i>'+(x.ok?'✓':x.bad?'!':(i+1))+'</i><div>'+x.t+'<small>'+esc(x.d)+'</small></div>'+btn+(i===cur&&x.how?'<div class="how">'+x.how+'</div>':'')+'</li>'; }).join('');
-  if(L.dataset.h!==html){ L.dataset.h=html; L.innerHTML=html; L.querySelectorAll('[data-s]').forEach(function(b){ b.onclick=function(){ st[+b.dataset.s].f(); }; }); var bb=L.querySelector('[data-x=browser]'); if(bb) bb.onclick=psLoginBrowser; }
+  if(L.dataset.h!==html){ var pu0=L.querySelector('[data-x=psurl]'), pv0=pu0?pu0.value:''; L.dataset.h=html; L.innerHTML=html; if(pv0&&L.querySelector('[data-x=psurl]')) L.querySelector('[data-x=psurl]').value=pv0;   /* a link being pasted survives the steps being redrawn */ L.querySelectorAll('[data-s]').forEach(function(b){ b.onclick=function(){ st[+b.dataset.s].f(); }; }); var bb=L.querySelector('[data-x=browser]'); if(bb) bb.onclick=psLoginBrowser;
+    /* the link of the white page after logging in, pasted here */
+    var pu=L.querySelector('[data-x=psurl]'), pg=L.querySelector('[data-x=psurlgo]');
+    if(pu&&pg){ pg.onclick=function(){ var u=pu.value.trim(); if(!u){ pu.focus(); return; }
+        if(!/redirect\?.*code=|[?&]code=/.test(u)){ psMsg('err','Link chưa đúng. Cần link của trang trắng, có chữ "redirect?code=". Đăng nhập lại rồi copy đúng link đó.'); return; }
+        pg.disabled=true; try{ DPS.loginCancel&&DPS.loginCancel(); }catch(e){}
+        DPS.loginUrl(u).then(function(r){ pg.disabled=false;
+          if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); pu.value=''; }
+          else if(r&&r.err==='url') psMsg('err','Link chưa đúng. Cần link có chữ "remoteplay/redirect?code=".');
+          else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Mã trong link chỉ dùng được một lần và trong vài phút: đăng nhập lại rồi dán link mới.');
+          psRefresh(); },function(e){ pg.disabled=false; psMsg('err','Đăng nhập chưa xong: '+(e&&e.message||e)); });
+      };
+      pu.addEventListener('keydown',function(e){ if(e.key==='Enter') pg.click(); }); }
+  }
   var go=$('hsPsAutoGo'); go.disabled=PSST.running||live; go.textContent=PSST.running?'Đang kết nối...':live?'Đã kết nối':'Kết nối tự động';
   if(go.parentNode) go.parentNode.hidden=true;                                      /* the steps have the one button to press (Kết nối, or the firewall) */
   var hd=$('hsPsListH'); if(hd) hd.hidden=!found.length&&cur<1;
