@@ -1265,6 +1265,7 @@ function vipUi(){
   set('hsVipPromo',function(x){ x.hidden=on; });
   set('hsVipEmpty',function(x){ x.hidden=on; });
   set('hsTipKey',function(x){ x.hidden=on; });   /* VIP: translated with the shop's key, no AI key to add */
+  set('hsTipKey2',function(x){ x.hidden=!on; });
   set('hsVipSec',function(x){ x.classList.toggle('on',on); });
   set('dkVipChip',function(x){ x.classList.toggle('on',on); });
   set('dkVipChipTx',function(x){ x.textContent=on?'VIP'+(S.vip.until?' · còn '+vipLeft()+' ngày':''):'Nâng cấp VIP'; });
