@@ -7666,7 +7666,7 @@ function hsMobilePs(){
 }
 DPS=(D&&D.ps)||hsMobilePs();
 var PS={hosts:[],acc:null,stream:null,cvs:null,ctx:null,dec:null,codec:'',waitKey:true,ts:0,lastIdr:0,adec:null,actx:null,anext:0,ats:0,pad:'',padTimer:null,keys:{},frames:0,host:null};
-function psMsg(cls,t){var m=$('hsPsMsg'); if(!t){m.hidden=true;return;} if(t!==PS.lastMsg){ PS.lastMsg=t; log('PS: '+t); } m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
+function psMsg(cls,t){var m=$('hsPsMsg'); if(!t){m.hidden=true;return;} if(t!==PS.lastMsg){ PS.lastMsg=t; log('PS: '+String(t).replace(/\n/g,' ')); } m.hidden=false; m.className='hs-msg '+cls; m.style.whiteSpace='pre-line'; m.textContent=t;}
 function psAccUi(){
   var a=$('hsPsAcc');
   if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
@@ -7726,7 +7726,7 @@ function psList(){
       var box=btn.closest('.hs-ps'), h=PS.hosts[+box.dataset.i], a=btn.dataset.a;
       if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
       else if(a==='dopair'){ var pin=box.querySelector('.pin input').value.replace(/\D/g,''); if(pin.length!==8){psMsg('err','Mã ghép gồm 8 số.');return;} btn.disabled=true; psMsg('','Đang ghép với '+h.name+'...');
-        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ psMsg('ok','Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối (bước 3) để nhận hình.'); psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
+        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ PS.pairedAt=Date.now(); PS.n26=0; psMsg('ok','Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối (bước 3) để nhận hình.'); psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
       else if(a==='forget'){ DPS.forget(h.id).then(psFind); }
       else if(a==='play'){ psPlay(h); }
     });
@@ -7886,6 +7886,17 @@ function psRefused(code){
   var path=ps5?'Cài đặt › Hệ thống › Chơi từ xa':'Cài đặt › Cài đặt kết nối Chơi từ xa';
   var t='', act=null, actTxt='', again=false;
   if(code==='80108b12'){ t=name+' đang tắt Chơi từ xa. Trên PS5 vào '+path+', bật "Bật Chơi từ xa", rồi bấm Kết nối lại.'; again=true; }
+  else if(code==='80108b26'&&((PS.pairedAt&&now-PS.pairedAt<30*60000)||(PS.n26=(PS.n26||0)+1)>=2)){
+    /* 26 right after a pairing that worked, or again and again: pairing once more does not help. The PS5 has not taken
+       the new pairing into its list (a full restart of the PS5 fixes it for most; seen also with other Remote Play
+       apps), or the pairing was made for another user than the one signed in on the PS5. Hóng Sub stops trying by
+       itself for 10 minutes, so the PS5 is not knocked on again and again. */
+    PS.block26=now+10*60000;
+    t=name+' chưa nhận lần ghép này (mã 26), dù đã ghép xong. Ghép lại thêm thường không giúp. Làm lần lượt:'+
+      '\n1. Tắt hẳn PS5 (không phải Chế độ nghỉ): giữ nút nguồn trên máy tới khi nghe bíp lần 2, đợi đèn tắt hẳn, bật lại rồi bấm Kết nối lại. Đa số máy hết lỗi ở bước này.'+
+      '\n2. Trên PS5, người đang đăng nhập phải là tài khoản '+((PS.acc&&PS.acc.onlineId)||'PSN đã đăng nhập trong Hóng Sub')+', và bước Liên kết thiết bị phải làm trong người dùng đó.'+
+      '\n3. Vẫn bị: trên PS5 vào '+path+', bật "Bật Chơi từ xa", xóa bớt thiết bị cũ trong danh sách đã liên kết, rồi bấm Ghép lại.';
+    actTxt='Ghép lại'; act=function(){ psRepair(h); }; again=true; }
   else if(code==='80108b26'||code==='80108b09'||code==='80108b02'){ t=name+' không còn nhận '+psDev()+' này (đã bỏ ghép trên PS5, PS5 vừa cài lại, hoặc đã ghép lại ở nơi khác). Cần ghép lại: bấm "Ghép lại", trên PS5 vào '+path+' › Liên kết thiết bị (Link Device) để lấy mã 8 số.'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; }
   else if(code==='80108b10'){ again=true;
     /* "in use": mostly the PS still holding the session before this one (Hóng Sub restarted or updated itself while
@@ -7899,11 +7910,11 @@ function psRefused(code){
   else if(code==='80108b13'){ t=name+' chưa cho vào (mã 13): thường do PS5 đang ở màn hình chọn người dùng, hoặc người đang đăng nhập trên PS5 không phải tài khoản PSN đã ghép. Trên PS5 chọn đúng người dùng ('+((PS.acc&&PS.acc.onlineId)||'tài khoản đã ghép')+'), rồi bấm Kết nối lại. Vẫn bị thì bấm "Ghép lại".'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; again=true; }
   else if(code==='80108b15'){ t='Chơi từ xa trên '+name+' bị lỗi. Tắt hẳn PS5 (giữ nút nguồn 3 giây) rồi bật lại, rồi bấm Kết nối lại.'; again=true; }
   else return false;
-  log('PS: máy từ chối (0x'+code+'): '+t);
+  var tp=t.replace(/\n/g,' '); log('PS: máy từ chối (0x'+code+'): '+tp);
   psWatchStop(); try{ DPS.stop(false); }catch(e){} PS.retrying=true; psStopView(); PS.retrying=false;
   PS.err='máy từ chối 0x'+code; PS.appReason='';
-  if(!(code==='80108b10'&&(PS.inUseN||0)<3)) autoReport('ps-refused','0x'+code+': '+t.slice(0,150));   /* "in use": reported when the three tries did not get in */
-  psMsg('err',t); status('err',t); tvNotice('Máy PS chưa cho kết nối, xem hướng dẫn trên '+psDev()+'.');
+  if(!(code==='80108b10'&&(PS.inUseN||0)<3)) autoReport('ps-refused','0x'+code+': '+tp.slice(0,150));   /* "in use": reported when the three tries did not get in */
+  psMsg('err',t); status('err',tp.slice(0,220)); tvNotice('Máy PS chưa cho kết nối, xem hướng dẫn trên '+psDev()+'.');
   var box=$('hsPsMsg');
   if(box){ var row=document.createElement('div'); row.className='hs-row'; row.style.marginTop='8px';
     if(act){ var b1=document.createElement('button'); b1.className='hs-btn pri'; b1.type='button'; b1.textContent=actTxt; b1.onclick=act; row.appendChild(b1); }
@@ -8230,8 +8241,10 @@ function psSteps(){
   if(go.parentNode) go.parentNode.hidden=true;                                      /* the steps have the one button to press (Kết nối, or the firewall) */
   var hd=$('hsPsListH'); if(hd) hd.hidden=!found.length&&cur<1;
 }
-async function psAutoRun(){
-  if(PSST.running) return; PSST.running=true; PS.err=''; PS.retry=0; log('PS: kết nối tự động');
+async function psAutoRun(auto){
+  if(PSST.running) return;
+  if(auto===true&&PS.block26&&Date.now()<PS.block26){ log('PS: không tự kết nối: máy PS vừa từ chối (mã 26), chờ khởi động lại PS5 rồi bấm Kết nối'); return; }
+  if(auto!==true) PS.block26=0; PSST.running=true; PS.err=''; PS.retry=0; log('PS: kết nối tự động');
   try{
     if(!PS.acc||!PS.acc.loggedIn){ await psRefresh(); if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Bước 1: đăng nhập PSN trước (chỉ một lần).'); psLogin(); return; } }
     var list=await psFind(); var reg=(list||[]).filter(function(h){return h.registered;});
@@ -8254,7 +8267,7 @@ async function psWakeUp(why){
   if(!h){ tvNotice('Không thấy '+reg[0].name+' trong mạng. Hãy bật máy PS bằng tay cầm.'); return; }
   if(S.stream&&PS.stream){ tvNotice('Đang chơi '+h.name+' trong Hóng Sub.'); return; }
   if(!$('hsPsAutoWake')||$('hsPsAutoWake').checked){
-    if(load('psAuto',true)&&!S.stream) psAutoRun();
+    if(load('psAuto',true)&&!S.stream) psAutoRun(true);
     else if(h.state!=='ready'){ tvNotice('Đang bật '+h.name+'...'); DPS.wake(h.id); }
   }
 }
