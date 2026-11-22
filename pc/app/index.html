@@ -3811,7 +3811,22 @@ function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); retu
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
 /* who answers the TV LG / Samsung app on the home network: the computer (pc/lg.js) or the phone (its core) */
 function LGP(){ return (D&&D.lg)||(DPS&&DPS.lan)||null; }
-function tvBody(o){ if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; var sr=coverOn()&&S.region?subRect():null; o.cov=sr?camRect(sr):null; if(o.cov&&sr.spot){ o.cspot=1; o.cal=sr.al; var tk=o.cov.h/sr.h; o.cfs=Math.max(8,Math.round(viFz(sr.lh,sr.xb,sr.caps)*tk*1080)); if(sr.xb>0){ o.cxb=+(sr.xb*tk).toFixed(5); o.ccap=sr.caps?1:0; } o.cn=sr.n; }   /* the letters' own height on the TV's screen: the TV sizes its own font to it (older TV apps: cfs) */
+/* the PlayStation button signs (✕ ○ △ □, L1, R3...) on a TV: the TV's own letters have no ✕ ○ (they showed as empty
+   squares), so each one goes as Hóng Sub's own small picture of that button, the same as on the computer. Through
+   honggame.store (no pictures there) the sign is written with plain letters instead. */
+var TV_SIGN={'✕':'CROSS','×':'CROSS','⨯':'CROSS','○':'CIRCLE','◯':'CIRCLE','□':'SQUARE','△':'TRIANGLE'};
+function tvBtnName(v){ v=String(v||'').trim().replace(/^\[|\]$/g,''); if(TV_SIGN[v]) return TV_SIGN[v]; var u=v.toUpperCase(); return new RegExp('^(?:'+BTN_NAMES+')$').test(u)?u:''; }
+function tvIcons(o){
+  if(!o||o.kind!=='zone'||!o.vi) return o;
+  var zv=o.zv||o.vi, zic=(o.zic||[]).slice(), ch=false;
+  zic=zic.map(function(v){ var n=typeof v==='string'&&v.indexOf('t:')===0?tvBtnName(v.slice(2)):''; if(n){ ch=true; return btnPic(n); } return v; });
+  zv=String(zv).replace(/[✕×⨯○◯□△]/g,function(c){ ch=true; zic.push(btnPic(TV_SIGN[c])); return '{{'+zic.length+'}}'; });
+  if(!ch) return o;
+  o.zv=zv; o.zic=zic;
+  o.vi=String(o.vi).replace(/[✕×⨯]/g,'X').replace(/[○◯]/g,'O').replace(/□/g,'[]').replace(/△/g,'/\\');   /* the plain-letter version, for the store's relay */
+  return o;
+}
+function tvBody(o){ o=tvIcons(o); if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer) o.appv=S.appVer;   /* the Android TV app updates itself when the computer runs a newer build */ o.vol=tvVol(); var lk=tvLook(); o.size=lk.size; o.col=lk.col; o.bg=lk.bg; o.wid=lk.wid; o.font=lk.font; var sr=coverOn()&&S.region?subRect():null; o.cov=sr?camRect(sr):null; if(o.cov&&sr.spot){ o.cspot=1; o.cal=sr.al; var tk=o.cov.h/sr.h; o.cfs=Math.max(8,Math.round(viFz(sr.lh,sr.xb,sr.caps)*tk*1080)); if(sr.xb>0){ o.cxb=+(sr.xb*tk).toFixed(5); o.ccap=sr.caps?1:0; } o.cn=sr.n; }   /* the letters' own height on the TV's screen: the TV sizes its own font to it (older TV apps: cfs) */
   /* over the whole subtitle area (no line found yet): letters measured on the picture like on the phone/computer
      (Cỡ chữ 28 = 1.7% of the picture's height... x size/30 on the TV), not the TV's own text size, and a box that
      hides the English like the dark box on the picture */
