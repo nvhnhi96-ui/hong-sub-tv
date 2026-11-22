@@ -20,7 +20,7 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ',vip:'Gói thành viên VIP Hóng Sub'};
+var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ',vip:'Gói VIP Hóng Sub'};
 var SETP=['dich','game','phude','loinoi','vung','giong','nhanvat','phim'];
 function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
