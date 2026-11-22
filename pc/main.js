@@ -81,6 +81,7 @@ function createMain() {
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); shell.openExternal(url); } });
   const remember = () => { if (!win.isMinimized() && !win.isMaximized()) { cfg.main = win.getBounds(); saveCfg(); } };
   win.on('resize', remember); win.on('move', remember);
+  ['focus', 'blur', 'minimize', 'restore', 'show', 'hide'].forEach((ev) => win.on(ev, () => setTimeout(floatShow, 50)));   /* the floating subtitle only when Hóng Sub is not in front */
   /* closing the window ends Hóng Sub: no more translating in the background, nothing left on the TV
      (keep it running while playing: minimise the window instead) */
   win.on('close', (e) => {
@@ -115,9 +116,17 @@ function overlayBounds() {
   }
   return def;
 }
-/* "Phụ đề nổi trên game" (the subtitle window over other apps) has been taken out: the window is still made for the
-   areas' move mode, but the subtitle in it is never shown. Subtitles show in Hóng Sub and on the TV. */
-const SUB_FLOAT = false;
+/* "Phụ đề nổi trên game": the subtitle window over every other app (the capture card's own viewer, OBS, Sony's app,
+   a game full screen). Back on: playing through a capture card watched in another app had no subtitles at all.
+   While Hóng Sub itself is the window in front (the PS played in it, the picture shown in it), the floating window
+   steps aside, so a line is never shown twice. */
+const SUB_FLOAT = true;
+function floatShow() {
+  if (!overlay || overlay.isDestroyed()) return;
+  if (!SUB_FLOAT || cfg.overlayHidden) { if (!moveMode) overlay.hide(); return; }
+  const front = win && !win.isDestroyed() && win.isVisible() && !win.isMinimized() && win.isFocused();
+  if (front && !moveMode) overlay.hide(); else if (!overlay.isVisible()) overlay.showInactive();
+}
 function createOverlay() {
   overlay = new BrowserWindow({
     ...overlayBounds(),
@@ -131,7 +140,7 @@ function createOverlay() {
   overlay.setIgnoreMouseEvents(true);
   overlay.setContentProtection(true); // never captured, so it cannot be read back as a subtitle
   overlay.loadURL('app://hongsub/overlay.html');
-  overlay.once('ready-to-show', () => { if (SUB_FLOAT && !cfg.overlayHidden) overlay.showInactive(); sendOverlayState(); });
+  overlay.once('ready-to-show', () => { floatShow(); sendOverlayState(); });
   overlay.on('moved', () => { cfg.overlay = overlay.getBounds(); saveCfg(); });
 }
 /* ---------- one floating window per extra area ("Vùng 1", "Vùng 2"...) ----------
@@ -345,7 +354,7 @@ function overlayCmd(cmd) {
   if (cmd === 'toggle') {
     if (!SUB_FLOAT) { sendOverlayState(); return; }
     cfg.overlayHidden = !cfg.overlayHidden; saveCfg();
-    if (cfg.overlayHidden) { if (moveMode) setMove(false); overlay.hide(); } else overlay.showInactive();
+    if (cfg.overlayHidden) { if (moveMode) setMove(false); overlay.hide(); } else floatShow();
   } else if (cmd === 'move') {
     setMove(!moveMode);
   } else if (cmd === 'done') {
@@ -365,7 +374,7 @@ function setMove(on) {
     overlay.setIgnoreMouseEvents(true); overlay.setFocusable(false);
     for (const z of zoneWins.values()) if (!z.win.isDestroyed()) { z.win.setIgnoreMouseEvents(true); z.win.setFocusable(false); }
     if (!subPlace) { cfg.overlay = overlay.getBounds(); saveCfg(); } else applyPlace();   /* over the game's subtitle: its place comes from the subtitle area */
-    if (SUB_FLOAT && !cfg.overlayHidden) overlay.showInactive(); else if (!SUB_FLOAT) overlay.hide();
+    floatShow();
   }
 }
 
