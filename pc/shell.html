@@ -821,8 +821,9 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <select class="hs-in" id="hsStyle">
                   <option value="">Tự chọn theo game</option><option value="modern">Đời thường, hiện đại</option><option value="street">Giang hồ, đường phố</option><option value="military">Quân đội, bắn súng</option><option value="wuxia">Cổ trang Trung Hoa, kiếm hiệp</option><option value="japan">Cổ trang Nhật, samurai</option><option value="fantasy">Giả tưởng phương Tây</option><option value="myth">Thần thoại</option><option value="scifi">Khoa học viễn tưởng</option><option value="horror">Kinh dị</option><option value="anime">Anime, học đường</option><option value="western">Cao bồi miền Tây</option>
                 </select></div>
-              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Tra trên mạng, viết ghi chú</button><button class="hs-btn" type="button" data-go="nhanvat">Nhân vật và giọng đọc</button></div>
-              <p class="hs-note" style="margin-top:6px">Game chưa có trong danh sách: gõ tên game, app tự tra trên mạng nhân vật, mối quan hệ và cách xưng hô (cần mã Gemini). Bấm <b>Tra trên mạng, viết ghi chú</b> để tra lại. Đọc lại và sửa chỗ sai.</p>
+              <div class="dk-set" style="margin-top:12px"><label class="lab" for="hsRules">Luật dịch riêng của game</label><textarea class="hs-in" id="hsRules" rows="4" placeholder="Văn phong, mức chửi thề, xưng hô mặc định với người lạ, kẻ thù, bạn bè... App tự tra khi gõ tên game, sửa được."></textarea></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Tra trên mạng, chuẩn bị dịch</button><button class="hs-btn" type="button" data-go="nhanvat">Nhân vật và giọng đọc</button></div>
+              <p class="hs-note" style="margin-top:6px">Gõ tên game: app tự tra trên mạng và chuẩn bị dịch cho game đó: nhân vật và cách xưng hô (game chưa có trong danh sách), luật dịch riêng, tên riêng và thuật ngữ cho từ điển, phong cách dịch (cần mã Gemini). Bấm <b>Tra trên mạng, chuẩn bị dịch</b> để tra lại. Đọc lại và sửa chỗ sai.</p>
               <div class="hs-msg" id="hsNotesMsg" hidden></div>
             </div>
           </div>

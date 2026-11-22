@@ -1103,8 +1103,9 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <select class="hs-in" id="hsStyle">
                   <option value="">Tự chọn theo game</option><option value="modern">Đời thường, hiện đại</option><option value="street">Giang hồ, đường phố</option><option value="military">Quân đội, bắn súng</option><option value="wuxia">Cổ trang Trung Hoa, kiếm hiệp</option><option value="japan">Cổ trang Nhật, samurai</option><option value="fantasy">Giả tưởng phương Tây</option><option value="myth">Thần thoại</option><option value="scifi">Khoa học viễn tưởng</option><option value="horror">Kinh dị</option><option value="anime">Anime, học đường</option><option value="western">Cao bồi miền Tây</option>
                 </select></div>
-              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Tra trên mạng, viết ghi chú</button><button class="hs-btn" type="button" data-go="nhanvat">Nhân vật và giọng đọc</button></div>
-              <p class="hs-note" style="margin-top:6px">Game chưa có trong danh sách: gõ tên game, app tự tra trên mạng nhân vật, mối quan hệ và cách xưng hô (cần mã Gemini). Bấm <b>Tra trên mạng, viết ghi chú</b> để tra lại. Đọc lại và sửa chỗ sai.</p>
+              <div class="dk-set" style="margin-top:12px"><label class="lab" for="hsRules">Luật dịch riêng của game</label><textarea class="hs-in" id="hsRules" rows="4" placeholder="Văn phong, mức chửi thề, xưng hô mặc định với người lạ, kẻ thù, bạn bè... App tự tra khi gõ tên game, sửa được."></textarea></div>
+              <div class="hs-row" style="margin-top:12px"><button class="hs-btn" id="hsAiNotes" type="button">Tra trên mạng, chuẩn bị dịch</button><button class="hs-btn" type="button" data-go="nhanvat">Nhân vật và giọng đọc</button></div>
+              <p class="hs-note" style="margin-top:6px">Gõ tên game: app tự tra trên mạng và chuẩn bị dịch cho game đó: nhân vật và cách xưng hô (game chưa có trong danh sách), luật dịch riêng, tên riêng và thuật ngữ cho từ điển, phong cách dịch (cần mã Gemini). Bấm <b>Tra trên mạng, chuẩn bị dịch</b> để tra lại. Đọc lại và sửa chỗ sai.</p>
               <div class="hs-msg" id="hsNotesMsg" hidden></div>
             </div>
           </div>
@@ -3295,7 +3296,7 @@ function notesPart(text){   /* (named apart from notesFor(game): two functions o
 /* full=true (VIP): all the character notes, not only the part about this line: they stay the same from line to line,
    so the shop's server keeps them cached and they cost a tenth */
 function ctxFixed(text,full){
-  var g=$('hsGame').value.trim(), n=full?$('hsNotes').value.trim().slice(0,8000):notesPart(text), st=styleOf(), pr=presetOf(g), gr=pr&&pr.rules?pr.rules:'';
+  var g=$('hsGame').value.trim(), n=full?$('hsNotes').value.trim().slice(0,8000):notesPart(text), st=styleOf(), pr=presetOf(g), gr=(GAMES[gameKey(g)]&&GAMES[gameKey(g)].rules)||(pr&&pr.rules)||'';
   return (g?'Game: '+g+'\n':'')+(n?'Character / pronoun notes: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+(gr?'Translation rules for this game (they come before the general rules below):\n'+gr+'\n':'')+
     'General rules'+(gr?' (when the game rules above say otherwise, follow the game rules)':'')+': keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text; for "we" use "chúng tôi" when the listener is not included and "chúng ta" when they are; speak politely to elders, leaders and strangers.\n';
 }
@@ -5495,7 +5496,9 @@ var GLOSS_UI={"Continue": "Tiếp tục", "Back": "Quay lại", "Cancel": "Hủy
 function glossNorm(t){ return String(t||'').toLowerCase().replace(/[“”"’'.!?:;…]+$/g,'').replace(/^[“”"’'¡¿]+/,'').replace(/\s+/g,' ').trim(); }
 function glossParse(txt){ var m={}; String(txt||'').split('\n').forEach(function(l){ var i=l.indexOf('='); if(i>0){ var a=l.slice(0,i).trim(), b=l.slice(i+1).trim(); if(a&&b) m[a]=b; } }); return m; }
 function glossMine(){ return glossParse(load('gloss_'+gameKey($('hsGame').value),'')); }
-function glossGame(){ var p=presetOf($('hsGame').value); return (p&&p.terms)||{}; }
+function glossGame(){ var n=$('hsGame').value, p=presetOf(n), G=GAMES[gameKey(n)], o={}, a=(G&&G.terms)||{}, b=(p&&p.terms)||{}, e;
+  for(e in a) if(a.hasOwnProperty(e)) o[e]=a[e]; for(e in b) if(b.hasOwnProperty(e)) o[e]=b[e];   /* the list's own words win */
+  return o; }
 /* the game's own menu and button words ("Lose the cops", "Rob the safe"): a text that is exactly one of them is
    translated at once; inside a sentence they are not forced on the AI (an everyday word like "Help" or "Open"). */
 function glossGameUi(){ var p=presetOf($('hsGame').value); return (p&&p.ui)||{}; }
@@ -5649,7 +5652,7 @@ function localOk(){ return !!(D&&D.llm&&S.llmSt&&S.llmSt.ready&&S.llmSt.on); }
 function localSys(){
   var g=$('hsGame').value.trim(), n=$('hsNotes').value.trim(), st=styleOf();
   return 'You translate video game subtitles into natural spoken Vietnamese, like a dubbed film.\n'+
-    (g?'Game: '+g+'\n':'')+(n?'Characters and how they address each other in Vietnamese: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+((presetOf(g)||{}).rules?'Translation rules for this game: '+presetOf(g).rules+'\n':'')+
+    (g?'Game: '+g+'\n':'')+(n?'Characters and how they address each other in Vietnamese: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+(gameRules()?'Translation rules for this game: '+gameRules()+'\n':'')+
     'Rules:\n- Translate only the text after "Translate:". Never write the speaker name.\n'+
     '- Use the Vietnamese pronouns the notes give for who is speaking to whom, and keep the ones used in the previous lines. Do not use "bạn" unless the notes say so.\n'+
     '- Keep names, places, game terms and button names in English.\n'+
@@ -7538,20 +7541,28 @@ function notesMsg(cls,t){var m=$('hsNotesMsg'); m.hidden=false; m.className='hs-
    how they are related and how they talk to each other, so a game that is not in the list is also translated with the
    right forms of address. Without a Gemini key, or when the search fails, the AI writes the notes from what it knows. */
 S.webTry=load('webTry',{});
-function webNotesPrompt(name){
-  return 'You help translate the dialogue of the video game "'+name+'" (PS4/PS5) into Vietnamese subtitles.\n'+
-    'Search the web (official site, the game\'s wiki, Fandom, Wikipedia, reviews) for THIS exact game, then write notes in Vietnamese, at most about 170 words, plain text, no markdown:\n'+
-    '1. Setting and era in one sentence.\n'+
-    '2. Main characters with who they are and how they are related (family, lovers, master and pupil, rivals, enemies, ranks).\n'+
-    '3. How each pair should address each other in Vietnamese, e.g. "Kratos gọi Atreus là con, xưng ta; Atreus gọi Kratos là cha". Pick pronouns that fit the setting (cổ trang: ta/ngươi/ngài; kiếm hiệp: huynh/muội/sư phụ; hiện đại: tôi/anh/cô; bạn bè trẻ: tớ/cậu hoặc tao/mày; quân đội: cấp bậc).\n'+
-    '4. Names, places, factions and game terms to keep in English (or their usual Vietnamese name).\n'+
-    '5. The tone of the dialogue.\n'+
+function webNotesPrompt(name,needNotes){
+  return 'You prepare the Vietnamese subtitle translation of the video game "'+name+'" (PS4/PS5).\n'+
+    'Search the web (official site, the game\'s wiki, Fandom, Wikipedia, reviews) for THIS exact game, then answer in Vietnamese, plain text, no markdown, in exactly these four parts, each starting on its own line with its label:\n'+
+    (needNotes?'GHI_CHU: at most about 170 words: the setting and era in one sentence; the main characters, who they are and how they are related (family, lovers, master and pupil, rivals, enemies, ranks); how each pair addresses each other in Vietnamese, one sentence per pair naming both, e.g. "Kratos với Atreus: Kratos xưng ta gọi con, Atreus gọi cha". Pick pronouns that fit the setting (cổ trang: ta/ngươi/ngài; kiếm hiệp: huynh/muội/sư phụ; hiện đại: tôi/anh/cô; bạn bè trẻ: tớ/cậu hoặc tao/mày; quân đội: cấp bậc).\n':'GHI_CHU: -\n')+
+    'LUAT: at most about 150 words: how this game\'s text should sound in Vietnamese: the tone and register; how much swearing the original has and how to render it (only when the original swears, same strength); default pronouns for strangers, enemies, friends, crowds; which kinds of text (dialogue, menus, quest text, notes, radio, social media) need which voice; words never to use (e.g. "bạn" as a pronoun in a gritty game).\n'+
+    'TU_DIEN: up to 40 lines "English = Vietnamese": character names, places, factions, items, skills and game terms. A name that stays as it is: "Name = Name". A term with a usual Vietnamese name: "Term = tên tiếng Việt".\n'+
+    'PHONG_CACH: one word from this list that fits the game best: modern, street, military, wuxia, japan, fantasy, myth, scifi, horror, anime, western.\n'+
     'Only write what the sources say about this game. If you cannot find this game, reply with exactly: KHONG_TIM_THAY';
+}
+/* the four parts of the answer: notes, rules, dictionary, style */
+function webPrepParse(t){
+  t=String(t||'').replace(/\*\*|__/g,'');
+  function part(lab){ var m=new RegExp('(?:^|\\n)\\s*'+lab+'\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:GHI_CHU|LUAT|TU_DIEN|PHONG_CACH)\\s*:|$)').exec(t); return m?m[1].trim():''; }
+  var notes=webNotesClean(part('GHI_CHU')), rules=webNotesClean(part('LUAT')), dict={}, st=part('PHONG_CACH').toLowerCase().replace(/[^a-z]/g,'');
+  part('TU_DIEN').split('\n').forEach(function(l){ var m=/^\s*[-•*\d.)\s]*([^=]{2,60}?)\s*=\s*(.{1,60})\s*$/.exec(l); if(m&&/[A-Za-z]/.test(m[1])) dict[m[1].trim()]=m[2].trim().replace(/[.;]$/,''); });
+  if(notes==='-') notes='';
+  return {notes:notes,rules:rules,terms:dict,style:STYLES[st]?st:''};
 }
 function webNotesClean(t){
   return String(t||'').replace(/\*\*|__|^#+\s*/gm,'').replace(/\[\d+(?:,\s*\d+)*\]/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,1800);
 }
-async function webSearchNotes(name){
+async function webSearchNotes(name,needNotes){
   var ms=(S.models&&S.models.length?S.models:FALLBACK).slice();
   ms.sort(function(a,b){ return (/lite/.test(a)?1:0)-(/lite/.test(b)?1:0); });   /* full flash models search better */
   var last=null;
@@ -7560,14 +7571,14 @@ async function webSearchNotes(name){
     var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },25000), r, j;
     try{
       r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':gk},
-        body:JSON.stringify({contents:[{role:'user',parts:[{text:webNotesPrompt(name)}]}],tools:[{google_search:{}}],generationConfig:{maxOutputTokens:2048,temperature:0.3}})});
+        body:JSON.stringify({contents:[{role:'user',parts:[{text:webNotesPrompt(name,needNotes!==false)}]}],tools:[{google_search:{}}],generationConfig:{maxOutputTokens:3072,temperature:0.3}})});
       j=await r.json().catch(function(){ return {}; });
     }catch(e){ clearTimeout(to); last=e; continue; }
     clearTimeout(to);
     if(r.ok){ count(gk,'g');
       var c=j.candidates&&j.candidates[0], t=((c&&c.content&&c.content.parts)||[]).map(function(x){ return x.text||''; }).join('');
       var src=((c&&c.groundingMetadata&&c.groundingMetadata.groundingChunks)||[]).length;
-      return {text:webNotesClean(t),web:src>0}; }
+      return {text:t,web:src>0}; }
     last=new Error((j.error&&j.error.message)||('HTTP '+r.status));
     if(r.status===429){ gRest(gk,m,j,last.message); continue; }
     if(r.status===400||r.status===404) continue;   /* this model cannot search: the next one */
@@ -7577,54 +7588,64 @@ async function webSearchNotes(name){
 }
 async function aiNotes(name,auto){
   name=String(name||'').trim(); if(!name) return;
-  var k=gameKey(name), btn=$('hsAiNotes');
+  var k=gameKey(name), btn=$('hsAiNotes'), pr=presetOf(name), needNotes=!pr;
   if(!keys().length&&!groqKeys().length&&!orKeys().length){ if(!auto) notesMsg('err','Cần nhập mã Gemini trước.'); return; }
   if(btn) btn.disabled=true;
-  notesMsg('','Đang tra trên mạng nhân vật, mối quan hệ, cách xưng hô của '+name+'...');
-  var notes='', web=false, known=true;
+  notesMsg('','Đang tra trên mạng '+name+': nhân vật, cách xưng hô, văn phong, tên riêng và thuật ngữ...');
+  var got=null, web=false, known=true;
   try{
-    if(gKeys().length){ var w=await webSearchNotes(name); if(w.text&&!/KHONG_TIM_THAY/.test(w.text)&&w.text.length>60){ notes=w.text; web=w.web; } }
+    if(gKeys().length){ var w=await webSearchNotes(name,needNotes); if(w.text&&!/KHONG_TIM_THAY/.test(w.text)){ var pp=webPrepParse(w.text); if((pp.notes&&pp.notes.length>60)||pp.rules.length>60){ got=pp; web=w.web; } } }
   }catch(e){}
-  if(!notes){
-    var prompt='You help translate video game dialogue into Vietnamese.\n'+
-      'Game: "'+name+'".\n'+
-      'Write short notes in Vietnamese (at most about 120 words) that a subtitle translator needs:\n'+
-      '1. Main characters and how they are related (family, friends, enemies, master/servant...).\n'+
-      '2. How they should address each other in Vietnamese, e.g. "Kratos gọi Atreus là con, xưng ta; Atreus gọi Kratos là cha". Pick pronouns that fit the setting (cổ trang, kiếm hiệp, hiện đại, quân đội...).\n'+
-      '3. Names, places and terms that must stay in English.\n'+
-      '4. The tone of the dialogue.\n'+
-      'Only state what you are confident about for this exact game. If you do not know this game well, set "known" to false and give neutral pronoun advice instead of guessing names.\n'+
-      'Return JSON: {"known":true,"notes":"..."}';
+  if(!got){
+    var prompt='You prepare the Vietnamese subtitle translation of the video game "'+name+'".\n'+
+      (needNotes?'"notes" (Vietnamese, at most about 120 words): main characters, how they are related, and how each pair addresses each other in Vietnamese (one sentence per pair naming both); pronouns that fit the setting.\n':'"notes": "".\n')+
+      '"rules" (Vietnamese, at most about 100 words): tone and register of the text, swearing (only when the original swears, same strength), default pronouns for strangers, enemies, friends.\n'+
+      '"terms": up to 30 names and game terms with their Vietnamese form ({"en":"Name","vi":"Name"} keeps a name as it is).\n'+
+      '"style": one of modern, street, military, wuxia, japan, fantasy, myth, scifi, horror, anime, western.\n'+
+      'Only state what you are confident about for this exact game. If you do not know this game well, set "known" to false and give neutral advice instead of guessing names.';
     try{
-      var r=await ask(prompt,null,{type:'OBJECT',properties:{known:{type:'BOOLEAN'},notes:{type:'STRING'}},required:['known','notes']},'{"known":true,"notes":""}');
-      if(r&&r.notes){ notes=r.notes; known=!!r.known; }
+      var r=await ask(prompt,null,{type:'OBJECT',properties:{known:{type:'BOOLEAN'},notes:{type:'STRING'},rules:{type:'STRING'},style:{type:'STRING'},terms:{type:'ARRAY',items:{type:'OBJECT',properties:{en:{type:'STRING'},vi:{type:'STRING'}},required:['en','vi']}}},required:['known','notes','rules','terms','style']},'{"known":true,"notes":"","rules":"","terms":[{"en":"","vi":""}],"style":""}');
+      if(r){ var tm={}; (r.terms||[]).forEach(function(x){ if(x&&x.en&&x.vi) tm[String(x.en).trim()]=String(x.vi).trim(); });
+        got={notes:webNotesClean(r.notes||''),rules:webNotesClean(r.rules||''),terms:r.known?tm:{},style:STYLES[r.style]?r.style:''}; known=!!r.known; }
     }catch(e){ if(btn) btn.disabled=false; notesMsg('err', e.cool?'Mã tạm hết lượt, thử lại sau ít giây.':'Lỗi: '+e.message); return; }
   }
   if(btn) btn.disabled=false;
-  if(!notes){ notesMsg('err','Chưa tìm được thông tin về '+name+', thử lại sau.'); return; }
-  /* the person switched game or wrote notes meanwhile: keep their work */
-  if(gameKey($('hsGame').value)!==k) return;
-  if(auto&&GAMES[k]&&GAMES[k].notes) return;
-  $('hsNotes').value=notes; save('hsNotes',notes);
-  GAMES[k]={name:name,notes:notes,web:web}; save('games',GAMES); gameList(); S.hist=[];
-  if(typeof log==='function') try{ log('Ghi chú game '+name+(web?' (tra trên mạng)':' (AI tự soạn)')); }catch(e){}
-  notesMsg(known?'ok':'warn', web?'Đã tra trên mạng và lưu ghi chú nhân vật, xưng hô cho '+name+'. Đọc lại, sai chỗ nào thì sửa trực tiếp.':
-    known?'Đã soạn và lưu ghi chú cho '+name+'. Đọc lại, sai chỗ nào thì sửa trực tiếp.':'AI không chắc về game này nên chỉ gợi ý chung. Nên tự ghi thêm tên nhân vật và quan hệ.');
+  if(!got||(!got.notes&&!got.rules)){ notesMsg('err','Chưa tìm được thông tin về '+name+', thử lại sau.'); return; }
+  if(gameKey($('hsGame').value)!==k) return;   /* the person switched game meanwhile */
+  var G=GAMES[k]||{name:name}, kept=auto&&G.notes;   /* notes the person wrote stay */
+  if(needNotes&&got.notes&&!kept){ G.notes=got.notes; $('hsNotes').value=got.notes; save('hsNotes',got.notes); }
+  if(got.rules&&!(auto&&G.rulesOwn)){ G.rules=got.rules; G.rulesOwn=false; }
+  if(Object.keys(got.terms).length) G.terms=got.terms;
+  if(got.style) G.style=got.style;
+  G.web=web; G.prepAt=Date.now(); GAMES[k]=G; save('games',GAMES); gameList(); setsChanged();
+  if(got.style&&!(pr&&pr.style)&&!STY[castKey()]){ STY[castKey()]=got.style; save('styles',STY); styleLoad(); }
+  rulesUi(); glossUi();
+  var nt=Object.keys(got.terms).length;
+  if(typeof log==='function') try{ log('Chuẩn bị dịch '+name+(web?' (tra trên mạng)':' (AI tự soạn)')+': '+(needNotes&&got.notes?'ghi chú nhân vật, ':'')+(got.rules?'luật dịch, ':'')+nt+' tên và thuật ngữ'+(got.style?', phong cách '+got.style:'')); }catch(e){}
+  notesMsg(known?'ok':'warn', (web?'Đã tra trên mạng và chuẩn bị dịch cho ':'Đã soạn sẵn cho ')+name+': '+[needNotes&&got.notes&&!kept?'ghi chú nhân vật và xưng hô':'',got.rules?'luật dịch riêng':'',nt?nt+' tên riêng, thuật ngữ':'',got.style?'phong cách dịch':''].filter(Boolean).join(', ')+'. '+
+    (known?'Đọc lại, sai chỗ nào thì sửa trực tiếp.':'AI không chắc về game này nên chỉ gợi ý chung, nên tự ghi thêm tên nhân vật và quan hệ.'));
 }
 /* a game that is not in the list and has no notes yet: look it up by itself, once a week at most */
 function aiNotesAuto(name){
   name=String(name||'').trim(); var k=gameKey(name);
-  if(name.length<3||presetOf(name)||(GAMES[k]&&GAMES[k].notes)||!keys().length) return;
+  var pr=presetOf(name), G=GAMES[k]||{};
+  if(name.length<3||!keys().length) return;
+  if(pr?(pr.rules||G.rules):(G.notes&&G.rules)) return;          /* already prepared */
   if(S.webTry[k]&&Date.now()-S.webTry[k]<7*86400e3) return;
   S.webTry[k]=Date.now(); save('webTry',S.webTry);
   aiNotes(name,true);
 }
+/* the game's own translation rules (made by the look-up, or written by the person): shown and editable */
+function gameRules(){ var n=$('hsGame').value.trim(), G=GAMES[gameKey(n)], pr=presetOf(n); return (G&&G.rules)||(pr&&pr.rules)||''; }
+function rulesUi(){ var r=$('hsRules'); if(r) r.value=gameRules(); }
+if($('hsRules')) $('hsRules').addEventListener('change',function(){ var n=$('hsGame').value.trim(); if(!n) return; var k=gameKey(n), G=GAMES[k]||{name:n}; G.rules=this.value.trim(); G.rulesOwn=true; GAMES[k]=G; save('games',GAMES); setsChanged(); });
+$('hsGame').addEventListener('change',rulesUi); $('hsPreset').addEventListener('change',rulesUi); rulesUi();
 $('hsAiNotes').addEventListener('click',function(){
   var name=$('hsGame').value.trim();
   if(!name){notesMsg('err','Gõ tên game trước, ví dụ: Ghost of Tsushima.'); $('hsGame').focus(); return;}
   aiNotes(name,false);
 });
-window.hsAiNotesT={prompt:webNotesPrompt,clean:webNotesClean,auto:aiNotesAuto,run:aiNotes};
+window.hsAiNotesT={prompt:webNotesPrompt,clean:webNotesClean,parse:webPrepParse,auto:aiNotesAuto,run:aiNotes};
 document.querySelectorAll('#hsSpeed button').forEach(function(b){
   b.classList.toggle('on',+b.dataset.v===S.interval);
   b.addEventListener('click',function(){
