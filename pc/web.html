@@ -2526,13 +2526,18 @@ function notesPart(text){   /* (named apart from notesFor(game): two functions o
   });
   return keep.join(' ');
 }
-function context(text){
-  var g=$('hsGame').value.trim(), n=notesPart(text), st=styleOf(), pr=presetOf(g), gr=pr&&pr.rules?pr.rules:'';
-  var recent=S.hist.slice(0,4).map(function(h){return (h.who?h.who+(h.role==='main'?' (main)':'')+': ':'')+h.en+' => '+h.vi;}).join('\n');
+/* full=true (VIP): all the character notes, not only the part about this line: they stay the same from line to line,
+   so the shop's server keeps them cached and they cost a tenth */
+function ctxFixed(text,full){
+  var g=$('hsGame').value.trim(), n=full?$('hsNotes').value.trim().slice(0,8000):notesPart(text), st=styleOf(), pr=presetOf(g), gr=pr&&pr.rules?pr.rules:'';
   return (g?'Game: '+g+'\n':'')+(n?'Character / pronoun notes: '+n+'\n':'')+(st?'Translation style: '+st+'\n':'')+(gr?'Translation rules for this game (they come before the general rules below):\n'+gr+'\n':'')+
-    'General rules'+(gr?' (when the game rules above say otherwise, follow the game rules)':'')+': keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text; for "we" use "chúng tôi" when the listener is not included and "chúng ta" when they are; speak politely to elders, leaders and strangers.\n'+
-    (recent?'Recent lines (for consistency):\n'+recent+'\n':'');
+    'General rules'+(gr?' (when the game rules above say otherwise, follow the game rules)':'')+': keep the pronoun pair already used between the same two characters in the recent lines; if you cannot tell who is listening, use neutral forms; keep the swearing level of the original (do not add or remove swearing); never invent words that are not in the text; for "we" use "chúng tôi" when the listener is not included and "chúng ta" when they are; speak politely to elders, leaders and strangers.\n';
 }
+function ctxRecent(){
+  var recent=S.hist.slice(0,4).map(function(h){return (h.who?h.who+(h.role==='main'?' (main)':'')+': ':'')+h.en+' => '+h.vi;}).join('\n');
+  return (recent?'Recent lines (for consistency):\n'+recent+'\n':'');
+}
+function context(text){ return ctxFixed(text,false)+ctxRecent(); }
 function thinkCfg(model){
   if(S.noThink[model]) return null;
   var m=model.match(/gemini-(\d+)/); var v=m?parseInt(m[1],10):(model.indexOf('latest')>=0?3:2);
@@ -3604,10 +3609,14 @@ function voiceHint(pv){
   var c=S.cast[castKey()]||{}, kv=Object.keys(c).filter(function(k){ return c[k].f0&&k.indexOf('giọng ')!==0; }).slice(0,10).map(function(k){ var e=c[k]; return e.n+' ('+(e.g||'?')+', ~'+e.f0+' Hz)'; });
   return (pv?'Voice heard while this line was on screen: '+(pv.g||'unclear')+', about '+pv.f0+' Hz.\n':'')+(kv.length?'Voices heard before: '+kv.join('; ')+'.\n':'');
 }
-function whoRule(pv){
+function whoFixed(){
   if(!whoOn()) return '';
   var m=mainList();
-  return 'Speaker: in "who" write the character who says this line: the name shown on screen, or else the one the context makes clear (this game\'s story and the character notes, who is talking to whom in the recent lines, the voice heard, what the line says and how the speaker addresses the listener); "" if you cannot tell. In "role" write "main" when the speaker is the player\'s character / protagonist'+(m.length?' ('+m.join(', ')+')':'')+', "side" for any other character, "" if unknown. In "sure" write "yes" only when the name is shown or the context leaves no doubt, else "no". Never put the name in "vi".\n'+voiceHint(pv===undefined?ptVoice(subSince(),Date.now()):pv);
+  return 'Speaker: in "who" write the character who says this line: the name shown on screen, or else the one the context makes clear (this game\'s story and the character notes, who is talking to whom in the recent lines, the voice heard, what the line says and how the speaker addresses the listener); "" if you cannot tell. In "role" write "main" when the speaker is the player\'s character / protagonist'+(m.length?' ('+m.join(', ')+')':'')+', "side" for any other character, "" if unknown. In "sure" write "yes" only when the name is shown or the context leaves no doubt, else "no". Never put the name in "vi".\n';
+}
+function whoRule(pv){
+  if(!whoOn()) return '';
+  return whoFixed()+voiceHint(pv===undefined?ptVoice(subSince(),Date.now()):pv);
 }
 /* who says this line, and is it the main character */
 function lineWho(res,pv,printed){
@@ -4157,16 +4166,21 @@ function freshPart(text){
   return fresh.length===parts.length?text:fresh.join(' ');
 }
 function rememberSents(text){ var now=Date.now(); splitSents(text).forEach(function(p){ S.sents.push({s:p,t:now}); }); }
+/* the shop's VIP server keeps the part of a question before VIPMARK cached (the same rules for every line: billed at
+   a tenth); the line and what changes from line to line come after it. Other AIs just read a separator. */
+var VIPMARK='\n\n----------\n';
 function textPrompt(t,nl,enl){
   return 'You translate video game subtitles from '+LN()+' for a Vietnamese player.\n'+
-    'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\n<<<\n'+t+'\n>>>\n'+
+    'On-device OCR read the text between <<< and >>> from the subtitle area of the game screen. It may have OCR mistakes, missing spaces between words, or stray symbols from the HUD.\nThe text comes at the end of this message.\n'+
     '1. Fix obvious OCR mistakes (including words stuck together) and keep ONLY the '+LN()+' dialogue/subtitle text in "en" (in the original language). Ignore HUD, button prompts and labels like "DEMO".\n'+
     '2. If the line starts with a speaker name and a colon (e.g. "ATREUS: ..."), keep that prefix at the start of "en". Never add a name that is not in the text.\n'+
     '3. Translate the dialogue (without the speaker name) into natural spoken Vietnamese that fits game dialogue in "vi". Translate ALL of it: every word, clause, name, number, interjection (oh, hey, uh, huh), swear word and repetition; never shorten, summarize, soften or leave out any part, even a small one. Mirror the structure of the original: the same sentences in the same order, the same punctuation (… ? ! quotes, parentheses), a sentence cut off at the end stays cut off (do not finish it, do not merge it with another). If the previous recent line ended mid-sentence, this line continues it: translate it as the continuation. Never put the speaker name in "vi". Keep names of characters, places and items as they are. Pick Vietnamese pronouns (anh/em, ta/ngươi, bố/con...) that fit the relationship.\n'+
     '4. In "gender" put the speaker\'s gender only when you really know it: from the speaker name (a known character of this game or of the notes) or because the line itself makes it certain; otherwise "". Do not guess from the topic of the line. In "age" put "child", "young", "adult" or "old" for the speaker, or "" if you cannot tell.\n'+
     '5. If it is not real dialogue, return "en":"" and "vi":"".\n'+
+    whoFixed()+ctxFixed(t,vipOn())+VIPMARK+
+    '<<<\n'+t+'\n>>>\n'+
     (/\n/.test(t)?'Each new line of the text between <<< and >>> is a different character speaking (several people talk at once): translate each one on its own, never join two people\'s words into one sentence, and keep them on separate lines of "vi" in the same order.\n':'')+
-    (nl>1?'6. The original subtitle is shown on '+nl+' lines'+(enl&&enl.length===nl?':\n'+enl.map(function(l,i){ return '   line '+(i+1)+': '+l; }).join('\n')+'\n  ':'. ')+'Write "vi" on exactly '+nl+' lines too, separated by \\n, each Vietnamese line carrying the meaning of the same original line: where an original line ends a sentence, end the Vietnamese line there; where a sentence goes on to the next line, break the Vietnamese sentence at the matching place.\n':'')+whoRule()+glossHints(t)+context(t);
+    (nl>1?'6. The original subtitle is shown on '+nl+' lines'+(enl&&enl.length===nl?':\n'+enl.map(function(l,i){ return '   line '+(i+1)+': '+l; }).join('\n')+'\n  ':'. ')+'Write "vi" on exactly '+nl+' lines too, separated by \\n, each Vietnamese line carrying the meaning of the same original line: where an original line ends a sentence, end the Vietnamese line there; where a sentence goes on to the next line, break the Vietnamese sentence at the matching place.\n':'')+(whoOn()?voiceHint(ptVoice(subSince(),Date.now())):'')+glossHints(t)+ctxRecent();
 }
 /* a line heard rather than read (speech recognition): the same rules, other mistakes to expect */
 function voicePrompt(t){
