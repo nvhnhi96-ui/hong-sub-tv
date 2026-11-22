@@ -56,6 +56,7 @@ html.hs-phone .hs-stage:has(#hsEmpty:not([hidden])) #hsVideo{display:none}
 html.hs-phone .hs-empty{position:relative;inset:auto;padding:26px 18px 22px;place-items:center;
   background:radial-gradient(120% 90% at 50% 0%,rgba(255,196,0,.14),rgba(255,196,0,0) 60%),#0B0D10}
 html.hs-phone .hs-empty b{font-size:21px}
+html.hs-phone .hs-empty .hs-tip b{font-size:inherit}   /* words inside the tip box keep the tip's size */
 html.hs-phone .hs-empty p{font-size:14px;line-height:1.55;margin-top:8px}
 html.hs-phone .hs-empty .hs-row{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:320px;margin:16px auto 0}
 html.hs-phone .hs-empty .hs-row .hs-btn{width:100%;justify-content:center;height:48px;font-weight:700}
@@ -88,6 +89,10 @@ html.hs-phone .dk-nav>button.on,html.hs-phone .dk-nav>button.open,html.hs-phone 
 html.hs-phone .dk-nav>button.on svg,html.hs-phone .dk-nav>button.open svg,html.hs-phone .dk-nav>button[aria-expanded=true] svg{filter:drop-shadow(0 0 8px rgba(255,196,0,.35))}
 html.hs-phone .dk-nav>button[data-p=ketnoi] span{display:none!important}
 html.hs-phone .dk-nav>button[data-p=ketnoi]::after{content:"Kết nối"}
+html.hs-phone .dk-nav>button[data-p=choi]{font-size:0}
+html.hs-phone .dk-nav>button[data-p=choi]::after{content:"Chơi game";font-size:11.5px}   /* "Màn hình chơi" is wider than its tab */
+/* Gói VIP: one plan per row, easy to read and tap */
+html.hs-phone .vip-plans{grid-template-columns:1fr}
 /* the settings pages: chips under the top bar */
 html.hs-phone .dk-sub{display:none!important}
 html.hs-phone .dk-sub.open{display:flex!important;position:fixed;left:0;right:0;top:var(--hs-topH,64px);z-index:29;flex-direction:row;gap:8px;margin:0;padding:10px 12px;border:0;

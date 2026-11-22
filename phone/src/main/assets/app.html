@@ -322,6 +322,7 @@ html,body{height:100%;overflow:hidden}
 .vip-perk i svg{width:19px;height:19px;stroke:#FFC400;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.vip-perk>b{display:block;font-size:14.5px;margin-bottom:4px;color:var(--ink)}.vip-perk p b{color:var(--ink)}.vip-perk p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
 .vip-reg{border-color:rgba(255,196,0,.4)!important}.vip-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0 4px}
 .vip-plan{display:flex;flex-direction:column;justify-content:flex-start}.vip-plan ul{margin:8px 0 0;padding-left:17px;font-size:12.5px;line-height:1.5;color:var(--muted)}.vip-plan li{margin:2px 0}.vip-perks[hidden]{display:none}
+@media (min-width:1101px){#p-vip .dk-cols{grid-template-columns:minmax(0,1.75fr) minmax(0,1fr)}}
 /* gói VIP: mọi nền tảng (máy tính, web, điện thoại); app trên CH Play và App Store chỉ nhập mã, không bán trong app */
 .vip-store,.vip-phonepay{display:none}html.hs-mps .vip-phonepay{display:block}html.hs-ios .vip-sell,html.hs-play .vip-sell{display:none!important}html.hs-ios .vip-store,html.hs-play .vip-store{display:block}html.hs-phone .dk-vipchip{display:none!important}   /* điện thoại: đã có tab Gói VIP ở thanh dưới */
 .vip-plan{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;color:var(--ink);font-family:inherit}.vip-plan b{display:block;font-size:15px}.vip-plan span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
@@ -398,7 +399,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
 .dk-top{position:relative;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--page);border-bottom:1px solid var(--line);min-height:64px}
 .dk-top h1{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
 .dk-top .sp{flex:1}
-.dk-top .hs-pill{font-size:13.5px;background:var(--panel);border-color:var(--line2)}
+.dk-top .hs-pill{font-size:13.5px;background:var(--panel);border:1px solid var(--line2);border-radius:999px;padding:7px 13px}
 .dk-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 13px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit}
 .dk-chip svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .dk-chip[aria-pressed=false]{color:var(--soft)}
@@ -584,6 +585,7 @@ html.hs-phone .hs-stage:has(#hsEmpty:not([hidden])) #hsVideo{display:none}
 html.hs-phone .hs-empty{position:relative;inset:auto;padding:26px 18px 22px;place-items:center;
   background:radial-gradient(120% 90% at 50% 0%,rgba(255,196,0,.14),rgba(255,196,0,0) 60%),#0B0D10}
 html.hs-phone .hs-empty b{font-size:21px}
+html.hs-phone .hs-empty .hs-tip b{font-size:inherit}   /* words inside the tip box keep the tip's size */
 html.hs-phone .hs-empty p{font-size:14px;line-height:1.55;margin-top:8px}
 html.hs-phone .hs-empty .hs-row{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:320px;margin:16px auto 0}
 html.hs-phone .hs-empty .hs-row .hs-btn{width:100%;justify-content:center;height:48px;font-weight:700}
@@ -616,6 +618,10 @@ html.hs-phone .dk-nav>button.on,html.hs-phone .dk-nav>button.open,html.hs-phone 
 html.hs-phone .dk-nav>button.on svg,html.hs-phone .dk-nav>button.open svg,html.hs-phone .dk-nav>button[aria-expanded=true] svg{filter:drop-shadow(0 0 8px rgba(255,196,0,.35))}
 html.hs-phone .dk-nav>button[data-p=ketnoi] span{display:none!important}
 html.hs-phone .dk-nav>button[data-p=ketnoi]::after{content:"Kết nối"}
+html.hs-phone .dk-nav>button[data-p=choi]{font-size:0}
+html.hs-phone .dk-nav>button[data-p=choi]::after{content:"Chơi game";font-size:11.5px}   /* "Màn hình chơi" is wider than its tab */
+/* Gói VIP: one plan per row, easy to read and tap */
+html.hs-phone .vip-plans{grid-template-columns:1fr}
 /* the settings pages: chips under the top bar */
 html.hs-phone .dk-sub{display:none!important}
 html.hs-phone .dk-sub.open{display:flex!important;position:fixed;left:0;right:0;top:var(--hs-topH,64px);z-index:29;flex-direction:row;gap:8px;margin:0;padding:10px 12px;border:0;
@@ -9676,7 +9682,7 @@ if(!D||!A) return;
 var S=A.S;
 
 /* ---------- pages ---------- */
-var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ',vip:'Gói thành viên VIP Hóng Sub'};
+var TITLES={choi:'Màn hình chơi',game:'Cài đặt › Game đang chơi',vung:'Cài đặt › Vùng dịch',ketnoi:'Kết nối PS5/PS4 và TV',dich:'Cài đặt › Mã AI',giong:'Cài đặt › Giọng đọc',phude:'Cài đặt › Phụ đề',loinoi:'Cài đặt › Lời nhân vật nói',nhanvat:'Cài đặt › Nhân vật',phim:'Cài đặt › Phím tắt',khac:'Hỗ trợ',vip:'Gói VIP Hóng Sub'};
 var SETP=['dich','game','phude','loinoi','vung','giong','nhanvat','phim'];
 function subOpen(on){ $('dkSub').classList.toggle('open',on); $('dkSetBtn').classList.toggle('open',on); $('dkSetBtn').setAttribute('aria-expanded',on?'true':'false'); }
 function go(p){
