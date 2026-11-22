@@ -37,7 +37,8 @@ html,body{height:100%;overflow:hidden}
 .vip-perks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
 .vip-perk{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 15px}.vip-perk i{display:inline-flex;width:34px;height:34px;border-radius:9px;background:rgba(255,196,0,.14);align-items:center;justify-content:center;margin-bottom:8px}
 .vip-perk i svg{width:19px;height:19px;stroke:#FFC400;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.vip-perk>b{display:block;font-size:14.5px;margin-bottom:4px;color:var(--ink)}.vip-perk p b{color:var(--ink)}.vip-perk p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
-.vip-reg{border-color:rgba(255,196,0,.4)!important}.vip-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0 4px}
+.vip-reg{border-color:rgba(255,196,0,.4)!important}.vip-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0 4px}
+.vip-plan{display:flex;flex-direction:column;justify-content:flex-start}.vip-plan ul{margin:8px 0 0;padding-left:17px;font-size:12.5px;line-height:1.5;color:var(--muted)}.vip-plan li{margin:2px 0}.vip-perks[hidden]{display:none}
 .vip-plan{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;color:var(--ink);font-family:inherit}.vip-plan b{display:block;font-size:15px}.vip-plan span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .vip-plan.on{border-color:#FFC400;background:rgba(255,196,0,.10)}.vip-plan.on span{color:#FFD54A}
 .vip-f{margin-top:10px}.vip-f label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
@@ -683,10 +684,10 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         <div class="vip-hero" id="hsVipSec">
           <div class="vip-kicker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>HÓNG SUB VIP</div>
           <h2>Chơi game tiếng Anh như game Việt hóa</h2>
-          <p>Bật lên là dịch, mượt suốt cả buổi chơi. Không cần tạo mã, không sợ hết lượt giữa trận, kẹt nhiệm vụ có người chỉ đường.</p>
+          <p>Bật lên là dịch, mượt suốt cả buổi chơi, không cần tạo mã. Có 3 gói: Cơ bản, Nâng cao và Cao cấp (thêm trợ lý chơi game chỉ đường khi kẹt nhiệm vụ).</p>
           <div class="hs-msg" id="hsVipMsg" hidden></div>
         </div>
-        <div class="vip-perks">
+        <div class="vip-perks" id="hsVipPerks">
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></i><b>Dịch không giới hạn, không cần mã</b><p>Dùng máy chủ dịch riêng của Hóng Game Store. Không phải tạo mã Gemini, không bị "hết lượt" giữa chừng, chơi bao lâu dịch bấy lâu.</p></div>
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></i><b>Bí nhiệm vụ? Bấm là có gợi ý</b><p>Kẹt câu đố, không biết đi đâu tiếp: bấm <b>Gợi ý nhiệm vụ</b>, Hóng Sub nhìn màn hình và chỉ bước tiếp theo bằng tiếng Việt (hỗ trợ một số game giải đố).</p></div>
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></i><b>Hỗ trợ kỹ thuật ưu tiên</b><p>Cài đặt, kết nối PS5 / PS4, lỗi phát sinh: kỹ thuật viên của shop ưu tiên hỗ trợ thành viên VIP trước.</p></div>
@@ -724,7 +725,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsVip" type="text" spellcheck="false" autocomplete="off" placeholder="HSV-XXXX-XXXX" aria-label="Mã VIP" style="text-transform:uppercase"><button class="hs-btn" id="hsVipGo" type="button">Kích hoạt</button></div>
             </div>
             <div class="dk-card">
-              <h2>Gợi ý nhiệm vụ</h2>
+              <h2>Gợi ý nhiệm vụ (gói Cao cấp)</h2>
               <p class="hs-note">Đang chơi mà bị kẹt: về <b>Màn hình chơi</b>, bấm nút vàng <b>Gợi ý nhiệm vụ</b> dưới khung phụ đề. Gợi ý hiện ngay trên game (và trên TV nếu đang nối TV).</p>
               <div class="hs-msg" id="hsHintOut" hidden></div>
             </div>
@@ -738,7 +739,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
         <div class="dk-cols">
           <div>
             <div class="dk-card dk-only vip-promo" id="hsVipPromo">
-              <div><b><span class="hs-vip-tag">VIP</span>Không muốn tạo mã Gemini?</b><p class="hs-note">Thành viên VIP dịch bằng máy chủ riêng của shop: không cần mã, không lo hết lượt, có thêm gợi ý nhiệm vụ.</p></div>
+              <div><b><span class="hs-vip-tag">VIP</span>Không muốn tạo mã Gemini?</b><p class="hs-note">Thành viên VIP dịch bằng máy chủ riêng của shop: không cần mã Gemini. Gói Cao cấp có thêm trợ lý chơi game.</p></div>
               <button class="hs-btn pri vip-go" type="button" data-go="vip">Xem gói VIP</button>
             </div>
             <div class="dk-card" id="hsKeySec">

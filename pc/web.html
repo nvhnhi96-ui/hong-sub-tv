@@ -1258,12 +1258,12 @@ function vipLeft(){ return S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.no
 function vipUi(){
   var on=vipOn(), el=$('hsVip');
   if(el&&!el.value&&S.vip.code) el.value=S.vip.code;
-  if(on) vipMsg('ok','Bạn đang là thành viên VIP'+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.');
+  if(on) vipMsg('ok','Bạn đang dùng gói '+(S.vip.tier&&S.vip.tier!=='VIP'?S.vip.tier:'VIP')+(S.vip.lim?' (tối đa '+vipMoney(S.vip.lim).replace('đ','')+' câu mỗi ngày)':S.vip.tier?' (không giới hạn câu)':'')+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.');
   else if(S.vip.err) vipMsg('err',S.vip.err);
   else vipMsg('','');
   var set=function(id,f){ var x=$(id); if(x) f(x); };
   vipPlansUi();
-  set('hsVipHint',function(x){ x.hidden=!on; });
+  set('hsVipHint',function(x){ x.hidden=!on||S.vip.hint===false; });   /* "Gợi ý nhiệm vụ" (trợ lý chơi game): gói Cao cấp */
   set('hsVipPromo',function(x){ x.hidden=on; });
   set('hsVipEmpty',function(x){ x.hidden=on; });
   set('hsVipSec',function(x){ x.classList.toggle('on',on); });
@@ -1279,12 +1279,13 @@ function vipUi(){
 S.vipPlans=load('vipplans',[]); S.vipPlan=load('vipplan',0); S.vipReg=load('vipreg',null); S.vipOrder=load('viporder',null); S.vipCanBuy=load('vipcanbuy',false);
 function vipRegMsg(cls,t){ var m=$('hsVipRegMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
 function vipMoney(n){ return (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'đ'; }
-function vipPlanList(){ return S.vipPlans.length?S.vipPlans:[{id:0,name:'1 tháng',days:30,price:'',amount:0},{id:1,name:'3 tháng',days:90,price:'',amount:0},{id:2,name:'12 tháng',days:365,price:'',amount:0}]; }
+function vipPlanList(){ return S.vipPlans.length?S.vipPlans:[{id:0,name:'VIP Cơ bản',days:30,price:'',amount:0},{id:1,name:'VIP Nâng cao',days:30,price:'',amount:0},{id:2,name:'VIP Cao cấp',days:30,price:'',amount:0}]; }
 function vipBuyMode(){ var pl=vipPlanList()[S.vipPlan]; return !!(S.vipCanBuy&&pl&&pl.amount>0); }
 function vipPlansUi(){
   var box=$('hsVipPlans'); if(!box) return;
   var pl=vipPlanList(); if(S.vipPlan>=pl.length) S.vipPlan=0;
-  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per:'Đang cập nhật giá')+'</span></button>'; }).join('');
+  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per+(x.days<60?' / '+(x.days===30?'tháng':x.days+' ngày'):''):'Đang cập nhật giá')+'</span>'+(Array.isArray(x.perks)&&x.perks.length?'<ul>'+x.perks.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join('')+'</ul>':'')+'</button>'; }).join('');
+  var pk=$('hsVipPerks'); if(pk) pk.hidden=pl.some(function(x){ return Array.isArray(x.perks)&&x.perks.length; });
   box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
   var on=vipOn(), buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
   set('hsVipBuyH',function(x){ x.textContent=on?'Gia hạn VIP':'Mua gói VIP'; });
@@ -1301,6 +1302,7 @@ function vipOn2(code,until,msg){
   S.vipOrder=null; save('viporder',null); S.vipReg=null; save('vipreg',null);
   var pay=$('hsVipPay'); if(pay) pay.hidden=true; var f=$('hsVipForm'); if(f) f.hidden=false;
   vipRegMsg('ok',msg+' Mã VIP của bạn: '+code+' (đã lưu trong máy, ghi lại để dùng khi cài lại máy).'); log('VIP: đã bật '+code); vipUi(); vipPlansUi(); steps(); keyNeed();
+  setTimeout(function(){ vipCheck(code); },1500);   /* the plan (Cơ bản / Nâng cao / Cao cấp) of the code */
 }
 /* the transfer details and QR of an order, and wait for the money */
 function vipPayShow(o){
@@ -1368,7 +1370,7 @@ async function vipCheck(code){
   vipMsg('','Đang kiểm tra mã VIP...');
   try{
     var x=await vipCall('check',{code:code,dev:vipDev()},12000);
-    if(x.r.ok&&x.j.ok){ S.vip={code:code,ok:true,until:(x.j.until||0)*1000,err:''}; save('vip',S.vip); log('VIP: đã bật'); vipUi(); steps(); keyNeed(); return true; }
+    if(x.r.ok&&x.j.ok){ S.vip={code:code,ok:true,until:(x.j.until||0)*1000,err:'',tier:x.j.tier||'',lim:x.j.lim||0,hint:x.j.hint!==0}; save('vip',S.vip); log('VIP: đã bật'); vipUi(); steps(); keyNeed(); return true; }
     S.vip={code:code,ok:false,until:0,err:x.j.message||('Không kiểm tra được mã (lỗi '+x.r.status+').')}; save('vip',S.vip); vipUi(); steps(); keyNeed(); return false;
   }catch(e){ vipMsg('err',e.message+'. Thử lại sau.'); return false; }
 }
@@ -1439,6 +1441,7 @@ function hintShow(text){
 }
 async function vipHint(){
   if(!vipOn()){ hintOut('err','Gợi ý nhiệm vụ dành cho thành viên VIP.'); return; }
+  if(S.vip.hint===false){ hintOut('warn','Gợi ý nhiệm vụ (trợ lý chơi game) có trong gói VIP Cao cấp. Vào mục Gói VIP để nâng cấp.'); return; }
   if(S.hintBusy) return;
   if(!grab({x:0,y:0,w:1,h:1},1280)){ hintOut('err','Chưa có hình game. Mở game trước rồi bấm Gợi ý nhiệm vụ.'); return; }
   var img=jpeg(.82), g=(($('hsGame')&&$('hsGame').value)||'').trim();
