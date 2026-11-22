@@ -1095,6 +1095,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
           <h2>Chơi game tiếng Anh như game Việt hóa</h2>
           <p class="vip-sell">Bật lên là dịch, mượt suốt cả buổi chơi, không cần tạo mã. Có 3 gói: Cơ bản, Nâng cao và Cao cấp (thêm trợ lý chơi game chỉ đường khi kẹt nhiệm vụ).</p>
           <div class="hs-msg" id="hsVipMsg" hidden></div>
+          <div class="hs-keystat" id="hsVipStat"></div>
         </div>
         <div class="vip-perks vip-sell" id="hsVipPerks">
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></i><b>Dịch không giới hạn, không cần mã</b><p>Dùng máy chủ dịch riêng của Hóng Game Store. Không phải tạo mã Gemini, không bị "hết lượt" giữa chừng, chơi bao lâu dịch bấy lâu.</p></div>
@@ -2263,7 +2264,7 @@ async function vipCheck(code){
   vipMsg('','Đang kiểm tra mã VIP...');
   try{
     var x=await vipCall('check',{code:code,dev:vipDev()},12000);
-    if(x.r.ok&&x.j.ok){ S.vip={code:code,ok:true,until:(x.j.until||0)*1000,err:'',tier:x.j.tier||'',lim:x.j.lim||0,hint:x.j.hint!==0}; save('vip',S.vip); log('VIP: đã bật'); vipUi(); steps(); keyNeed(); return true; }
+    if(x.r.ok&&x.j.ok){ S.vip={code:code,ok:true,until:(x.j.until||0)*1000,err:'',tier:x.j.tier||'',lim:x.j.lim||0,hint:x.j.hint!==0}; save('vip',S.vip); keyStats(); log('VIP: đã bật'); vipUi(); steps(); keyNeed(); return true; }
     S.vip={code:code,ok:false,until:0,err:x.j.message||('Không kiểm tra được mã (lỗi '+x.r.status+').')}; save('vip',S.vip); vipUi(); steps(); keyNeed(); return false;
   }catch(e){ vipMsg('err',e.message+'. Thử lại sau.'); return false; }
 }
@@ -3804,7 +3805,8 @@ function count(key,kind){ if(!key) return; if(S.use.d!==today()) S.use={d:today(
 function keyStats(){
   var box=$('hsKeyStat'); if(!box) return; if(S.use.d!==today()) S.use={d:today(),k:{}};
   var now=Date.now(), rows=[];
-  if(S.use.k['vserver']) rows.push('<div><span>Máy chủ VIP</span><b>'+S.use.k['vserver']+' câu hôm nay</b></div>');
+  /* VIP lines: on the Gói VIP page (with the plan's daily limit), not among the Gemini keys */
+  var vb=$('hsVipStat'), vn=S.use.k['vserver']||0; if(vb) vb.innerHTML=vn?'<div><span>Máy chủ VIP đã dịch</span><b>'+vipMoney(vn).replace('đ','')+(S.vip&&S.vip.lim?' / '+vipMoney(S.vip.lim).replace('đ',''):'')+' câu hôm nay</b></div>':'';
   gKeys().forEach(function(k,i){ var cu=keyCoolUntil(k), c=cu>now; rows.push('<div><span>Gemini '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['g'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(cu).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
   groqKeys().forEach(function(k,i){ var c=S.gcool[k]&&S.gcool[k]>now; rows.push('<div><span>Groq '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['q'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>tạm hết lượt</em>':'')+'</div>'); });
   orKeys().forEach(function(k,i){ var c=S.or.cool[k]&&S.or.cool[k]>now; rows.push('<div><span>AI thông minh '+(i+1)+' <small>…'+esc(k.slice(-4))+'</small></span><b>'+(S.use.k['o'+k.slice(-6)]||0)+' câu hôm nay</b>'+(c?'<em>hết lượt, mở lại lúc '+new Date(S.or.cool[k]).toTimeString().slice(0,5)+'</em>':'')+'</div>'); });
