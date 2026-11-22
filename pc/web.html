@@ -6707,7 +6707,7 @@ $('hsRead').addEventListener('change',function(){ save('read',this.value); if(th
 $('hsPsWatch').checked=load('psWatch',null)===null?!!(load('tvip','')||load('tv','')):load('psWatch',false);
 $('hsPsWatch').addEventListener('change',function(){ save('psWatch',this.checked); });
 $('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
-if(!load('fsautoOff1',false)){ save('fsauto',false); save('fsautoOff1',true); }   /* off by default (11/2026): everyone starts with it off once, turning it on is remembered */
+if(!load('fsautoOff2',false)){ save('fsauto',false); save('fsautoOff2',true); }   /* off by default; the switch is hidden since 1.0.290, so every device that still had it on (turned on after the first reset of 18/11) is switched off once more. The feature itself stays: show the switch again and turning it on is remembered */
 $('hsFsAuto').checked=load('fsauto',false); $('hsFsAuto').addEventListener('change',function(){ save('fsauto',this.checked); });
 $('hsFsLive').checked=load('fslive',!(PH||IOS));   /* on by default on computers; phones turn it on themselves (more work for the phone) */
 $('hsFsLive').addEventListener('change',function(){ save('fslive',this.checked); if(this.checked) flStart(); else flStop(); });
