@@ -375,7 +375,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
-                <label class="hs-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
+                <label class="hs-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
                 <label class="hs-sw" hidden>Dịch lời nhân vật nói (không cần phụ đề) <input type="checkbox" id="dkQTalk"></label>
                 <label class="hs-sw" hidden title="Điện thoại tắt màn hình vẫn dịch tiếp: phụ đề vẫn lên TV, vẫn đọc to (khi chơi PS5 ngay trong Hóng Sub)">Dịch khi tắt màn hình điện thoại <input type="checkbox" id="hsAwake" checked></label>
@@ -1000,7 +1000,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw dk-sw">Tự dịch chữ khác trên màn hình: nhiệm vụ, hướng dẫn nút, menu, tin nhắn (ngoài dòng phụ đề) <input type="checkbox" id="hsFsLive"></label>
               <label class="hs-sw dk-sw">Chữ trên màn hình: chỉ dịch câu (tin nhắn, thông báo), giữ nguyên tên và nhãn <input type="checkbox" id="hsFsSent" checked></label>
               <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
-              <label class="hs-sw dk-sw">Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
+              <label class="hs-sw dk-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
               <div class="dk-set"><label class="lab" for="hsPrefer">Khi có nhiều AI cùng dịch</label>
                 <select class="hs-in" id="hsPrefer"><option value="fast">Nhanh nhất: hiện ngay bản AI dịch xong trước</option><option value="balanced">Cân bằng: chờ AI thông minh thêm 0,6 giây</option><option value="best">Hay nhất: luôn chờ AI thông minh</option></select><p class="hs-note" style="margin-top:6px">Chữ Việt chỉ hiện khi AI đã dịch xong câu hoàn chỉnh (thường 1–2 giây). Máy dịch Google chỉ hiện thay khi AI chậm quá 4 giây hoặc bị lỗi, rồi AI tự sửa lại.</p></div>
               <label class="hs-sw dk-sw">Hết mã thì dùng máy dịch miễn phí (DeepL nếu có mã, Google, Bing) <input type="checkbox" id="dkFree"></label>
