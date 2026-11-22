@@ -3283,7 +3283,10 @@ var STYLES={
   anime:'anime / Japanese school: tớ/cậu between friends, lively, keep senpai',
   western:'wild west: plain, rough cowboy talk, short sentences'
 };
-function styleOf(){ var v=$('hsStyle')?$('hsStyle').value:''; return v&&STYLES[v]?STYLES[v]:''; }
+/* "Tự chọn theo game" (nothing chosen): the style the game comes with (its preset, or the one looked up for it) */
+function styleDef(){ try{ var g=$('hsGame')?$('hsGame').value:'', pr=presetOf(g), G=(GAMES||{})[gameKey(g)]||{}; return (pr&&pr.style)||G.style||''; }catch(e){ return ''; } }
+function styleKey(){ var v=$('hsStyle')?$('hsStyle').value:''; return v||styleDef(); }
+function styleOf(){ var v=styleKey(); return v&&STYLES[v]?STYLES[v]:''; }
 /* long character notes (GTA VI: about 6,000 letters) are sent in part: the general lines at the top, the main
    characters, and the characters named in this line or the last ones. A shorter question is answered sooner. */
 function notesPart(text){   /* (named apart from notesFor(game): two functions of one name, the later one won and the notes never reached the AI) */
@@ -3394,7 +3397,12 @@ async function geminiOwn(prompt,b64,schema){
     var key=pickKey();
     if(!key){var e=new Error('cool');e.cool=true;throw e;}
     var order=fastOrder(models).filter(function(m){ return !kmCool(key,m); });
-    if(!order.length) continue;
+    /* a model Google answered 404 for ("no longer available to new users": the 2.5 ones) is left out, not just put last:
+       when the newer models rested (429) it came first again and every line lost a request and ~0.5 s on it */
+    var nowG=Date.now(), liveM=order.filter(function(m){ return !(S.gone[m]>nowG); });
+    if(!liveM.length&&order.length) liveM=FALLBACK.filter(function(m){ return !kmCool(key,m)&&!(S.gone[m]>nowG); });
+    if(!liveM.length){ if(order.length&&!lastErr){ lastErr=new Error('cool'); lastErr.cool=true; } continue; }
+    order=liveM;
     var res;
     try{ res=await hedged(order,key,prompt,b64,schema); }
     catch(e){ lastErr=new Error(e&&e.name==='AbortError'?'Gemini phản hồi quá chậm, thử lại...':'Mất kết nối mạng'); continue; }
@@ -3417,6 +3425,7 @@ async function geminiOwn(prompt,b64,schema){
     if(r.status>=500){ S.slow[model]=Date.now()+60e3; continue; }
     break;
   }
+  if(lastErr&&(lastErr.status===429||lastErr.status===404)&&!lastErr.cool){ var ce=new Error('cool'); ce.cool=true; throw ce; }   /* every model answered "out of requests" (or is retired): the same as resting keys, not an error to show */
   throw lastErr||new Error('Không dịch được');
 }
 
@@ -3599,10 +3608,11 @@ async function ask(prompt,b64,schema,shape,freeText){
     try{ var r=await gemini(prompt,b64,schema); S.via='gemini'; return r; }
     catch(e){ err=e; }
   }
-  if(groqKeys().length){
+  if(groqKeys().length&&!b64){
     try{ var g=await groq(prompt,b64,shape); S.via='groq'; return g; }
     catch(e){ err=err&&err.cool&&!e.cool?e:(err||e); }
   }
+  if(b64&&!err){ err=new Error('cool'); err.cool=true; err.noEye=true; }   /* no AI that reads pictures here (only Groq / no key) */
   if(!b64&&orReady()){
     try{ var o=await orAsk(prompt,shape); S.via='smart'; return o; }
     catch(e){ err=err&&err.cool&&!e.cool?e:(err||e); }
@@ -4754,16 +4764,27 @@ var OCR={fails:0,loading:false,miss:0};
 var OCR_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@bc35c65f6bbe936a8a425be6c45c8ebb1399c4e4/web/ocr/');
 var ORT_BASE=window.HS_OCR_BASE||(D?'ocr/':'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/');
 function readMode(){return ($('hsRead')&&$('hsRead').value)||'local';}
-function ocrOn(){return readMode()==='local'&&!!window.HsOcr&&HsOcr.ready()&&OCR.fails<5;}
+/* "Gửi ảnh cho AI đọc" with the AI out of requests (or no AI that reads pictures): the reader on this device takes
+   over for a few minutes, so the subtitles go on (before: one failed picture a second, and no subtitles at all) */
+function aiRestOn(){ return (S.aiRest||0)>Date.now(); }
+function ocrOn(){return (readMode()==='local'||aiRestOn())&&!!window.HsOcr&&HsOcr.ready()&&OCR.fails<5;}
+function imgCool(e){
+  var now=Date.now(); S.imgRest=now+(e&&e.noEye?60000:15000);
+  if(readMode()==='local'||!window.HsOcr||OCR.fails>=5) return;
+  if(!aiRestOn()){ log('AI hết lượt đọc ảnh: tạm đọc chữ ngay trên máy trong 5 phút (không tốn lượt), rồi thử lại AI'); S.lastOcr=''; S.cand=null; }
+  S.aiRest=now+5*60e3; if(!HsOcr.ready()) ocrLoad(true);
+}
+/* the same "out of requests" line once every 20 s in the diary, not once a second */
+function coolLog(e,pre){ var now=Date.now(); if(e&&e.cool){ if(now-(S.coolLogAt||0)<20000) return; S.coolLogAt=now; } log((pre||'lỗi dịch: ')+(e&&e.cool?'mã hết lượt':(e&&e.message))); }
 function ocrWarm(){
   var c=document.createElement('canvas'); c.width=480; c.height=72; var x=c.getContext('2d');
   x.fillStyle='#202830'; x.fillRect(0,0,480,72); x.fillStyle='#fff'; x.font='600 30px Arial'; x.fillText('Stay close, we leave at dawn.',14,46);
   S.ocrBusy=true;
   return HsOcr.read(c).then(function(o){ log('làm nóng bộ đọc chữ: '+o.ms+'ms ('+o.text+')'); },function(){}).then(function(){ S.ocrBusy=false; });
 }
-function ocrLoad(){
+function ocrLoad(any){
   dictLoad();
-  if(!window.HsOcr||HsOcr.ready()||OCR.loading||readMode()!=='local'||OCR.fails>=5) return;
+  if(!window.HsOcr||HsOcr.ready()||OCR.loading||(readMode()!=='local'&&any!==true)||OCR.fails>=5) return;
   OCR.loading=true; var t0=Date.now(); if(!D) $('hsReadNote').textContent='Đang tải bộ đọc chữ (khoảng 13 MB, chỉ lần đầu)...';
   HsOcr.init(OCR_BASE,ORT_BASE).then(function(){ log('bộ đọc chữ sẵn sàng sau '+(Date.now()-t0)+'ms'); $('hsReadNote').textContent='Bộ đọc chữ đã sẵn sàng.'; steps(); return ocrWarm(); }).then(function(){ return ocrLang(); })
     .catch(function(e){ OCR.fails=9; log('không tải được bộ đọc chữ: '+e.message); $('hsReadNote').textContent='Không tải được bộ đọc chữ, Hóng Sub gửi ảnh cho AI đọc.'; })
@@ -5349,12 +5370,13 @@ function tmAdd(kind,en,vi,who,gd,via){
    Layout, capitals and punctuation follow the English on screen and "Xuống dòng giống câu gốc" as for any line. */
 function tmFitOn(){ var c=$('hsTmFit'); return c?c.checked:load('tmFit',true); }
 function hashS(t){ var h=5381; t=String(t||''); for(var i=0;i<t.length;i++) h=((h<<5)+h+t.charCodeAt(i))|0; return (h>>>0).toString(36); }
-function tmSig(){ var st=$('hsStyle')?$('hsStyle').value:''; return [S.tm.g,st,hashS($('hsNotes').value.trim()),hashS(load('gloss_'+gameKey($('hsGame').value),''))].join('|'); }
+function tmSig(){ var st=styleKey(); return [S.tm.g,st,hashS($('hsNotes').value.trim()),hashS(load('gloss_'+gameKey($('hsGame').value),''))].join('|'); }
 S.tmFit=null;
 function tmFitStore(){
   var sig=tmSig(); if(S.tmFit&&S.tmFit.sig===sig) return S.tmFit;
   var kept=null; try{ kept=JSON.parse(localStorage.getItem('hst.tmfit')||'null'); }catch(e){}
   S.tmFit=kept&&kept.sig===sig&&kept.m?kept:{sig:sig,m:{},n:[]}; if(!S.tmFit.n) S.tmFit.n=Object.keys(S.tmFit.m);
+  if(S.tmAh){ S.tmAh.done={}; S.tmAh.last=-1; }   /* other settings (or another game): the lines checked for the old ones are checked again */
   return S.tmFit;
 }
 function tmFitKeep(ck,vi){
@@ -5387,7 +5409,10 @@ function tmPronOff(vi){
 function tmOddNum(en,vi){ var d=String(vi||'').match(/\d+([:.,]\d+)*/g)||[], e=String(en||''); return d.some(function(x){ return e.indexOf(x)<0; }); }
 function tmDiffers(){ var pr=presetOf($('hsGame').value), stNow=$('hsStyle')?$('hsStyle').value:'';   /* this player changed the game's style or notes */
   var G=GAMES[gameKey($('hsGame').value)]||{};   /* a game not in the list: its looked-up notes and style are what the store was made with */
-  return pr?(stNow!==(pr.style||'')||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!((stNow&&stNow!==(G.style||''))||($('hsNotes').value.trim()&&!G.notesAuto)); }
+  /* no style chosen ("Tự chọn theo game") IS the game's style: before, it counted as a changed setting for nearly everyone
+     (every line of the store went to the AI first and mostly showed unfixed after the 1 s wait) */
+  var stOff=!!stNow&&stNow!==styleDef();
+  return pr?(stOff||$('hsNotes').value.trim()!==String(pr.notes||'').trim()):!!(stOff||($('hsNotes').value.trim()&&!G.notesAuto)); }
 function tmNeedFix(en,vi,r){ return !!(r&&(r._fz||r._parts))||tmPronOff(vi)||tmOddNum(en,vi)||glossMiss(en,vi); }
 /* a fixed line that came back after the stored one was shown: put it in place if that line is still on screen */
 function tmSwap(j,v,r0){
@@ -5403,15 +5428,21 @@ async function tmFit(j,res){
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{2,})$/.exec(String(j.text).trim()), en=m?m[2]:String(j.text).trim(), ck=trKey(j.text);
   var F=tmFitStore(), ai=groqKeys().length||keys().length||orReady();
   var kept=F.m[ck]||(!res._fz&&!res._ml&&res._k&&F.m[res._k]);
-  if(kept){ if(ai&&res._k) tmAhead(res._k,j,res,true); res.vi=tmLay(j.text,kept); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
+  if(kept){ if(ai&&res._k){ tmPos(res._k); tmAhead(res._k,j,res,true); } res.vi=tmLay(j.text,kept); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn từ trước (0ms)'); return res; }
   if(!ai) return res;                                                       /* no AI key: the stored line, laid out like this screen */
   /* the store's lines are written with the game's own settings (its notes, its style). A line that follows them shows
      at once (0 ms) and is checked in the background with the next ones; a player who changed the settings, or a line
      that surely needs it (tmNeedFix), gets it rewritten first (at most ~1.2 s, then the line shows and is swapped). */
   var differs=tmDiffers();
   var why=differs?'cài đặt của bạn khác cài đặt của game':res._fz&&res._fz<0.9?'câu gần giống trong kho':res._parts?'ghép từ nhiều câu trong kho':tmPronOff(res.vi)?'xưng hô chưa theo ghi chú nhân vật':tmOddNum(en,res.vi)?'có số không có trong câu gốc':glossMiss(en,res.vi)?'chưa theo từ điển':'';
-  if(res._k) tmAhead(res._k,j,res,!!why);                                   /* the next lines of the store (and this one, when it is not fixed here), checked while it shows */
+  /* an AI that takes far longer than a line may wait (a busy server, ~3 s and more): no request for this line alone.
+     It shows at once and goes in the request for the next lines (12 lines a request); one line in 8 is still asked
+     alone, to notice when the AI is fast again */
+  var lat=S.tmFitLat||0, slow=!!why&&lat>2600&&!(res._fz&&res._fz<0.9)&&!res._ml&&!res._parts&&!!res._k;
+  if(slow&&(S.tmSlowN=(S.tmSlowN||0)+1)%8===0) slow=false;
+  if(res._k){ tmPos(res._k); tmAhead(res._k,j,res,!!why&&!slow); }           /* the next lines of the store (and this one, when it is not fixed here), checked while it shows */
   if(!why) return res;
+  if(slow){ log('AI đang trả lời chậm (~'+(Math.round(lat/100)/10)+' giây): hiện câu trong kho ngay, câu chỉnh ('+why+') đi cùng các câu sắp tới'); return res; }
   var t0=Date.now(), vi0=res.vi;
   var prompt='A Vietnamese translation of this video game line already exists (written by another player, sometimes for a slightly different English line or by a machine translator). Bring it to THIS player\'s settings below.\n'+
     'Original ('+LN()+'):\n<<<\n'+en+'\n>>>\nExisting Vietnamese:\n<<<\n'+vi0+'\n>>>\n'+
@@ -5419,10 +5450,18 @@ async function tmFit(j,res){
     'Keep the same sentences in the same order, the punctuation and the line breaks; if the existing Vietnamese already fits, return it unchanged. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
     glossHints(en)+context(en);
   var share=!differs&&!res._fz&&!res._parts;
-  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
+  /* how long the line may wait for its fix: about what the AI takes here (0.7-1.5 s). An AI that takes much longer
+     (a busy server, 3 s and more) is not waited for: the line shows at once and the lines after it are fixed ahead */
+  var wait=res._fz&&res._fz<0.9?1500:lat?Math.max(700,Math.min(1500,Math.round(lat*1.5))):1000;
+  var ah=S.tmAh, inAh=!res._fz&&!res._ml&&res._k&&ah.cur&&ah.cur[res._k]&&ah.p;
+  if(inAh){   /* this very line is in the check sent a moment ago with the lines before it: its answer, not a second request */
+    await Promise.race([ah.p,new Promise(function(ok){ setTimeout(ok,wait); })]);
+    var kv=F.m[res._k]; if(kv){ res.vi=tmLay(j.text,kv); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn ('+(Date.now()-t0)+'ms, cùng lượt với các câu trước)'); return res; }
+    log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, lần sau dùng câu đã chỉnh'); return res;
+  }
+  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; S.tmFitLat=S.tmFitLat?Math.round(S.tmFitLat*0.6+(Date.now()-t0)*0.4):Date.now()-t0; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
   /* the line shows once: the fixed one if it comes in time, else the stored one (the fix is kept for the next time).
      Swapping a line already on screen made the subtitles jump */
-  var wait=res._fz&&res._fz<0.9?1500:1000;
   var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },wait); })]);
   if(v===undefined){ log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, lần sau dùng câu đã chỉnh'); return res; }
   if(v){ log('câu trong kho, chỉnh vì '+why+' ('+(Date.now()-t0)+'ms)'+(v!==vi0?': '+v:', giữ nguyên')); res.vi=tmLay(j.text,v); res._fit=1; }
@@ -5432,14 +5471,37 @@ async function tmFit(j,res){
    Players meet a game's lines in about the order they went into the store, so while a line of it shows, the next
    ones are sent to the AI together (one call for up to 8 lines) to be checked and fixed for this player's settings.
    When the game gets there they show at once, already fixed. */
-S.tmAh={busy:false,done:{},last:-1,calls:0};
+S.tmAh={busy:false,done:{},last:-1,calls:0,cur:null,p:null,rest:0};
+/* where the player is in the store, kept for the next time the game is played: its lines are fixed before the first one shows */
+function tmPos(k){ S.tm.pos=k; clearTimeout(S.tmPosT); S.tmPosT=setTimeout(function(){ save('tmpos',{g:S.tm.g,k:k}); },5000); }
+function tmPre(n){
+  var T=S.tm; if(!S.running||!tmFitOn()||!(groqKeys().length||keys().length)) return;
+  if(!T.n||!T.seq||!T.seq.length){ if((n||0)<3) setTimeout(function(){ tmPre((n||0)+1); },4000); return; }
+  var p=load('tmpos',null), k=p&&p.g===T.g&&T.ix[p.k]!=null?p.k:(tmDiffers()?T.seq[0]:null);
+  if(k) tmAhead(k,null,null,false);
+}
 async function tmAhead(k,j,r0,self){
-  var T=S.tm, i0=T.ix[k]; if(i0==null||S.tmAh.busy||!tmFitOn()) return;
-  if(Math.abs(i0-S.tmAh.last)<3&&S.tmAh.done[T.seq[i0+3]]) return;           /* still ahead of the player */
-  var F=tmFitStore(), pick=[];
-  for(var i=self?i0+1:i0;i<T.seq.length&&i<i0+14&&pick.length<8;i++){ var s=T.seq[i], e=T.map[s]; if(!e||F.m[s]||S.tmAh.done[s]||tmJunk(e)) continue; if(T.zmap[s]) continue; pick.push(s); }
-  if(!pick.length) return;
-  S.tmAh.busy=true; S.tmAh.last=i0; pick.forEach(function(s){ S.tmAh.done[s]=1; });
+  var T=S.tm, i0=T.ix[k]; if(i0==null||S.tmAh.busy||!tmFitOn()||Date.now()<S.tmAh.rest) return;
+  /* a player with other settings than the game's: every line needs the fix, so it runs further ahead (30 lines, 12 a
+     request, up to 3 requests in a row); with the game's own settings: a check of the next lines (14 lines, 8 a request) */
+  var far=tmDiffers(), span=far?30:14, per=far?12:8, rounds=far?3:1;
+  if(Math.abs(i0-S.tmAh.last)<3&&S.tmAh.done[T.seq[i0+3]]&&(!far||S.tmAh.done[T.seq[Math.min(T.seq.length-1,i0+span-6)]])) return;           /* still ahead of the player */
+  var F=tmFitStore();
+  S.tmAh.busy=true; S.tmAh.last=i0;
+  try{
+    for(var rd=0;rd<rounds;rd++){
+      var pick=[];
+      for(var i=(self&&rd===0)?i0+1:i0;i<T.seq.length&&i<i0+span&&pick.length<per;i++){ var s=T.seq[i], e=T.map[s]; if(!e||F.m[s]||S.tmAh.done[s]||tmJunk(e)) continue; if(T.zmap[s]) continue; pick.push(s); }
+      if(!pick.length) break;
+      var cur={}; pick.forEach(function(s){ S.tmAh.done[s]=1; cur[s]=1; });
+      var ok=false, pr=tmAheadAsk(T,pick).then(function(v){ ok=v; },function(){ ok=false; });
+      S.tmAh.cur=cur; S.tmAh.p=pr; await pr; S.tmAh.cur=null; S.tmAh.p=null;
+      if(!ok||S.tm!==T) break;
+    }
+  }finally{ S.tmAh.busy=false; S.tmAh.cur=null; S.tmAh.p=null; }
+}
+async function tmAheadAsk(T,pick){
+  var F=tmFitStore();
   var en0=T.map[pick[0]].en, list=pick.map(function(s,n){ var e=T.map[s]; return (n+1)+'. '+(e.who?'['+e.who+'] ':'')+'EN: '+String(e.en).replace(/\s+/g,' ')+'\n   VI: '+String(e.vi).replace(/\n/g,' / '); }).join('\n');
   var prompt='These lines of a video game come one after another (a scene; [Name] is the speaker when known). Each already has a Vietnamese translation written by other players, sometimes by a machine translator.\n'+
     'Check every translation against its English and fix it for THIS player\'s settings below: a wrong meaning, a word-for-word machine wording, pronouns that break the character / pronoun notes or the pronoun pairs between the same two characters, the translation style, the dictionary, anything (a name, a number) the English does not say. '+
@@ -5448,13 +5510,13 @@ async function tmAhead(k,j,r0,self){
   var t0=Date.now(), share=!tmDiffers();
   try{
     var r=groqKeys().length?await groq(prompt,null,SHAPE_FSI):await gemini(prompt,null,SCHEMA_FSI);
-    if(S.tm!==T) return;
+    if(S.tm!==T) return false;
     var got=0, chg=0; (r&&r.items||[]).forEach(function(it){ var s=pick[(+it.i||0)-1], e=s&&T.map[s], v=String(it.vi||'').trim(); if(!e||!v||junkPair(e.en,v)) return;
       v=v.replace(/\s*\/\s*/g,'\n'); if(String(e.vi).indexOf('\n')<0) v=v.replace(/\n/g,' '); tmFitKeep(s,v); got++;
       if(v!==e.vi){ chg++; if(share) tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); } });   /* with the game's own settings, the fixed line goes back to the store for everyone */
     S.tmAh.calls++; log('kho dịch chung: kiểm tra trước '+got+'/'+pick.length+' câu sắp tới ('+chg+' câu sửa, '+(Date.now()-t0)+'ms)');
-  }catch(e){ pick.forEach(function(s){ delete S.tmAh.done[s]; }); }
-  finally{ S.tmAh.busy=false; }
+    return got>0;
+  }catch(e){ pick.forEach(function(s){ delete S.tmAh.done[s]; }); if(e&&e.cool) S.tmAh.rest=Date.now()+60000;   /* out of requests: the lines on screen come first */ return false; }
 }
 async function tmFlush(){
   var q=S.tm.out; if(!q.length) return;
@@ -5632,7 +5694,7 @@ async function translateText(j){
     takeResult(res,j.seq,j.text);
     runStatus(); perfTag();
   }catch(e){
-    log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
+    coolLog(e);
     if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
     else status('err',errVi(e));
     S.lastOcr=''; coverBack();
@@ -5768,8 +5830,8 @@ async function sendImage(seq,probe){
     if(probe){ if(res&&res.vi){ S.imgEmpty=0; } else { S.imgEmpty=(S.imgEmpty||0)+1; S.imgNext=Date.now()+Math.min(240000,15000*Math.pow(2,S.imgEmpty)); } }
     takeResult(res,seq,null); runStatus(); perfTag();
   }catch(e){
-    log('lỗi dịch: '+(e.cool?'mã hết lượt':e.message));
-    if(e.cool) status('warn','Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)');
+    coolLog(e);
+    if(e.cool){ imgCool(e); status('warn',aiRestOn()&&ocrOn()?'AI hết lượt đọc ảnh: đang đọc chữ ngay trên máy':e.noEye?'Gửi ảnh cho AI đọc cần mã Gemini hoặc gói VIP (mã Groq không đọc được ảnh)':'Mã tạm hết lượt, đang chờ... (thêm mã Gemini ở dự án khác, hoặc mã Groq)'); }
     else status('err',errVi(e));
   }finally{ S.inflight--; liveDone(seq); }
 }
@@ -5796,7 +5858,7 @@ async function ocrStep(m,force){
   if(!txt){
     S.cand=null;
     var nowI=Date.now();
-    if(++OCR.miss>=3&&!noKey&&m.ink>MW*MH*0.02&&!S.inflight&&nowI>=(S.imgNext||0)&&(!S.imgMask||maskDiff(m,S.imgMask)>0.2)){
+    if(++OCR.miss>=3&&!noKey&&m.ink>MW*MH*0.02&&!S.inflight&&nowI>=(S.imgNext||0)&&nowI>=(S.imgRest||0)&&keys().length&&(!S.imgMask||maskDiff(m,S.imgMask)>0.2)){
       OCR.miss=0; S.imgMask=m; S.imgNext=nowI+15000*Math.pow(2,Math.min(4,S.imgEmpty||0)); log('bộ đọc chữ không thấy chữ, gửi ảnh cho AI'); sendImage(0,true);
     }
     return;
@@ -5866,9 +5928,21 @@ var SMALLW=/^(of|the|a|an|and|to|in|on|for|or|by|at|with|from|de|la|le|des|du|vo
 /* one or two words a character says ("Shit", "Okay", "Yeah right"): dialogue, not a label */
 var TALKW=/^(ok(ay)?|alright|all right|yeah|yep|yes|yo|no|nope|nah|shit|fuck|fuck you|damn|dammit|what|hey|wait|come on|go|run|stop|help|thanks|thank you|sorry|please|right|sure|fine|hello|hi|bye|man|dude|bro|oh|ah|uh|huh|hmm|whoa|wow|look|listen|really|seriously|whatever|great|cool|nice|jesus|god|fuck me|holy shit|oh shit|oh god|oh no|move|now|go go|let's go|hurry|easy|shut up|get down|freeze|idiot|asshole|bitch|motherfucker|son of a bitch|cheers|congrats|copy|roger|understood|got it|never|maybe|later|here|there|me|you|us|him|her)$/i;
 function talkWord(t){ var s=String(t||'').replace(/[^A-Za-z' ]+/g,' ').replace(/\s+/g,' ').trim(); return !!s&&s.split(' ').length<=3&&TALKW.test(s); }
+/* a mission objective under the subtitles ("Go to Cal's", "Wait for Lucia", "Find Cal"): an order, not a label of the
+   screen. It has no full stop and reads like a title, so it was dropped as screen text and never translated */
+var OBJV=/^(go|get|find|wait|buy|take|follow|drive|lose|kill|meet|pick|steal|deliver|destroy|protect|search|talk|speak|climb|enter|leave|return|reach|escape|collect|chase|head|help|defend|survive|hide|grab|bring|rescue|locate|investigate|approach|eliminate|evade|sneak|lure|tail|catch|hunt|track|swim|dive|ride|board|plant|drop|throw|hack|break|free|save|stay|keep|look|check|clear|rob|ask|give|sell|pay|answer|call|use|open|park|land|fly|jump|run|walk|cross|shoot|stop|make|put|move|push|pull|turn|watch|listen|hold|unlock|repair|load|defeat|fight|finish|complete|start|join|visit|explore|examine|inspect|activate|disable|place|set|carry|cover|flee|lead|let|show|tell|try|learn|read|steal)$/i;
+var OBJP=/^(find|follow|kill|meet|chase|protect|rescue|locate|tail|defend|catch|hunt|track|eliminate|approach|defeat|fight)$/i;
+function objLike(t){
+  var s=String(t||'').replace(/\s+/g,' ').trim(); if(!s||s.length>60||/[\[\]()<>=:|\/]/.test(s)||!/[a-z]/.test(s)) return false;
+  if(/\b(skip|continue|confirm|cancel|select|exit|menu|toggle|zoom|scroll|rotate|press|tap|hold|save|load|settings|options|inventory|map|camera|photo|outfit|waypoint|details|view|mode)\b/i.test(s)) return false;   /* a button hint or a menu label */
+  var w=s.split(' '); if(w.length<2||w.length>7||!OBJV.test(w[0].replace(/[^A-Za-z]/g,''))) return false;
+  if(w.slice(1).some(function(x){ return /^(to|for|a|an|the|in|on|at|with|of|up|your|from|into|by|until|out|off|back|down|after|before|him|her|them|it)$/.test(x); })) return true;   /* "Go to ...", "Wait for ...", "Buy a ..." */
+  return w.length<=3&&OBJP.test(w[0])&&/^[A-Z]/.test(w[1]);                    /* "Find Cal", "Follow Lucia" */
+}
 function uiLike(t){
   var s=String(t||'').replace(/\s+/g,' ').trim(); if(!s) return true;
   if(/^[A-Z][A-Za-z0-9' .\-]{1,24}:\s+\S/.test(s)) return false;                 /* "NAME: line" */
+  if(objLike(s)) return false;
   if(/[.!?…。！？]["”'’)\]]?$/.test(s)||/[,;—–-]$/.test(s)) return false;         /* a sentence, or one going on */
   var w=s.split(' ').filter(function(x){ return /[A-Za-zÀ-ỹ]/.test(x); }); if(!w.length) return true;
   if(w.length<=3&&w.every(function(x){ return !/[a-zà-ỹ]/.test(x); })) return true;        /* ALL CAPS title */
@@ -6204,6 +6278,7 @@ async function tick(force){
   if(S.zones.length&&!force) later(function(){ zoneTick(false); },10);
   if(ocrOn()){ if(force){ S.lastEn=''; S.lastOcr=''; } return ocrStep(m,force); }
   if(force){ S.lastEn=''; S.lastOcr=''; S.sentMask=m; S.prevMask=m; S.pend=0; sendImage(); return; }
+  if(now<(S.imgRest||0)){ S.prevMask=m; return; }             /* out of requests a moment ago: no picture every second */
   var prev=S.prevMask; S.prevMask=m;
   if(m.ink<MW*MH*0.003){ S.pend=0; return; }                 /* no subtitle on screen */
   if(S.sentMask&&maskDiff(m,S.sentMask)<0.22){ S.pend=0; return; } /* same line as the one already sent */
@@ -6255,7 +6330,7 @@ function startRun(){
   }
   S.sents=[]; OCR.miss=0;
   S.running=true; S.lastSig=null; S.prevSig=null; S.sentMask=null; S.prevMask=null; S.pend=0; GUARD.kind=''; GUARD.neg=0; GUARD.next=0;
-  restartTimer(); later(tick,30); flStart();
+  restartTimer(); later(tick,30); flStart(); setTimeout(function(){ tmPre(0); },1500);
   phState(true); awakeSync();
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); steps();
 }
@@ -7402,7 +7477,7 @@ function toastOnce(m){ status('warn',m); }
 })();
 ['hsSpeak','hsShowEn'].forEach(function(id){var v=load(id,null); if(v!==null) $(id).checked=v; $(id).addEventListener('change',function(){save(id,this.checked); if(id==='hsSpeak'){ if(!this.checked) stopSpeak(); if(tvIp()||tvCode().length>=4) tvSend({kind:'ctl',vi:''}).catch(function(){}); }});});
 $('hsRead').value=load('read','local');
-$('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn.'; });
+$('hsRead').addEventListener('change',function(){ save('read',this.value); if(this.value==='local') ocrLoad(); else $('hsReadNote').textContent='Mỗi câu gửi ảnh cho AI: đọc được chữ kiểu cách nhưng chậm hơn và tốn lượt hơn nhiều (mỗi lần chữ đổi là một lượt, kể cả lượt của gói VIP). Hết lượt thì Hóng Sub tự đọc chữ ngay trên máy để phụ đề không bị ngắt.'; });
 $('hsPsWatch').checked=load('psWatch',null)===null?!!(load('tvip','')||load('tv','')):load('psWatch',false);
 $('hsPsWatch').addEventListener('change',function(){ save('psWatch',this.checked); });
 $('hsPsAutoWake').checked=load('psWake',true); $('hsPsAutoWake').addEventListener('change',function(){ save('psWake',this.checked); save('psAuto',this.checked); });
@@ -7493,7 +7568,7 @@ $('hsPreset').addEventListener('change',function(){
 $('hsGame').addEventListener('change',function(){
   var pp=presetOf(this.value); if(pp&&this.value.trim()!==pp.name) this.value=pp.name;   /* "GTA 6" becomes "Grand Theft Auto VI": its notes and its shared store */
   save('hsGame',this.value); tmLoad(this.value);
-  $('hsNotes').value=notesFor(this.value); save('hsNotes',$('hsNotes').value); S.hist=[];
+  $('hsNotes').value=notesFor(this.value); save('hsNotes',$('hsNotes').value); S.hist=[]; styleLoad();
   var p=presetOf(this.value); $('hsPreset').value=p?String(PRESETS.indexOf(p)):'';
   aiNotesAuto(this.value);
 });
@@ -8586,15 +8661,22 @@ function psRefused(code){
   var t='', act=null, actTxt='', again=false;
   if(code==='80108b12'){ t=name+' đang tắt Chơi từ xa. Trên PS5 vào '+path+', bật "Bật Chơi từ xa", rồi bấm Kết nối lại.'; again=true; }
   else if(code==='80108b26'||code==='80108b09'||code==='80108b02'){ t=name+' không còn nhận '+psDev()+' này (đã bỏ ghép trên PS5, PS5 vừa cài lại, hoặc đã ghép lại ở nơi khác). Cần ghép lại: bấm "Ghép lại", trên PS5 vào '+path+' › Liên kết thiết bị (Link Device) để lấy mã 8 số.'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; }
-  else if(code==='80108b10'){ t=name+' đang được chơi từ xa ở thiết bị khác (app PS Remote Play trên điện thoại / máy khác, PS Portal). Tắt kết nối đó rồi bấm Kết nối lại.'; again=true;
-    if(!PS.inUseAt||now-PS.inUseAt>120000){ PS.inUseAt=now; t+=' Hóng Sub tự thử lại sau 20 giây.'; setTimeout(function(){ if(!PS.host&&PS.last===h) psPlay(h,PS.q||null); },20000); } }
+  else if(code==='80108b10'){ again=true;
+    /* "in use": mostly the PS still holding the session before this one (Hóng Sub restarted or updated itself while
+       connected: seen in the reports right after an update), which the PS lets go of within a minute; else the PS Remote
+       Play app on a phone / another computer / a PS Portal. Three tries by itself (15, 25, 40 s) instead of one */
+    if(!PS.inUseAt||now-PS.inUseAt>180000){ PS.inUseAt=now; PS.inUseN=0; }
+    var nTry=PS.inUseN=(PS.inUseN||0)+1, waitS=[15,25,40][nTry-1];
+    t=name+' đang giữ một kết nối Chơi từ xa khác. Thường là lần kết nối trước chưa đóng hẳn (Hóng Sub vừa khởi động lại hoặc vừa cập nhật), máy PS tự nhả trong khoảng 1 phút. Nếu đang mở app PS Remote Play trên điện thoại / máy khác / PS Portal thì tắt nó đi.';
+    if(waitS){ t+=' Hóng Sub tự kết nối lại sau '+waitS+' giây (lần '+nTry+'/3).'; clearTimeout(PS.inUseT); PS.inUseT=setTimeout(function(){ if(!PS.host&&PS.last===h) psPlay(h,PS.q||null); },waitS*1000); }
+    else t+=' Đã tự thử 3 lần chưa được: tắt kết nối ở thiết bị kia (hoặc tắt hẳn PS5 rồi bật lại), rồi bấm Kết nối lại.'; }
   else if(code==='80108b13'){ t=name+' chưa cho vào (mã 13): thường do PS5 đang ở màn hình chọn người dùng, hoặc người đang đăng nhập trên PS5 không phải tài khoản PSN đã ghép. Trên PS5 chọn đúng người dùng ('+((PS.acc&&PS.acc.onlineId)||'tài khoản đã ghép')+'), rồi bấm Kết nối lại. Vẫn bị thì bấm "Ghép lại".'; actTxt='Ghép lại'; act=function(){ psRepair(h); }; again=true; }
   else if(code==='80108b15'){ t='Chơi từ xa trên '+name+' bị lỗi. Tắt hẳn PS5 (giữ nút nguồn 3 giây) rồi bật lại, rồi bấm Kết nối lại.'; again=true; }
   else return false;
   log('PS: máy từ chối (0x'+code+'): '+t);
   psWatchStop(); try{ DPS.stop(false); }catch(e){} PS.retrying=true; psStopView(); PS.retrying=false;
   PS.err='máy từ chối 0x'+code; PS.appReason='';
-  autoReport('ps-refused','0x'+code+': '+t.slice(0,150));
+  if(!(code==='80108b10'&&(PS.inUseN||0)<3)) autoReport('ps-refused','0x'+code+': '+t.slice(0,150));   /* "in use": reported when the three tries did not get in */
   psMsg('err',t); status('err',t); tvNotice('Máy PS chưa cho kết nối, xem hướng dẫn trên '+psDev()+'.');
   var box=$('hsPsMsg');
   if(box){ var row=document.createElement('div'); row.className='hs-row'; row.style.marginTop='8px';
@@ -9442,13 +9524,34 @@ var TZI=(function(){
     var tv=new Sdb(ip), cap='', duid='', ver=0, tmp='/opt/usr/apps/tmp', files, cert;
     say('Đang kết nối TV '+ip+'...');
     var dev=D?'máy tính':'điện thoại', Dev=D?'Máy tính':'Điện thoại';
+    /* what the TV itself says on port 8001: Developer mode on or off, and the computer it was set for. The answer
+       turns "the install port is closed" into the one step that is missing on this TV */
+    function tvSays(){
+      var q;
+      try{ q=(D&&D.samsung&&D.samsung.info)?D.samsung.info(ip).then(function(r){ return r&&r.ok?{developerMode:r.dev?'1':'0',developerIP:r.devIp||'',name:r.name||''}:null; })
+        :(DPS&&DPS.lan&&DPS.lan.get)?DPS.lan.get(ip+':8001','/api/v2/',null).then(function(r){ return r&&r.device?r.device:null; })
+        :Promise.resolve(null); }catch(x){ q=Promise.resolve(null); }
+      return Promise.race([q.catch(function(){ return null; }),new Promise(function(ok){ setTimeout(function(){ ok(null); },3500); })]);
+    }
     return tv.connect().catch(function(e){
-      var my=(D?(window.hsPcIp||''):(S.lanPc||'').split(':')[0])||('IP của '+dev+' này'), m=e.message;
-      var fix='Trên TV: Ứng dụng › bấm 1 2 3 4 5 › Developer mode: On, Host PC IP: '+my+', bấm OK, rồi rút dây điện TV 30 giây và cắm lại (tắt bằng remote chưa đủ).';
-      throw new Error(m==='timeout'||m==='noconnect'?'Không thấy TV ở '+ip+'. Kiểm tra IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP), TV đang bật và cùng Wi-Fi/modem với '+dev+'.'
-        :m==='refused'?'TV ở '+ip+' chưa mở cổng cài app: Developer mode chưa có hiệu lực. '+fix
-        :m==='closed'?'TV mở cổng cài app nhưng từ chối '+dev+' này: ô Host PC IP trên TV phải đúng là '+my+'. '+fix+(D?' Nếu máy tính đang bật VPN thì tắt đi.':'')
-        :m==='auth'?'TV đòi xác nhận '+dev+': trên TV chọn Cho phép (Allow) rồi bấm Cài lại.':m);
+      var my=String(pc||'').split(':')[0]||(D?(window.hsPcIp||''):(S.lanPc||'').split(':')[0])||'', m=e.message, myT=my||('IP của '+dev+' này');
+      var boot='khởi động lại hẳn TV: giữ nút nguồn trên remote khoảng 5 giây tới khi TV tắt rồi tự bật lại (hoặc rút dây điện TV 30 giây rồi cắm lại; bấm tắt bình thường chưa đủ)';
+      var open='Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 trên remote › Developer mode: On, Host PC IP: '+myT+', bấm OK';
+      var fix=open+', rồi '+boot+'.';
+      if(m==='timeout'||m==='noconnect') throw new Error('Không thấy TV ở '+ip+'. Kiểm tra IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP), TV đang bật và cùng Wi-Fi/modem với '+dev+'.');
+      if(m==='auth') throw new Error('TV đòi xác nhận '+dev+': trên TV chọn Cho phép (Allow) rồi bấm Cài lại.');
+      if(m!=='refused'&&m!=='closed') throw e;
+      return tvSays().then(function(d){
+        var on=d?String(d.developerMode)==='1':null, tip=d?String(d.developerIP||'').trim():'', name=d&&d.name?' ('+String(d.name).replace(/^\[TV\]\s*/,'')+')':'';
+        var wrong=on&&tip&&my&&tip!==my;
+        var t=on===false?'TV'+name+' chưa bật Developer mode nên chưa nhận cài app. '+fix+' Xong bấm Cài lại.'
+          :wrong?'TV'+name+' đã bật Developer mode nhưng đang ghi Host PC IP là '+tip+', còn '+dev+' này là '+my+'. '+open.replace('Developer mode: On, ','')+' (sửa đúng số này), rồi '+boot+'. Xong bấm Cài lại.'
+          :on&&m==='refused'?'TV'+name+' đã bật Developer mode'+(tip?' đúng cho '+dev+' này':'')+' nhưng chưa khởi động lại nên chưa nhận cài app. Hãy '+boot+', rồi bấm Cài lại.'
+          :on?'TV'+name+' đã bật Developer mode nhưng vẫn từ chối '+dev+' này. Hãy '+boot+'.'+(D?' Nếu máy tính đang bật VPN thì tắt đi; máy tính và TV phải chung một modem/Wi-Fi.':'')+' Rồi bấm Cài lại.'
+          :m==='refused'?'TV ở '+ip+' chưa nhận cài app (Developer mode chưa có hiệu lực). '+fix
+          :'TV ở '+ip+' từ chối '+dev+' này: ô Host PC IP trên TV phải đúng là '+myT+'. '+fix+(D?' Nếu máy tính đang bật VPN thì tắt đi.':'');
+        throw new Error(t);
+      });
     }).then(function(){ return tv.capability().catch(function(){ return ''; }); })
     .then(function(c){ cap=c; var m=/platform_version:\s*([\d.]+)/.exec(c); ver=m?parseFloat(m[1]):0; var p=/sdk_toolpath:\s*([^\r\n]+)/.exec(c); if(p) tmp=p[1].trim();
       if(ver&&ver<3) throw new Error('TV này đời quá cũ (Tizen '+ver+', trước năm 2017) nên chưa cài được app Hóng Sub. Không phải do bạn thao tác, cài lại cũng không được.');

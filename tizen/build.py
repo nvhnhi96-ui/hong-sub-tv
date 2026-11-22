@@ -52,16 +52,22 @@ function setSource(n){
   /* some Samsung TVs report the app hidden for a moment while the HDMI picture opens: opening it again then hid it
      again, and the screen went black. Asked again within 3 s for the same input: nothing to do. */
   if(n&&n===window.srcN&&Date.now()-(window.srcAt||0)<3000) return;
+  if(n!==window.srcN){ window.srcTry=0; clearTimeout(window.srcT); }
   window.srcN=n; window.srcAt=Date.now();
   srcOk=false;
   try{ video.style.display='none'; }catch(e){}
   if(!n||!window.tizen||!tizen.tvwindow){ document.documentElement.className=''; try{ tizen.tvwindow.hide(function(){},function(){}); }catch(e){} if(!n) homeShow(); else srcFail(n); return; }
-  var fail=function(e){ if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){} };
+  /* the port did not open (the PS5 still off or waking, the TV just started and has no list of inputs yet): the app
+     tries again by itself every 5 s for a minute, and at once when the TV sees a device come on. Before, the message
+     stayed until someone picked the port again with the remote */
+  var fail=function(e){ if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){}
+    clearTimeout(window.srcT); window.srcTry=(window.srcTry||0)+1;
+    if(window.srcTry<=12){ try{ $('hState').textContent+=' Hóng Sub tự thử lại sau 5 giây.'; }catch(x){} window.srcT=setTimeout(function(){ if(P.src===n&&!srcOk&&!document.hidden) setSource(n); },5000); } };
   var go=function(src){
     try{
       tizen.tvwindow.setSource(src,function(){
         /* BEHIND: the game picture goes under the page, so the Vietnamese subtitles stay on top (the default, FRONT, covers them) */
-        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; window.srcAt=Date.now(); document.documentElement.className='see'; homeHide();
+        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; window.srcTry=0; clearTimeout(window.srcT); window.srcAt=Date.now(); document.documentElement.className='see'; homeHide();
           /* the first times: what to do if the game picture turns black (the PS5's HDCP protection) */
           var nb=+load('hdcpTip',0); if(nb<3){ save('hdcpTip',nb+1); setTimeout(function(){ pill('Hình game bị đen? Trên PS5: Cài đặt › Hệ thống › HDMI › tắt "Bật HDCP"',false); },2500); } },
           fail,['0px','0px','100%','100%'],'MAIN','BEHIND');
@@ -103,6 +109,8 @@ function ipAsk(){
   try{ tizen.systeminfo.getPropertyValue('ETHERNET_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
   try{ tizen.systeminfo.getPropertyValue('WIFI_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
 }
+/* a device comes on at an HDMI port (the PS5 wakes): the picture that could not open is asked for again */
+try{ tizen.systeminfo.addPropertyValueChangeListener('VIDEOSOURCE',function(){ if(P.src&&!srcOk&&!document.hidden){ window.srcTry=0; clearTimeout(window.srcT); window.srcT=setTimeout(function(){ if(P.src&&!srcOk) setSource(P.src); },1200); } }); }catch(e){}
 try{ ['ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','1','2','3','4'].forEach(function(k){ try{ tizen.tvinputdevice.registerKey(k); }catch(e){} }); }catch(e){}
 /* the app really went to the background (not the short blink some TVs give while the HDMI picture opens): let the
    TV's picture go */

@@ -124,6 +124,19 @@ function run(exe, args, ms, onLine) {
 }
 
 /* plain Vietnamese for what Samsung's tools answer when something is wrong */
+/* the TV would not take the install connection: what it says about itself (port 8001) names the one step that is missing */
+async function whyClosed(ip, pc) {
+  const d = await info(ip).catch(() => null);
+  const mine = myIps(), my = String(pc || '').split(':')[0] || mine[0] || '';
+  const boot = 'khởi động lại hẳn TV: giữ nút nguồn trên remote khoảng 5 giây tới khi TV tắt rồi tự bật lại (hoặc rút dây điện TV 30 giây rồi cắm lại; bấm tắt bình thường chưa đủ)';
+  const open = 'Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 trên remote › Developer mode: On, Host PC IP: ' + (my || 'IP của máy tính này') + ', bấm OK';
+  if (!d || !d.ok) return '';   /* the TV says nothing on 8001: the general advice */
+  const name = d.name ? ' (' + d.name + ')' : '';
+  if (!d.dev) return 'TV' + name + ' chưa bật Developer mode nên chưa nhận cài app. ' + open + ', rồi ' + boot + '. Xong bấm Cài lại.';
+  if (d.devIp && mine.length && mine.indexOf(d.devIp) < 0) return 'TV' + name + ' đã bật Developer mode nhưng đang ghi Host PC IP là ' + d.devIp + ', còn máy tính này là ' + (my || mine.join(' / ')) + '. Sửa ô Host PC IP trên TV cho đúng, rồi ' + boot + '. Xong bấm Cài lại.';
+  return 'TV' + name + ' đã bật Developer mode đúng cho máy tính này nhưng chưa nhận cài app. Hãy ' + boot + '. Nếu máy tính đang bật VPN thì tắt đi. Rồi bấm Cài lại.';
+}
+
 function explain(out) {
   const s = String(out || '');
   if (/certificate|signature|author|distributor|DUID|not match/i.test(s) && /fail|error|invalid|mismatch|not/i.test(s))
@@ -183,7 +196,7 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
     say('Đang nối với TV ' + ip + '...');
     await run(t.sdb, ['disconnect', ip + ':26101'], 15000);
     const c = await run(t.sdb, ['connect', ip + ':26101'], 30000);
-    if (!/connected to/i.test(c.out) || /fail|unable|refused/i.test(c.out)) return { ok: false, err: explain(c.out) || ('Chưa nối được TV: ' + c.out.trim().slice(-200)) };
+    if (!/connected to/i.test(c.out) || /fail|unable|refused/i.test(c.out)) return { ok: false, err: (await whyClosed(ip, pc)) || explain(c.out) || ('Chưa nối được TV: ' + c.out.trim().slice(-200)) };
     const serial = ip + ':26101';
 
     say('Đang ký app bằng chứng chỉ "' + profile + '"...');
