@@ -24,6 +24,7 @@ import java.net.URL;
  * installed itself; otherwise Android shows one "Cập nhật" button.
  */
 final class Updater {
+    static final String STORE = "site";
     static final String API = "https://api.github.com/repos/nvhnhi96-ui/hong-sub-tv/releases/latest";
     static final String ASSET = "hong-sub-android.apk";
 

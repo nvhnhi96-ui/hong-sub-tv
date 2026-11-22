@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo;
 /** Google Play copy: Google Play keeps the app up to date, so there is nothing to do here. */
 final class Updater {
     interface Listener { void onState(String text, boolean busy); }
+    static final String STORE = "play";
 
     static String current(Context c) {
         try {

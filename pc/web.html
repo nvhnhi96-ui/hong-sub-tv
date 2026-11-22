@@ -8640,6 +8640,7 @@ window.hsTzi=TZI;   /* the Windows and Mac app installs on Samsung TVs the same 
 if(!D&&DPS){
   document.documentElement.classList.add('hs-mps');
   if(IOS) document.documentElement.classList.add('hs-phone','hs-ios');
+  try{ if(window.HSPhone&&HSPhone.store&&HSPhone.store()==='play') document.documentElement.classList.add('hs-play'); }catch(e){}   /* CH Play: VIP chỉ nhập mã, không bán trong app */
   /* on a phone: watch to translate while playing on the TV with the controller, 720p is plenty for reading */
   if(load('psWatch',null)===null) $('hsPsWatch').checked=true;
   (function(){ var q=$('hsPsQ'); if(!q) return;

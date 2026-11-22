@@ -263,6 +263,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void state(String json) { CaptureService.post("state", json); }
         @JavascriptInterface public void openUrl(String url) { main.post(() -> MainActivity.this.openUrl(url)); }
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }
+        /* "site" (downloaded from honggame.store) or "play" (Google Play): the Play copy does not sell VIP inside the app */
+        @JavascriptInterface public String store() { return Updater.STORE; }
         /* "Dịch khi tắt màn hình": on while translating, off when it stops */
         @JavascriptInterface public void awake(boolean on) { AwakeService.set(MainActivity.this, on); if (on) main.post(MainActivity.this::askBattery); }
         /* PS5 / PS4 inside Hóng Sub: where the Remote Play core listens, and the Sony sign-in */

@@ -39,6 +39,8 @@ html,body{height:100%;overflow:hidden}
 .vip-perk i svg{width:19px;height:19px;stroke:#FFC400;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.vip-perk>b{display:block;font-size:14.5px;margin-bottom:4px;color:var(--ink)}.vip-perk p b{color:var(--ink)}.vip-perk p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
 .vip-reg{border-color:rgba(255,196,0,.4)!important}.vip-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0 4px}
 .vip-plan{display:flex;flex-direction:column;justify-content:flex-start}.vip-plan ul{margin:8px 0 0;padding-left:17px;font-size:12.5px;line-height:1.5;color:var(--muted)}.vip-plan li{margin:2px 0}.vip-perks[hidden]{display:none}
+/* gói VIP: mọi nền tảng (máy tính, web, điện thoại); app trên CH Play và App Store chỉ nhập mã, không bán trong app */
+.vip-store,.vip-phonepay{display:none}html.hs-mps .vip-phonepay{display:block}html.hs-ios .vip-sell,html.hs-play .vip-sell{display:none!important}html.hs-ios .vip-store,html.hs-play .vip-store{display:block}html.hs-phone .dk-vipchip{display:none!important}   /* điện thoại: đã có tab Gói VIP ở thanh dưới */
 .vip-plan{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;color:var(--ink);font-family:inherit}.vip-plan b{display:block;font-size:15px}.vip-plan span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .vip-plan.on{border-color:#FFC400;background:rgba(255,196,0,.10)}.vip-plan.on span{color:#FFD54A}
 .vip-f{margin-top:10px}.vip-f label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
@@ -247,7 +249,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
     <nav class="dk-nav" aria-label="Các trang">
       <button type="button" data-p="choi" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M10 9l4 2-4 2z"/></svg>Màn hình chơi</button>
       <button type="button" data-p="ketnoi"><svg viewBox="0 0 24 24"><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/><path d="M7 6h10a5 5 0 0 1 4.6 7l-1.3 3a2.5 2.5 0 0 1-4.3.5L14.5 15h-5L8 16.5a2.5 2.5 0 0 1-4.3-.5l-1.3-3A5 5 0 0 1 7 6z"/></svg><span class="dk-only">Kết nối PS và TV</span><span class="hs-web">Kết nối TV</span></button>
-      <button type="button" data-p="vip" class="dk-only dk-vipnav" id="dkVipNav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="dkVipNavTx">Gói VIP</span></button>
+      <button type="button" data-p="vip" class="dk-vipnav" id="dkVipNav"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="dkVipNavTx">Gói VIP</span></button>
       <button type="button" class="grp" id="dkSetBtn" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Cài đặt<span class="badge" id="dkKeyBadge" hidden>!</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="dk-sub" id="dkSub">
         <button type="button" data-p="dich">Mã AI</button>
@@ -276,7 +278,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
       <span class="hs-pill" id="hsStatus" data-s="idle" role="status" aria-live="polite"><span class="hs-dot"></span><span id="hsStatusTxt">Chưa bắt đầu</span></span>
       <button class="dk-chip" id="dkSpeakChip" type="button" aria-pressed="true" title="Bật hoặc tắt đọc to phụ đề (F5)"><svg class="on-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><svg class="off-i" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg><span id="dkSpeakTx">Đọc phụ đề: bật</span></button>
       <button class="hs-btn pri" id="dkUpdBtn" type="button" hidden title="Tải và cài bản mới, Hóng Sub tự mở lại"></button>
-      <button class="dk-chip dk-vipchip dk-only" id="dkVipChip" type="button" data-go="vip" title="Gói thành viên VIP Hóng Sub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="dkVipChipTx">Nâng cấp VIP</span></button>
+      <button class="dk-chip dk-vipchip vip-sell" id="dkVipChip" type="button" data-go="vip" title="Gói thành viên VIP Hóng Sub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="dkVipChipTx">Nâng cấp VIP</span></button>
       <button class="dk-bell" id="dkBell" type="button" aria-label="Thông báo" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><b id="dkBellN" hidden>0</b></button>
       <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch</button>
       <div class="dk-noti" id="dkNoti" hidden><h3>Thông báo <button class="dk-link" type="button" id="dkNotiRead">Đánh dấu đã xem</button></h3><div id="dkNotiList"></div></div>
@@ -302,7 +304,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                     <button class="hs-btn" id="hsCam" type="button" title="PS5 cắm qua card ghi hình HDMI (capture card) vào máy tính: lấy cả hình và tiếng game">Card ghi hình HDMI</button>
                     <button class="hs-btn" id="hsDemo" type="button">Xem thử</button>
                   </div>
-                  <p class="vip-empty dk-only" id="hsVipEmpty">Chưa có mã AI? <button class="dk-link" type="button" data-go="vip">Dùng gói VIP</button>: bật lên là dịch, không cần tạo mã.</p>
+                  <p class="vip-empty vip-sell" id="hsVipEmpty">Chưa có mã AI? <button class="dk-link" type="button" data-go="vip">Dùng gói VIP</button>: bật lên là dịch, không cần tạo mã.</p>
                 </div>
               </div>
               <div class="hs-ov off" id="hsOv" aria-label="Vùng kéo khung phụ đề">
@@ -315,7 +317,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <div class="hs-vi placeholder" id="hsVi">Phụ đề tiếng Việt hiện ở đây</div>
               <div class="hs-en" id="hsEn"></div>
             </div>
-            <div class="vip-nudge dk-only" id="hsVipNudge" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="hsVipNudgeTx">Mã dịch đang hết lượt, Hóng Sub đang dùng máy dịch miễn phí.</span><button class="hs-btn pri vip-go" type="button" data-go="vip">Dịch không giới hạn với VIP</button><button class="vip-x" id="hsVipNudgeX" type="button" aria-label="Ẩn">×</button></div>
+            <div class="vip-nudge vip-sell" id="hsVipNudge" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg><span id="hsVipNudgeTx">Mã dịch đang hết lượt, Hóng Sub đang dùng máy dịch miễn phí.</span><button class="hs-btn pri vip-go" type="button" data-go="vip">Dịch không giới hạn với VIP</button><button class="vip-x" id="hsVipNudgeX" type="button" aria-label="Ẩn">×</button></div>
             <div class="dk-tools" role="toolbar" aria-label="Công cụ dịch">
               <div class="dk-tg">
                 <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm: chữ Việt nằm đè lên đúng chỗ chữ gốc (F11)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h6M7 13h10M7 17h4"/></svg><span>Dịch cả màn hình</span></button>
@@ -680,21 +682,21 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
       </section>
 
       <!-- ============ Gói VIP ============ -->
-      <section class="dk-page dk-only" id="p-vip">
+      <section class="dk-page" id="p-vip">
         <div class="vip-hero" id="hsVipSec">
           <div class="vip-kicker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>HÓNG SUB VIP</div>
           <h2>Chơi game tiếng Anh như game Việt hóa</h2>
-          <p>Bật lên là dịch, mượt suốt cả buổi chơi, không cần tạo mã. Có 3 gói: Cơ bản, Nâng cao và Cao cấp (thêm trợ lý chơi game chỉ đường khi kẹt nhiệm vụ).</p>
+          <p class="vip-sell">Bật lên là dịch, mượt suốt cả buổi chơi, không cần tạo mã. Có 3 gói: Cơ bản, Nâng cao và Cao cấp (thêm trợ lý chơi game chỉ đường khi kẹt nhiệm vụ).</p>
           <div class="hs-msg" id="hsVipMsg" hidden></div>
         </div>
-        <div class="vip-perks" id="hsVipPerks">
+        <div class="vip-perks vip-sell" id="hsVipPerks">
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></i><b>Dịch không giới hạn, không cần mã</b><p>Dùng máy chủ dịch riêng của Hóng Game Store. Không phải tạo mã Gemini, không bị "hết lượt" giữa chừng, chơi bao lâu dịch bấy lâu.</p></div>
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></i><b>Bí nhiệm vụ? Bấm là có gợi ý</b><p>Kẹt câu đố, không biết đi đâu tiếp: bấm <b>Gợi ý nhiệm vụ</b>, Hóng Sub nhìn màn hình và chỉ bước tiếp theo bằng tiếng Việt (hỗ trợ một số game giải đố).</p></div>
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></i><b>Hỗ trợ kỹ thuật ưu tiên</b><p>Cài đặt, kết nối PS5 / PS4, lỗi phát sinh: kỹ thuật viên của shop ưu tiên hỗ trợ thành viên VIP trước.</p></div>
           <div class="vip-perk"><i><svg viewBox="0 0 24 24"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 21V7M12 7H8a2 2 0 1 1 2-3c1 1 2 3 2 3zm0 0h4a2 2 0 1 0-2-3c-1 1-2 3-2 3z"/></svg></i><b>Giảm 10% khi mua game, PS Plus</b><p>Ưu đãi riêng cho thành viên khi mua game, gói PS Plus tại Hóng Game Store (giảm tối đa 50k).</p></div>
         </div>
         <div class="dk-cols">
-          <div class="dk-card vip-reg" id="hsVipBuy">
+          <div class="dk-card vip-reg vip-sell" id="hsVipBuy">
             <h2 id="hsVipBuyH">Mua gói VIP</h2>
             <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, mã VIP được tạo tự động, mua lúc nào cũng được.</p>
             <div class="vip-plans" id="hsVipPlans" role="radiogroup" aria-label="Chọn gói VIP"></div>
@@ -713,6 +715,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                   <dt>Nội dung</dt><dd><b id="hsVipContent"></b> <button class="dk-link" type="button" data-copy="hsVipContent">Sao chép</button></dd>
                 </dl>
                 <p class="vip-wait" id="hsVipWait"><i class="vip-spin"></i>Đang chờ tiền vào... Giữ đúng <b>nội dung chuyển khoản</b>, VIP tự bật ngay khi shop nhận được tiền.</p>
+                <p class="hs-note vip-phonepay">Trên điện thoại: chụp màn hình mã QR rồi mở app ngân hàng, chọn quét mã từ ảnh. Hoặc bấm Sao chép số tài khoản và nội dung để chuyển khoản.</p>
                 <button class="dk-link" type="button" id="hsVipPayBack">Chọn gói khác</button>
               </div>
             </div>
@@ -721,7 +724,8 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
           <div>
             <div class="dk-card">
               <h2>Đã có mã VIP?</h2>
-              <p class="hs-note">Mua trong app thì mã tự điền vào đây. Có mã shop gửi (dạng HSV-XXXX-XXXX) thì nhập rồi bấm Kích hoạt. Mỗi mã dùng trên một máy.</p>
+              <p class="hs-note vip-store">Nhập mã VIP (dạng HSV-XXXX-XXXX) rồi bấm Kích hoạt. Mỗi mã dùng trên một máy.</p>
+              <p class="hs-note vip-sell">Mua trong app thì mã tự điền vào đây. Có mã shop gửi (dạng HSV-XXXX-XXXX) thì nhập rồi bấm Kích hoạt. Mỗi mã dùng trên một máy.</p>
               <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsVip" type="text" spellcheck="false" autocomplete="off" placeholder="HSV-XXXX-XXXX" aria-label="Mã VIP" style="text-transform:uppercase"><button class="hs-btn" id="hsVipGo" type="button">Kích hoạt</button></div>
             </div>
             <div class="dk-card">
@@ -738,7 +742,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
       <section class="dk-page" id="p-dich">
         <div class="dk-cols">
           <div>
-            <div class="dk-card dk-only vip-promo" id="hsVipPromo">
+            <div class="dk-card vip-sell vip-promo" id="hsVipPromo">
               <div><b><span class="hs-vip-tag">VIP</span>Không muốn tạo mã Gemini?</b><p class="hs-note">Thành viên VIP dịch bằng máy chủ riêng của shop: không cần mã Gemini. Gói Cao cấp có thêm trợ lý chơi game.</p></div>
               <button class="hs-btn pri vip-go" type="button" data-go="vip">Xem gói VIP</button>
             </div>
