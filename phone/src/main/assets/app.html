@@ -4385,6 +4385,32 @@ function coverAt(){ return coverOn()||stageFs(); }   /* full screen: always on t
 /* the Vietnamese is always on the game picture in the play screen: over the original subtitle ("Đè chữ Việt" on, or full
    screen), else right above it, so the English stays visible */
 function coverAbove(){ return !coverAt(); }
+/* "Đè chữ Việt" off: the Vietnamese right above the English line, drawn by the same rules as the TV app
+   (OverlayService.layout / fitLines), so the picture here looks like the TV's screen:
+   - a box exactly "Độ rộng khung phụ đề" of the picture wide, centred on the English line, its bottom on that line's top;
+   - letters as tall as the English letters x "Cỡ chữ"/28 (English not measured yet: "Cỡ chữ" as the TV draws it);
+   - the TV's own margins, corners and background ("Độ đậm nền", not darkened: nothing is hidden under this box);
+   - a line too long for the box goes on one more line, the letters keep their size.
+   Before, the box was only as wide as the English line (a short one: 3 words) while the letters had the full
+   "Cỡ chữ", so a short line was cut into a narrow column of big words; the TV showed the same line on one row. */
+function coverUp(c,html,b,st,ox,oy){
+  var lk=load('ovStyle',{}), lw=Math.max(20,Math.min(100,+lk.width||80)), kh=Math.max(40,Math.min(300,+lk.hgt||100))/100;
+  var a=subAbove()||S.region, sb=S.subBox, xb=sb&&sb.xb>0&&Date.now()-sb.at<60000?sb.xb*S.region.h:0;
+  var u=b.h/540;                                       /* one "dp" of the TV (540 of them in its height) on this picture */
+  var w=Math.max(Math.min(b.w,160*u),lw/100*b.w), cx=b.l+(a.x+a.w/2)*b.w, lx=Math.max(b.l,Math.min(b.l+b.w-w,cx-w/2));
+  var d=c.firstChild; d.innerHTML=html; c.hidden=false;
+  d.style.fontFamily=subFont(); d.style.color=/^#[0-9A-Fa-f]{6}$/.test(lk.color||'')?lk.color:'#FFFFFF'; d.style.textAlign='center'; c.style.justifyContent='center';
+  c.style.background='rgba(8,8,10,'+(Math.max(0,Math.min(100,lk.bg==null?74:+lk.bg))/100)+')';
+  c.style.borderRadius=(10*u)+'px'; c.style.padding=(10*u*kh)+'px '+(22*u)+'px '+(12*u*kh)+'px';
+  c.style.left=(ox+lx)+'px'; c.style.width=w+'px'; c.style.minHeight='0'; c.style.height='auto';
+  var size=+$('hsSize').value||28, sk=Math.max(.4,Math.min(2.5,size/28));
+  var fs=Math.max(8,xb>0?xb*b.h/fontRatio(subFont(),!!sb.caps)*sk:size*30/28*u); d.style.fontSize=fs+'px';
+  d.style.whiteSpace=lineMatch()?'nowrap':'';
+  if(lineMatch()&&d.scrollWidth>w-48*u){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); }   /* too long for the original's lines: one more line */
+  for(var i=0;i<12&&c.offsetHeight>b.h*0.42&&fs>9*u;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }   /* smaller only when it would cover almost half the picture */
+  var top=oy+b.t+a.y*b.h-c.offsetHeight-2*u; c.style.top=Math.max(oy+b.t,top)+'px';
+  S.coverHtml=html;
+}
 function coverShow(html,vl){
   var c=coverEl();
   if(vl===undefined) vl=html&&html===S.voHtml?S.voCur:null;
@@ -4392,9 +4418,11 @@ function coverShow(html,vl){
   if(vl&&html){ if(!S.stream||(S.fs&&S.fs.on)||!video.videoWidth){ c.hidden=true; return; } coverVoice(c,html,vl); return; }
   if(!html||!S.stream||!S.region||(S.fs&&S.fs.on)||!video.videoWidth){ c.hidden=true; return; }
   var b=videoBox(), r=subRect()||S.region, st=$('hsStage').getBoundingClientRect(), ox=b.r.left-st.left, oy=b.r.top-st.top;
+  if(coverAbove()){ coverUp(c,html,b,st,ox,oy); return; }
+  c.style.borderRadius='';
   var lk0=load('ovStyle',{}), lw=+lk0.width||80, w=Math.max(120,Math.min(1,lw/100)*b.w), h=Math.max(16,r.h*b.h*(Math.max(40,Math.min(300,+lk0.hgt||100))/100));
   if(r.spot) w=Math.max(r.w*b.w,60);   /* right over the original text; widened below only if the Vietnamese needs it */   /* as wide as "Độ rộng khung phụ đề", as tall as "Độ cao khung nền", centred on the original */
-  var up=coverAbove(); if(up) r={x:r.x,y:r.y,w:r.w,h:r.h,spot:false};
+  var up=false;
   var cx=b.l+(r.x+r.w/2)*b.w, lx=Math.max(b.l,Math.min(b.l+b.w-w,cx-w/2)), cy=b.t+(r.y+r.h/2)*b.h;
   c.style.left=(ox+lx)+'px'; c.style.top=(oy+cy-h/2)+'px'; c.style.width=w+'px'; c.style.minHeight=h+'px'; c.style.height=h+'px';
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
@@ -4420,7 +4448,7 @@ function coverVoice(c,html,vl){
   var w=Math.max(160,Math.min(1,(+lk.width||80)/100)*b.w), d=c.firstChild;
   d.innerHTML=html; c.hidden=false; fontLoad(vl.font);
   d.style.fontFamily=FONTS[vl.font].css; d.style.color=vl.color; d.style.whiteSpace=''; d.style.textAlign='center'; c.style.justifyContent='center';
-  c.style.background='rgba(6,7,9,'+(vl.bg/100)+')'; c.style.padding='4px 12px';
+  c.style.background='rgba(6,7,9,'+(vl.bg/100)+')'; c.style.padding='4px 12px'; c.style.borderRadius='';
   c.style.width=w+'px'; c.style.left=(ox+b.l+(b.w-w)/2)+'px'; c.style.minHeight='0'; c.style.height='auto';
   var fs=Math.max(8,vl.size*1.7*b.h/1080); d.style.fontSize=fs+'px';   /* like "Cỡ chữ": 28 = letters 1.7% x 28 of a 1080-line picture */
   for(var i=0;i<16&&c.offsetHeight>b.h*0.4&&fs>8;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }
