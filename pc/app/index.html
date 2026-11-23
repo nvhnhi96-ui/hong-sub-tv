@@ -1126,17 +1126,13 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw" style="margin-top:10px">Góp câu tôi dịch vào kho chung <input type="checkbox" id="hsTmShare" checked></label>
               <label class="hs-sw" style="margin-top:10px">Chỉnh câu trong kho theo cài đặt của tôi (phong cách dịch, xưng hô, từ điển riêng) <input type="checkbox" id="hsTmFit" checked></label>
               <p class="hs-note" style="margin-top:4px">Câu trong kho do người khác dịch với cài đặt của họ. Bật mục này, câu đó được AI chỉnh lại cho đúng phong cách dịch, ghi chú xưng hô và từ điển của bạn trước khi hiện (kể cả luật dịch riêng của game; app chỉnh trước các câu sắp tới nên thường hiện ngay), xuống dòng và dấu câu giống câu tiếng Anh trên màn hình. Câu đã chỉnh được nhớ trên máy, gặp lại hiện ngay.</p>
-<<<<<<< Updated upstream
               <p class="hs-note" style="margin-top:4px">Chỉ gửi câu thoại của game và bản dịch, không gửi mã AI hay thông tin của bạn. Chỉ những câu dịch chuẩn mới được góp vào kho: câu do AI dịch, dịch theo đúng cài đặt của game, chữ tiếng Anh đọc rõ ràng. Câu do máy dịch miễn phí dịch, câu đọc sai chữ hoặc dịch theo cài đặt riêng của bạn thì chỉ lưu trên máy bạn.</p>
-=======
-              <p class="hs-note" style="margin-top:4px">Chỉ gửi câu thoại của game và bản dịch, không gửi mã AI hay thông tin của bạn.</p>
               <!-- the shop's own tool, shown with Ctrl+Shift+F9: one pass over this game's dialogue lines in the store with the current rules -->
               <div id="hsTmRedoRow" hidden style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
                 <div class="lab">Công cụ của shop</div>
                 <button class="hs-btn" id="hsTmRedo" type="button" style="margin-top:8px">Dịch lại toàn bộ câu thoại trong kho của game này</button>
                 <p class="hs-note" id="hsTmRedoMsg" style="margin-top:8px">Gửi từng nhóm câu thoại đang có trong kho cho máy chủ VIP, dịch lại theo ghi chú nhân vật và luật dịch hiện tại của game, câu nào đổi thì ghi lại vào kho cho mọi máy. Chạy nhiều giờ, dừng và chạy tiếp được.</p>
               </div>
->>>>>>> Stashed changes
               <!-- hidden (11/2026): the lists of games played here and games with many lines in the store -->
               <div hidden>
                 <div class="lab" style="margin-top:14px">Game đã chơi trên máy này</div>
@@ -5454,7 +5450,7 @@ function tmViOk(vi){
 S.tmNoShare=0;
 function tmGood(en,vi,via){
   var why=via==='free'?'máy dịch miễn phí':via==='tm'||via==='gloss'?'không phải câu AI vừa dịch':
-    tmDiffers()?'cài đặt dịch trên máy này khác cài đặt của game':!tmEnOk(en)?'bộ đọc chữ đọc chưa chuẩn câu tiếng Anh':!tmViOk(vi)?'câu dịch chưa đạt':'';
+    (via!=='redo'&&tmDiffers())?'cài đặt dịch trên máy này khác cài đặt của game':!tmEnOk(en)?'bộ đọc chữ đọc chưa chuẩn câu tiếng Anh':!tmViOk(vi)?'câu dịch chưa đạt':'';
   if(!why) return true;
   if(++S.tmNoShare<=8) log('không góp vào kho dịch chung ('+why+'): '+String(en).replace(/\s+/g,' ').slice(0,70));
   return false;
@@ -5463,7 +5459,7 @@ function tmAdd(kind,en,vi,who,gd,via){
   if(!S.tm.g||S.tm.g.length<2||!en||!vi||creditPair(en,vi)) return;
   tmPutLocal(kind,en,vi,who,gd);
   if(!tmShare()||!tmGood(en,vi,via)) return;
-  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:2,fx:via==='fix'?1:0}});   /* fx: a stored line checked and fixed, it replaces the old one */
+  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:2,fx:(via==='fix'||via==='redo')?1:0}});   /* fx: a stored line checked and fixed, it replaces the old one */
   if(S.tm.out.length>200) S.tm.out.splice(0,S.tm.out.length-200);
   clearTimeout(S.tm.outT); S.tm.outT=setTimeout(tmFlush,S.tm.out.length>=20?500:6000);
 }
@@ -5663,13 +5659,13 @@ async function tmRedoAsk(T,pick){
   var r=await vipAsk(prompt,null,SCHEMA_FSI,null,40000);
   if(S.tm!==T) return null;
   var items=r&&r.items; if(!items||!items.length) throw new Error('trả lời thiếu');
-  var got=0, chg=0, mine=tmDiffers();
+  var got=0, chg=0, sent=0, mine=tmDiffers();
   items.forEach(function(it){ var s=pick[(+it.i||0)-1], e=s&&T.map[s], v=String(it.vi||'').trim(); if(!e||!v||junkPair(e.en,v)) return;
     v=v.replace(/\s*\/\s*/g,'\n'); if(String(e.vi).indexOf('\n')<0) v=v.replace(/\n/g,' ');
     got++; if(!mine) tmFitKeep(s,v);
-    if(v!==e.vi){ chg++; tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); } });
+    if(v!==e.vi){ chg++; var q0=S.tm.out.length; tmAdd('s',e.en,v,e.who||'',e.gd||'','redo'); if(S.tm.out.length>q0) sent++; } });   /* 'redo': made with the game's own notes and rules, so it goes to the store whatever this machine has set for itself */
   if(got<Math.ceil(pick.length*0.6)) throw new Error('trả lời thiếu');
-  return {got:got,chg:chg};
+  return {got:got,chg:chg,sent:sent};
 }
 async function tmRedoRun(){
   var R=S.tmRedo, T=S.tm;
@@ -5705,7 +5701,7 @@ async function tmRedoRun(){
         R.err++; R.fail=0; log('kho dịch chung: bỏ qua một nhóm câu không dịch lại được ('+String(e&&e.message||e).slice(0,80)+')');
       }
       if(r===null&&S.tm!==T) break;
-      if(r){ R.chg+=r.chg; R.win+=r.chg; }
+      if(r){ R.chg+=r.chg; R.win+=r.sent; }
       R.i+=pick.length; R.note=''; save('tmRedo',{sig:sig,i:R.i,k:keys[R.i]||'',chg:R.chg}); tmRedoUi();
       await sleepMs(250);
     }
