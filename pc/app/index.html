@@ -1120,7 +1120,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
           </div>
           <div>
             <div class="dk-card">
-              <h2>Kho dịch chung</h2>
+              <h2 id="hsTmTitle">Kho dịch chung</h2>
               <p class="hs-note">Câu thoại đã dịch được nhớ lại theo từng game. Người chơi sau gặp đúng câu đó thì hiện tiếng Việt ngay, không phải chờ AI và không tốn lượt mã.</p>
               <p class="hs-msg ok" id="hsTmState" style="margin-top:8px">Chọn game để dùng kho dịch chung.</p>
               <label class="hs-sw" style="margin-top:10px">Góp câu tôi dịch vào kho chung <input type="checkbox" id="hsTmShare" checked></label>
@@ -5623,7 +5623,7 @@ async function tmAheadAsk(T,pick){
    machine translator). This pass sends them, a few at a time, to the VIP server with the game's CURRENT notes and
    rules, and puts every line that changes back in the store (as a "fix": it replaces the old one for everyone).
    It only ever touches lines already in the store, never adds lines from anywhere else.
-   Hidden: Ctrl+Shift+F9 shows the button under "Kho dịch chung". It needs VIP on this machine and the game's own
+   Hidden: 5 clicks on the heading "Kho dịch chung" show the button under it. It needs VIP on this machine and the game's own
    settings (no changed style or notes: the result is for every machine). It can be stopped and goes on from where
    it was; the store's server takes 600 lines per 10 minutes from one address, so the pass paces itself. */
 S.tmRedo={on:false,stop:false,i:0,n:0,chg:0,err:0,win:0,winAt:0,note:'',fail:0,t0:0,i0:0};
@@ -5709,14 +5709,17 @@ async function tmRedoRun(){
 (function(){
   var b=$('hsTmRedo'), row=$('hsTmRedoRow'); if(!b||!row) return;
   b.addEventListener('click',function(){ tmRedoRun(); });
-  document.addEventListener('keydown',function(e){
-    if(!(e.ctrlKey&&e.shiftKey&&e.key==='F9')) return;
-    e.preventDefault(); row.hidden=!row.hidden; if(row.hidden) return;
+  /* shown by clicking the heading "Kho dịch chung" 5 times in a row (within 4 s). The first way, Ctrl+Shift+F9, never
+     reached the page in the Windows app (F9 is one of the app's own system-wide keys), so it did nothing there */
+  function reveal(){
+    if(!row.hidden) return; row.hidden=false;
     var sv=load('tmRedo',null); if(sv&&sv.i&&!S.tmRedo.n){ S.tmRedo.note='Lần trước dừng ở câu '+sv.i+' (đã sửa '+(sv.chg||0)+' câu). Bấm nút để chạy tiếp.'; }
-    tmRedoUi();
-    var g=document.querySelector('[data-go="game"]'); if(g) g.click();
-    setTimeout(function(){ try{ row.scrollIntoView({block:'center'}); }catch(x){} },300);
-  });
+    tmRedoUi(); log('kho dịch chung: mở công cụ dịch lại kho');
+    setTimeout(function(){ try{ row.scrollIntoView({block:'center'}); }catch(x){} },200);
+  }
+  var h=$('hsTmTitle'), n=0, t0=0;
+  if(h) h.addEventListener('click',function(){ var t=Date.now(); if(t-t0>4000){ n=0; t0=t; } if(++n>=5){ n=0; reveal(); } });
+  window.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&!e.repeat&&(e.key==='F9'||e.code==='F9'||e.code==='KeyK')){ var g=document.querySelector('[data-go="game"]'); if(g) g.click(); reveal(); } },true);
 })();
 async function tmFlush(){
   var q=S.tm.out; if(!q.length) return;
