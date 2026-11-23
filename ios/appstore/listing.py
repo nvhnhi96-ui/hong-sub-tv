@@ -80,13 +80,13 @@ def do_age():
               'matureOrSuggestiveThemes', 'medicalOrTreatmentInformation', 'profanityOrCrudeHumor',
               'sexualContentGraphicAndNudity', 'sexualContentOrNudity', 'violenceCartoonOrFantasy', 'violenceRealistic',
               'violenceRealisticProlongedGraphicOrSadistic', 'gunsOrOtherWeapons'}
-    skip = {'kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride', 'developerAgeRatingInfoUrl'}
+    skip = {'kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride', 'developerAgeRatingInfoUrl', 'gracRatingClassificationNumber'}
     attrs = {}
     for k, v in ard['attributes'].items():
         if k in skip: continue
         if isinstance(v, bool) or (v is None and k not in levels): attrs[k] = False
         else: attrs[k] = 'NONE'
-    for _ in range(4):
+    for _ in range(8):
         r = requests.patch(BASE + '/v1/ageRatingDeclarations/' + ard['id'], headers={'Authorization': 'Bearer ' + tok(), 'Content-Type': 'application/json'},
                            json={'data': {'type': 'ageRatingDeclarations', 'id': ard['id'], 'attributes': attrs}})
         if r.status_code < 400:
