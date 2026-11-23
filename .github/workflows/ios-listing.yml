@@ -1,0 +1,19 @@
+# Fill the Hóng Sub page on App Store Connect (name, description, screenshots, review notes, price, build)
+# from ios/appstore/. Run by hand: Actions -> "iPhone: trang App Store" -> Run workflow.
+name: 'iPhone: trang App Store'
+
+on:
+  workflow_dispatch:
+
+jobs:
+  listing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pyjwt cryptography requests
+      - name: Fill the App Store page
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 ios/appstore/listing.py --attach-build

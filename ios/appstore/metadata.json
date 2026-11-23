@@ -1,0 +1,22 @@
+{
+  "bundleId": "store.honggame.hongsub",
+  "locale": "vi",
+  "name": "Hóng Sub - Dịch phụ đề game",
+  "subtitle": "Phụ đề tiếng Việt cho game",
+  "privacyPolicyUrl": "https://github.com/nvhnhi96-ui/hong-sub-tv/blob/main/PRIVACY.md",
+  "primaryCategory": "UTILITIES",
+  "secondaryCategory": "ENTERTAINMENT",
+  "copyright": "2026 Nguyễn Văn Hoàng Nhi",
+  "supportUrl": "https://honggame.store/huong-dan-dich-phu-de-game-ps4-ps5-tieng-viet",
+  "marketingUrl": "https://honggame.store/hong-sub/",
+  "keywords": "dịch game,phụ đề,ps5,ps4,remote play,tiếng việt,việt hóa,dịch phụ đề,playstation,dịch thoại",
+  "promotionalText": "Chơi game tiếng Anh mà vẫn hiểu hết cốt truyện: Hóng Sub dịch phụ đề sang tiếng Việt ngay lúc bạn chơi. Miễn phí.",
+  "description": "Hóng Sub dịch phụ đề game tiếng Anh sang tiếng Việt ngay khi bạn chơi, để bạn hiểu cốt truyện, nhiệm vụ và lời thoại mà không cần chờ game có bản Việt hóa.\n\nCÁCH DÙNG\n• Nối máy PS5 / PS4 trong cùng mạng nhà bằng tính năng Chơi từ xa (Remote Play) của máy, ngay trong app, không cần hack hay sửa máy.\n• Hoặc chĩa camera điện thoại vào màn hình TV.\n• Hóng Sub đọc dòng phụ đề tiếng Anh, dịch sang tiếng Việt và hiện ngay trên điện thoại, có thể đọc to bằng giọng Việt.\n• Gửi phụ đề tiếng Việt lên TV có app Hóng Sub TV (Android TV, LG, Samsung) để vừa chơi vừa xem.\n\nTÍNH NĂNG\n• Dịch theo ngữ cảnh từng game: cách xưng hô, tên nhân vật, thuật ngữ.\n• Dịch cả màn hình, menu, nhiệm vụ, tin nhắn trong game.\n• Chọn vùng phụ đề, cỡ chữ, chỗ hiện chữ.\n• Đọc to phụ đề, có giọng riêng cho từng nhân vật.\n• Dùng máy dịch miễn phí, hoặc mã Google Gemini của riêng bạn để dịch hay hơn.\n• Chế độ Xem thử để làm quen trước khi nối máy.\n\nLƯU Ý\n• Cần máy PS5 hoặc PS4 đã bật Chơi từ xa và tài khoản PlayStation Network.\n• Điện thoại và máy PS dùng chung một mạng Wi-Fi.\n• Hóng Sub là app độc lập của Hóng Game Store, không liên kết với Sony Interactive Entertainment và không được Sony bảo trợ. PlayStation, PS5 và PS4 là thương hiệu của Sony Interactive Entertainment Inc.\n\nHỗ trợ kỹ thuật: Zalo 0367 879 283 · honggame.store",
+  "review": {
+    "contactFirstName": "Nhi",
+    "contactLastName": "Nguyen",
+    "contactPhone": "+84367879283",
+    "contactEmail": "nvhnhi2508@icloud.com",
+    "notes": "Hóng Sub translates the English subtitles of PlayStation games into Vietnamese while the user plays. Normal use needs a PS5/PS4 on the same Wi-Fi with the console's own Remote Play feature turned on, and the user's own PlayStation Network sign-in on Sony's page.\n\nTo review without a console: open the 'Chơi game' (Play) tab, tap 'Xem thử' (Try demo), then tap the yellow 'Bắt đầu dịch' (Start translating) button. A demo game scene plays and its English subtitle is read and translated into Vietnamese in the box below it. No account or key is needed for the demo (it uses the free translator).\n\nThe app is free, has no in-app purchases and no ads. Connecting to the console uses the console's standard Remote Play on the local network; the app does not modify the console. Local network access is used only to find the user's PlayStation and TV at home."
+  }
+}

@@ -3,7 +3,7 @@ name: Build Hong Sub
 on:
   push:
     branches: [ main ]
-    paths-ignore: [ 'relay/**', 'presets/**', 'README.md', 'voices/**', '.github/workflows/voices.yml', 'tools/**', '.github/workflows/llm-bench.yml' ]
+    paths-ignore: [ 'relay/**', 'presets/**', 'README.md', 'voices/**', '.github/workflows/voices.yml', 'tools/**', '.github/workflows/llm-bench.yml', 'ios/appstore/**', 'PRIVACY.md', '.github/workflows/ios-appstore.yml', '.github/workflows/ios-listing.yml' ]
   workflow_dispatch:
 
 permissions:
