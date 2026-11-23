@@ -118,8 +118,16 @@ public class OverlayService extends Service {
             File f = new File(getCacheDir(), "clip" + (++clipSeq % 8) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
             try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
             safePost(() -> {
-                if (clips.size() >= 2) clips.pollFirst();   // far behind: drop the oldest waiting line
-                clips.add(new Object[]{f, clipPlayer != null || !clips.isEmpty() ? rate * 1.12f : rate});
+                /* a new line is read the moment it comes (its subtitle is on screen now): the line being read stops,
+                   unless it is about to end (then the new one follows it). Before, lines waited in turn and the voice
+                   on the TV fell further and further behind the subtitles. */
+                clips.clear();
+                clips.add(new Object[]{f, rate});
+                if (clipPlayer != null) {
+                    int left = 0;
+                    try { left = clipPlayer.getDuration() - clipPlayer.getCurrentPosition(); } catch (Exception ignored) { left = 1000000; }
+                    if (left > 450) { try { clipPlayer.stop(); } catch (Exception ignored) { } try { clipPlayer.release(); } catch (Exception ignored) { } clipPlayer = null; }
+                }
                 if (clipPlayer == null) clipNext();
             });
         } catch (Exception ignored) { }
@@ -183,6 +191,7 @@ public class OverlayService extends Service {
             if (status == TextToSpeech.SUCCESS) {
                 int r = tts.setLanguage(new Locale("vi", "VN"));
                 ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
+                try { tts.setSpeechRate(1.2f); } catch (Exception ignored) { }   // the TV's own voice at 1.0 trails behind the character
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String id) { }
                     @Override public void onDone(String id) { ttsDone(); }
@@ -829,11 +838,9 @@ public class OverlayService extends Service {
             box.setVisibility(View.VISIBLE);
             main.removeCallbacks(hideRunnable);
             main.postDelayed(hideRunnable, holdMs);
-            if (speakIt && ttsReady) {
-                boolean behind = ttsPending.get() >= 3;
-                if (behind) ttsPending.set(0);
-                ttsPending.incrementAndGet();
-                tts.speak(vi, behind ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, ttsParams(), "line" + (++ttsSeq));
+            if (speakIt && ttsReady) {   // read the moment it shows: the line being read stops
+                ttsPending.set(1);
+                tts.speak(vi, TextToSpeech.QUEUE_FLUSH, ttsParams(), "line" + (++ttsSeq));
             }
         });
     }

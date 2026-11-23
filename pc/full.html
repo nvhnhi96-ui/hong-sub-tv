@@ -22,8 +22,8 @@ span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.
          sideways (down to 70%), then smaller */
       if(it.lg&&it.lg.length){
         it.lg.forEach(function(g){ if(!String(g.vi||'').trim()) return;
-          var d2=document.createElement('div'), Ww=g.w*W, f2=Math.max(7,g.f*H);
-          d2.style.cssText='position:absolute;box-sizing:border-box;white-space:pre;padding:0 2px;font-weight:600;overflow:visible;color:'+(it.fg||'#fff')+';background:'+(it.bg||'rgba(12,14,18,.93)')+';left:'+(g.x*W)+'px;top:'+(g.y*H)+'px;height:'+(g.h*H)+'px;padding-top:'+Math.max(0,g.pt*H)+'px;line-height:'+(g.lh*H)+'px;font-size:'+f2.toFixed(1)+'px';
+          var d2=document.createElement('div'), Ww=g.w*W, f2=Math.max(7,g.f*H); d2.className='b'; d2.setAttribute('data-l','1');
+          d2.style.cssText='position:absolute;box-sizing:border-box;white-space:pre;padding:0 2px;box-shadow:none;border-radius:0;font-weight:600;overflow:visible;color:'+(it.fg||'#fff')+';background:'+(it.bg||'rgba(12,14,18,.93)')+';left:'+(g.x*W)+'px;top:'+(g.y*H)+'px;height:'+(g.h*H)+'px;padding-top:'+Math.max(0,g.pt*H)+'px;line-height:'+(g.lh*H)+'px;font-size:'+f2.toFixed(1)+'px';
           if(d.font) d2.style.fontFamily=d.font;
           d2.textContent=String(g.vi).replace(/\{\{\d+\}\}/g,'');
           root.appendChild(d2);
@@ -50,8 +50,8 @@ span.hs-key{height:auto;width:auto;padding:0 .3em;font-size:.82em;line-height:1.
         /* the box with less text keeps only its own place, smaller letters; never hidden (its translation is not lost) */
         var sm=ks[i].textContent.length<ks[j].textContent.length?ks[i]:ks[j], ot=sm===ks[i]?ks[j]:ks[i], rs=sm.getBoundingClientRect(), ro=ot.getBoundingClientRect();
         var ov=Math.min(rs.bottom,ro.bottom)-Math.max(rs.top,ro.top);
-        if(ov>0){ var nh=Math.max(8,rs.height-ov-1); if(rs.top>=ro.top) sm.style.top=(parseFloat(sm.style.top)+ov+1)+'px'; sm.style.minHeight='0'; sm.style.height=sm.style.maxHeight=nh+'px'; }
-        var fz=parseFloat(sm.style.fontSize); while(fz>6&&(sm.scrollHeight>sm.clientHeight+1||sm.scrollWidth>sm.clientWidth+1)){ fz-=0.5; sm.style.fontSize=fz+'px'; } } }
+        if(ov>0){ var nh=Math.max(8,rs.height-ov-1); if(rs.top>=ro.top) sm.style.top=(parseFloat(sm.style.top)+ov+1)+'px'; sm.style.minHeight='0'; sm.style.height=sm.style.maxHeight=nh+'px'; if(sm.getAttribute('data-l')){ sm.style.paddingTop='0px'; sm.style.lineHeight=nh+'px'; if(parseFloat(sm.style.fontSize)>nh*0.86) sm.style.fontSize=Math.max(6,nh*0.86).toFixed(1)+'px'; } }
+        var fz=parseFloat(sm.style.fontSize); while(!sm.getAttribute('data-l')&&fz>6&&(sm.scrollHeight>sm.clientHeight+1||sm.scrollWidth>sm.clientWidth+1)){ fz-=0.5; sm.style.fontSize=fz+'px'; } } }
   });
 })();
 </script>

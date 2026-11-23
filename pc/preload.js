@@ -4,14 +4,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-/* Read-aloud lines play one after another: a new subtitle waits for the one being read instead of cutting it off.
-   Each line's voice is made as soon as the line arrives, so the next line is ready the moment the current one ends.
-   When reading falls behind the subtitles: the line being read speeds up, waiting lines are read faster,
-   at most two lines wait, and a line that waited too long (its subtitle is long gone) is skipped. */
+/* Read-aloud lines follow the subtitles on screen: a new line is read the moment its voice is ready (made as soon as the
+   Vietnamese shows). Before, a new line waited for the one being read and a line that waited 3 s was dropped: the
+   voice came late and lines went missing. Now the line being read speeds up while the new one's voice is made, and
+   when the new voice is ready it takes over at once, unless the line being read is about to end (then it follows it). */
 const lines = []; let cur = null;
-/* the voice follows the character: a line whose subtitle came more than 3 s ago is not read any more, only the newest
-   line waits, and a line still being read when the next one comes speeds up, or is cut if it has been going on long */
-const MAX_WAIT_MS = 3000, CUT_AFTER_MS = 2500, STUCK_MS = 9000;
+const MAX_WAIT_MS = 6000, STUCK_MS = 9000, TAIL_MS = 450;
 /* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
    such line kept the reading silent for the rest of the session */
 setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - cur.at > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
@@ -31,8 +29,13 @@ function fallback(L, why) {
   L.fell = true; L.ai = false; L.voice = '';
   ipcRenderer.invoke('speak', L.text, '', L.rate).then((res) => {
     if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true, why + ', đọc bằng giọng máy'); } else said(L, false, why + ', giọng máy cũng không đọc được');
-    L.ended = true; if (cur === L) playPart();
+    L.ended = true; if (cur === L) playPart(); else takeOver(L);
   }).catch((e) => { said(L, false, why + ': ' + (e && e.message)); L.ended = true; if (cur === L) playPart(); });
+}
+function splitLine(t) {
+  const a = String(t || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/).filter(Boolean), out = [];
+  a.forEach((x) => { if (out.length && out[out.length - 1].length < 24) out[out.length - 1] += ' ' + x; else out.push(x); });
+  return out.length > 3 ? [out[0], out.slice(1).join(' ')] : out;
 }
 function prepare(L) {
   L.id = ++seq; L.parts = []; L.ended = false; L.at = Date.now();
@@ -43,14 +46,44 @@ function prepare(L) {
     setTimeout(() => { if (!L.got && !L.fell && !L.dropped) { ipcRenderer.send('aiv-drop', L.id); fallback(L, 'giọng AI không trả lời'); } }, 6000);
     return;
   }
+  /* a line of several sentences: the first sentence's voice is made first and starts while the rest is made, so the
+     reading begins sooner after the Vietnamese shows */
+  const pieces = splitLine(L.text);
+  if (pieces.length > 1) {
+    const got = new Array(pieces.length); let next = 0;
+    const flush = () => {
+      if (L.dropped) return;
+      while (next < pieces.length && got[next] !== undefined) { const r = got[next]; if (r && r.wav) { if (!L.parts.length && !L.startAt) said(L, true); L.parts.push({ wav: r.wav, mime: r.mime, rateApply: !!r.rateApply, last: next === pieces.length - 1 }); } next++; }
+      if (next >= pieces.length) {
+        if (!L.parts.length && !L.startAt) { if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; } said(L, false, 'không đọc được'); }
+        L.ended = true;
+      }
+      if (cur === L) playPart(); else if (L.parts.length) takeOver(L);
+    };
+    pieces.forEach((t, i) => { ipcRenderer.invoke('speak', t, L.voice, L.rate).then((r) => { got[i] = r || null; flush(); }).catch(() => { got[i] = null; flush(); }); });
+    return;
+  }
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
     if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true); }
     else if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; }
     else said(L, !!(res && res.ok !== false), res && res.err ? String(res.err) : '');
-    L.ended = true; if (cur === L) playPart();
+    L.ended = true; if (cur === L) playPart(); else if (L.parts.length) takeOver(L);
   }).catch((e) => { if (L.voice) { fallback(L, 'giọng lỗi: ' + (e && e.message)); return; } said(L, false, e && e.message); L.ended = true; if (cur === L) playPart(); });
 }
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
+/* how long the line being read still has to go (ms); a long time when that is not known yet */
+function leftMs() {
+  if (!cur) return 0;
+  if (!cur.ended || cur.parts.length || !audio) return 1e9;
+  const d = audio.duration; if (!isFinite(d) || !d) return 1e9;
+  return Math.max(0, (d - audio.currentTime) * 1000 / (audio.playbackRate || 1));
+}
+/* the newest line has its voice: it is read now */
+function takeOver(L) {
+  if (cur === L || lines[0] !== L) return;
+  if (cur) { if (cur.startAt && leftMs() <= TAIL_MS) return; cutCur(); }   /* about to end: the new line follows it */
+  startNext();
+}
 function speedOf(c) { return Math.max(1, Math.min(1.6, c.boost * (c.hurry || 1), 2.3 / Math.max(1, c.rate || 1))); }   /* never faster than 2.3x in all */
 function cutCur() { const c = cur; if (!c) return; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } } audio = null; lineDrop(c); cur = null; }
 function playPart() {
@@ -73,7 +106,7 @@ function startNext() {
   if (cur) return;
   while (lines.length) {
     const L = lines.shift();
-    if (Date.now() - L.at > MAX_WAIT_MS && !L.pre) { lineDrop(L); continue; }   /* waited too long, its subtitle is long gone: skip it */
+    if (Date.now() - L.at > MAX_WAIT_MS && !L.pre) { lineDrop(L); continue; }   /* its voice never came in time: its subtitle is long gone */
     cur = L; L.playing = false; playPart(); return;
   }
 }
@@ -87,11 +120,11 @@ function enqueue(L, queue) {
   if (!queue) stopAll();
   else {
     while (lines.length) lineDrop(lines.shift());        /* only the newest line waits: an older waiting one is already late */
-    if (cur && cur.startAt && Date.now() - cur.startAt > CUT_AFTER_MS && !cur.pre) cutCur();   /* the character has moved on */
-    else if (cur && !cur.startAt && Date.now() - cur.at > STUCK_MS) cutCur();   /* a line whose voice never came: it never blocks the next ones */
-    if (cur) { L.boost = 1.12; hurry(); }
+    if (cur && !cur.startAt) cutCur();                   /* a line whose voice is not made yet: the newer line comes first */
+    if (cur) hurry();                                    /* read faster while the new line's voice is made */
   }
   prepare(L); lines.push(L); startNext();
+  if (cur !== L && L.parts.length) takeOver(L);          /* a clip made already: at once */
 }
 ipcRenderer.on('aiv-audio', (e, m) => {
   const L = (cur && cur.id === m.id) ? cur : lines.find(x => x.id === m.id);
@@ -100,7 +133,7 @@ ipcRenderer.on('aiv-audio', (e, m) => {
   if (m.type !== 'audio') return;
   if (!L.got) said(L, true); L.got = true;
   L.parts.push({ wav: m.wav, last: !!m.last }); if (m.last) L.ended = true;
-  if (cur === L) playPart();
+  if (cur === L) playPart(); else takeOver(L);
 });
 
 /* TV Samsung without Tizen Studio (Windows and Mac): the same lines and events as the phone apps' core (see tzraw.js) */
