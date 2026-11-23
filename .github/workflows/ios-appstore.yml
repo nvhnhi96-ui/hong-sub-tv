@@ -47,7 +47,7 @@ jobs:
           [ -n "$ASC_KEY_P8" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] || { echo "Thiếu secret ASC_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID"; exit 1; }
           printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc.p8"
           echo "ASC_AUTH=-allowProvisioningUpdates -authenticationKeyPath $RUNNER_TEMP/asc.p8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID" >> "$GITHUB_ENV"
-      - name: Archive (signed by Apple)
+      - name: Archive
         working-directory: ios
         run: |
           set -e
@@ -57,8 +57,10 @@ jobs:
           xcodebuild -quiet -project HongSub.xcodeproj -scheme HongSub -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/HongSub.xcarchive" \
             MARKETING_VERSION=${{ inputs.version }} CURRENT_PROJECT_VERSION=$BUILD \
-            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES CODE_SIGN_IDENTITY="Apple Development" \
-            $ASC_AUTH archive
+            DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive
+          # the archive is not signed here (a development profile would need a registered iPhone):
+          # the next step signs it for the App Store with Apple's cloud signing while exporting
       - name: Upload to App Store Connect
         run: |
           set -e
