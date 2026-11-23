@@ -193,6 +193,25 @@ def do_availability():
          'included': inc})
 
 
+def do_no_china():
+    """not sold in mainland China: it needs a security assessment and an AI service filing there"""
+    av = call('GET', '/v1/apps/%s/appAvailabilityV2' % APP)['data']
+    nxt = '/v2/appAvailabilities/%s/territoryAvailabilities' % av['id']
+    params = {'limit': 200, 'include': 'territory'}
+    while nxt:
+        page = call('GET', nxt, params=params)
+        for ta in page['data']:
+            tid = ((ta.get('relationships') or {}).get('territory') or {}).get('data', {}).get('id')
+            if tid == 'CHN':
+                if ta['attributes'].get('available'):
+                    call('PATCH', '/v1/territoryAvailabilities/' + ta['id'], {'data': {'type': 'territoryAvailabilities', 'id': ta['id'], 'attributes': {'available': False}}})
+                print('   CHN off')
+                return
+        nl = (page.get('links') or {}).get('next')
+        nxt = nl.replace(BASE, '') if nl else None; params = None
+    raise RuntimeError('CHN not found')
+
+
 def do_build():
     v = version()
     for i in range(40):
@@ -221,6 +240,7 @@ step('Ảnh màn hình', do_screenshots)
 step('Thông tin cho người duyệt', do_review)
 step('Giá: miễn phí', do_price)
 step('Quốc gia bán', do_availability)
+step('Không bán ở Trung Quốc đại lục', do_no_china)
 if '--attach-build' in sys.argv:
     step('Gắn bản dựng', do_build)
 print('\nLỗi ở:', FAILS if FAILS else 'không có')
