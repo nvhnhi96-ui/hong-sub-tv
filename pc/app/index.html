@@ -5375,7 +5375,7 @@ function tmFind(text,strict){
 function tmFind0(text,strict){
   var m=/^([A-Z][A-Za-z0-9' .\-]{1,24}):\s+([\s\S]{4,})$/.exec(String(text).trim());   /* "NAME: line": the name on screen wins */
   var ex=tmExact(text)||(m&&tmExact(m[2]));
-  if(ex) return tmHit({en:text,vi:ex.vi,speaker:m?m[1]:ex.who,gender:ex.gd,_tm:true,_k:trKey(m&&!tmExact(text)?m[2]:text),_fz:0});
+  if(ex) return tmHit({en:text,vi:ex.vi,speaker:m?m[1]:ex.who,gender:ex.gd,_tm:true,_k:trKey(m&&!tmExact(text)?m[2]:text),_fz:0,_std:ex.std||0});
   /* a line and the mission's objective under it ("... I am not diving in there!" / "Collect the package"): each line is
      its own line in the store; found exactly, not as one near match that needs a fix */
   var L=String(text).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
@@ -5428,7 +5428,7 @@ function tmFind1(text,strict){
         var sc=2*h/tot; if(sc>best){ best=sc; if(sc>=need){ var c=S.tm.map[s]; if(c){ e=c; ek=s; fz=sc; } } } } }
   }
   if(!e||tmJunk(e)) return null;
-  return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true,_k:ek,_fz:fz};   /* _fz: only nearly the same line (a misread letter, or another player's line with more words) */
+  return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true,_k:ek,_fz:fz,_std:e.std||0};   /* _fz: only nearly the same line (a misread letter, or another player's line with more words) */
 }
 /* ---------- only a translation that can be stood behind goes into the shared store ----------
    The store is read by every player of this game, so a line put in it has to be one they can trust: translated by an
@@ -5452,9 +5452,9 @@ function tmGood(en,vi,via){
 }
 function tmAdd(kind,en,vi,who,gd,via){
   if(!S.tm.g||S.tm.g.length<2||!en||!vi||creditPair(en,vi)) return;
-  tmPutLocal(kind,en,vi,who,gd);
+  tmPutLocal(kind,en,vi,who,gd,via!=='free'&&!tmDiffers()?1:0);
   if(!tmShare()||!tmGood(en,vi,via)) return;
-  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:2,fx:(via==='fix'||via==='redo')?1:0}});   /* fx: a stored line checked and fixed, it replaces the old one */
+  S.tm.out.push({g:S.tm.g,name:S.tm.name,it:{en:String(en).slice(0,500),vi:String(vi).slice(0,800),who:who||'',gd:gd||'',kind:kind,q:2,fx:(via==='fix'||via==='redo')?1:0,std:tmDiffers()?0:1}});   /* fx: a stored line checked and fixed, it replaces the old one */
   if(S.tm.out.length>200) S.tm.out.splice(0,S.tm.out.length-200);
   clearTimeout(S.tm.outT); S.tm.outT=setTimeout(tmFlush,S.tm.out.length>=20?500:6000);
 }
@@ -5534,6 +5534,10 @@ async function tmFit(j,res){
      at once (0 ms) and is checked in the background with the next ones; a player who changed the settings, or a line
      that surely needs it (tmNeedFix), gets it rewritten first (at most ~1.2 s, then the line shows and is swapped). */
   var differs=tmDiffers();
+  if(!differs&&res._std&&!res._fz&&!res._ml&&!res._parts&&!tmNeedFix(en,res.vi,res)){
+    if(res._k){ tmPos(res._k); tmAhead(res._k,j,res,false); }
+    log('câu trong kho đã dịch theo đúng cài đặt của game, dùng ngay (0ms)'); return res;   /* nothing for the AI to do: only the layout and the reading are this machine's */
+  }
   var why=differs?'cài đặt của bạn khác cài đặt của game':tmMust()?'theo cài đặt và luật dịch trên máy này':res._fz&&res._fz<0.9?'câu gần giống trong kho':res._parts?'ghép từ nhiều câu trong kho':tmPronOff(res.vi)?'xưng hô chưa theo ghi chú nhân vật':tmOddNum(en,res.vi)?'có số không có trong câu gốc':glossMiss(en,res.vi)?'chưa theo từ điển':'';
   /* an AI that takes far longer than a line may wait (a busy server, ~3 s and more): no request for this line alone.
      It shows at once and goes in the request for the next lines (12 lines a request); one line in 8 is still asked

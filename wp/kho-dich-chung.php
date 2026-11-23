@@ -5,7 +5,7 @@ if (!function_exists('hgs_tm_table')) {
     function hgs_tm_table() {
         global $wpdb;
         $t = $wpdb->prefix . 'hgs_tm';
-        if (get_option('hgs_tm_db') !== '1') {
+        if (get_option('hgs_tm_db') !== '2') {
             require_once ABSPATH . 'wp-admin/includes/upgrade.php';
             $c = $wpdb->get_charset_collate();
             dbDelta("CREATE TABLE $t (
@@ -19,13 +19,14 @@ if (!function_exists('hgs_tm_table')) {
   who varchar(60) NOT NULL DEFAULT '',
   gd varchar(8) NOT NULL DEFAULT '',
   q tinyint(3) unsigned NOT NULL DEFAULT 1,
+  std tinyint(1) unsigned NOT NULL DEFAULT 0,
   n int(10) unsigned NOT NULL DEFAULT 1,
   t datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY k (k),
   KEY g (g,id)
 ) $c;");
-            update_option('hgs_tm_db', '1', false);
+            update_option('hgs_tm_db', '2', false);
         }
         return $t;
     }
@@ -66,11 +67,14 @@ if (!function_exists('hgs_tm_table')) {
             $gd   = (isset($it['gd']) && in_array($it['gd'], array('male', 'female'), true)) ? $it['gd'] : '';
             $q    = (isset($it['q']) && (int) $it['q'] === 2) ? 2 : 1;
             $fx   = ($q === 2 && !empty($it['fx'])) ? 1 : 0;   // a stored line checked and fixed by AI: replaces a line of the same level (not an imported one)
+            // std: translated with the GAME's own settings (its style, its character notes, its rules), not with one
+            // player's personal ones. A player who uses the game's settings shows such a line as it is, with no AI.
+            $std  = ($q === 2 && !empty($it['std'])) ? 1 : 0;
             $k    = sha1($g . '|' . $kind . '|' . $nm);
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,n,t) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%d,1,%s)
-                 ON DUPLICATE KEY UPDATE n=n+1, vi=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(vi),vi), who=IF(VALUES(q)>q,VALUES(who),who), gd=IF(VALUES(q)>q AND VALUES(gd)<>'',VALUES(gd),gd), q=GREATEST(q,VALUES(q))",
-                $g, $gn, $k, $kind, $en, $vi, $who, $gd, $q, $now, $fx));
+                "INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,std,n,t) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,1,%s)
+                 ON DUPLICATE KEY UPDATE n=n+1, std=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(std),std), vi=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(vi),vi), who=IF(VALUES(q)>q,VALUES(who),who), gd=IF(VALUES(q)>q AND VALUES(gd)<>'',VALUES(gd),gd), q=GREATEST(q,VALUES(q))",
+                $g, $gn, $k, $kind, $en, $vi, $who, $gd, $q, $std, $now, $fx, $fx));
             $ok++;
         }
         set_transient($rk, $used + max(1, $ok), 600);
@@ -82,9 +86,9 @@ if (!function_exists('hgs_tm_table')) {
         $g = hgs_tm_game($req->get_param('game'));
         if (strlen($g) < 2) return array('lines' => array(), 'last' => 0, 'more' => false, 'total' => 0);
         $since = max(0, (int) $req->get_param('since'));
-        $rows = $wpdb->get_results($wpdb->prepare("SELECT id,kind,en,vi,who,gd FROM $t WHERE g=%s AND id>%d ORDER BY id LIMIT 3000", $g, $since), ARRAY_N);
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT id,kind,en,vi,who,gd,std FROM $t WHERE g=%s AND id>%d ORDER BY id LIMIT 3000", $g, $since), ARRAY_N);
         $last = $since; $lines = array();
-        foreach ((array) $rows as $r) { $last = (int) $r[0]; $lines[] = array($r[1], $r[2], $r[3], $r[4], $r[5]); }
+        foreach ((array) $rows as $r) { $last = (int) $r[0]; $lines[] = array($r[1], $r[2], $r[3], $r[4], $r[5], (int) $r[6]); }
         $out = array('lines' => $lines, 'last' => $last, 'more' => count($lines) === 3000);
         if ($since === 0) $out['total'] = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE g=%s", $g));
         return $out;
