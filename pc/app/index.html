@@ -5861,6 +5861,9 @@ async function tmRedoRun(){
   }
   var h=$('hsTmTitle'), n=0, t0=0;
   if(h) h.addEventListener('click',function(){ var t=Date.now(); if(t-t0>4000){ n=0; t0=t; } if(++n>=5){ n=0; reveal(); } });
+  /* a run that was started and is not finished: the button stays there by itself after the app is closed and opened
+     again, so nobody has to find the five taps on the heading a second time to carry on */
+  (function(){ var sv=load('tmRedo',null); if(sv&&sv.i>0) setTimeout(reveal,1200); })();
   window.addEventListener('keydown',function(e){ if(e.ctrlKey&&e.shiftKey&&!e.repeat&&(e.key==='F9'||e.code==='F9'||e.code==='KeyK')){ var g=document.querySelector('[data-go="game"]'); if(g) g.click(); reveal(); } },true);
 })();
 async function tmFlush(){
