@@ -22,17 +22,7 @@ function stopAll() {
 /* start making the voice of a line now (it plays later) */
 /* what happened to the last line read aloud (for the problem report) */
 let lastSpeak = null;
-function said(L, ok, err) { lastSpeak = { at: new Date().toTimeString().slice(0, 8), voice: (L.ai ? 'ai:' : '') + (L.voice || 'mặc định'), ok: !!ok, err: err || '', lamMs: Date.now() - L.at, choMs: L.startAt ? L.startAt - L.at : null }; }
-/* how long the voices take on this computer (for the problem report): making the sound, and the wait from the line
-   showing to the first word heard */
-const spStat = { n: 0, lam: 0, cho: 0, lamMax: 0, choMax: 0 };
-function spNote(L) {
-  if (!L || !L.startAt) return;
-  const cho = L.startAt - L.at; if (cho < 0 || cho > 60000) return;
-  spStat.n++; spStat.cho += cho; if (cho > spStat.choMax) spStat.choMax = cho;
-  const lam = (L.gotAt || L.startAt) - L.at;
-  spStat.lam += Math.max(0, lam); if (lam > spStat.lamMax) spStat.lamMax = lam;
-}
+function said(L, ok, err) { lastSpeak = { at: new Date().toTimeString().slice(0, 8), voice: (L.ai ? 'ai:' : '') + (L.voice || 'mặc định'), ok: !!ok, err: err || '' }; }
 /* the chosen voice made nothing: the line is read again with this computer's own Vietnamese voice, never silent */
 function fallback(L, why) {
   if (L.fell) { said(L, false, why); L.ended = true; if (cur === L) playPart(); return; }
@@ -83,21 +73,16 @@ function prepare(L) {
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
 /* a waiting line has its voice: it is read as soon as nothing else is (never over or instead of the line being read) */
 function takeOver(L) { if (!cur) startNext(); }
-function speedOf(c) { return Math.max(1, Math.min(1.9, c.boost * (c.hurry || 1), 2.6 / Math.max(1, c.rate || 1))); }   /* never faster than 2.6x in all */
+function speedOf(c) { return Math.max(1, Math.min(1.8, c.boost * (c.hurry || 1), 2.4 / Math.max(1, c.rate || 1))); }   /* never faster than 2.4x in all */
 /* the speed a line starts at: faster the more lines wait behind it */
-/* how much faster a line is read: how far behind the voice already is (the time from its Vietnamese showing to its
-   first word) plus how many lines wait behind it. The voice catches up with the character instead of trailing it. */
-function lateBoost(L) {
-  const late = Math.max(0, Date.now() - (L ? L.at : Date.now()));
-  return Math.max(1, Math.min(1.9, 1 + late / 2600 + 0.12 * lines.length));
-}
+function backlogBoost() { return lines.length ? Math.min(1.6, 1.15 + 0.12 * lines.length) : 1; }
 function cutCur() { const c = cur; if (!c) return; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } } audio = null; lineDrop(c); cur = null; }
 function playPart() {
   const c = cur;
   if (!c || c.playing) return;
   const p = c.parts.shift();
   if (!p) { if (c.ended) finish(c); return; }
-  c.playing = true; if (!c.startAt) { c.startAt = Date.now(); c.boost = Math.max(c.boost || 1, lateBoost(c)); spNote(c); }
+  c.playing = true; if (!c.startAt) c.startAt = Date.now();
   audio = new Audio('data:' + (p.mime || 'audio/wav') + ';base64,' + p.wav);
   c.applyRate = !!(c.ai || p.rateApply);
   const sp = speedOf(c);
@@ -113,7 +98,7 @@ function startNext() {
   while (lines.length) {
     const L = lines.shift();
     if (L.dropped) continue;
-    L.curAt = Date.now(); L.boost = Math.max(L.boost || 1, lateBoost(L));
+    L.curAt = Date.now(); L.boost = Math.max(L.boost || 1, backlogBoost());
     cur = L; L.playing = false; playPart(); return;
   }
 }
@@ -128,7 +113,7 @@ function enqueue(L, queue) {
   else {
     while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());   /* only when far, far behind (8 lines waiting) */
     if (cur) hurry();                                    /* the line being read goes faster: the next one is waiting */
-    lines.forEach((x) => { x.boost = Math.max(x.boost || 1, lateBoost(x)); });
+    lines.forEach((x) => { x.boost = Math.max(x.boost || 1, 1.15 + 0.12 * lines.length); });
   }
   prepare(L); lines.push(L); startNext();
 }
@@ -137,7 +122,7 @@ ipcRenderer.on('aiv-audio', (e, m) => {
   if (!L || L.fell) return;   /* already read by this computer's voice */
   if (m.type === 'error') { if (!L.got) { fallback(L, 'giọng AI lỗi'); return; } L.ended = true; if (cur === L && !L.playing) playPart(); return; }   /* the AI voice failed before saying anything: this computer's voice reads it */
   if (m.type !== 'audio') return;
-  if (!L.got) { said(L, true); L.gotAt = Date.now(); } L.got = true;
+  if (!L.got) said(L, true); L.got = true;
   L.parts.push({ wav: m.wav, last: !!m.last }); if (m.last) L.ended = true;
   if (cur === L) playPart(); else takeOver(L);
 });
@@ -196,7 +181,7 @@ const api = {
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
   /* queue=true for subtitles (wait for the line being read), false for samples and tests (cut in right away) */
-  speakState: () => (spStat.n ? Object.assign({}, lastSpeak, { soCau: spStat.n, lamTbMs: Math.round(spStat.lam / spStat.n), choTbMs: Math.round(spStat.cho / spStat.n), choMaxMs: spStat.choMax }) : lastSpeak),
+  speakState: () => lastSpeak,
   speak: async (text, voice, rate, pitch, queue) => {
     if (!text) { stopAll(); return; }
     const v = String(voice || '');
