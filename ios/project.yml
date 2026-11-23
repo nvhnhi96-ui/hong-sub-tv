@@ -33,7 +33,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSLocalNetworkUsageDescription: "Hóng Sub tìm và kết nối máy PS5 / PS4 và TV trong mạng nhà để nhận hình game và hiện phụ đề."
-        NSMicrophoneUsageDescription: "Hóng Sub nghe tiếng loa TV khi bạn bật Dịch lời nhân vật nói, để dịch lời thoại không có phụ đề."
+        NSMicrophoneUsageDescription: "Hóng Sub chỉ dùng micro khi bạn tự bật tính năng nghe tiếng từ loa TV."
         NSCameraUsageDescription: "Hóng Sub dùng camera khi bạn chĩa điện thoại vào TV để đọc phụ đề game."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

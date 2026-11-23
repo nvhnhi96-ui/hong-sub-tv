@@ -323,6 +323,8 @@ html,body{height:100%;overflow:hidden}
 .vip-plan{display:flex;flex-direction:column;justify-content:flex-start}.vip-plan ul{margin:8px 0 0;padding-left:17px;font-size:12.5px;line-height:1.5;color:var(--muted)}.vip-plan li{margin:2px 0}.vip-perks[hidden]{display:none}
 @media (min-width:1101px){#p-vip .dk-cols{grid-template-columns:minmax(0,1.75fr) minmax(0,1fr)}}
 /* gói VIP: mọi nền tảng (máy tính, web, điện thoại); app trên CH Play và App Store chỉ nhập mã, không bán trong app */
+/* App Store (bản iPhone đầu tiên): Apple không cho mở khóa tính năng bằng mã mua ngoài, nên bản iPhone chưa có VIP: ẩn hết lối vào VIP */
+html.hs-ios #dkVipNav,html.hs-ios #dkVipChip,html.hs-ios #p-vip,html.hs-ios #hsVipEmpty,html.hs-ios #hsVipNudge,html.hs-ios #hsVipHint,html.hs-ios #hsVipPromo,html.hs-ios [data-go="vip"]{display:none!important}
 .vip-store,.vip-phonepay{display:none}html.hs-mps .vip-phonepay{display:block}html.hs-ios .vip-sell,html.hs-play .vip-sell{display:none!important}html.hs-ios .vip-store,html.hs-play .vip-store{display:block}html.hs-phone .dk-vipchip{display:none!important}   /* điện thoại: đã có tab Gói VIP ở thanh dưới */
 .vip-plan{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;color:var(--ink);font-family:inherit}.vip-plan b{display:block;font-size:15px}.vip-plan span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .vip-plan.on{border-color:#FFC400;background:rgba(255,196,0,.10)}.vip-plan.on span{color:#FFD54A}

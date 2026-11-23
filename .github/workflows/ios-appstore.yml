@@ -1,0 +1,82 @@
+# Hóng Sub for iPhone -> App Store Connect (TestFlight, then App Review).
+# Run by hand: Actions -> "iPhone lên App Store" -> Run workflow. Each run uploads one new build.
+# Needs three repository secrets (App Store Connect -> Users and Access -> Integrations -> Team Keys, role Admin):
+#   ASC_KEY_ID      the key's ID (10 letters/numbers)
+#   ASC_ISSUER_ID   the Issuer ID shown above the key list
+#   ASC_KEY_P8      the whole text of the AuthKey_XXXXXXXXXX.p8 file
+# Signing is done by Apple ("cloud signing") with that key: no certificate or profile to keep by hand.
+name: iPhone lên App Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Số phiên bản hiện trên App Store (VD 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  appstore:
+    runs-on: macos-latest
+    env:
+      TEAM_ID: LN8F569BHB
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools, chiaki-ng and Mbed TLS for the Remote Play core
+        run: |
+          set -e
+          brew install xcodegen protobuf >/dev/null
+          python3 -m venv "$RUNNER_TEMP/py" && "$RUNNER_TEMP/py/bin/pip" install -q protobuf
+          echo "HSRP_PYTHON=$RUNNER_TEMP/py/bin/python3" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch v1.10.1 https://github.com/streetpea/chiaki-ng.git rp/chiaki-ng
+          (cd rp/chiaki-ng && git submodule update --init --depth 1 third-party/nanopb third-party/jerasure third-party/gf-complete)
+          git clone --depth 1 --branch v2.28.9 https://github.com/Mbed-TLS/mbedtls.git "$RUNNER_TEMP/mbedtls"
+          echo "HSRP_MBEDTLS_DIR=$RUNNER_TEMP/mbedtls" >> "$GITHUB_ENV"
+      - name: The page (same as the Android app)
+        run: python3 pc/sync_web.py && python3 phone/build_app.py && cp phone/src/main/assets/app.html ios/web/index.html
+      - name: Remote Play core for iPhone
+        working-directory: ios
+        run: ./build-rp.sh iphoneos
+      - name: App Store Connect key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -e
+          [ -n "$ASC_KEY_P8" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] || { echo "Thiếu secret ASC_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID"; exit 1; }
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc.p8"
+          echo "ASC_AUTH=-allowProvisioningUpdates -authenticationKeyPath $RUNNER_TEMP/asc.p8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID" >> "$GITHUB_ENV"
+      - name: Archive (signed by Apple)
+        working-directory: ios
+        run: |
+          set -e
+          xcodegen generate
+          # build number: the run number plus a large base, always higher than the last upload
+          BUILD=$((1000 + ${{ github.run_number }}))
+          xcodebuild -quiet -project HongSub.xcodeproj -scheme HongSub -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/HongSub.xcarchive" \
+            MARKETING_VERSION=${{ inputs.version }} CURRENT_PROJECT_VERSION=$BUILD \
+            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES CODE_SIGN_IDENTITY="Apple Development" \
+            $ASC_AUTH archive
+      - name: Upload to App Store Connect
+        run: |
+          set -e
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/HongSub.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" $ASC_AUTH
+          echo "Đã gửi bản ${{ inputs.version }} lên App Store Connect. Apple xử lý khoảng 10-30 phút rồi bản sẽ hiện trong TestFlight."
+      - name: Clean up the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc.p8"
