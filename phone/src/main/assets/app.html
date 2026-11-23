@@ -3314,6 +3314,28 @@ function zTvClearAll(){
   function loop(){ try{ beat(); }catch(e){} later(loop,10000); }   /* later(): keeps ticking when the window is behind the game */
   setTimeout(loop,10000);
 })();
+/* ---------- the TV never keeps a translation the game no longer shows ----------
+   Taking a line or a box off the TV was one message: if it was lost on the way (wifi, the store's relay) or came
+   before the line itself, the Vietnamese stayed on the TV for a long time after the English had gone. Now, while
+   anything is up on the TV, every 2.5 s (5 s through honggame.store) a tiny "this is what should be on the TV now"
+   goes out: whether a subtitle is showing (and the number of the last one) and how many screen-text boxes there are.
+   The TV takes off whatever is no longer on that list. */
+(function(){
+  var lastBusy=0;
+  function st(){
+    if(!(tvIp()||tvCode().length>=4)) return;
+    var sv=S.lastHtml?1:0, fsn=S.fsTvN||0, busy=sv||fsn;
+    if(busy) lastBusy=Date.now();
+    if(!busy&&Date.now()-lastBusy>15000) return;   /* a few more after the last thing went off, then quiet */
+    var o=tvBody({kind:'hb',hb:3,vi:'',sv:sv,sid:S.tvSid||0,fsn:fsn}), ip=tvIp();
+    /* over the home network when it works (cheap); honggame.store only without it, and not more than every 5 s */
+    if(lanTv()&&LGP()&&LGP().push&&tvCode().length>=4){ LGP().push(tvCode(),o); if(Date.now()-(S.tvLanSeen||0)<15000) return; }
+    else if(ip&&S.tvOk===true){ TVD().send(ip,o).catch(function(){}); return; }
+    if(tvCode().length>=4&&Date.now()-(S.stRelayAt||0)>4800){ S.stRelayAt=Date.now(); tvRelay(o).catch(function(){}); }
+  }
+  function loop(){ try{ st(); }catch(e){} later(loop,lanTv()||tvIp()?2500:5000); }
+  setTimeout(loop,6000);
+})();
 function zHold(z){
   clearTimeout(ZT[z.id]);
   if(+z.hold>0&&z.vi) ZT[z.id]=setTimeout(function(){ z.hide=true; zShow(); zPush(); zTv(z); },+z.hold*1000);
@@ -4060,7 +4082,8 @@ function tvNotice(text){ if((!D&&!TVD())||(!tvIp()&&tvCode().length<4)) return; 
 var tvFails=0;
 function tvPush(vi,en,who,manual,vl,mcol,lcs){
   if(!tvIp()&&tvCode().length<4){ if(manual) tvMsg('err',S.tvType==='android'?(D?'Bấm "Tìm TV", hoặc nhập IP (hay mã) đang hiện trên app Hóng Sub TV.':'Nhập mã đang hiện trên app Hóng Sub TV trước.'):'Nhập mã đang hiện trên TV vào ô Mã TV trước.'); return; }
-  tvSend({vi:vi,en:en||'',who:who||'',vo:vl||undefined,mcol:mcol||undefined,lc:lcs||undefined})
+  if(vi) S.tvSid=(S.tvSid||0)+1;
+  tvSend({vi:vi,en:en||'',who:who||'',vo:vl||undefined,mcol:mcol||undefined,lc:lcs||undefined,sid:vi?S.tvSid:undefined})
     .then(function(){ tvFails=0; if(manual) tvMsg('ok','Đã gửi. Nếu TV chưa hiện chữ: '+(lanTv()?'trên TV mở app Hóng Sub, kiểm tra mã trên TV đúng là '+tvCode()+'.':S.tvType==='web'?'trên TV mở honggame.store/lg, kiểm tra mã trên TV đúng là '+tvCode()+'.':'trên TV mở app Hóng Sub TV và bấm "Bật phụ đề".')); })
     .catch(function(){ tvFails++; if(manual||tvFails===3) tvMsg('err',tvIp()?'TV không trả lời. Kiểm tra TV đã mở app Hóng Sub TV, và '+(PH||IOS?'điện thoại':''+(PH||IOS?'điện thoại':'máy tính')+'')+' với TV dùng chung một mạng.':'Không gửi được lên TV. Kiểm tra mạng rồi thử lại.'); });
 }
@@ -4327,7 +4350,7 @@ function show(res,quiet){
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
   speak(vi,res);
   clearTimeout(S.holdT);
-  if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); },S.hold*1000);
+  if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); },S.hold*1000);
 }
 /* the game's own subtitle is gone from the screen: the Vietnamese goes too (computer, floating window, phone, TV).
    A line that only just came up stays a moment (it was late), so it can still be read. Spoken lines (no subtitle) keep their time. */

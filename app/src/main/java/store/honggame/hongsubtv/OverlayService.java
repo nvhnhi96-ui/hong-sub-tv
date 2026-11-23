@@ -850,6 +850,23 @@ public class OverlayService extends Service {
         }
     };
 
+    /* What the computer says should be on the TV now (every few seconds while something is up): a subtitle the
+       computer no longer shows, or a screen-text box past the computer's count, comes off. A taking-off message lost on
+       the way no longer leaves old Vietnamese on the TV. */
+    private volatile long subSid = 0, subAt = 0;
+    private void syncState(JSONObject j) {
+        if (j.has("sv") && j.optInt("sv", 1) == 0 && j.optLong("sid", 0) >= subSid
+                && android.os.SystemClock.elapsedRealtime() - subAt > 1200) { main.removeCallbacks(hideRunnable); safePost(hideRunnable); }
+        if (j.has("fsn")) {
+            final int n = j.optInt("fsn", 0);
+            safePost(() -> {
+                java.util.List<String> off = new java.util.ArrayList<>();
+                for (String id : zoneViews.keySet()) if (id.startsWith("fs_")) { try { if (Integer.parseInt(id.substring(3)) >= n) off.add(id); } catch (Exception e) {} }
+                for (String id : off) { android.view.View v = zoneViews.remove(id); if (v != null && zoneLayer != null) zoneLayer.removeView(v); Runnable r = zoneOff.remove(id); if (r != null) main.removeCallbacks(r); }
+            });
+        }
+    }
+
     /** every area box off the TV (on the main thread) */
     private void zonesClear() {
         safePost(() -> {
@@ -938,7 +955,7 @@ public class OverlayService extends Service {
             return;
         }
         if (kind.equals("hello") || kind.equals("ctl") || kind.equals("alive")) { /* nothing to show */ }
-        else if (kind.equals("hb")) { /* only "still here" */ }
+        else if (kind.equals("hb")) { syncState(j); }   // "still here", with what should be on the TV now
         else if (kind.equals("clr")) { main.removeCallbacks(hideRunnable); safePost(hideRunnable); }   // the game's own subtitle is gone: so is the Vietnamese
         else if (kind.equals("zone") && j.optInt("zclr", 0) == 1) zonesClear();   // Hóng Sub stopped: every area box off
         else if (kind.equals("zone")) {
@@ -950,6 +967,8 @@ public class OverlayService extends Service {
             if (!vi.isEmpty()) showLine(j.optString("who", "Hóng Sub"), vi, "", 6000, false);
         }
         else if (!vi.isEmpty()) {
+            if (j.has("sid")) subSid = j.optLong("sid", 0);
+            subAt = android.os.SystemClock.elapsedRealtime();
             long hold = Math.max(4500, Math.min(12000, vi.length() * 110L));
             lineCols = j.optJSONArray("lc");
             showLine(j.optString("who", ""), vi, j.optString("en", ""), hold, read);
