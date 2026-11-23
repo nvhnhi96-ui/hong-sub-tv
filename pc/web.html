@@ -4766,21 +4766,19 @@ async function tmFit(j,res){
     'Keep the same sentences in the same order, the punctuation and the line breaks; if the existing Vietnamese already fits, return it unchanged. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
     glossHints(en)+context(en);
   var share=!differs&&!res._fz&&!res._parts;
-  /* how long the line may wait for its fix: about what the AI takes here (0.7-1.5 s). An AI that takes much longer
-     (a busy server, 3 s and more) is not waited for: the line shows at once and the lines after it are fixed ahead */
-  var wait=lat?Math.max(1500,Math.min(3500,Math.round(lat*1.8))):2500;
+  /* A line that is already in the store shows THE MOMENT the English appears - it is never held back waiting for the
+     AI. The rewrite to this player's settings runs behind it and, when it comes and says something different, it
+     takes the place of the line on screen (and on the TV) without being read aloud twice. Most lines are already
+     rewritten before they are needed, because the next lines of the store are checked ahead while one is showing. */
   var ah=S.tmAh, inAh=!res._fz&&!res._ml&&res._k&&ah.cur&&ah.cur[res._k]&&ah.p;
   if(inAh){   /* this very line is in the check sent a moment ago with the lines before it: its answer, not a second request */
-    await Promise.race([ah.p,new Promise(function(ok){ setTimeout(ok,wait); })]);
-    var kv=F.m[res._k]; if(kv){ res.vi=tmLay(j.text,kv); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn ('+(Date.now()-t0)+'ms, cùng lượt với các câu trước)'); return res; }
-    log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, chỉnh xong thì thay ngay'); ah.p.then(function(){ var kv2=F.m[res._k]; if(kv2&&kv2!==res.vi) tmSwap(j,tmLay(j.text,kv2),res); }); return res;
+    log('hiện ngay câu trong kho, đang chỉnh cùng lượt với các câu trước, xong thì thay');
+    ah.p.then(function(){ var kv2=F.m[res._k]; if(kv2&&kv2!==res.vi) tmSwap(j,tmLay(j.text,kv2),res); });
+    return res;
   }
   var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; S.tmFitLat=S.tmFitLat?Math.round(S.tmFitLat*0.6+(Date.now()-t0)*0.4):Date.now()-t0; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
-  /* the line shows once: the fixed one if it comes in time, else the stored one (the fix is kept for the next time).
-     Swapping a line already on screen made the subtitles jump */
-  var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },wait); })]);
-  if(v===undefined){ log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, chỉnh xong thì thay ngay'); p.then(function(v2){ if(v2&&v2!==res.vi) tmSwap(j,tmLay(j.text,v2),res); }); return res; }
-  if(v){ log('câu trong kho, chỉnh vì '+why+' ('+(Date.now()-t0)+'ms)'+(v!==vi0?': '+v:', giữ nguyên')); res.vi=tmLay(j.text,v); res._fit=1; }
+  log('hiện ngay câu trong kho, đang chỉnh ('+why+'), xong thì thay');
+  p.then(function(v2){ if(v2&&v2!==res.vi){ log('câu trong kho, chỉnh xong sau '+(Date.now()-t0)+'ms'); tmSwap(j,tmLay(j.text,v2),res); } },function(){});
   return res;
 }
 /* ---------- the next lines of the store, checked ahead ----------
