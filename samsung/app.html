@@ -210,7 +210,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.295';
+var VERSION='1.0.296';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -500,23 +500,23 @@ function say(t){
   if(!t) return;
   if(window.speechSynthesis&&viVoice){
     var ss=window.speechSynthesis;
-    if(ss.pending) ss.cancel();                       /* two lines already waiting: start fresh */
-    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=ss.speaking?1.15:1.05; u.volume=Math.min(1,(P.vol||150)/100);
+    ss.cancel();                                      /* a new line is read the moment it shows */
+    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=1.05; u.volume=Math.min(1,(P.vol||150)/100);
     ss.speak(u); return;
   }
-  var behind=!!audio||aq.length>0;
-  if(aq.length>=6) aq.length=0;                       /* far behind: drop what is waiting */
-  chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
+  sayCut();                                          /* a new line is read the moment it shows: not after the ones before it */
+  chunks(t).forEach(function(c){ var it={t:c,fast:false,done:false,buf:null}; aq.push(it); ttsLoad(it); });
   playNext();
 }
 /* a line read by the voice chosen on the computer: the computer made the sound, the TV plays it */
 function sayClip(id,rate){
   if(!P.pc||!id) return;
-  var behind=!!audio||aq.length>0;
-  if(aq.length>=3) aq.length=0;                       /* far behind: drop what is waiting */
-  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:behind,done:false,buf:null};
+  sayCut();
+  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:false,done:false,buf:null};
   aq.push(it); ttsLoad(it); playNext();
 }
+/* the line being read stops for a new one (it was waiting in turn before: the voice fell behind the subtitles) */
+function sayCut(){ aq.length=0; if(audio){ try{ audio.src.stop(0); }catch(e){} audio=null; } }
 function sayStop(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
   aq.length=0;
