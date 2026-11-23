@@ -656,6 +656,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
+                <div class="dk-set" id="hsTvTrimRow" style="margin:2px 0 8px"><div class="lab"><label for="hsTvTrim">Chỉnh khớp tiếng với TV</label><output id="hsTvTrimV" style="white-space:nowrap">0 ms</output></div><input class="hs-range" id="hsTvTrim" type="range" min="-300" max="300" step="10" value="0"><p class="hs-note">Hóng Sub tự căn cho tiếng ở máy tính và TV ra cùng lúc. Vẫn nghe vang thì kéo từng nấc tới khi hai tiếng nhập làm một: tiếng máy tính ra <b>sau</b> TV thì kéo sang trái, ra <b>trước</b> TV thì kéo sang phải. Chỉnh một lần, Hóng Sub nhớ.</p></div>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Trong menu game: bấm <b>nút mic</b> trên tay cầm để dịch menu, lật trang hay di chuyển là tự dịch tiếp. Bấm mic lần nữa hoặc vào lại game là tắt.</p>
@@ -4019,7 +4020,7 @@ function tvListen(){
   }
   if(ip){
     TVD().ping(ip).then(function(r){
-      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); S.tvAud=+r.aud||0; S.tvAlat=+r.alat||0; tvLan(true);
+      if(r&&r.ok&&r.app==='hongsubtv'){ var first=!S.tvBoot; S.tvName=r.name||S.tvName; if(String(r.ver||'old')!==S.tvVer) log('TV '+(r.name||'')+' ở '+ip+': app Hóng Sub TV bản '+(r.ver||'cũ')); S.tvVer=String(r.ver||'old'); S.tvAud=+r.aud||0; tvAlatIn(+r.alat||0,+r.alat2||0); tvLan(true);
         if(tvOld()&&!S.tvOldTold){ S.tvOldTold=true; log('app TV bản cũ: '+S.tvVer); status('warn','App Hóng Sub TV trên TV là bản cũ. Trên TV mở app Hóng Sub TV, bấm Cập nhật.'); tvNotice('App Hóng Sub TV có bản mới: mở app Hóng Sub TV trên TV rồi bấm Cập nhật.'); }
         if(r.boot&&r.boot!==S.tvBoot){ S.tvBoot=r.boot; if(!first) tvHello(); } }
       else { S.tvErr=(r&&r.err)||''; tvWhy(ip); tvLan(false); }
@@ -8629,21 +8630,49 @@ function tvSoundApply(){ if(typeof PS!=='undefined'&&PS.again&&PS.actx) try{ PS.
 function psDelaySet(){
   if(typeof PS==='undefined'||!PS.adelay||!PS.actx) return;
   var want=psDelay(), cur=PS.adelay.delayTime.value;
-  if(Math.abs(want-cur)<0.015) return;
+  if(Math.abs(want-cur)<0.02) return;
   try{ PS.adelay.delayTime.setTargetAtTime(want,PS.actx.currentTime,Math.abs(want-cur)>0.2?0.05:0.3); }catch(e){ PS.adelay.delayTime.value=want; }
-  if(Math.abs(want-(S.tvDelLog||0))>0.05){ S.tvDelLog=want; log('tiếng game: máy tính chờ '+Math.round(want*1000)+' ms cho khớp với TV'); }
+  if(Math.abs(want-(S.tvDelLog||0))>0.05){ S.tvDelLog=want; var own=Math.round(((PS.actx.outputLatency||0)+(PS.actx.baseLatency||0))*1000), tr=tvTrim();
+    log('tiếng game: máy tính chờ '+Math.round(want*1000)+' ms cho khớp với TV (TV chậm '+Math.round(S.tvLat)+' ms'+(S.tvAlat2>0?'':', app TV bản cũ nên ước lượng')+'; máy tính đang đệm '+psLeadMs()+' ms, loa máy tính '+own+' ms'+(tr?', chỉnh tay '+(tr>0?'+':'')+tr+' ms':'')+')'); }
 }
 setInterval(psDelaySet,2000);
 setInterval(function(){ var on=tvSoundNow(); if(on!==TA.on){ TA.on=on; TA.said=false; tvSoundApply(); if(!on&&typeof PS!=='undefined'&&PS.host) log('tiếng game: phát ở máy tính'); }
   var cm=camOnTv(); if(cm!==TA.cam){ TA.cam=cm; tvSoundApply(); if(S.camSrc) log(cm?'capture card: tiếng game đã có ở TV, máy tính im':'capture card: tiếng game phát ở máy tính'); } },1000);
 function psOut(){ if(!PS.again||PS.again.context!==PS.actx){ PS.again=PS.actx.createGain(); PS.adelay=PS.actx.createDelay(2); PS.again.connect(PS.adelay); PS.adelay.connect(PS.actx.destination); PS.adelay.delayTime.value=psDelay(); } PS.again.gain.value=gameMuted()?0:1; return PS.again; }
 /* the game's sound on the TV and here at the same time: the TV's copy comes later (the trip, its small store, its
-   speaker), so this computer's copy waits just as long. The TV says how long its sound takes (alat, in its ping
-   answer); this computer's own output time is taken off. */
-function psDelay(){
-  if(!tvSoundNow()||!(S.tvAlat>0)||typeof PS==='undefined'||!PS.actx) return 0;
+   speaker), so this computer's copy waits just as long. Three things are counted, all "from the moment a packet of
+   sound arrives to the moment it is heard":
+   - the TV: what it says in its ping answer. alat2 (TV app 1.0.294+): its real store when packets arrive, steady.
+     alat (older TV apps): a raw sample that jumps by ~100 ms with every burst of Wi-Fi; following it made this
+     computer's sound swing 100 ms back and forth every few seconds (heard as an echo that comes and goes), so the
+     lowest of the last 8 answers is taken (the samples without a burst);
+   - this computer: its own store (packets are scheduled one after another, 20-300 ms ahead: psLead) plus the sound
+     card. The store was not counted before, so this computer was late by that much (50-150 ms: a steady echo);
+   - "Chỉnh khớp tiếng" (tvTrim): what no device reports (the TV's own sound processing, a soundbar, Bluetooth). */
+function tvAlatIn(a,a2){
+  S.tvAlat=a; S.tvAlat2=a2;
+  var v=a2>0?a2:a, mode=a2>0?2:1;
+  if(!(v>0)){ S.tvAlatQ=[]; S.tvLat=0; return; }
+  if(S.tvAlatM!==mode){ S.tvAlatM=mode; S.tvAlatQ=[]; }
+  var q=S.tvAlatQ||(S.tvAlatQ=[]); q.push(v); if(q.length>(mode===2?3:8)) q.shift();
+  S.tvLat=mode===2?q.slice().sort(function(x,y){ return x-y; })[q.length>>1]:Math.min.apply(null,q);
+}
+/* how far ahead this computer's sound is scheduled when a packet comes: the highest of the last ~3 s (the packets
+   that came on time; a late one finds less ahead of it, on the TV too) */
+function psLead(l){ var t=Date.now(); if(t-(PS.lmAt||0)>1500){ PS.lmB=PS.lmA||0; PS.lmA=0; PS.lmAt=t; } if(l>(PS.lmA||0)) PS.lmA=l; }
+function psLeadMs(){ return typeof PS==='undefined'?0:Math.round(Math.max(PS.lmA||0,PS.lmB||0)*1000); }
+/* this computer's store may grow to 0.3 s (the PS's clock and the sound card's drift apart). With the sound on the TV
+   too it must stay under what the TV itself takes: sound here can wait for the TV, it cannot come earlier than it has */
+function psLeadCap(){
+  if(!tvSoundNow()||!(S.tvLat>0)||!PS.actx) return 0.3;
   var own=((PS.actx.outputLatency||0)+(PS.actx.baseLatency||0))*1000;
-  return Math.max(0,Math.min(1.5,(S.tvAlat+12-own)/1000));
+  return Math.max(0.09,Math.min(0.3,(S.tvLat+(S.tvAlat2>0?4:12)-own+tvTrim())/1000));
+}
+function tvTrim(){ var v=+load('tvTrim',0)||0; return Math.max(-300,Math.min(300,v)); }
+function psDelay(){
+  if(!tvSoundNow()||!(S.tvLat>0)||typeof PS==='undefined'||!PS.actx) return 0;
+  var own=((PS.actx.outputLatency||0)+(PS.actx.baseLatency||0))*1000;
+  return Math.max(0,Math.min(1.5,(S.tvLat+(S.tvAlat2>0?4:12)-own-psLeadMs()+tvTrim())/1000));
 }
 function gameMuteSet(on){
   save('gameMute',!!on);
@@ -8852,7 +8881,8 @@ function psAudioHeader(h){
         ad.close(); if(++PS.aOut===1) log('PS: đã có tiếng game ('+PS.actx.state+')');
         if(PS.actx.state==='suspended') PS.actx.resume().catch(function(){});
         var src=PS.actx.createBufferSource(); src.buffer=buf; if(!(DPS&&typeof DPS.mobile==='string'&&$('hsPsWatch')&&$('hsPsWatch').checked)) src.connect(psOut()); if(PS.vtap) src.connect(PS.vtap);
-        var now=PS.actx.currentTime; if(PS.anext<now+0.02||PS.anext>now+0.3) PS.anext=now+0.05;
+        var now=PS.actx.currentTime; if(PS.anext<now+0.02||PS.anext>now+psLeadCap()){ PS.anext=now+0.05; PS.lmA=0; PS.lmB=0; PS.lmAt=Date.now(); }
+        psLead(PS.anext-now);
         src.start(PS.anext); PS.anext+=buf.duration;
       },
       error:function(e){ PS.adec=null; PS.aErr=(PS.aErr||0)+1; if(PS.aErr<=3||PS.aErr%50===0) log('PS: giải tiếng lỗi ('+PS.aErr+'): '+((e&&e.message)||e)+', mở lại'); }
@@ -8948,6 +8978,10 @@ function psInit(){
   });
   $('hsPsQ').addEventListener('change',playQSync);
   gameMuteSet(false);
+  if($('hsTvTrim')){ var trimUi=function(){ var v=tvTrim(); $('hsTvTrim').value=v; if($('hsTvTrimV')) $('hsTvTrimV').textContent=(v>0?'+':'')+v+' ms'; };
+    trimUi(); $('hsTvTrim').addEventListener('input',function(){ save('tvTrim',+this.value||0); trimUi(); psDelaySet(); });
+    $('hsTvTrim').addEventListener('change',function(){ var v=tvTrim(); log('tiếng game: chỉnh khớp tay '+(v>0?'+':'')+v+' ms'); });
+    setInterval(function(){ var r=$('hsTvTrimRow'); if(r) r.hidden=!tvSoundOn(); },1500); }
   if($('hsTvSound')){ $('hsTvSound').checked=load('tvSound',true); $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game sẽ phát ở TV (giọng đọc theo mục Đọc ở)':'Tiếng game phát ở máy tính'); }); }
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');

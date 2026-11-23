@@ -23,6 +23,16 @@ final class GameSound {
     /** how long the game's sound takes from arriving here to coming out of the speaker (ms), 0 when not playing:
         the computer plays its own copy that much later, so the two are heard together */
     static volatile int latencyMs = 0;
+    /** the same, measured where it counts: when a packet arrives, how much sound is still ahead of it (the store here
+        plus what the speaker's own buffer holds), the highest of the last ~2 s (the packets that came on time; one
+        held back by Wi-Fi finds less ahead of it), plus the TV's output time. latencyMs is a sample taken every
+        half second that assumes a full speaker buffer: it jumps ~100 ms with every burst of Wi-Fi, and the computer
+        following it was heard as an echo that comes and goes. 0 when not playing. */
+    static volatile int latencyMs2 = 0;
+    private volatile long written = 0;       // frames given to the speaker since it was opened
+    private volatile int afMs = 40;          // the TV's own output time behind the speaker buffer
+    private int winCur = 0, winPrev = 0;
+    private long winAt = 0;
     private static java.lang.reflect.Method trackLat;
     static { try { trackLat = AudioTrack.class.getMethod("getLatency"); } catch (Throwable e) { trackLat = null; } }
     private volatile boolean on;
@@ -103,6 +113,7 @@ final class GameSound {
             feed(b, o, len); o += len;
         }
         drain();
+        mark();
     }
 
     /* 'I': every packet has its own number, and each datagram also carries the packets of the one before it, so a
@@ -124,6 +135,26 @@ final class GameSound {
             o += len;
         }
         drain();
+        mark();
+    }
+
+    /* how long the newest packet waits before it is heard (ms): the store + the speaker's buffer + the TV's output */
+    private void mark() {
+        try {
+            AudioTrack tr = track;
+            int ch = chans;
+            if (tr == null || ch == 0) return;
+            int stored; synchronized (pcm) { stored = pcmBytes; }
+            long head = tr.getPlaybackHeadPosition() & 0xFFFFFFFFL;
+            long inTrack = Math.max(0, written - head);
+            int level = (int) (stored * 1000L / (48000L * 2 * ch) + inTrack * 1000L / 48000) - 10;   // to the START of the newest packet (10 ms)
+            if (level < 0) level = 0;
+            if (level > 1500) return;
+            long now = System.currentTimeMillis();
+            if (now - winAt > 1000) { winPrev = winCur; winCur = 0; winAt = now; }
+            if (level > winCur) winCur = level;
+            if (tr.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) latencyMs2 = Math.max(winCur, winPrev) + afMs;
+        } catch (Throwable ignored) { }
     }
 
     private boolean open(int ch) {
@@ -147,7 +178,7 @@ final class GameSound {
                     .setBufferSizeInBytes(Math.max(min * 2, 48000 * 2 * ch / 8))   // about 0.12 s in the speaker itself
                     .setTransferMode(AudioTrack.MODE_STREAM)
                     .build();
-            chans = ch; pts = 0;
+            chans = ch; pts = 0; written = 0; winCur = 0; winPrev = 0; winAt = 0; latencyMs2 = 0;
             synchronized (pcm) { pcm.clear(); pcmBytes = 0; }
             final AudioTrack tr = track;
             final int bps = 48000 * 2 * ch;   // bytes a second
@@ -212,13 +243,16 @@ final class GameSound {
                     if (pcm.isEmpty()) { pcm.wait(60); if (pcm.isEmpty()) { filling = true; continue; } }   // a gap: fill up again
                     chunk = pcm.pollFirst(); pcmBytes -= chunk.length;
                 }
-                tr.write(chunk, 0, chunk.length);   // waits for room in the speaker: keeps the pace even
+                int wr = tr.write(chunk, 0, chunk.length);   // waits for room in the speaker: keeps the pace even
+                if (wr > 0) written += wr / (bps / 48000);
                 long now = System.currentTimeMillis();
                 if (now - latAt > 500) {
                     latAt = now;
                     int dev = 0;
                     try { if (trackLat != null) dev = (Integer) trackLat.invoke(tr); } catch (Throwable ignored) { dev = 0; }
-                    if (dev <= 0 || dev > 1500) dev = (int) (tr.getBufferSizeInFrames() * 1000L / 48000) + 40;
+                    int cap = (int) (tr.getBufferSizeInFrames() * 1000L / 48000);
+                    afMs = (dev > 0 && dev <= 1500) ? Math.max(0, Math.min(400, dev - cap)) : 40;   // getLatency() = the speaker buffer + the TV's output time
+                    if (dev <= 0 || dev > 1500) dev = cap + 40;
                     int stored; synchronized (pcm) { stored = pcmBytes; }
                     latencyMs = stored * 1000 / bps + dev;
                 }
@@ -230,7 +264,7 @@ final class GameSound {
         try { if (dec != null) { dec.stop(); dec.release(); } } catch (Throwable ignored) { }
         dec = null;
         try { if (track != null) { track.pause(); track.flush(); track.release(); } } catch (Throwable ignored) { }
-        track = null; chans = 0; lastSeq = -1; lastPkt = -1; latencyMs = 0;
+        track = null; chans = 0; lastSeq = -1; lastPkt = -1; latencyMs = 0; latencyMs2 = 0;
         synchronized (pcm) { pcm.clear(); pcmBytes = 0; pcm.notifyAll(); }
     }
 }
