@@ -1395,10 +1395,10 @@ async function vipAskCall(body,ms){
   }
   return vipCall('ask',body,ms);
 }
-async function vipAsk(prompt,b64,schema,mode){
+async function vipAsk(prompt,b64,schema,mode,ms){
   var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64; if(mode) body.mode=mode;
   var t0=performance.now(), x;
-  try{ x=await vipAskCall(body,15000); }catch(e){ S.vipDown=Date.now()+8e3; throw e; }   /* back to the VIP server quickly: a VIP member's lines are not sent with their own keys */
+  try{ x=await vipAskCall(body,ms||15000); }catch(e){ S.vipDown=Date.now()+8e3; throw e; }   /* back to the VIP server quickly: a VIP member's lines are not sent with their own keys */
   if(x.r.ok&&x.j.ok){
     count('vip-server','v');
     if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
@@ -4555,9 +4555,13 @@ async function tmLoad(name){
   try{ kept=JSON.parse(localStorage.getItem('hst.tmpack')||'null'); }catch(e){ kept=null; }
   if(kept&&kept.g===g&&Array.isArray(kept.lines)){ raw=kept.lines; raw.forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); }); my.total=Math.max(my.total,kept.total||0); tmUi(); }
   else kept=null;
+  /* once a day the whole store is fetched again, not only the new lines: a line that was fixed in the store keeps its
+     number, so a machine that already had it never got the fixed wording (it only asked for lines after its last one) */
+  var stale=!!kept&&(!kept.at||Date.now()-kept.at>20*36e5);
+  if(stale) raw=[];
   try{
-    var since=kept?(kept.last||0):0, got=0;
-    for(var page=0;page<12;page++){
+    var since=kept&&!stale?(kept.last||0):0, got=0;
+    for(var page=0;page<40;page++){
       var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(g)+'&since='+since,{cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       var d=await r.json(); if(S.tm!==my) return;   /* the game was changed meanwhile */
@@ -4567,9 +4571,9 @@ async function tmLoad(name){
       if(!d.more) break;
     }
     my.last=since;
-    log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept?' (lấy thêm '+got+' câu mới)':''));
+    log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept&&!stale?' (lấy thêm '+got+' câu mới)':kept?' (tải lại cả kho, có cả các câu đã được sửa)':''));
     tmWarm(my);
-    if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
+    if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,at:stale||!kept?Date.now():(kept.at||Date.now()),lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
   }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
   finally{ my.loading=false; if(S.tm===my) tmUi(); }
 }
@@ -4835,6 +4839,106 @@ async function tmAheadAsk(T,pick){
     return got>0;
   }catch(e){ pick.forEach(function(s){ delete S.tmAh.done[s]; }); if(e&&e.cool) S.tmAh.rest=Date.now()+60000;   /* out of requests: the lines on screen come first */ return false; }
 }
+/* ---------- the shop's own tool: one pass over the dialogue lines of this game's store ----------
+   The lines other machines put in the store while their owners played were written under older rules (or by the free
+   machine translator). This pass sends them, a few at a time, to the VIP server with the game's CURRENT notes and
+   rules, and puts every line that changes back in the store (as a "fix": it replaces the old one for everyone).
+   It only ever touches lines already in the store, never adds lines from anywhere else.
+   Hidden: Ctrl+Shift+F9 shows the button under "Kho dịch chung". It needs VIP on this machine and the game's own
+   settings (no changed style or notes: the result is for every machine). It can be stopped and goes on from where
+   it was; the store's server takes 600 lines per 10 minutes from one address, so the pass paces itself. */
+S.tmRedo={on:false,stop:false,i:0,n:0,chg:0,err:0,win:0,winAt:0,note:'',fail:0,t0:0,i0:0};
+function tmRedoUi(){
+  var R=S.tmRedo, b=$('hsTmRedo'), m=$('hsTmRedoMsg'); if(!b||!m) return;
+  b.textContent=R.on?'Dừng dịch lại kho':'Dịch lại toàn bộ câu thoại trong kho của game này';
+  if(!R.n){ if(R.note) m.textContent=R.note; return; }
+  var left='';
+  if(R.on&&R.i>R.i0+60){ var per=(Date.now()-R.t0)/(R.i-R.i0), h=per*(R.n-R.i)/36e5; left=', còn khoảng '+(h>=1?(Math.round(h*10)/10)+' giờ':Math.max(1,Math.round(h*60))+' phút'); }
+  m.textContent='Đã xem '+R.i+' / '+R.n+' câu thoại, sửa '+R.chg+' câu'+(R.err?', bỏ qua '+R.err+' nhóm bị lỗi':'')+left+'. '+
+    (R.i>=R.n?'Đã xong cả kho.':R.on?(R.note?R.note+'.':'Đang chạy: cứ để phần mềm mở, vẫn chơi và dịch bình thường được.'):'Đang dừng. Bấm nút để chạy tiếp từ chỗ này.');
+}
+/* the notes, style and rules the game comes with, whatever this machine has set for itself: the result is for every machine */
+function tmRedoCtx(text){
+  var g=$('hsGame').value.trim(), pr=presetOf(g), nEl=$('hsNotes'), sEl=$('hsStyle'), G=GAMES[gameKey(g)];
+  if(!pr||!pr.notes) return ctxFixed(text,false);
+  var n0=nEl.value, s0=sEl?sEl.value:'', hadR=!!(G&&Object.prototype.hasOwnProperty.call(G,'rules')), r0=hadR?G.rules:null;
+  try{ nEl.value=pr.notes; if(sEl) sEl.value=''; if(hadR&&pr.rules) delete G.rules; return ctxFixed(text,false); }
+  finally{ nEl.value=n0; if(sEl) sEl.value=s0; if(hadR) G.rules=r0; }
+}
+async function tmRedoAsk(T,pick){
+  var en=pick.map(function(s){ return T.map[s].en; }).join(' ');
+  var list=pick.map(function(s,n){ var e=T.map[s]; return (n+1)+'. '+(e.who?'['+e.who+'] ':'')+'EN: '+String(e.en).replace(/\s+/g,' ')+'\n   VI: '+String(e.vi).replace(/\n/g,' / '); }).join('\n');
+  var prompt='These are dialogue lines of a video game kept in a shared store, each with the Vietnamese translation some player\'s machine made earlier (sometimes by a machine translator, often under older rules). They are listed in the order they were stored: neighbours are often, but not always, from the same scene. [Name] is the speaker when known.\n'+
+    'Rewrite each translation so that it follows the character notes and the translation rules below exactly: the meaning of the English, the pronoun pair and the rank between the two characters, the street tone, swearing at the strength of the English (none where the English has none), the slang and the dictionary. A translation that already follows them stays exactly as it is, word for word.\n'+
+    'When neither the line, its speaker nor its neighbours tell who is talking to whom, do not guess a pronoun pair: say it without pronouns. Never use "bạn", "mình" (for "I"), "tớ", "chúng ta", "chúng tôi". Add nothing the English does not say; an English line cut off by the screen stays cut off. Keep "/" where the Vietnamese has it (a line break). Never write the speaker name in the translation.\n'+
+    'Return "items": one {"i": number, "vi": translation} for every line, in order.\n\n'+list+'\n\n'+glossHints(en)+tmRedoCtx(en);
+  var r=await vipAsk(prompt,null,SCHEMA_FSI,null,40000);
+  if(S.tm!==T) return null;
+  var items=r&&r.items; if(!items||!items.length) throw new Error('trả lời thiếu');
+  var got=0, chg=0, mine=tmDiffers();
+  items.forEach(function(it){ var s=pick[(+it.i||0)-1], e=s&&T.map[s], v=String(it.vi||'').trim(); if(!e||!v||junkPair(e.en,v)) return;
+    v=v.replace(/\s*\/\s*/g,'\n'); if(String(e.vi).indexOf('\n')<0) v=v.replace(/\n/g,' ');
+    got++; if(!mine) tmFitKeep(s,v);
+    if(v!==e.vi){ chg++; tmAdd('s',e.en,v,e.who||'',e.gd||'','fix'); } });
+  if(got<Math.ceil(pick.length*0.6)) throw new Error('trả lời thiếu');
+  return {got:got,chg:chg};
+}
+async function tmRedoRun(){
+  var R=S.tmRedo, T=S.tm;
+  if(R.on){ R.stop=true; R.note='Đang dừng sau nhóm câu này'; tmRedoUi(); return; }
+  var no=!T.n||!T.seq||!T.seq.length?'Chưa tải được kho của game này. Chọn game ở ô "Game đang chơi" rồi bấm lại.'
+    :!vipOn()?'Cần gói VIP đang hoạt động trên máy này: việc dịch lại chạy bằng máy chủ VIP.'
+    :(!presetOf($('hsGame').value)&&tmDiffers())?'Game này chưa có bộ luật sẵn và máy này đang dùng ghi chú riêng: kết quả sẽ ghi vào kho cho mọi máy nên không chạy.'
+    :!tmShare()?'Bật "Góp câu tôi dịch vào kho chung" rồi bấm lại.':'';
+  if(no){ R.n=0; R.note=no; tmRedoUi(); return; }
+  var keys=T.seq.filter(function(s){ var e=T.map[s]; return e&&!T.zmap[s]&&!tmJunk(e); });   /* dialogue only: no menu, button or mission text */
+  var sig=tmSig(), sv=load('tmRedo',null), i0=0, chg0=0;
+  if(sv&&sv.sig===sig&&sv.i>0){ var at=sv.k?keys.indexOf(sv.k):-1; i0=at>=0?at:Math.min(sv.i,keys.length); chg0=sv.chg||0; }
+  R.on=true; R.stop=false; R.n=keys.length; R.i=R.i0=i0; R.chg=chg0; R.err=0; R.fail=0; R.note=''; R.t0=Date.now(); R.win=0; R.winAt=Date.now();
+  var size=10;
+  log('kho dịch chung: dịch lại '+keys.length+' câu thoại của '+T.name+' theo luật hiện tại'+(i0?' (chạy tiếp từ câu '+i0+')':'')); tmRedoUi();
+  try{
+    while(R.i<keys.length&&!R.stop&&S.tm===T){
+      var now=Date.now(); if(now-R.winAt>600000){ R.winAt=now; R.win=0; }
+      if(R.win>=500){ R.note='Máy chủ kho chỉ nhận 600 câu sửa mỗi 10 phút: chờ '+Math.max(1,Math.ceil((600000-(now-R.winAt))/60000))+' phút rồi chạy tiếp'; tmRedoUi(); await sleepMs(15000); continue; }
+      if(S.tm.out.length>80){ await sleepMs(2000); continue; }
+      if(!vipOn()){ R.note='Gói VIP trên máy này không còn hoạt động'; break; }
+      if(now<S.vipOut||now<S.vipDown){ R.note='Máy chủ VIP đang nghỉ (hết lượt hôm nay hoặc đang bận): tự chạy tiếp khi có lại'; tmRedoUi(); await sleepMs(now<S.vipOut?120000:10000); continue; }
+      /* a group: up to "size" lines, not more than ~1,000 letters of Vietnamese (the server answers in 1,024 tokens) */
+      var pick=[], len=0;
+      for(var k=R.i;k<keys.length&&pick.length<size;k++){ var e=T.map[keys[k]], l=String(e.vi).length+40; if(pick.length&&len+l>1000) break; pick.push(keys[k]); len+=l; }
+      var r=null;
+      try{ r=await tmRedoAsk(T,pick); R.fail=0; if(size<10) size++; }
+      catch(e){
+        R.fail++;
+        if(e&&e.cool){ R.note='Máy chủ VIP báo hết lượt, chờ rồi thử lại'; tmRedoUi(); await sleepMs(120000); continue; }
+        if(pick.length>1&&R.fail<4){ size=Math.max(1,Math.floor(pick.length/2)); await sleepMs(3000); continue; }   /* too much for one answer: fewer lines */
+        if(R.fail<6){ await sleepMs(8000); continue; }
+        R.err++; R.fail=0; log('kho dịch chung: bỏ qua một nhóm câu không dịch lại được ('+String(e&&e.message||e).slice(0,80)+')');
+      }
+      if(r===null&&S.tm!==T) break;
+      if(r){ R.chg+=r.chg; R.win+=r.chg; }
+      R.i+=pick.length; R.note=''; save('tmRedo',{sig:sig,i:R.i,k:keys[R.i]||'',chg:R.chg}); tmRedoUi();
+      await sleepMs(250);
+    }
+  }finally{
+    R.on=false; R.stop=false;
+    log('kho dịch chung: dịch lại '+(R.i>=R.n?'xong':'dừng ở câu '+R.i+' / '+R.n)+', đã sửa '+R.chg+' câu');
+    tmRedoUi();
+  }
+}
+(function(){
+  var b=$('hsTmRedo'), row=$('hsTmRedoRow'); if(!b||!row) return;
+  b.addEventListener('click',function(){ tmRedoRun(); });
+  document.addEventListener('keydown',function(e){
+    if(!(e.ctrlKey&&e.shiftKey&&e.key==='F9')) return;
+    e.preventDefault(); row.hidden=!row.hidden; if(row.hidden) return;
+    var sv=load('tmRedo',null); if(sv&&sv.i&&!S.tmRedo.n){ S.tmRedo.note='Lần trước dừng ở câu '+sv.i+' (đã sửa '+(sv.chg||0)+' câu). Bấm nút để chạy tiếp.'; }
+    tmRedoUi();
+    var g=document.querySelector('[data-go="game"]'); if(g) g.click();
+    setTimeout(function(){ try{ row.scrollIntoView({block:'center'}); }catch(x){} },300);
+  });
+})();
 async function tmFlush(){
   var q=S.tm.out; if(!q.length) return;
   var g=q[0].g, name=q[0].name, batch=q.filter(function(x){return x.g===g;}).slice(0,25);
@@ -9056,7 +9160,7 @@ if(IOS){
 S.wait=S0.wait; S.hold=S0.hold; S.allowFree=S0.allowFree;
 window.__hongsub=S; /* for testing */
 /* controls used by the Windows app's own settings pages */
-window.hsApi={S:S,save:save,load:load,log:log,show:function(r){ show(r); },logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setStream:function(st){ setStream(st,null); },fsBlocks:function(){ return fsBlocks(); },fonts:FONTS,fontLoad:function(k){ fontLoad(k); },fontCss:function(){ return subFont(); },fontUrl:function(k){ return fontUrl(k); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
+window.hsApi={tmRedo:function(){ return tmRedoRun(); },S:S,save:save,load:load,log:log,show:function(r){ show(r); },logs:function(){return LOG;},status:status,tvType:function(){return S.tvType;},zTv:function(z){ zTv(z); },zoneTick:function(f,z){ return zoneTick(f,z); },zKey:function(x){ return zKey(x); },setStream:function(st){ setStream(st,null); },fsBlocks:function(){ return fsBlocks(); },fonts:FONTS,fontLoad:function(k){ fontLoad(k); },fontCss:function(){ return subFont(); },fontUrl:function(k){ return fontUrl(k); },tm:{find:function(x){ return tmFind(x); },add:function(k,e,v,w,g,via){ tmAdd(k,e,v,w,g,via); },flush:function(){ return tmFlush(); },load:function(n){ return tmLoad(n); },translate:function(text){ return translateText({seq:++S.seq,text:text}); },ocr:function(text){ ocrTake(text,false); }},setTvType:tvTypeSet,tvCodeFor:tvCodeFor,tvState:tvState,
   pick:function(manual){S.offlineDemo=false; return pick(!!manual);}, pickCam:function(){save('cam',''); return pickCam();},
   start:startRun, stop:stopRun, full:fullScreen, now:function(){ if(S.stream) tick(true); }, setSpeak:setSpeak, draw:function(){ if(S.stream){ showRegion(); setDraw(true); } },
   setScan:function(ms){ S.interval=ms; save('interval',ms); if(S.running){restartTimer();} document.querySelectorAll('#hsSpeed button').forEach(function(x){x.classList.toggle('on',+x.dataset.v===ms);}); },
