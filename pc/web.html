@@ -454,7 +454,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
       <section class="hs-sec">
         <div class="t"><b>Giọng đọc</b></div>
         <label class="hs-sw" style="margin-top:0">Đọc to phụ đề <input type="checkbox" id="hsSpeak" checked></label>
-        <div class="hs-f" style="margin-top:8px"><label for="hsSpeakWhere">Đọc ở</label><select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng của TV)</option><option value="both">Cả máy tính và TV</option></select></div>
+        <div class="hs-f" style="margin-top:8px"><label for="hsSpeakWhere">Đọc ở</label><select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV</option><option value="both">Cả máy tính và TV</option></select></div>
         <div class="hs-f" style="margin-top:12px">
           <div class="hs-row" style="flex-wrap:nowrap">
             <select class="hs-in" id="hsVoice" style="flex:1;min-width:0" aria-label="Giọng đọc"></select>
@@ -3881,8 +3881,8 @@ function ggNext(){
   a.onended=next; a.onerror=next; a.play().catch(next);
 }
 function ggWeb(t,rate,queue){
-  ggStop(); GQ.length=0;                              /* a new subtitle is read the moment it shows */
-  var r=Math.max(0.5,Math.min(2,rate||1));
+  if(!queue) ggStop();                                /* every subtitle is read in full: waiting lines are read faster */
+  var r=Math.max(0.5,Math.min(2,(rate||1)*(queue&&(gAud||GQ.length)?Math.min(1.6,1.15+0.12*GQ.length):1)));
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
 }
@@ -3929,10 +3929,11 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   var v0=mode==='gg:vi'?null:webVoice(mode,g);
   if(PH&&v0&&v0.ph){ try{ PH.speak(t,v0.name,rate,pitch||1,!!queue); }catch(e){} return; }   /* a voice of the phone (Android) */
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
-  /* a new subtitle is read the moment it shows (the voice of the browser starts at once): the line being read stops */
-  speechSynthesis.cancel();
+  /* every line is read in full: a new one waits for the line being read, and is read faster the more lines wait */
+  if(!queue) speechSynthesis.cancel();
+  else if(speechSynthesis.speaking||speechSynthesis.pending){ S.ssWait=(S.ssWait||0)+1; rate=Math.min(2,rate*Math.min(1.6,1.15+0.12*S.ssWait)); }
   var v=v0;
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); }; speechSynthesis.speak(u);
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); S.ssWait=Math.max(0,(S.ssWait||0)-1); }; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){

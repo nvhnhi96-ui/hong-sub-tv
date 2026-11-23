@@ -1308,7 +1308,7 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
             <label class="hs-sw dk-sw">Đọc to phụ đề tiếng Việt <input type="checkbox" id="hsSpeak" checked></label>
             <div class="dk-set">
               <label class="lab" for="hsSpeakWhere">Đọc ở</label>
-              <select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng của TV)</option><option value="both">Cả máy tính và TV</option></select>
+              <select class="hs-in" id="hsSpeakWhere"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV</option><option value="both">Cả máy tính và TV</option></select>
               <p class="hs-note">Khi đã nối TV: chọn đọc trên máy tính, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.</p>
             </div>
             <div class="dk-set" id="hsTvVoiceRow" hidden>
@@ -4781,8 +4781,8 @@ function ggNext(){
   a.onended=next; a.onerror=next; a.play().catch(next);
 }
 function ggWeb(t,rate,queue){
-  ggStop(); GQ.length=0;                              /* a new subtitle is read the moment it shows */
-  var r=Math.max(0.5,Math.min(2,rate||1));
+  if(!queue) ggStop();                                /* every subtitle is read in full: waiting lines are read faster */
+  var r=Math.max(0.5,Math.min(2,(rate||1)*(queue&&(gAud||GQ.length)?Math.min(1.6,1.15+0.12*GQ.length):1)));
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
 }
@@ -4829,10 +4829,11 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   var v0=mode==='gg:vi'?null:webVoice(mode,g);
   if(PH&&v0&&v0.ph){ try{ PH.speak(t,v0.name,rate,pitch||1,!!queue); }catch(e){} return; }   /* a voice of the phone (Android) */
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
-  /* a new subtitle is read the moment it shows (the voice of the browser starts at once): the line being read stops */
-  speechSynthesis.cancel();
+  /* every line is read in full: a new one waits for the line being read, and is read faster the more lines wait */
+  if(!queue) speechSynthesis.cancel();
+  else if(speechSynthesis.speaking||speechSynthesis.pending){ S.ssWait=(S.ssWait||0)+1; rate=Math.min(2,rate*Math.min(1.6,1.15+0.12*S.ssWait)); }
   var v=v0;
-  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); }; speechSynthesis.speak(u);
+  var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); S.ssWait=Math.max(0,(S.ssWait||0)-1); }; speechSynthesis.speak(u);
 }
 var SAMPLE='Xin chào, mình là giọng đọc phụ đề của Hóng Sub. Chúng ta phải rời khỏi đây trước khi trời sáng.';
 function sample(){
@@ -7402,7 +7403,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,flLayer:flLayer,videoBox:videoBox};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }

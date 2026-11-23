@@ -482,7 +482,7 @@ function playNext(){
   var it=aq.shift(), c=ac();
   if(!it.buf||!c){ playNext(); return; }
   var s=c.createBufferSource(), cur={src:s};
-  s.buffer=it.buf; if(s.playbackRate){ var pr=(it.rate||1)*(it.fast?1.12:1); if(pr!==1) s.playbackRate.value=pr; }
+  s.buffer=it.buf; if(s.playbackRate){ var pr=(it.rate||1)*(it.fast?Math.min(1.6,1.15+0.1*aq.length):1); if(pr!==1) s.playbackRate.value=pr; }
   /* volume set on the computer: above 100% the voice is amplified, with a limiter so it does not crackle */
   var g=(P.vol||150)/100, out=c.destination;
   if(g!==1&&c.createGain){ try{ var gn=c.createGain(); gn.gain.value=g; var lim=c.createDynamicsCompressor?c.createDynamicsCompressor():null;
@@ -497,23 +497,23 @@ function say(t){
   if(!t) return;
   if(window.speechSynthesis&&viVoice){
     var ss=window.speechSynthesis;
-    ss.cancel();                                      /* a new line is read the moment it shows */
-    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=1.05; u.volume=Math.min(1,(P.vol||150)/100);
+    var busy=ss.speaking||ss.pending;                 /* every line read in full: it waits its turn, faster when lines wait */
+    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=busy?1.35:1.1; u.volume=Math.min(1,(P.vol||150)/100);
     ss.speak(u); return;
   }
-  sayCut();                                          /* a new line is read the moment it shows: not after the ones before it */
-  chunks(t).forEach(function(c){ var it={t:c,fast:false,done:false,buf:null}; aq.push(it); ttsLoad(it); });
+  var behind=!!audio||aq.length>0;                   /* every line read in full: waiting lines are read faster */
+  if(aq.length>=16) aq.splice(0,aq.length-8);
+  chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
   playNext();
 }
 /* a line read by the voice chosen on the computer: the computer made the sound, the TV plays it */
 function sayClip(id,rate){
   if(!P.pc||!id) return;
-  sayCut();
-  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:false,done:false,buf:null};
+  var behind=!!audio||aq.length>0;
+  if(aq.length>=8) aq.shift();
+  var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:behind,done:false,buf:null};
   aq.push(it); ttsLoad(it); playNext();
 }
-/* the line being read stops for a new one (it was waiting in turn before: the voice fell behind the subtitles) */
-function sayCut(){ aq.length=0; if(audio){ try{ audio.src.stop(0); }catch(e){} audio=null; } }
 function sayStop(){
   try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
   aq.length=0;

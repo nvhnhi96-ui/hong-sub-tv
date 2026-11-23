@@ -118,15 +118,14 @@ public class OverlayService extends Service {
             File f = new File(getCacheDir(), "clip" + (++clipSeq % 8) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
             try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
             safePost(() -> {
-                /* a new line is read the moment it comes (its subtitle is on screen now): the line being read stops,
-                   unless it is about to end (then the new one follows it). Before, lines waited in turn and the voice
-                   on the TV fell further and further behind the subtitles. */
-                clips.clear();
-                clips.add(new Object[]{f, rate});
+                /* every line is read in full, none is cut or skipped: a new line waits for the one being read, which
+                   speeds up; the waiting lines are read faster the more of them wait, so the voice catches up */
+                if (clips.size() >= 8) clips.pollFirst();   // only when far, far behind
+                boolean behind = clipPlayer != null || !clips.isEmpty();
+                float boost = behind ? Math.min(1.6f, 1.15f + 0.12f * clips.size()) : 1f;
+                clips.add(new Object[]{f, Math.min(2.4f, rate * boost)});
                 if (clipPlayer != null) {
-                    int left = 0;
-                    try { left = clipPlayer.getDuration() - clipPlayer.getCurrentPosition(); } catch (Exception ignored) { left = 1000000; }
-                    if (left > 450) { try { clipPlayer.stop(); } catch (Exception ignored) { } try { clipPlayer.release(); } catch (Exception ignored) { } clipPlayer = null; }
+                    try { float sp = Math.min(2.4f, Math.max(clipPlayer.getPlaybackParams().getSpeed(), 1f) * 1.25f); clipPlayer.setPlaybackParams(new PlaybackParams().setSpeed(sp)); } catch (Exception ignored) { }
                 }
                 if (clipPlayer == null) clipNext();
             });
@@ -838,9 +837,10 @@ public class OverlayService extends Service {
             box.setVisibility(View.VISIBLE);
             main.removeCallbacks(hideRunnable);
             main.postDelayed(hideRunnable, holdMs);
-            if (speakIt && ttsReady) {   // read the moment it shows: the line being read stops
-                ttsPending.set(1);
-                tts.speak(vi, TextToSpeech.QUEUE_FLUSH, ttsParams(), "line" + (++ttsSeq));
+            if (speakIt && ttsReady) {   // every line read in full: it waits for the one being read, faster when lines wait
+                int wait = ttsPending.getAndIncrement();
+                try { tts.setSpeechRate(Math.min(1.9f, 1.2f + 0.15f * Math.max(0, wait))); } catch (Exception ignored) { }
+                tts.speak(vi, TextToSpeech.QUEUE_ADD, ttsParams(), "line" + (++ttsSeq));
             }
         });
     }

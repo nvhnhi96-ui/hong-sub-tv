@@ -4,15 +4,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-/* Read-aloud lines follow the subtitles on screen: a new line is read the moment its voice is ready (made as soon as the
-   Vietnamese shows). Before, a new line waited for the one being read and a line that waited 3 s was dropped: the
-   voice came late and lines went missing. Now the line being read speeds up while the new one's voice is made, and
-   when the new voice is ready it takes over at once, unless the line being read is about to end (then it follows it). */
+/* Every line is read in full, none is skipped or cut (11/2026: lines cut half-way or dropped when the voice fell behind).
+   Each line's voice is made the moment its Vietnamese shows, so the next line is ready when the one before it ends.
+   When lines come faster than they can be read, the reading gets faster instead: the line being read speeds up, and
+   the waiting ones are read faster the more of them wait (up to 1.8x), so the voice catches up with the subtitles. */
 const lines = []; let cur = null;
-const MAX_WAIT_MS = 6000, STUCK_MS = 9000, TAIL_MS = 450;
+const STUCK_MS = 9000, BACKLOG_MAX = 8;
 /* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
    such line kept the reading silent for the rest of the session */
-setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - cur.at > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
+setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - Math.max(cur.at, cur.curAt || 0) > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
 function lineDrop(L) { if (L) L.dropped = true; if (L && L.ai && L.id) ipcRenderer.send('aiv-drop', L.id); }
 function stopAll() {
   seq++; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } audio = null; }
@@ -71,20 +71,11 @@ function prepare(L) {
   }).catch((e) => { if (L.voice) { fallback(L, 'giọng lỗi: ' + (e && e.message)); return; } said(L, false, e && e.message); L.ended = true; if (cur === L) playPart(); });
 }
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
-/* how long the line being read still has to go (ms); a long time when that is not known yet */
-function leftMs() {
-  if (!cur) return 0;
-  if (!cur.ended || cur.parts.length || !audio) return 1e9;
-  const d = audio.duration; if (!isFinite(d) || !d) return 1e9;
-  return Math.max(0, (d - audio.currentTime) * 1000 / (audio.playbackRate || 1));
-}
-/* the newest line has its voice: it is read now */
-function takeOver(L) {
-  if (cur === L || lines[0] !== L) return;
-  if (cur) { if (cur.startAt && leftMs() <= TAIL_MS) return; cutCur(); }   /* about to end: the new line follows it */
-  startNext();
-}
-function speedOf(c) { return Math.max(1, Math.min(1.6, c.boost * (c.hurry || 1), 2.3 / Math.max(1, c.rate || 1))); }   /* never faster than 2.3x in all */
+/* a waiting line has its voice: it is read as soon as nothing else is (never over or instead of the line being read) */
+function takeOver(L) { if (!cur) startNext(); }
+function speedOf(c) { return Math.max(1, Math.min(1.8, c.boost * (c.hurry || 1), 2.4 / Math.max(1, c.rate || 1))); }   /* never faster than 2.4x in all */
+/* the speed a line starts at: faster the more lines wait behind it */
+function backlogBoost() { return lines.length ? Math.min(1.6, 1.15 + 0.12 * lines.length) : 1; }
 function cutCur() { const c = cur; if (!c) return; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } } audio = null; lineDrop(c); cur = null; }
 function playPart() {
   const c = cur;
@@ -106,25 +97,25 @@ function startNext() {
   if (cur) return;
   while (lines.length) {
     const L = lines.shift();
-    if (Date.now() - L.at > MAX_WAIT_MS && !L.pre) { lineDrop(L); continue; }   /* its voice never came in time: its subtitle is long gone */
+    if (L.dropped) continue;
+    L.curAt = Date.now(); L.boost = Math.max(L.boost || 1, backlogBoost());
     cur = L; L.playing = false; playPart(); return;
   }
 }
 /* a new line arrived while one is being read: read the current one a little faster so the voice keeps up */
 function hurry() {
   if (!cur) return;
-  cur.hurry = Math.min(1.5, (cur.hurry || 1) * 1.3);
+  cur.hurry = Math.min(1.6, (cur.hurry || 1) * 1.25);
   if (audio) { const sp = speedOf(cur); audio.playbackRate = cur.applyRate ? cur.rate * cur.pitch * sp : cur.pitch * sp; }
 }
 function enqueue(L, queue) {
   if (!queue) stopAll();
   else {
-    while (lines.length) lineDrop(lines.shift());        /* only the newest line waits: an older waiting one is already late */
-    if (cur && !cur.startAt) cutCur();                   /* a line whose voice is not made yet: the newer line comes first */
-    if (cur) hurry();                                    /* read faster while the new line's voice is made */
+    while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());   /* only when far, far behind (8 lines waiting) */
+    if (cur) hurry();                                    /* the line being read goes faster: the next one is waiting */
+    lines.forEach((x) => { x.boost = Math.max(x.boost || 1, 1.15 + 0.12 * lines.length); });
   }
   prepare(L); lines.push(L); startNext();
-  if (cur !== L && L.parts.length) takeOver(L);          /* a clip made already: at once */
 }
 ipcRenderer.on('aiv-audio', (e, m) => {
   const L = (cur && cur.id === m.id) ? cur : lines.find(x => x.id === m.id);
