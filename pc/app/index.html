@@ -1126,7 +1126,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
               <label class="hs-sw" style="margin-top:10px">Góp câu tôi dịch vào kho chung <input type="checkbox" id="hsTmShare" checked></label>
               <label class="hs-sw" style="margin-top:10px">Chỉnh câu trong kho theo cài đặt của tôi (phong cách dịch, xưng hô, từ điển riêng) <input type="checkbox" id="hsTmFit" checked></label>
               <p class="hs-note" style="margin-top:4px">Câu trong kho do người khác dịch với cài đặt của họ. Bật mục này, câu đó được AI chỉnh lại cho đúng phong cách dịch, ghi chú xưng hô và từ điển của bạn trước khi hiện (kể cả luật dịch riêng của game; app chỉnh trước các câu sắp tới nên thường hiện ngay), xuống dòng và dấu câu giống câu tiếng Anh trên màn hình. Câu đã chỉnh được nhớ trên máy, gặp lại hiện ngay.</p>
-              <p class="hs-note" style="margin-top:4px">Chỉ gửi câu thoại của game và bản dịch, không gửi mã AI hay thông tin của bạn. Chỉ những câu dịch chuẩn mới được góp vào kho: câu do AI dịch, dịch theo đúng cài đặt của game, chữ tiếng Anh đọc rõ ràng. Câu do máy dịch miễn phí dịch, câu đọc sai chữ hoặc dịch theo cài đặt riêng của bạn thì chỉ lưu trên máy bạn.</p>
+              <p class="hs-note" style="margin-top:4px">Chỉ gửi câu thoại của game và bản dịch, không gửi mã AI hay thông tin của bạn. Chỉ câu dịch chuẩn mới được góp vào kho: câu do AI dịch từ câu tiếng Anh có nghĩa, ra tiếng Việt hẳn hoi. Câu dịch theo văn phong, ghi chú nhân vật và từ điển riêng của bạn (hay do app tra trên mạng viết ra) vẫn được góp, vì mỗi câu lấy từ kho đều được chỉnh lại theo cài đặt của người đọc. Câu do máy dịch miễn phí dịch, và câu tiếng Anh đọc ra không có nghĩa, thì chỉ lưu trên máy bạn.</p>
               <!-- the shop's own tool, shown with Ctrl+Shift+F9: one pass over this game's dialogue lines in the store with the current rules -->
               <div id="hsTmRedoRow" hidden style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
                 <div class="lab">Công cụ của shop</div>
@@ -5431,17 +5431,12 @@ function tmFind1(text,strict){
   return {en:text,vi:e.vi,speaker:e.who,gender:e.gd,_tm:true,_k:ek,_fz:fz};   /* _fz: only nearly the same line (a misread letter, or another player's line with more words) */
 }
 /* ---------- only a translation that can be stood behind goes into the shared store ----------
-   The store is read by every player of this game, so a line put in it has to be one they can trust: made by an AI
-   (never the free machine translator), with the game's own settings (not this player's own style and pronouns),
-   from English the reader read cleanly, and the Vietnamese really Vietnamese. Everything else is still kept on this
-   machine and still shown here - it is only not sent to everyone. */
-function tmEnOk(en){
-  if(!DICT.common) return true;                                   /* the English dictionary is not loaded yet: nothing to check with */
-  var toks=String(en).match(/[A-Za-z][A-Za-z'’]{2,}/g)||[], n=0, bad=0;
-  toks.forEach(function(t){ if(/^[A-Z]/.test(t)) return;          /* a name or a word in CAPITALS: the dictionary does not hold it */
-    n++; if(!dictHas(t.toLowerCase().replace(/[’']s$/,'').replace(/[’']/g,"'"))) bad++; });
-  return n<2||bad/n<=0.25;                                        /* a quarter of the words unknown: the reader misread the line */
-}
+   The store is read by every player of this game, so a line put in it has to be one they can trust: translated by an
+   AI (never the free machine translator) from English that means something, into Vietnamese that is really
+   Vietnamese. The style and the character notes it was translated with - the ones the app looked up and wrote, or
+   the player's own - are welcome: every line of the store is brought to the reader's own settings before it shows.
+   English that means nothing (the reader misread it) is kept as it is, not translated and not shared.
+   A line that does not pass is still kept and used on this machine, it is only not sent to everyone. */
 function tmViOk(vi){
   var v=String(vi).trim(); if(!v||/\{\{|\}\}|<<</.test(v)) return false;
   if(v.split(/\s+/).length>3&&!/[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i.test(v)) return false;   /* a long line without one Vietnamese mark: it was not translated */
@@ -5450,7 +5445,7 @@ function tmViOk(vi){
 S.tmNoShare=0;
 function tmGood(en,vi,via){
   var why=via==='free'?'máy dịch miễn phí':via==='tm'||via==='gloss'?'không phải câu AI vừa dịch':
-    (via!=='redo'&&tmDiffers())?'cài đặt dịch trên máy này khác cài đặt của game':!tmEnOk(en)?'bộ đọc chữ đọc chưa chuẩn câu tiếng Anh':!tmViOk(vi)?'câu dịch chưa đạt':'';
+    dictJunk(en)?'câu tiếng Anh đọc ra không có nghĩa':!tmViOk(vi)?'câu dịch chưa đạt':'';
   if(!why) return true;
   if(++S.tmNoShare<=8) log('không góp vào kho dịch chung ('+why+'): '+String(en).replace(/\s+/g,' ').slice(0,70));
   return false;
