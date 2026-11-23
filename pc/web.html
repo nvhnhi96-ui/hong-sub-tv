@@ -1263,7 +1263,7 @@ function vipLeft(){ return S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.no
 function vipUi(){
   var on=vipOn(), el=$('hsVip');
   if(el&&!el.value&&S.vip.code) el.value=S.vip.code;
-  if(on) vipMsg('ok','Bạn đang dùng gói '+(S.vip.tier&&S.vip.tier!=='VIP'?S.vip.tier:'VIP')+(S.vip.lim?' (tối đa '+vipMoney(S.vip.lim).replace('đ','')+' câu mỗi ngày)':S.vip.tier?' (không giới hạn câu)':'')+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.');
+  if(on) vipMsg('ok','Bạn đang dùng gói '+(S.vip.tier&&S.vip.tier!=='VIP'?S.vip.tier:'VIP')+(S.vip.lim?' (tối đa '+vipMoney(S.vip.lim).replace('đ','')+' câu mỗi ngày)':S.vip.tier?' (không giới hạn câu)':'')+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini. Có thêm mã Gemini của bạn thì mã đó chỉ dùng khi máy chủ VIP chậm hoặc bận, nên gần như không tốn lượt mã của bạn.');
   else if(S.vip.err) vipMsg('err',S.vip.err);
   else vipMsg('','');
   var set=function(id,f){ var x=$(id); if(x) f(x); };
@@ -1403,7 +1403,8 @@ async function vipAsk(prompt,b64,schema,mode){
     count('vip-server','v');
     if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
     if(x.j.until) S.vip.until=x.j.until*1000;
-    log('VIP '+Math.round(performance.now()-t0)+'ms'+(x.j.ms?' (AI '+x.j.ms+'ms'+(x.lite?', máy chủ nhanh':'')+')':''));
+    var vms=Math.round(performance.now()-t0); S.vipLat=S.vipLat?Math.round(S.vipLat*0.7+vms*0.3):vms;
+    log('VIP '+vms+'ms'+(x.j.ms?' (AI '+x.j.ms+'ms'+(x.lite?', máy chủ nhanh':'')+')':''));
     return x.j.data||null;
   }
   var c=x.j.code||'', m=x.j.message||('VIP lỗi '+x.r.status);
@@ -2632,16 +2633,25 @@ function hedged(order,key,prompt,b64,schema){
     start(); arm();
   });
 }
+/* how long a line waits for the VIP server before the customer's own keys are asked too: about as long as the VIP
+   server has been taking lately */
+function vipHold(){ var l=S.vipLat||0; return l?Math.max(900,Math.min(2600,Math.round(l*1.35))):1600; }
 async function gemini(prompt,b64,schema){
-  if(vipOn()&&Date.now()>=S.vipDown){
-    if(gKeys().length){   /* VIP and the customer's own Gemini keys at the same time: the first good answer (VIP's server takes 2-8 s) */
-      var own=geminiOwn(prompt,b64,schema), vip=vipAsk(prompt,b64,schema);
-      return await new Promise(function(ok,bad){ var n=0, err=null; function f(e){ err=err||e; if(++n===2) bad(err); }
-        own.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); vip.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); });
-    }
-    return await vipAsk(prompt,b64,schema);
-  }
-  return geminiOwn(prompt,b64,schema);
+  if(!(vipOn()&&Date.now()>=S.vipDown)) return geminiOwn(prompt,b64,schema);
+  var vip=vipAsk(prompt,b64,schema);
+  if(!gKeys().length) return await vip;
+  /* A VIP member's lines go to the VIP server. The customer's own Gemini keys are only asked when the VIP server is
+     slow (nothing back within vipHold) or fails, so their own free quota is not spent on every line as well
+     (before: both went out together on every line and whichever answered first won). */
+  return await new Promise(function(ok,bad){
+    var done=false, own=null, ve=null, oe=null, t=null;
+    function win(r){ if(done) return; done=true; if(t){ clearTimeout(t); t=null; } ok(r); }
+    function lose(){ if(done||!ve||(own&&!oe)) return; done=true; if(t){ clearTimeout(t); t=null; } bad(ve||oe); }
+    function startOwn(){ if(own||done) return; own=geminiOwn(prompt,b64,schema);
+      own.then(function(r){ if(r) win(r); else { oe=new Error('trống'); lose(); } },function(e){ oe=e; lose(); }); }
+    vip.then(function(r){ if(r) win(r); else { ve=new Error('trống'); startOwn(); lose(); } },function(e){ ve=e; startOwn(); lose(); });
+    t=setTimeout(startOwn,vipHold());
+  });
 }
 async function geminiOwn(prompt,b64,schema){
   if(!gKeys().length){ var nk=new Error(vipOn()?'VIP tạm bận, thử lại sau giây lát':'cool'); nk.cool=true; throw nk; }
