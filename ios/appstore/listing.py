@@ -71,22 +71,37 @@ def do_info_loc():
 
 
 def do_age():
+    """every question answered "no / none". The list of questions grows over time: take it from the declaration itself,
+    try "NONE" for the level questions and False for the yes/no ones, and swap the type of any answer Apple refuses."""
     info = app_info()
     ard = call('GET', '/v1/appInfos/%s/ageRatingDeclaration' % info['id'])['data']
-    none = 'NONE'
-    attrs = {k: none for k in ['alcoholTobaccoOrDrugUseOrReferences', 'contests', 'gamblingSimulated', 'horrorOrFearThemes',
-                               'matureOrSuggestiveThemes', 'medicalOrTreatmentInformation', 'profanityOrCrudeHumor',
-                               'sexualContentGraphicAndNudity', 'sexualContentOrNudity', 'violenceCartoonOrFantasy',
-                               'violenceRealistic', 'violenceRealisticProlongedGraphicOrSadistic']}
-    attrs.update({'gambling': False, 'unrestrictedWebAccess': False, 'lootBox': False})
-    # newer questions (2025): try them, drop any the API does not know
-    extra = {'messagingAndChat': False, 'parentalControls': False, 'ageAssurance': False, 'userGeneratedContent': False,
-             'advertising': False, 'healthOrWellnessTopics': False, 'gunsOrOtherWeapons': 'NONE'}
-    body = dict(attrs); body.update(extra)
-    try:
-        call('PATCH', '/v1/ageRatingDeclarations/' + ard['id'], {'data': {'type': 'ageRatingDeclarations', 'id': ard['id'], 'attributes': body}}, quiet=True)
-    except Exception:
-        call('PATCH', '/v1/ageRatingDeclarations/' + ard['id'], {'data': {'type': 'ageRatingDeclarations', 'id': ard['id'], 'attributes': attrs}})
+    print('   questions:', json.dumps(ard['attributes'], ensure_ascii=False))
+    levels = {'alcoholTobaccoOrDrugUseOrReferences', 'contests', 'gamblingSimulated', 'horrorOrFearThemes',
+              'matureOrSuggestiveThemes', 'medicalOrTreatmentInformation', 'profanityOrCrudeHumor',
+              'sexualContentGraphicAndNudity', 'sexualContentOrNudity', 'violenceCartoonOrFantasy', 'violenceRealistic',
+              'violenceRealisticProlongedGraphicOrSadistic', 'gunsOrOtherWeapons'}
+    skip = {'kidsAgeBand', 'ageRatingOverride', 'ageRatingOverrideV2', 'koreaAgeRatingOverride', 'developerAgeRatingInfoUrl'}
+    attrs = {}
+    for k, v in ard['attributes'].items():
+        if k in skip: continue
+        if isinstance(v, bool) or (v is None and k not in levels): attrs[k] = False
+        else: attrs[k] = 'NONE'
+    for _ in range(4):
+        r = requests.patch(BASE + '/v1/ageRatingDeclarations/' + ard['id'], headers={'Authorization': 'Bearer ' + tok(), 'Content-Type': 'application/json'},
+                           json={'data': {'type': 'ageRatingDeclarations', 'id': ard['id'], 'attributes': attrs}})
+        if r.status_code < 400:
+            return
+        errs = r.json().get('errors', [])
+        print('   retry:', [(e.get('source', {}).get('pointer'), e.get('detail', '')[:120]) for e in errs])
+        changed = False
+        for e in errs:
+            k = (e.get('source') or {}).get('pointer', '').split('/')[-1]
+            if not k: continue
+            if k not in attrs: attrs[k] = 'NONE' if k in levels else False; changed = True
+            elif 'REQUIRED' not in e.get('code', ''):
+                attrs[k] = False if attrs[k] == 'NONE' else 'NONE'; changed = True
+        if not changed: break
+    raise RuntimeError('age rating not accepted')
 
 
 def version():
@@ -193,6 +208,10 @@ def do_build():
     raise RuntimeError('no processed build yet')
 
 
+ONLY = [a for a in sys.argv[1:] if not a.startswith('--')]
+if ONLY:
+    for n in ONLY: step(n, globals()[n])
+    print('\nLỗi ở:', FAILS if FAILS else 'không có'); sys.exit(0)
 step('Danh mục app', do_categories)
 step('Tên, phụ đề, chính sách quyền riêng tư', do_info_loc)
 step('Độ tuổi', do_age)

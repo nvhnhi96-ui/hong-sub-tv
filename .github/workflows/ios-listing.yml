@@ -4,6 +4,11 @@ name: 'iPhone: trang App Store'
 
 on:
   workflow_dispatch:
+    inputs:
+      only:
+        description: 'Chỉ chạy các bước này (để trống = tất cả), VD: do_age'
+        required: false
+        default: ''
 
 jobs:
   listing:
@@ -16,4 +21,4 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: python3 ios/appstore/listing.py --attach-build
+        run: python3 ios/appstore/listing.py --attach-build ${{ inputs.only }}
