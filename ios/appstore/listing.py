@@ -212,6 +212,70 @@ def do_no_china():
     raise RuntimeError('CHN not found')
 
 
+def latest_build():
+    bs = call('GET', '/v1/builds', params={'filter[app]': APP, 'sort': '-uploadedDate', 'limit': 5})['data']
+    return [b for b in bs if b['attributes']['processingState'] == 'VALID'][0]
+
+
+def upsert(list_path, create_type, rel_name, rel_type, rel_id, attrs, match=None):
+    items = call('GET', list_path)['data']
+    if match: items = [i for i in items if all(i['attributes'].get(k) == v for k, v in match.items())]
+    if items:
+        a = {k: v for k, v in attrs.items() if k != 'locale'}
+        call('PATCH', '/v1/%s/%s' % (create_type, items[0]['id']), {'data': {'type': create_type, 'id': items[0]['id'], 'attributes': a}})
+        return items[0]['id']
+    return call('POST', '/v1/' + create_type, {'data': {'type': create_type, 'attributes': attrs,
+                'relationships': {rel_name: {'data': {'type': rel_type, 'id': rel_id}}}}})['data']['id']
+
+
+def do_testflight():
+    """TestFlight for customers: an external group with a public link, the newest build in it, sent to Beta App Review"""
+    T = M['testflight']
+    for loc in ('vi', 'en-US'):
+        try:
+            upsert('/v1/apps/%s/betaAppLocalizations' % APP, 'betaAppLocalizations', 'app', 'apps', APP,
+                   {'locale': loc, 'description': T['description'], 'feedbackEmail': M['review']['contactEmail'],
+                    'marketingUrl': M['marketingUrl'], 'privacyPolicyUrl': M['privacyPolicyUrl']}, match={'locale': loc})
+            print('   beta info', loc)
+        except Exception as e:
+            print('   beta info', loc, 'skipped', e)
+    d = call('GET', '/v1/apps/%s/betaAppReviewDetail' % APP)['data']
+    r = M['review']
+    call('PATCH', '/v1/betaAppReviewDetails/' + d['id'], {'data': {'type': 'betaAppReviewDetails', 'id': d['id'], 'attributes': {
+        'contactFirstName': r['contactFirstName'], 'contactLastName': r['contactLastName'], 'contactPhone': r['contactPhone'],
+        'contactEmail': r['contactEmail'], 'demoAccountRequired': False, 'notes': r['notes']}}})
+    b = latest_build()
+    print('   build', b['attributes']['version'])
+    for loc in ('vi', 'en-US'):
+        try:
+            upsert('/v1/builds/%s/betaBuildLocalizations' % b['id'], 'betaBuildLocalizations', 'build', 'builds', b['id'],
+                   {'locale': loc, 'whatsNew': T['whatsNew']}, match={'locale': loc})
+        except Exception as e:
+            print('   what to test', loc, 'skipped', e)
+    groups = [g for g in call('GET', '/v1/apps/%s/betaGroups' % APP)['data'] if g['attributes']['name'] == T['group']]
+    if groups:
+        gid = groups[0]['id']
+    else:
+        gid = call('POST', '/v1/betaGroups', {'data': {'type': 'betaGroups', 'attributes': {'name': T['group'], 'feedbackEnabled': True},
+                   'relationships': {'app': {'data': {'type': 'apps', 'id': APP}}}}})['data']['id']
+    call('POST', '/v1/betaGroups/%s/relationships/builds' % gid, {'data': [{'type': 'builds', 'id': b['id']}]})
+    try:
+        call('POST', '/v1/betaAppReviewSubmissions', {'data': {'type': 'betaAppReviewSubmissions',
+             'relationships': {'build': {'data': {'type': 'builds', 'id': b['id']}}}}})
+        print('   sent to Beta App Review')
+    except Exception as e:
+        print('   beta review: already sent or not needed', e)
+    try:
+        call('PATCH', '/v1/betaGroups/' + gid, {'data': {'type': 'betaGroups', 'id': gid, 'attributes': {
+             'publicLinkEnabled': True, 'publicLinkLimitEnabled': True, 'publicLinkLimit': 10000}}})
+    except Exception as e:
+        print('   public link not yet', e)
+    g = call('GET', '/v1/betaGroups/' + gid)['data']['attributes']
+    sub = call('GET', '/v1/builds/%s/buildBetaDetail' % b['id'])['data']['attributes']
+    print('   GROUP', json.dumps({k: g.get(k) for k in ('name', 'publicLinkEnabled', 'publicLink', 'publicLinkLimit')}))
+    print('   BETA STATE', json.dumps(sub))
+
+
 def do_build():
     v = version()
     for i in range(40):
