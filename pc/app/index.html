@@ -3883,7 +3883,7 @@ function tvBody(o){ o=tvIcons(o); if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer
   /* not over the English: the Vietnamese sits right above the game's own subtitle (like on the computer), not at the
      TV's fixed place where the two lines ran over each other */
   if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; var sb=S.subBox; if(o.abv&&sb&&sb.xb>0&&Date.now()-sb.at<60000){ o.axb=+(sb.xb*S.region.h*(o.abv.h/ar.h)).toFixed(5); o.acap=sb.caps?1:0; } }   /* above the English: as tall as the English letters too */
-  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&(tvVoiceSel()==='tv'||speakWhere()==='tv'&&!tvClipOn());   /* the TV's own voice ONLY when it was chosen, or when the TV alone reads and the computer's voice cannot reach it: with "Cả máy tính và TV" the TV used to read along in its own voice, so two different voices ran at once */ o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
   delete o.vo; return o; }   /* mid: the TV shows a line once even if it arrives both ways */
@@ -5481,11 +5481,13 @@ async function tmFit(j,res){
   if(!why) return res;
   if(slow){ log('AI đang trả lời chậm (~'+(Math.round(lat/100)/10)+' giây): hiện câu trong kho ngay, câu chỉnh ('+why+') đi cùng các câu sắp tới'); return res; }
   var t0=Date.now(), vi0=res.vi;
+  var who0=String(res.speaker||'').trim();
   var prompt='A Vietnamese translation of this video game line already exists (written by another player, sometimes for a slightly different English line or by a machine translator). Bring it to THIS player\'s settings below.\n'+
-    'Original ('+LN()+'):\n<<<\n'+en+'\n>>>\nExisting Vietnamese:\n<<<\n'+vi0+'\n>>>\n'+
-    'Rewrite the Vietnamese so it translates exactly the original above (drop anything it does not say, e.g. a name or a number that is not in it; fix a wrong meaning or a word-for-word machine wording) and follows the translation style, the character / pronoun notes and the dictionary given below, and the pronoun pairs of the recent lines. '+
-    'Keep the same sentences in the same order, the punctuation and the line breaks; if the existing Vietnamese already fits, return it unchanged. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
-    glossHints(en)+context(en);
+    'Original ('+LN()+'):\n<<<\n'+en+'\n>>>\n'+(who0?'The speaker of this line is: '+who0+'.\n':'')+'Existing Vietnamese:\n<<<\n'+vi0+'\n>>>\n'+
+    'CHECK THE PRONOUNS FIRST. The existing Vietnamese was written for another player and very often uses the wrong pronoun pair (for example tao/may between two characters whose notes give them another pair). Go through every pronoun and every form of address in it: when the notes below give a pair for these two characters, that pair is the only right one, whatever the existing Vietnamese says and however the characters are speaking to each other in this line; when you cannot tell who is speaking or who is listening, leave the pronouns out instead of guessing. '+
+    'Then rewrite the rest so it translates exactly the original above (drop anything it does not say, e.g. a name or a number that is not in it; fix a wrong meaning or a word-for-word machine wording) and follows the translation style, the game\'s translation rules, the character / pronoun notes and the dictionary given below, and the pronoun pairs of the recent lines. '+
+    'Keep the same sentences in the same order, the punctuation and the line breaks; return it unchanged only when every pronoun already matches the notes and nothing else is wrong. Never write the speaker name. Put the original in "en", the result in "vi", "gender" and "age" of the speaker only if known, else "".\n'+
+    glossHints(en)+ctxFixed(en,true)+ctxRecent();
   var share=!differs&&!res._fz&&!res._parts;
   /* how long the line may wait for its fix: about what the AI takes here (0.7-1.5 s). An AI that takes much longer
      (a busy server, 3 s and more) is not waited for: the line shows at once and the lines after it are fixed ahead */
@@ -5496,7 +5498,7 @@ async function tmFit(j,res){
     var kv=F.m[res._k]; if(kv){ res.vi=tmLay(j.text,kv); res._fit=1; log('câu trong kho, đã chỉnh theo cài đặt của bạn ('+(Date.now()-t0)+'ms, cùng lượt với các câu trước)'); return res; }
     log('chỉnh câu trong kho ('+why+') chưa xong sau '+(wait/1000)+' giây: hiện câu trong kho, chỉnh xong thì thay ngay'); ah.p.then(function(){ var kv2=F.m[res._k]; if(kv2&&kv2!==res.vi) tmSwap(j,tmLay(j.text,kv2),res); }); return res;
   }
-  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)) return null; S.tmFitLat=S.tmFitLat?Math.round(S.tmFitLat*0.6+(Date.now()-t0)*0.4):Date.now()-t0; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(){ return null; });
+  var p=tmFitAsk(prompt).then(function(r){ var v=String(r.vi||'').trim(); if(!v||junkPair(en,v)){ log('chỉnh câu trong kho: AI trả lời trống, giữ nguyên câu trong kho'); return null; } S.tmFitLat=S.tmFitLat?Math.round(S.tmFitLat*0.6+(Date.now()-t0)*0.4):Date.now()-t0; tmFitKeep(ck,v); if(share&&v!==vi0) tmAdd('s',en,v,res.speaker||'',(res.gender||'').toLowerCase(),'fix'); return v; },function(e){ log('chỉnh câu trong kho không xong ('+((e&&e.message)||e)+'): giữ nguyên câu trong kho'); return null; });
   /* the line shows once: the fixed one if it comes in time, else the stored one (the fix is kept for the next time).
      Swapping a line already on screen made the subtitles jump */
   var v=await Promise.race([p,new Promise(function(ok){ setTimeout(function(){ ok(undefined); },wait); })]);
@@ -5541,9 +5543,10 @@ async function tmAheadAsk(T,pick){
   var F=tmFitStore();
   var en0=T.map[pick[0]].en, list=pick.map(function(s,n){ var e=T.map[s]; return (n+1)+'. '+(e.who?'['+e.who+'] ':'')+'EN: '+String(e.en).replace(/\s+/g,' ')+'\n   VI: '+String(e.vi).replace(/\n/g,' / '); }).join('\n');
   var prompt='These lines of a video game come one after another (a scene; [Name] is the speaker when known). Each already has a Vietnamese translation written by other players, sometimes by a machine translator.\n'+
-    'Check every translation against its English and fix it for THIS player\'s settings below: a wrong meaning, a word-for-word machine wording, pronouns that break the character / pronoun notes or the pronoun pairs between the same two characters, the translation style, the dictionary, anything (a name, a number) the English does not say. '+
-    'Keep a good translation unchanged. Keep "/" where the Vietnamese has it (a line break). Never write the speaker name in the translation.\n'+
-    'Return "items": one {"i": number, "vi": translation} for every line, in order.\n\n'+list+'\n\n'+glossHints(pick.map(function(s){ return T.map[s].en; }).join(' '))+context(en0);
+    'CHECK THE PRONOUNS FIRST in every line: these translations were written by other players and very often use the wrong pronoun pair (for example tao/may between two characters whose notes give them another pair). When the notes below give a pair for the two characters of a line, that pair is the only right one, whatever the existing Vietnamese says; when the speaker or the listener is unknown, leave the pronouns out instead of guessing. '+
+    'Then check every translation against its English and fix a wrong meaning, a word-for-word machine wording, the translation style, the dictionary, anything (a name, a number) the English does not say. '+
+    'Keep a translation unchanged only when its pronouns already match the notes and nothing else is wrong. Keep "/" where the Vietnamese has it (a line break). Never write the speaker name in the translation.\n'+
+    'Return "items": one {"i": number, "vi": translation} for every line, in order.\n\n'+list+'\n\n'+glossHints(pick.map(function(s){ return T.map[s].en; }).join(' '))+ctxFixed(en0,true)+ctxRecent();
   var t0=Date.now(), share=!tmDiffers();
   try{
     var r=groqKeys().length?await groq(prompt,null,SHAPE_FSI):await gemini(prompt,null,SCHEMA_FSI);
@@ -6913,6 +6916,9 @@ function fsIconEnds(s){
   if(!/[A-Za-zÀ-ỹ]{3}/.test(s)||s.split(' ').length>8) return s;
   var junk=/^(?:[^\sA-Za-zÀ-ỹ0-9]{1,3}|[\u0370-\u04FF]|[OoCcXxDQ0]|[OC]\)|\(?[LR][123Il|]\)?)$/;   /* R1 read "RI" */
   var w=s.split(' '); while(w.length>1&&junk.test(w[w.length-1])) w.pop(); while(w.length>1&&junk.test(w[0])) w.shift();
+  /* the stick button of a hint read as a bare number ("RECENTER L3" comes as "RECENTER 3", "2D VIEW R3" as "2D VIEW 3"):
+     a lone 1-4 at the end of a short label with no other number is that icon, not a word of the label */
+  if(w.length>1&&/^[1-4]$/.test(w[w.length-1])){ var rest=w.slice(0,-1).join(' '); try{ if(glossExact(rest)) w.pop(); }catch(e){} }   /* only when what is left is a menu entry of this game ("CHAPTER 2" keeps its number) */
   return w.join(' ');
 }
 function fsOk(text,conf){
@@ -7594,6 +7600,7 @@ function reportText(){
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length+', đọc phụ đề: '+($('hsSpeak').checked?'bật':'TẮT')+', đọc ở: '+speakWhere()+', giọng dùng: '+(D?devPick(voiceMode()==='ai'?'auto':voiceMode(),'',''):'trình duyệt')+(D&&D.speakState?', lần đọc gần nhất: '+JSON.stringify(D.speakState()):''),
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
+    'Cài đặt: '+JSON.stringify({tuDichChuKhac:!!fsLiveOn(),dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
 }
