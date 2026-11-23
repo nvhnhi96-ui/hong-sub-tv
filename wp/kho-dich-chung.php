@@ -108,7 +108,7 @@ if (!function_exists('hgs_tm_table')) {
 add_action('rest_api_init', function () {
     register_rest_route('hgs-sub/v1', '/tm/add', array('methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_add'));
     register_rest_route('hgs-sub/v1', '/tm/pack', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_pack'));
-    register_rest_route('hgs-sub/v1', '/tm/games', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_games2'));
+    register_rest_route('hgs-sub/v1', '/tm/games', array('methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'hgs_tm_games'));
 });
 
 // Hong Sub: nap ban dich co san (vd ban Viet hoa cua mot game) vao kho dich chung. Chi quan tri vien.
