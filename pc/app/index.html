@@ -655,7 +655,7 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
                 <label class="hs-sw dk-only">Phụ đề nổi trên game <input type="checkbox" id="dkQOvl" checked></label>
                 <label class="hs-sw">Đè chữ Việt lên phụ đề gốc <input type="checkbox" id="dkQCover" checked></label>
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
-                <label class="hs-sw" title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound" checked></label>
+                <label class="hs-sw" hidden title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound"></label>
                 <div class="dk-set" id="hsTvTrimRow" style="margin:2px 0 8px"><div class="lab"><label for="hsTvTrim">Chỉnh khớp tiếng với TV</label><output id="hsTvTrimV" style="white-space:nowrap">0 ms</output></div><input class="hs-range" id="hsTvTrim" type="range" min="-300" max="300" step="10" value="0"><p class="hs-note">Hóng Sub tự căn cho tiếng ở máy tính và TV ra cùng lúc. Vẫn nghe vang thì kéo từng nấc tới khi hai tiếng nhập làm một: tiếng máy tính ra <b>sau</b> TV thì kéo sang trái, ra <b>trước</b> TV thì kéo sang phải. Chỉnh một lần, Hóng Sub nhớ.</p></div>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
@@ -8692,12 +8692,13 @@ setInterval(psFreezeTick,1000);
 function gameMuted(){ return camOnTv(); }   /* PS sound on the TV: here too, in step with the TV (psDelay) */
 /* a capture card with the TV on the PS5's own HDMI: the TV has the game's sound already, so this computer stays quiet
    (it only listens, for reading the characters' voices) */
-function camOnTv(){ return !!S.camSrc&&tvSoundOn()&&S.tvOk===true; }
+function camOnTv(){ return !!S.camSrc&&S.tvOk===true; }   /* a capture card: the game's sound is on the TV already (HDMI), this computer stays quiet as before */
 /* "Tiếng game và giọng đọc phát ở TV": the PS turns its own sound on the TV off while it plays through Remote Play, so
    the game's sound (the PS's Opus packets, as they come) goes on to the Hóng Sub TV app over the home network and is
    played there; this computer stays quiet, and reading aloud goes to the TV too. Only when the TV app can play it
    (answers aud:1) and is reached on the home network; otherwise the sound stays here. */
-function tvSoundOn(){ var c=$('hsTvSound'); return c?c.checked:load('tvSound',true); }
+/* "Tiếng game phát ở TV": turned off for everyone and hidden (11/2026, Nhi's request); the code stays for later */
+function tvSoundOn(){ return false; }
 function tvSoundNow(){ return tvSoundOn()&&S.tvType==='android'&&!!S.tvAud&&S.tvOk===true&&!!tvIp()&&!!(D&&D.tv&&D.tv.audio)&&typeof PS!=='undefined'&&!!PS.host; }
 var TA={q:[],seq:0,t:0,said:false};
 function tvAudioPush(pkt){
@@ -9079,7 +9080,7 @@ function psInit(){
     trimUi(); $('hsTvTrim').addEventListener('input',function(){ save('tvTrim',+this.value||0); trimUi(); psDelaySet(true); });
     $('hsTvTrim').addEventListener('change',function(){ var v=tvTrim(); log('tiếng game: chỉnh khớp tay '+(v>0?'+':'')+v+' ms'); });
     setInterval(function(){ var r=$('hsTvTrimRow'); if(r) r.hidden=!tvSoundOn(); },1500); }
-  if($('hsTvSound')){ $('hsTvSound').checked=load('tvSound',true); $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game sẽ phát ở TV (giọng đọc theo mục Đọc ở)':'Tiếng game phát ở máy tính'); }); }
+  if($('hsTvSound')){ $('hsTvSound').checked=false; var tsl=$('hsTvSound').closest('label'); if(tsl) tsl.hidden=true; $('hsTvSound').addEventListener('change',function(){ save('tvSound',this.checked); TA.on=null; status('run',this.checked?'Tiếng game sẽ phát ở TV (giọng đọc theo mục Đọc ở)':'Tiếng game phát ở máy tính'); }); }
   $('hsPsFw').onclick=function(){ psFwFix(); };
   tvNotice('Hóng Sub trên '+psDev()+' đã mở. Đang tìm máy PS...');
   psRefresh().then(function(){ return psWakeUp('start'); }).catch(function(){});
