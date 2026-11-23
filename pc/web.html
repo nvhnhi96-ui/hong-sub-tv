@@ -580,7 +580,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <ol class="hg-steps">
           <li>Tải <a class="hg-ui" href="https://honggame.store/hongsubpc">Hóng Sub cho Windows</a> và mở file vừa tải. Windows hiện bảng xanh thì bấm <b>More info</b> rồi <b>Run anyway</b>.</li>
           <li><span class="hg-ui">Cài đặt › Mã AI</span>: dán mã Gemini. <span class="hg-ui">Cài đặt › Game đang chơi</span>: chọn đúng game.</li>
-          <li><span class="hg-ui">Kết nối PS5/PS4 và TV</span>: bấm <b>Đăng nhập PSN</b>, <b>Tìm máy</b>, <b>Ghép máy</b>, nhập mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> trên PS5. Chỉ làm một lần.</li>
+          <li><span class="hg-ui">Kết nối PS5/PS4 và TV</span>: làm 3 bước: <b>Đăng nhập PSN</b>, bật <b>Chơi từ xa</b> trên máy PS, chọn máy PS rồi bấm <b>Ghép máy</b> (nhập mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> trên PS5) và <b>Kết nối</b>. Chỉ làm một lần.</li>
           <li><span class="hg-ui">Màn hình chơi</span>: bấm <b>Chơi PS5 / PS4</b> (hoặc <b>Chọn cửa sổ game</b> nếu dùng app của Sony), bấm <b>Vùng phụ đề</b> và kéo khung quanh dòng phụ đề, rồi bấm <span class="hg-ui">Bắt đầu dịch</span> (phím <b>F7</b>).</li>
           <li><span class="hg-ui">Cài đặt › Giọng đọc</span>: bấm <b>Tải bộ giọng AI</b> một lần để có 25 giọng nam, nữ ba miền. Bật tắt đọc bằng nút <b>Đọc phụ đề</b> trên thanh trên cùng.</li>
         </ol>
@@ -3007,6 +3007,7 @@ $('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',th
 function tvCodeFor(k){ return k===S.tvType?tvCode():String(load('tv_'+k,'')||''); }
 function tvTypeSet(k){
   if(!TVK[k]) return;
+  save('tvPick',true);
   if(k!==S.tvType){ save('tv_'+S.tvType,tvCode()); S.tvType=k; save('tvtype',k); $('hsTv').value=load('tv_'+k,''); save('tv',$('hsTv').value); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; S.tvOk=null; }
   tvTypeUi(); tvState();
 }
@@ -3015,8 +3016,18 @@ function tvTypeUi(){
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.setAttribute('aria-checked',b.getAttribute('data-k')===S.tvType?'true':'false'); });
   [].forEach.call(document.querySelectorAll('.tvp'),function(x){ x.classList.toggle('on',x.getAttribute('data-k')===S.tvType); });
   [].forEach.call(document.querySelectorAll('.tvlg-only'),function(x){ x.hidden=!lanTv(); });
+  var pk=$('knTvPick'), bd=$('knTvBody');   /* the Windows and phone apps: "which TV?" first, then only the steps of that TV */
+  if(pk&&bd){ var on=tvPicked(); pk.hidden=on; bd.hidden=!on; var th=$('knTvH'); if(th) th.textContent=S.tvType==='android'?'Nối với Android TV / Google TV':S.tvType==='lg'?'Cài và nối TV LG':'Cài và nối TV Samsung'; tvHdmiUi(); tvMoreUi(true); }
   var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(TVD()?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':S.tvType==='samsung'?'Mã TV (đang hiện trên TV Samsung)':'Mã TV (đang hiện trên trình duyệt TV)';
 }
+/* has the person said which TV they have? (people who connected a TV before this question existed have) */
+function tvPicked(){ var v=load('tvPick',null); if(v===null) v=!!(load('tvtype',null)||tvCode().length>=4||load('tvip','')); return !!v; }
+/* the HDMI port: one button per port in the LG and Samsung steps, kept in step with the saved choice */
+function tvHdmiUi(){ var hd=$('hsTvHdmi'); if(!hd) return; [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-hdmi')===String(hd.value)?'true':'false'); }); }
+/* "Tùy chọn thêm cho TV" (the TV code and how the text looks on the TV) opens by itself where the code is the way to connect */
+function tvMoreUi(first){ var m=$('knTvMore'); if(!m||m.open) return; var c=tvCode().length>=4;
+  var need=first?(!D||(S.tvType==='android'&&c&&!(tvIp()||load('tvip','')))):(S.tvType==='android'?S.tvOk===false:(!c&&!!(S.tvType==='lg'?window.hsLgOpen:window.hsTzOpen)));
+  if(need&&!(m.dataset.auto&&!first)){ m.open=true; m.dataset.auto='1'; } }
 /* what the TV is doing right now, in one line, with the one thing to do next */
 /* the Android TV app is older than the fixes this computer counts on (TVs before 1.0.112 do not say their version) */
 var TV_MIN=194;   /* 1.0.194: unpacks what comes through the TV code (place, colours, size of screen-text boxes) */
@@ -3036,7 +3047,7 @@ function tvStatus(){
     return {t:'Chưa nối TV.',a:TVD()?'Tìm TV':'',f:function(){ tvFindUi(false); }};
   }
   if(k==='lg'){
-    if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG ở dưới (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
+    if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG theo các bước dưới đây (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
     if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
     if(seen) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối qua internet.'+(window.hsLgOpen&&DPS&&DPS.fwFix?' Muốn nối thẳng qua mạng nhà (nhanh, ít mất kết nối): cho phép Hóng Sub qua tường lửa rồi mở lại app trên TV.':''),
       a:window.hsLgOpen&&DPS&&DPS.fwFix?'Cho phép qua tường lửa':'',f:function(){ tvMsg('','Windows sẽ hỏi quyền, bấm Có...'); DPS.fwFix().then(function(r){ if(r&&r.ok){ tvMsg('ok','Đã cho phép. Đang mở lại Hóng Sub trên TV...'); if(window.hsLgOpen) window.hsLgOpen(); } else tvMsg('err',r&&r.err==='canceled'?'Chưa cho phép vì đã bấm Không.':'Chưa sửa được tường lửa: '+((r&&r.err)||'')); }); }};
@@ -3044,7 +3055,7 @@ function tvStatus(){
     return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').'+lanWhy(),a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
   }
   if(k==='samsung'){
-    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:D?'Cài app Hóng Sub lên TV Samsung ở dưới (làm một lần), rồi gõ mã đang hiện trên TV.':'Trên TV Samsung mở app Hóng Sub, gõ mã đang hiện trên TV vào ô Mã TV.'};
+    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:D?'Cài app Hóng Sub lên TV Samsung theo các bước dưới đây (làm một lần).':'Trên TV Samsung mở app Hóng Sub, gõ mã đang hiện trên TV vào ô Mã TV.'};
     if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
     if(seen) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối qua internet.'};
     if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
@@ -3067,12 +3078,19 @@ function lanWhy(){
 function tvState(){
   var box=$('hsTvState'); if(!box) return;
   var st=tvStatus(), b=$('hsTvStateB');
+  if(st.ok&&!st.a&&$('knTvBody')&&$('hsTvTest')){ st.a='Gửi thử'; st.f=function(){ $('hsTvTest').click(); }; }   /* connected: one press shows a test line on the TV */
   box.className='tvs'+(st.ok?' ok':st.bad?' bad':'');
   if(st.html) $('hsTvStateT').innerHTML=st.t; else $('hsTvStateT').textContent=st.t;
   b.hidden=!(st.a&&st.f); if(st.a){ b.textContent=st.a; b.onclick=st.f; }
+  var chip=$('knChipTv'); if(chip){ chip.className='kn-chip'+(st.ok?' ok':st.bad&&tvPicked()?' bad':''); $('knChipTvT').textContent=st.ok?'TV: đã nối':st.bad&&tvPicked()?'TV: cần xem lại':'TV: chưa nối'; }
+  /* Android TV: steps 1 and 2 are done once the TV answers */
+  var a1=$('knAnd1'), a2=$('knAnd2'); if(a1&&a2){ var aok=S.tvType==='android'&&!!st.ok; a1.className='kn-step'+(aok?' ok':''); a2.className='kn-step dk-only kn-lan'+(aok&&tvIp()?' ok':''); }
+  tvMoreUi(false);
 }
 (function(){ var box=$('hsTvType'); if(!box) return;
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.addEventListener('click',function(){ tvTypeSet(b.getAttribute('data-k')); }); });
+  var bk=$('knTvBack'); if(bk) bk.addEventListener('click',function(){ save('tvPick',false); tvTypeUi(); var f=box.querySelector('[data-k="'+S.tvType+'"]'); if(f) f.focus(); });
+  [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.addEventListener('click',function(){ var hd=$('hsTvHdmi'); if(!hd) return; hd.value=b.getAttribute('data-hdmi'); hd.dispatchEvent(new Event('change',{bubbles:true})); tvHdmiUi(); }); });
   tvTypeUi(); setInterval(tvState,3000);
 })();
 function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
@@ -3205,7 +3223,7 @@ function tvWhy(ip){
 }
 function tvWhyText(ip){
   var n=S.tvNet||{}, e=String(S.tvErr||''), mine=esc((n.all||[]).join(', ')); ip=esc(ip);
-  var code=' Cách chắc chắn nhất: gõ <b>mã TV</b> (6 chữ đang hiện trên app Hóng Sub TV) vào ô "Hoặc dùng mã TV" bên dưới, phụ đề đi qua internet, không cần chung mạng.';
+  var code=' Cách chắc chắn nhất: gõ <b>mã TV</b> (6 chữ đang hiện trên app Hóng Sub TV) vào ô "Hoặc dùng mã TV" ở mục Tùy chọn thêm cho TV bên dưới, phụ đề đi qua internet, không cần chung mạng.';
   if(/ECONNREFUSED/.test(e)) return 'TV '+ip+' có trong mạng nhưng app Hóng Sub TV chưa mở. Trên TV mở app Hóng Sub TV, bấm "Bật phụ đề" (app phải chạy, rồi mới chuyển sang cổng HDMI của PS5).';
   if(n.sameNet===false) return 'Máy tính này không cùng mạng với TV: máy tính có IP '+(mine||'?')+', TV là '+ip+'. Cắm máy tính vào cùng modem/wifi với TV.'+code;
   return 'TV '+ip+' không trả lời: TV đã tắt, IP của TV đã đổi (bấm Tìm lại TV), hoặc modem chặn các máy nói chuyện với nhau (wifi khách, "AP isolation").'+code;
@@ -3223,6 +3241,7 @@ function tvUse(ip,info){
   /* the TV found on the home network gives its own code: an old or mistyped code in the box would send to nobody */
   if(info){ S.tvName=info.name||''; var ic=String(info.code||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(ic.length>=4&&ic!==tvCode()){ $('hsTv').value=ic; save('tv',ic); save('tv_android',ic); S.tvSeen=0; S.tvHello=-1; log('mã TV lấy từ TV '+(info.name||ip)+': '+ic); } S.tvBoot=info.boot||''; }
   tvLan(true,S.tvName); tvNotice('Đã nối với Hóng Sub trên '+(PH||IOS?'điện thoại':'máy tính')+'.');
+  if(S.tvType==='android'&&load('tvPick',null)!==true){ save('tvPick',true); tvTypeUi(); }   /* a TV found by itself answers "which TV?" */
 }
 function tvFindUi(silent){
   if(!TVD()) return Promise.resolve([]);
@@ -3316,7 +3335,7 @@ function tvLanInit(){
 tvLanInit();   /* the phone apps call it again once their core is there */
 /* every TV setting lives here on the computer; the TV app only connects and follows */
 (function(){ var ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); ps.value=load('tvpos','bottom');
-  if(en) en.checked=load('tven',false); if(hd){ if(!load('tvhdmiFix1',false)){ save('tvhdmiFix1',true); save('tvhdmi',0); } hd.value=String(load('tvhdmi',0)); }   /* once: back to 'TV tự tìm'; HDMI 1 was the default and pulled every TV to HDMI 1 */
+  if(en) en.checked=load('tven',false); if(hd){ if(!load('tvhdmiFix1',false)){ save('tvhdmiFix1',true); save('tvhdmi',0); } hd.value=String(load('tvhdmi',0)); tvHdmiUi(); }   /* once: back to 'TV tự tìm'; HDMI 1 was the default and pulled every TV to HDMI 1 */
   function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên '+(PH?'điện thoại':'máy tính')+': kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
   var t=0; function send(what){ lookTxt(); clearTimeout(t); t=setTimeout(function(){ lookTxt(); if(!(tvIp()||tvCode().length>=4)) return;
       if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
@@ -7922,19 +7941,17 @@ function psMsg(cls,t){var m=$('hsPsMsg'); if(!t){m.hidden=true;return;} if(t!==P
 function psAccUi(){
   var a=$('hsPsAcc');
   if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
-  a.innerHTML=PS.acc.loggedIn?('<span>PSN: <b>'+esc(PS.acc.onlineId||'đã đăng nhập')+'</b></span><button class="hs-btn" type="button" id="hsPsOut" style="padding:4px 10px">Đổi tài khoản</button>')
-    :'';   /* not signed in: the button is in step 1 */
-  if($('hsPsIn')) $('hsPsIn').onclick=psLogin;
-  var bb=a.querySelector('[data-ps=browser]'); if(bb){ if(!DPS.loginBrowser) bb.remove(); else bb.onclick=psLoginBrowser; }
-  if($('hsPsOut')) $('hsPsOut').onclick=function(){ DPS.logout().then(function(){ return psLogin(); }); };
+  a.innerHTML='';   /* the account, and the button to sign in or change it, are in step 1 */
+  psSteps();
 }
+function psLogout(){ return DPS.logout().then(function(){ return psLogin(); }); }
 function psLogin(){
   var m=$('hsPsMsg'); m.hidden=false; m.className='hs-msg';
   m.innerHTML='<b>Đã mở cửa sổ đăng nhập của Sony.</b> Đăng nhập tài khoản PSN trong cửa sổ đó (nhập mã xác minh nếu Sony hỏi). Đăng nhập xong cửa sổ tự đóng, không cần chép gì.'+
     '<div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
   m.querySelector('[data-ps=cancel]').onclick=function(){ DPS.loginCancel(); };
   return DPS.login().then(function(r){
-    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); }
     else if(r&&r.err==='blocked'){ if(!DPS.loginBrowser) psMsg('warn','Sony tạm chặn đăng nhập từ '+psDev()+' này. Đợi vài phút rồi bấm Đăng nhập PSN lại, hoặc đổi sang mạng 4G rồi thử.'); else { psMsg('warn','Sony chặn đăng nhập trong cửa sổ của Hóng Sub. Hóng Sub chuyển sang đăng nhập bằng trình duyệt...'); setTimeout(psLoginBrowser,1200); } }
     else if(r&&(r.err==='closed'||r.err==='again')){ psMsg('','Đã đóng cửa sổ đăng nhập. Bấm Đăng nhập PSN để thử lại.'); }
     else if(r&&r.err==='timeout') psMsg('warn','Lâu quá chưa đăng nhập xong nên Hóng Sub đã đóng cửa sổ. Bấm Đăng nhập PSN để thử lại.');
@@ -7950,7 +7967,7 @@ function psLoginBrowser(){
     '<div style="display:flex;gap:6px;margin-top:8px"><input class="hs-in" data-ps="paste" placeholder="Hoặc dán địa chỉ trang đó vào đây" spellcheck="false"><button class="hs-btn pri" type="button" data-ps="go">Xong</button><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
   var inp=m.querySelector('[data-ps=paste]');
   function done(r){
-    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); }
     else if(r&&(r.err==='closed'||r.err==='again')){ if(r.err==='closed') psMsg('',''); }
     else if(r&&r.err==='timeout') psMsg('warn','Chưa nhận được địa chỉ trang sau khi đăng nhập. Bấm lại "Dán địa chỉ đăng nhập".');
     else if(r&&r.err==='url') psMsg('err','Địa chỉ dán vào chưa đúng. Cần địa chỉ có chữ "remoteplay/redirect?code=".');
@@ -7966,30 +7983,39 @@ function psRefresh(){ return DPS.state().then(function(st){ PS.acc=st; psAccUi()
 var STATE_TXT={ready:'Đang bật',standby:'Đang nghỉ',offline:'Không thấy',unknown:'?'};
 function psList(){
   var L=$('hsPsList');
-  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm máy.</p>'; return; }
+  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm lại.</p>'; return; }
   L.innerHTML=PS.hosts.map(function(h,i){
-    return '<div class="hs-ps" data-i="'+i+'"><div class="r"><b>'+esc(h.name)+'</b><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span></div>'+
-      '<small>'+(h.ps5?'PS5':'PS4')+', '+esc(h.addr||'')+(h.app?', đang chơi '+esc(h.app):'')+'</small>'+
-      '<div class="hs-row" style="margin-top:8px">'+(h.registered?'<button class="hs-btn pri" data-a="play" type="button">Kết nối</button><button class="hs-btn" data-a="forget" type="button">Bỏ ghép</button>':'<button class="hs-btn pri" data-a="pair" type="button">Ghép máy</button>')+'</div>'+
-      '<div class="pin" hidden><input class="hs-in" inputmode="numeric" maxlength="8" placeholder="Mã 8 số trên máy"><button class="hs-btn pri" data-a="dopair" type="button">Ghép</button></div></div>';
+    return '<div class="hs-ps" data-i="'+i+'"><div class="r"><div class="kn-h"><b>'+esc(h.name)+'</b>'+
+      '<small><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span>, '+(h.ps5?'PS5':'PS4')+', '+esc(h.addr||'')+(h.app?', đang chơi '+esc(h.app):'')+'</small></div>'+
+      '<span class="kn-acts">'+(h.registered?'<button class="dk-link" data-a="forget" type="button">Bỏ ghép</button><button class="hs-btn pri" data-a="play" type="button">Kết nối</button>':'<button class="hs-btn pri" data-a="pair" type="button">Ghép máy</button>')+'</span></div>'+
+      '<div class="pin" hidden><input class="hs-in" inputmode="numeric" maxlength="8" placeholder="Mã 8 số trên máy PS" aria-label="Mã 8 số trên máy PS"><button class="hs-btn pri" data-a="dopair" type="button">Ghép</button></div></div>';
   }).join('');
   L.querySelectorAll('.hs-ps button').forEach(function(btn){
     btn.addEventListener('click',function(){
       var box=btn.closest('.hs-ps'), h=PS.hosts[+box.dataset.i], a=btn.dataset.a;
-      if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
+      if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước (bước 1), rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
       else if(a==='dopair'){ var pin=box.querySelector('.pin input').value.replace(/\D/g,''); if(pin.length!==8){psMsg('err','Mã ghép gồm 8 số.');return;} btn.disabled=true; psMsg('','Đang ghép với '+h.name+'...');
-        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ PS.pairedAt=Date.now(); PS.n26=0; psMsg('ok','Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối (bước 3) để nhận hình.'); psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
+        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ PS.pairedAt=Date.now(); PS.n26=0; PS.okMsg='Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối ở máy đó để nhận hình.'; psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
       else if(a==='forget'){ DPS.forget(h.id).then(psFind); }
-      else if(a==='play'){ psPlay(h); }
+      else if(a==='play'){ psRunHost(h); }
     });
   });
+  psSteps();
+}
+/* "Kết nối" on one machine of the list: the same care as the automatic connection (one at a time, the reason when it fails) */
+async function psRunHost(h){
+  if(PSST.running) return;
+  PS.block26=0; PSST.running=true; PS.err=''; PS.retry=0; psSteps();
+  try{ psFwCheck(false); await psPlay(h); }
+  catch(e){ PS.err=psErrText(e.message); psMsg('err','Kết nối lỗi: '+PS.err); }
+  finally{ PSST.running=false; psSteps(); }
 }
 function psFind(ip){
   psMsg('', ip?'Đang tìm máy ở '+ip+'...':'Đang tìm máy trong mạng...');
   return DPS.discover(ip||null).then(function(list){
     PS.hosts=Array.isArray(list)?list:[]; psList();
     log('PS: tìm máy'+(ip?' ở '+ip:'')+': '+(PS.hosts.length?PS.hosts.map(function(h){return h.name+' '+(h.ps5?'PS5':'PS4')+' '+h.addr+' '+h.state+(h.registered?' đã ghép':' chưa ghép');}).join('; '):'không thấy máy nào'));
-    psMsg('', '');   /* nothing found: the list says it, with what to check */
+    if(PS.okMsg){ psMsg('ok',PS.okMsg); PS.okMsg=''; } else psMsg('', '');   /* nothing found: the list says it, with what to check */
     return PS.hosts;
   });
 }
@@ -8209,7 +8235,7 @@ function psRepair(h){
   if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép lại.'); return; }
   psMsg('','Đang bỏ ghép cũ...');
   DPS.forget(h.id).then(function(){ return psFind(h.addr); }).then(function(){
-    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm máy.'); return; }
+    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm lại.'); return; }
     var box=document.querySelector('.hs-ps[data-i="'+i+'"]'), pb=box&&box.querySelector('[data-a=pair]'); if(pb) pb.click();
     if(box) box.scrollIntoView({behavior:'smooth',block:'center'});
   });
@@ -8482,51 +8508,69 @@ function psErrText(e){
 /* the whole way from opening Hóng Sub to Vietnamese on the TV, one step at a time */
 var PSST={running:false};
 function psSteps(){
-  var L=$('hsPsSteps'); if(!L||!DPS) return;
-  var acc=PS.acc||{}, reg=(Array.isArray(PS.hosts)?PS.hosts:[]).filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
-  var tst=tvStatus(), tvOn=!!tst.ok, tvSet=!!(tvIp()||tvCode().length>=4);
-  var found=Array.isArray(PS.hosts)?PS.hosts:[], dev=psDev(), ps5=!found.length||found.some(function(h){ return h.ps5; });
-  var PATH5='<b>Settings › System › Remote Play</b>', PATH4='<b>Settings › Remote Play Connection Settings</b>';
-  var st=[
-    {t:'Đăng nhập tài khoản PSN',ok:!!acc.loggedIn,d:acc.loggedIn?('PSN: '+(acc.onlineId||'đã đăng nhập')):'làm một lần',a:'Đăng nhập PSN',f:psLogin,
-     how:'Bấm <b>Đăng nhập PSN</b>: cửa sổ của Sony hiện ra, đăng nhập tài khoản PSN (nhập mã xác minh nếu Sony hỏi). Xong cửa sổ tự đóng.'+
-       '<br>Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+
-       (DPS.loginUrl?'<div style="margin-top:8px"><b>Đăng nhập thành công mà hiện ra trang trắng</b> (cửa sổ không tự đóng): copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>) rồi dán vào ô bên dưới, bấm <b>Xong</b>.</div>'+
-         '<div class="hs-row" style="margin-top:6px"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div>':'')+
-       (DPS.loginBrowser?'<div class="hs-row" style="margin-top:6px"><button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button></div>':'')},
-    {t:'Ghép Hóng Sub với máy PS',ok:reg.length>0,d:reg.length?reg.map(function(h){return h.name;}).join(', '):found.length?('thấy '+found.map(function(h){ return h.name; }).join(', ')+', chưa ghép'):'làm một lần',a:'Tìm máy PS',f:function(){ psFind(); var l=$('hsPsList'); if(l) l.scrollIntoView({behavior:'smooth',block:'center'}); },
-     how:'<ol><li>Trên máy PS mở '+(ps5?PATH5+', bật <b>Enable Remote Play</b>, rồi chọn <b>Link Device</b>':PATH4+', bật <b>Enable Remote Play</b>, rồi chọn <b>Add Device</b>')+': màn hình hiện <b>mã 8 số</b>.'+
-       (ps5&&found.length?'':'<br><small>PS4: '+PATH4+' › Add Device.</small>')+'</li>'+
-       '<li>Máy PS và '+dev+' dùng chung một modem/wifi.</li>'+
-       '<li>'+(found.length?'Ở danh sách <b>Máy PS trong mạng</b> bên dưới, bấm <b>Ghép máy</b> cạnh '+esc(found[0].name)+', nhập mã 8 số rồi bấm Ghép.':'Bấm <b>Tìm máy PS</b>. Không thấy máy thì bấm <b>Nhập IP</b> (IP xem trên PS5 ở Settings › Network › Connection Status).')+'</li></ol>'},
-    {t:'Kết nối vào máy PS',ok:live,d:live?('đang nhận hình '+PS.host.name):(PS.err?('lỗi: '+PS.err):(reg.length?(reg[0].state==='ready'?reg[0].name+' đang bật':reg[0].state==='offline'?'chưa thấy '+reg[0].name+' trong mạng':reg[0].name+' đang nghỉ, Hóng Sub sẽ tự bật'):'')),a:PS.fwNeed?'Cho phép qua tường lửa':PSST.running?'Đang kết nối...':'Kết nối',f:function(){ if(PS.fwNeed) psFwFix(); else psAutoRun(); },bad:(!!PS.err||!!PS.fwNeed)&&!live,
-     how:(PS.fwNeed?'<b>Windows đang chặn hình từ máy PS.</b> Bấm <b>Cho phép qua tường lửa</b>, rồi chọn <b>Có (Yes)</b> ở hộp hỏi của Windows.<br>':'')+'Bấm <b>Kết nối</b>: Hóng Sub tự bật máy PS (nếu đang nghỉ) và nhận hình. Không cần làm gì trên PS.'+
-       '<br>Nếu đang Chơi từ xa ở thiết bị khác (điện thoại, PS Portal) thì thoát ở thiết bị đó trước. Các lần sau mở Hóng Sub là tự kết nối.'},
-    {t:'Dịch phụ đề',ok:!!S.running,d:S.running?'đang dịch':'tự bật khi có hình',a:'Bắt đầu dịch',f:function(){ if(S.stream) startRun(); },
-     how:'Có hình là Hóng Sub tự dịch. Chưa thấy dịch thì bấm <b>Bắt đầu dịch</b>.'},
-    {t:'Hiện phụ đề lên TV (không bắt buộc)',ok:tvOn,d:tvSet||S.tvType!=='android'?tst.t:'chưa nối TV',a:tst.a||'Xem cách nối',f:function(){ if(tst.f) tst.f(); else { var el=$('hsTvSec'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); } },bad:!!tst.bad}
-  ];
-  var cur=-1; st.forEach(function(x,i){ if(cur<0&&!x.ok&&i<4) cur=i; });
-  var html=st.map(function(x,i){ var cls=x.ok?'ok':x.bad?'bad':i===cur?'now':cur>=0&&i>cur&&i<4?'fut':'';
-    var btn=!x.ok&&(i===cur||x.bad||i===4)&&!(i===3&&!live)?'<button class="hs-btn'+(i===cur?' pri':'')+'" type="button" data-s="'+i+'"'+(i===2&&PSST.running?' disabled':'')+'>'+x.a+'</button>':'<span></span>';
-    return '<li class="'+cls+'"><i>'+(x.ok?'✓':x.bad?'!':(i+1))+'</i><div>'+x.t+'<small>'+esc(x.d)+'</small></div>'+btn+(i===cur&&x.how?'<div class="how">'+x.how+'</div>':'')+'</li>'; }).join('');
-  if(L.dataset.h!==html){ var pu0=L.querySelector('[data-x=psurl]'), pv0=pu0?pu0.value:''; L.dataset.h=html; L.innerHTML=html; if(pv0&&L.querySelector('[data-x=psurl]')) L.querySelector('[data-x=psurl]').value=pv0;   /* a link being pasted survives the steps being redrawn */ L.querySelectorAll('[data-s]').forEach(function(b){ b.onclick=function(){ st[+b.dataset.s].f(); }; }); var bb=L.querySelector('[data-x=browser]'); if(bb) bb.onclick=psLoginBrowser;
+  var B1=$('hsPsS1B'); if(!B1||!DPS) return;
+  var acc=PS.acc||{}, found=Array.isArray(PS.hosts)?PS.hosts:[], reg=found.filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
+  var dev=psDev(), only4=found.length>0&&!found.some(function(h){ return h.ps5; });
+  if(reg.length&&!load('psRpOk',false)) save('psRpOk',true);   /* a paired machine: Remote Play is on, also the next time before the machines are found */
+  var known=!!PS.acc, ok1=!!acc.loggedIn, ok2=reg.length>0||!!load('psRpOk',false), ok3=live, bad3=(!!PS.err||!!PS.fwNeed)&&!live;
+  var cur=!known?0:!ok1?1:!ok2?2:!ok3?3:0;
+  var RP5='<b>Settings › System › Remote Play</b> (Cài đặt › Hệ thống › Chơi từ xa)', RP4='<b>Settings › Remote Play Connection Settings</b> (Cài đặt kết nối Chơi từ xa)';
+  /* 1: the PSN account */
+  var h1=!known?'Đang kiểm tra tài khoản...':ok1?'Đã đăng nhập: <b>'+esc(acc.onlineId||'tài khoản PSN')+'</b>. <button class="dk-link" type="button" data-x="out">Đổi tài khoản</button>'
+    :'Cửa sổ của Sony hiện ra, đăng nhập tài khoản PSN (nhập mã xác minh nếu Sony hỏi). Xong cửa sổ tự đóng. Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+
+      '<div class="hs-row"><button class="hs-btn pri" type="button" data-x="login">Đăng nhập PSN</button>'+(DPS.loginBrowser?'<button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button>':'')+'</div>'+
+      (DPS.loginUrl?'<details class="kn-tip"><summary>Đăng nhập xong mà hiện ra trang trắng?</summary><p class="hs-note">Copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>), dán vào ô dưới rồi bấm <b>Xong</b>. Đừng gửi link này cho ai: trong link có mã đăng nhập của bạn.</p>'+
+        '<div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" aria-label="Link trang trắng sau khi đăng nhập" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div></details>':'');
+  /* 2: Remote Play switched on, on the PS itself (nothing tells the computer, so the person says when it is done; a paired machine proves it) */
+  var how2='Trên máy PS mở '+(only4?RP4:RP5)+', bật <b>Enable Remote Play</b> (Bật Chơi từ xa).'+(only4?'':'<br><small>PS4: '+RP4+', bật Enable Remote Play.</small>')+'<br>Máy PS và '+dev+' dùng chung một modem/Wi-Fi.';
+  var h2=ok2?(reg.length?'Đã bật.':'Đã bật. <button class="dk-link" type="button" data-x="rpno">Xem lại cách bật</button>')
+    :how2+(cur===2?'<div class="hs-row"><button class="hs-btn pri" type="button" data-x="rpok">Đã bật xong</button></div>':'');
+  /* 3: the machine: pair it once (8 digits), then Kết nối */
+  var h3='';
+  if(live) h3='Đang nhận hình <b>'+esc(PS.host.name)+'</b>.<div class="hs-row"><button class="hs-btn pri" type="button" data-x="choi">Về Màn hình chơi</button></div>';
+  else if(PS.fwNeed) h3='<b>Windows đang chặn hình từ máy PS.</b> Bấm Cho phép qua tường lửa, rồi chọn <b>Có (Yes)</b> ở hộp hỏi của Windows.<div class="hs-row"><button class="hs-btn pri" type="button" data-x="fw">Cho phép qua tường lửa</button></div>';
+  else if(PSST.running) h3='Đang kết nối...';
+  else if(PS.err) h3='<span class="kn-err">Chưa kết nối được: '+esc(PS.err)+'.</span> Bấm <b>Kết nối</b> để thử lại.';
+  else if(reg.length) h3='Bấm <b>Kết nối</b>: Hóng Sub tự bật máy PS (nếu đang nghỉ) và nhận hình. Đang Chơi từ xa ở thiết bị khác (điện thoại, PS Portal) thì thoát ở thiết bị đó trước.';
+  else if(found.length) h3='Lần đầu cần ghép máy: bấm <b>Ghép máy</b>, rồi nhập <b>mã 8 số</b> lấy trên máy PS ở '+(only4?'<b>Settings › Remote Play Connection Settings › Add Device</b>.':'<b>Settings › System › Remote Play › Link Device</b> (Chơi từ xa › Liên kết thiết bị).<br><small>PS4: Settings › Remote Play Connection Settings › Add Device.</small>');
+  else h3='Nhập địa chỉ IP thì xem IP trên PS5 ở <b>Settings › Network › Connection Status</b>.';
+  if(cur===1&&!bad3) h3=found.length?'Đã thấy '+esc(found.map(function(h){ return h.name; }).join(', '))+' trong mạng. Làm xong các bước trên rồi '+(reg.length?'kết nối':'ghép máy')+' ở đây.':'Làm xong các bước trên, rồi chọn máy PS ở đây.';
+  function put(el,html){
+    if(el.dataset.h===html) return;
+    var pu0=el.querySelector('[data-x=psurl]'), pv0=pu0?pu0.value:'', op=!!el.querySelector('details[open]');   /* a link being pasted survives the step being redrawn */
+    el.dataset.h=html; el.innerHTML=html;
+    var pu=el.querySelector('[data-x=psurl]'), pg=el.querySelector('[data-x=psurlgo]'), dt=el.querySelector('details');
+    if(pu&&pv0) pu.value=pv0; if(dt&&op) dt.open=true;
+    [].forEach.call(el.querySelectorAll('button[data-x]'),function(b){ var x=b.getAttribute('data-x');
+      if(x==='login') b.onclick=psLogin; else if(x==='browser') b.onclick=psLoginBrowser; else if(x==='out') b.onclick=psLogout; else if(x==='fw') b.onclick=function(){ psFwFix(); };
+      else if(x==='rpok') b.onclick=function(){ save('psRpOk',true); psMsg('',''); psSteps(); if(!PS.hosts||!PS.hosts.length) psFind(); };
+      else if(x==='rpno') b.onclick=function(){ save('psRpOk',false); psSteps(); };
+      else if(x==='choi') b.onclick=function(){ var n=document.querySelector('.dk-nav [data-p=choi]'); if(n) n.click(); }; });
     /* the link of the white page after logging in, pasted here */
-    var pu=L.querySelector('[data-x=psurl]'), pg=L.querySelector('[data-x=psurlgo]');
     if(pu&&pg){ pg.onclick=function(){ var u=pu.value.trim(); if(!u){ pu.focus(); return; }
         if(!/redirect\?.*code=|[?&]code=/.test(u)){ psMsg('err','Link chưa đúng. Cần link của trang trắng, có chữ "redirect?code=". Đăng nhập lại rồi copy đúng link đó.'); return; }
         pg.disabled=true; try{ DPS.loginCancel&&DPS.loginCancel(); }catch(e){}
         DPS.loginUrl(u).then(function(r){ pg.disabled=false;
-          if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); pu.value=''; }
+          if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); pu.value=''; }
           else if(r&&r.err==='url') psMsg('err','Link chưa đúng. Cần link có chữ "remoteplay/redirect?code=".');
           else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Mã trong link chỉ dùng được một lần và trong vài phút: đăng nhập lại rồi dán link mới.');
           psRefresh(); },function(e){ pg.disabled=false; psMsg('err','Đăng nhập chưa xong: '+(e&&e.message||e)); });
       };
       pu.addEventListener('keydown',function(e){ if(e.key==='Enter') pg.click(); }); }
   }
-  var go=$('hsPsAutoGo'); go.disabled=PSST.running||live; go.textContent=PSST.running?'Đang kết nối...':live?'Đã kết nối':'Kết nối tự động';
-  if(go.parentNode) go.parentNode.hidden=true;                                      /* the steps have the one button to press (Kết nối, or the firewall) */
-  var hd=$('hsPsListH'); if(hd) hd.hidden=!found.length&&cur<1;
+  put(B1,h1); put($('hsPsS2B'),h2); put($('hsPsS3B'),h3);
+  $('hsPsS1').className='kn-step '+(ok1?'ok':cur===1?'now':'');
+  $('hsPsS2').className='kn-step '+(ok2?'ok':cur===2?'now':cur===1?'fut':'');
+  $('hsPsS3').className='kn-step '+(ok3?'ok':bad3?'bad':cur===3?'now':cur===1?'fut':'');
+  /* the buttons of the list follow what is going on */
+  [].forEach.call($('hsPsList').querySelectorAll('[data-a=play]'),function(b){ var h=found[+b.closest('.hs-ps').dataset.i], t=live&&h&&h.id===PS.host.id?'Đã kết nối':PSST.running&&h&&PS.last&&h.id===PS.last.id?'Đang kết nối...':'Kết nối';
+    b.disabled=PSST.running||live; if(b.textContent!==t) b.textContent=t; });
+  /* what Hóng Sub says about the PS sits in the step being done */
+  var m=$('hsPsMsg'), box=$(cur===1||!known?'hsPsS1':cur===2?'hsPsS2':'hsPsS3').querySelector('.kn-b'); if(m&&box&&m.parentNode!==box) box.appendChild(m);
+  var chip=$('knChipPs'); if(chip){ var left=(ok1?0:1)+(ok2?0:1)+(ok3?0:1);
+    chip.className='kn-chip '+(live?'ok':bad3?'bad':'warn');
+    $('knChipPsT').textContent=live?'Máy PS: đang nhận hình '+PS.host.name:PSST.running?'Máy PS: đang kết nối...':bad3?'Máy PS: chưa kết nối được':!known?'Máy PS: đang kiểm tra...':'Máy PS: còn '+left+' bước'; }
+  var go=$('hsPsAutoGo'); if(go) go.disabled=PSST.running||live;
 }
 async function psAutoRun(auto){
   if(PSST.running) return;
@@ -8535,7 +8579,7 @@ async function psAutoRun(auto){
   try{
     if(!PS.acc||!PS.acc.loggedIn){ await psRefresh(); if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Bước 1: đăng nhập PSN trước (chỉ một lần).'); psLogin(); return; } }
     var list=await psFind(); var reg=(list||[]).filter(function(h){return h.registered;});
-    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 2: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên PS5 (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', hoặc bấm Nhập IP.'); return; }
+    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 3: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên máy PS (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', rồi bấm Tìm lại hoặc nhập địa chỉ IP của máy PS.'); return; }
     var h=reg.filter(function(x){return x.state==='ready';})[0]||reg.filter(function(x){return x.state!=='offline';})[0]||reg[0];
     if(h.state==='offline'){ psMsg('','Đang thử bật '+h.name+' ở '+h.addr+'...'); h.state='standby'; }
     tvNotice((h.state==='ready'?'Đang kết nối ':'Đang bật ')+h.name+'...');
@@ -9143,7 +9187,7 @@ if(!D&&DPS){
     var c=null; [].forEach.call(col.querySelectorAll('.dk-card'),function(x){ var h=x.querySelector('h2'); if(h&&/trên điện thoại/.test(h.textContent)) c=x; });
     if(!c){ c=document.createElement('div'); c.className='dk-card'; col.insertBefore(c,col.firstChild); }
     c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2>'
-      +'<ol class="dk-steps"><li><b>Chơi PS5 / PS4 ngay trong Hóng Sub (khuyên dùng):</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Điện thoại và PS5 dùng chung Wi-Fi. Làm 3 bước ở mục <b>PS5 / PS4 ngay trong Hóng Sub</b> bên dưới: đăng nhập PSN, ghép máy bằng mã 8 số, bấm Kết nối. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt.</li>'
+      +'<ol class="dk-steps"><li><b>Chơi PS5 / PS4 ngay trong Hóng Sub (khuyên dùng):</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Điện thoại và PS5 dùng chung Wi-Fi. Làm 3 bước ở mục <b>PS5 / PS4 ngay trong Hóng Sub</b> bên dưới: đăng nhập PSN, bật Chơi từ xa, chọn máy PS (lần đầu ghép bằng mã 8 số) rồi bấm Kết nối. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt.</li>'
       +'<li><b>Camera chĩa vào TV:</b> kê điện thoại trên giá sao cho camera thấy trọn màn hình TV. Bấm <b>Camera chĩa vào TV</b>, kéo 4 chấm vàng vào 4 góc TV, khoanh dòng phụ đề rồi bấm Bắt đầu dịch.</li>'
       +(PH?'<li><b>App PS Remote Play của Sony:</b> bấm <b>Chia sẻ màn hình</b> rồi mở PS Remote Play. Bấm nút <b>H</b> vàng nổi trên game để khoanh phụ đề.</li>':'')
       +'<li><b>Hiện chữ Việt lên TV:</b> cài app Hóng Sub TV (mục bên dưới), gõ mã đang hiện trên TV vào ô <b>Mã TV</b>.</li></ol>';

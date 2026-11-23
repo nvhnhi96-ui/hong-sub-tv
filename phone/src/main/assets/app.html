@@ -346,18 +346,19 @@ html.hs-mac #hsPsSec,html.hs-mac #hsPsGo,html.hs-mac #dkSrcPs,html.hs-mac #dkAiC
 .hs-vometer{height:6px;border-radius:3px;background:rgba(127,127,127,.22);overflow:hidden;margin:10px 0 2px}.hs-vometer i{display:block;height:100%;width:0;background:#3ecf8e;transition:width .12s linear}.hs-vometer.talk i{background:#f5c542}
 /* phone apps with Remote Play inside (Android, iPhone): the PS5 / PS4 parts of the desktop app */
 html.hs-mps #hsPsSec{display:block!important}html.hs-mps #hsPsGo,html.hs-mps #hsPsEnd{display:inline-flex!important}html.hs-mps #hsPsEnd.hs-off,html.hs-mps #hsPsFull{display:none!important}
-html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=android] .dk-set.dk-only{display:block!important}html.hs-mps .dk-nav span.hs-web{display:none!important}
+html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=android] .kn-lan{display:flex!important}html.hs-mps .dk-nav span.hs-web{display:none!important}
 .hs-macnote{border:1px solid rgba(255,196,0,.35);background:rgba(255,196,0,.07);border-radius:10px;padding:10px 12px;margin:10px 0}
 
 /* TV: one panel per kind of TV */
-.tvk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
-.tvk button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:11px 12px 10px;border:1.5px solid var(--line2);border-radius:11px;background:var(--panel2);color:var(--ink);text-align:left;cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
-.tvk button:hover{border-color:#4A5260}
-.tvk svg{width:22px;height:22px;fill:none;stroke:var(--muted);stroke-width:1.7;stroke-linecap:round;margin-bottom:5px}
-.tvk b{font-size:14.5px;font-weight:700}
-.tvk small{font-size:12px;color:var(--muted);line-height:1.35}
-.tvk button[aria-checked="true"]{border-color:var(--brand);background:rgba(255,196,0,.07)}
-.tvk button[aria-checked="true"] svg{stroke:var(--brand)}
+/* first the question "which TV?" (one tile per kind), then only that TV's steps */
+.tvk{display:grid;gap:8px;margin:0 0 4px}
+.tvk button{display:flex;align-items:center;gap:12px;min-height:44px;padding:12px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--sunk);color:var(--ink);text-align:left;cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
+.tvk button:hover{border-color:var(--soft);background:var(--panel2)}
+.tvk button > span{flex:1;min-width:0}
+.tvk svg{flex:none;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tvk b{display:block;font-size:15px;font-weight:700}
+.tvk em{font-style:normal;font-size:11.5px;font-weight:700;color:#04210f;background:#3FD08A;border-radius:6px;padding:1px 7px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.tvk small{display:block;margin-top:2px;font-size:12.5px;color:var(--muted);line-height:1.45}
 .tvs{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 13px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);font-size:13.5px;margin-bottom:12px;min-height:44px}
 .tvs i{width:9px;height:9px;border-radius:50%;background:var(--soft);flex:none}
 .tvs.ok i{background:#3FD08A;box-shadow:0 0 0 3px rgba(63,208,138,.18)}
@@ -374,6 +375,66 @@ html.hs-mps .dk-nav .dk-only{display:inline!important}html.hs-mps .tvp[data-k=an
 .tvd summary{cursor:pointer;font-weight:700;font-size:14px}
 .tvc{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .tvc2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;align-items:end}
+/* Kết nối PS và TV: numbered steps, the step to do now stands out, the rarely used parts stay folded */
+.kn-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.kn-chip{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:3px 13px;border-radius:17px;border:1px solid var(--line2);font-size:13.5px;font-weight:600;color:#C9D0DA;line-height:1.3}
+.kn-chip i{width:8px;height:8px;border-radius:50%;background:var(--soft);flex:none}
+.kn-chip.warn{border-color:rgba(255,196,0,.4);background:rgba(255,196,0,.08);color:#FFD84D}.kn-chip.warn i{background:var(--brand)}
+.kn-chip.ok{border-color:rgba(63,208,138,.45);background:rgba(63,208,138,.1);color:#3FD08A}.kn-chip.ok i{background:#3FD08A}
+.kn-chip.bad{border-color:rgba(255,107,94,.45);background:rgba(255,107,94,.1);color:#FF9A90}.kn-chip.bad i{background:#FF6B5E}
+#knChipPs{display:none}body.desk #knChipPs,html.hs-mps #knChipPs{display:inline-flex}html.hs-mac #knChipPs{display:none!important}
+.dk-card.kn-card > h2{font-size:17px}
+.kn-steps{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.kn-step{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-radius:12px;background:var(--sunk);border:1px solid var(--line);margin:0}
+div.kn-step{margin-top:8px}
+.kn-step.now{background:var(--panel2);border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.kn-n{flex:none;width:28px;height:28px;box-sizing:border-box;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13.5px;border:2px solid var(--line2);color:var(--muted)}
+.kn-step.now > .kn-n{background:var(--brand);border-color:var(--brand);color:#000}
+.kn-step.ok > .kn-n{background:#3FD08A;border-color:#3FD08A;color:#04210f;font-size:0}.kn-step.ok > .kn-n::before{content:"✓";font-size:15px}
+.kn-step.bad > .kn-n{background:#FF6B6B;border-color:#FF6B6B;color:#fff;font-size:0}.kn-step.bad > .kn-n::before{content:"!";font-size:15px}
+.kn-b{flex:1;min-width:0}
+.kn-b > h3{margin:3px 0 0;font-size:15px;font-weight:700;line-height:1.35}
+.kn-step.fut > .kn-b > h3{color:var(--muted)}
+.kn-step.fut .hs-pslist,.kn-step.fut .kn-miss,.kn-step.fut .hs-psip{display:none}
+.kn-d{font-size:13.5px;line-height:1.55;color:var(--muted);margin-top:3px}.kn-d:empty{display:none}.kn-d b{color:var(--ink)}
+.kn-d small{font-size:12.5px}.kn-d .kn-err{color:#FF9A90}
+.kn-d .hs-row,.kn-b > .hs-row{margin-top:10px}.kn-b > .hs-row:empty{display:none}
+.kn-b > .hs-note{margin:4px 0 0}
+.kn-b > .hs-msg{margin-top:10px;background:var(--panel)!important;border:1px solid var(--line2)}
+.kn-b .hs-pslist{margin-top:10px}
+.kn-miss{margin-top:10px!important}
+.kn-lab{display:block;margin:10px 0 4px;font-size:13px;font-weight:600}
+.kn-sub{margin:6px 0 0;padding-left:19px;font-size:13.5px;line-height:1.55;color:var(--muted);display:grid;gap:3px}.kn-sub b{color:var(--ink)}
+.kn-copy{display:flex;align-items:center;gap:12px;margin-top:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--panel)}
+.kn-copy > span{flex:1;min-width:0}.kn-copy small{display:block;font-size:12.5px;color:var(--muted)}
+.kn-copy .hs-code{display:inline-block;border:0;background:none;padding:0;font-size:17px;letter-spacing:.03em}
+.kn-tip{margin-top:10px}.kn-tip summary{cursor:pointer;font-size:13.5px;font-weight:600;text-decoration:underline;text-decoration-color:var(--brand2);text-underline-offset:3px}
+.kn-tip .hs-note{margin:6px 0 0}
+.kn-seg{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.kn-seg .hs-btn{min-height:40px}.kn-seg .hs-btn[aria-pressed=true]{border-color:var(--brand);background:rgba(255,196,0,.1);box-shadow:inset 0 0 0 1px var(--brand)}
+.kn-more{margin-top:12px;border:1px dashed var(--line2);border-radius:12px}
+.kn-more > summary{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;list-style:none}
+.kn-more > summary::-webkit-details-marker{display:none}
+.kn-more > summary > span{flex:1;min-width:0}.kn-more > summary b{display:block;font-size:14px}.kn-more > summary small{display:block;margin-top:2px;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.kn-more > summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px 0;transition:transform .15s}
+.kn-more[open] > summary::after{transform:rotate(-135deg);margin:4px 4px 0 0}
+.kn-in{padding:0 14px 14px}.kn-in > :first-child{margin-top:0}
+.kn-in > h3{margin:14px 0 2px;font-size:14px;font-weight:700}
+.kn-in .tvc{margin-top:0;padding-top:0;border-top:0}
+.dk-card.kn-help{padding:0;background:transparent;margin-top:0;border-style:dashed;border-color:var(--line2)}
+.kn-q{margin:14px 0 8px;font-size:15px;font-weight:700}
+.kn-back{display:inline-flex;align-items:center;min-height:32px;margin-top:6px;text-decoration:none}
+.kn-tvh{margin:4px 0 10px;font-size:16px;font-weight:700}
+.kn-inst{border:0;background:none;padding:0}.kn-inst > summary{font-size:14.5px}
+.kn-inst:not([open]){border:1px dashed var(--line2);padding:10px 12px;border-radius:10px}
+.kn-inst > .hs-note{margin:4px 0 0}
+.kn-inst:not([open]) ~ .kn-hdmi > .kn-n,body:not(.desk) .kn-hdmi > .kn-n{display:none}
+.kn-tv{display:grid;justify-items:start;gap:1px;margin-top:10px;max-width:250px;padding:12px 14px;border-radius:8px;border:3px solid var(--line2);background:#07090C;font-size:11px;line-height:1.3}
+.kn-tv b{font-size:14px;color:#fff;margin-bottom:4px}.kn-tv span{color:#FFC400;font-weight:700;margin-top:4px}.kn-tv i{font-style:normal;font-weight:800;font-size:15px;color:#fff;letter-spacing:.06em}
+.kn-tv i.hit{outline:2px dashed #FFC400;outline-offset:3px;border-radius:3px;margin-top:5px}
+#hsPsSec .hs-ps{border-color:var(--line2);border-radius:10px;background:var(--panel)}
+.hs-ps .r{flex-wrap:wrap}.hs-ps .kn-h{flex:1 1 150px;min-width:0}.hs-ps .kn-h b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-ps .kn-h small{display:block}.hs-ps .kn-acts{display:flex;align-items:center;gap:12px;flex:none}
 
 /* rail */
 .dk-rail{background:var(--rail);color:#fff;display:flex;flex-direction:column;padding:18px 12px 12px;min-height:0;border-right:1px solid #181C22}
@@ -840,6 +901,10 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
 
       <!-- ============ Kết nối ============ -->
       <section class="dk-page" id="p-ketnoi">
+        <div class="kn-chips" id="knChips">
+          <span class="kn-chip" id="knChipPs"><i></i><span id="knChipPsT">Máy PS: chưa kết nối</span></span>
+          <span class="kn-chip" id="knChipTv"><i></i><span id="knChipTvT">TV: chưa nối</span></span>
+        </div>
         <div class="dk-cols">
           <div>
             <div class="dk-card hs-web">
@@ -853,246 +918,300 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
               <p class="hs-note" style="margin-top:10px">Phần mềm Hóng Sub cho Windows chơi PS5 / PS4 ngay trong app, không cần app của Sony, có 25 giọng AI và gửi phụ đề lên TV.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải Hóng Sub cho Windows</button></div>
             </div>
-            <div class="dk-card hs-dk" id="hsPsSec">
+            <div class="dk-card hs-dk kn-card" id="hsPsSec">
               <h2>Kết nối máy PS5 / PS4</h2>
-              <p class="hs-note">Hóng Sub nhận hình từ máy PS qua Chơi từ xa (Remote Play) để đọc phụ đề, rồi gửi bản dịch lên TV. Làm lần lượt từng bước, bước đang làm có hướng dẫn ngay bên dưới. Chỉ làm một lần, các lần sau mở Hóng Sub là tự kết nối.</p>
-              <ol class="hs-pssteps" id="hsPsSteps"></ol>
-              <div class="hs-row" style="margin:8px 0 12px"><button class="hs-btn pri" id="hsPsAutoGo" type="button">Kết nối tự động</button><button class="hs-btn" id="hsPsFw" type="button" hidden>Cho phép qua tường lửa</button></div>
+              <p class="hs-note">Chỉ làm một lần. Các lần sau mở Hóng Sub là tự kết nối.</p>
               <div class="hs-psacc" id="hsPsAcc"></div>
-              <b class="hs-pslh" id="hsPsListH">Máy PS trong mạng</b>
-              <div id="hsPsList" class="hs-pslist"></div>
-              <div class="hs-row" style="margin-top:10px">
-                <button class="hs-btn" id="hsPsFind" type="button">Tìm máy</button>
-                <button class="hs-btn" id="hsPsIpBtn" type="button">Nhập IP</button>
-              </div>
-              <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
+              <ol class="kn-steps" id="hsPsStepsBox">
+                <li class="kn-step" id="hsPsS1"><i class="kn-n">1</i><div class="kn-b"><h3>Đăng nhập tài khoản PSN</h3><div class="kn-d" id="hsPsS1B"></div></div></li>
+                <li class="kn-step" id="hsPsS2"><i class="kn-n">2</i><div class="kn-b"><h3>Bật “Chơi từ xa” trên máy PS</h3><div class="kn-d" id="hsPsS2B"></div></div></li>
+                <li class="kn-step" id="hsPsS3"><i class="kn-n">3</i><div class="kn-b"><h3>Chọn máy PS của bạn</h3><div class="kn-d" id="hsPsS3B"></div>
+                  <div id="hsPsList" class="hs-pslist"></div>
+                  <p class="hs-note kn-miss">Không thấy máy của bạn? <button class="dk-link" id="hsPsFind" type="button">Tìm lại</button> hoặc <button class="dk-link" id="hsPsIpBtn" type="button">nhập địa chỉ IP của máy PS</button>.</p>
+                  <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal" aria-label="Địa chỉ IP của máy PS"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
+                </div></li>
+              </ol>
+              <div class="hs-row" hidden><button class="hs-btn pri" id="hsPsAutoGo" type="button">Kết nối tự động</button><button class="hs-btn" id="hsPsFw" type="button" hidden>Cho phép qua tường lửa</button></div>
               <div class="hs-msg" id="hsPsMsg" hidden></div>
-              <label class="hs-sw dk-sw">Chỉ xem để dịch, vẫn chơi bằng tay cầm trên TV <input type="checkbox" id="hsPsWatch"></label>
-              <p class="hs-note">Máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
-              <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
-              <div class="dk-set">
-                <label class="lab" for="hsPsQ">Chất lượng hình</label>
-                <select class="hs-in" id="hsPsQ"><option value="1080/60/15000">1080p, 60 hình/giây (15 Mbps, khuyên dùng)</option><option value="1080/60/30000">1080p, 60 hình/giây, nét cao (30 Mbps, cần cắm dây mạng)</option><option value="720/60/10000">720p, 60 hình/giây</option><option value="540/30/6000">540p, 30 hình/giây (mạng yếu)</option></select>
-              </div>
+              <details class="kn-more" id="knPsMore">
+                <summary><span><b>Tùy chọn thêm</b><small>Chỉ xem để dịch, tự bật máy PS, chất lượng hình. Để mặc định là dùng được.</small></span></summary>
+                <div class="kn-in">
+                  <label class="hs-sw dk-sw">Chỉ xem để dịch, vẫn chơi bằng tay cầm trên TV <input type="checkbox" id="hsPsWatch"></label>
+                  <p class="hs-note">Máy tính chỉ nhận hình để dịch, không giành tay cầm. Nên đăng nhập PSN bằng tài khoản phụ.</p>
+                  <label class="hs-sw dk-sw">Tự bật máy PS khi mở Hóng Sub hoặc mở app TV <input type="checkbox" id="hsPsAutoWake" checked></label>
+                  <div class="dk-set">
+                    <label class="lab" for="hsPsQ">Chất lượng hình</label>
+                    <select class="hs-in" id="hsPsQ"><option value="1080/60/15000">1080p, 60 hình/giây (15 Mbps, khuyên dùng)</option><option value="1080/60/30000">1080p, 60 hình/giây, nét cao (30 Mbps, cần cắm dây mạng)</option><option value="720/60/10000">720p, 60 hình/giây</option><option value="540/30/6000">540p, 30 hình/giây (mạng yếu)</option></select>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
           <div>
-            <div class="dk-card" id="hsTvSec">
+            <div class="dk-card kn-card" id="hsTvSec">
               <h2>Hiện phụ đề lên TV</h2>
-              <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden></p>
-              <div class="tvk" id="hsTvType" role="radiogroup" aria-label="Loại TV">
-                <button type="button" role="radio" aria-checked="false" data-k="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Android TV</b><small>Google TV, Sony, TCL, Xiaomi...</small></button>
-                <button type="button" role="radio" aria-checked="false" data-k="lg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV LG</b><small>webOS, có app Hóng Sub</small></button>
-                <button type="button" role="radio" aria-checked="false" data-k="samsung"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>TV Samsung</b><small>Tizen, có app Hóng Sub</small></button>
-              </div>
-              <div class="tvs" id="hsTvState"><i></i><span id="hsTvStateT">Chưa nối TV</span><button class="hs-btn" type="button" id="hsTvStateB" hidden></button></div>
-
-              <div class="tvp" data-k="android">
-                <p class="hs-note">Trên TV cài app <b>Hóng Sub TV</b> rồi bấm "Bật phụ đề". <button class="dk-link" type="button" data-tvguide="android">Cách tải app lên TV</button></p>
-                <div class="dk-set dk-only">
-                  <label class="lab" for="hsTvIp">Nối qua mạng nhà (nhanh nhất)</label>
-                  <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="IP của TV, VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
-                  <div class="hs-row" id="hsTvList" style="margin-top:6px"></div>
-                  <p class="hs-note" id="hsTvLanNote">TV và <span class="hs-devw">máy tính</span> dùng chung một modem/wifi: bấm Tìm TV, hoặc nhập IP đang hiện trên app Hóng Sub TV.</p>
+              <p class="hs-note">Chơi trên TV thì làm thêm phần này để phụ đề Việt hiện ngay trên TV. Chỉ xem trên màn hình <span class="hs-devw">máy tính</span> thì bỏ qua.</p>
+              <div id="knTvPick">
+                <h3 class="kn-q" id="knTvQ">TV của bạn là loại nào?</h3>
+                <div class="tvk" id="hsTvType" role="radiogroup" aria-labelledby="knTvQ">
+                  <button type="button" role="radio" aria-checked="false" data-k="android"><span><b>Android TV / Google TV <em>Ít bước nhất</em></b><small>Sony, TCL, Xiaomi... Cài app Hóng Sub TV trên TV rồi bấm Nối.</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" data-k="samsung"><span><b>TV Samsung</b><small>Bật Developer Mode trên TV rồi cài app Hóng Sub lên TV. Làm một lần, khoảng 3 phút.</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+                  <button type="button" role="radio" aria-checked="false" data-k="lg"><span><b>TV LG</b><small>Cài app Developer Mode trên TV rồi cài app Hóng Sub lên TV. Làm một lần.</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
                 </div>
-              </div>
-
-              <div class="tvp" data-k="lg">
-                <p class="hs-note">App Hóng Sub cho TV LG hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Mã TV được điền sẵn khi cài từ máy tính.</p>
-                <div class="hs-row dk-only" id="dkLgDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkLgOpen">Mở Hóng Sub trên TV</button></div>
-                <label class="hs-sw dk-sw dk-only" id="dkLgAutoRow" hidden>Mở Hóng Sub trên TV LG khi mở phần mềm <input type="checkbox" id="dkLgAuto" checked></label>
-                <details class="tvd dk-only" id="dkLg" open>
-                  <summary id="dkLgSum">Cài app lên TV LG</summary>
-                  <p class="hs-note" id="dkLgState">Làm một lần trên TV, phần còn lại máy tính tự làm.</p>
-                  <ol class="dk-steps">
-                    <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
-                    <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
-                    <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
-                    <li>Gõ IP của TV và <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
-                  </ol>
-                  <div class="dk-set">
-                    <label class="lab" for="dkLgIp">IP của TV LG</label>
-                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal"><button class="hs-btn" type="button" id="dkLgFind">Tìm TV LG</button></div>
-                    <div class="hs-row" id="dkLgList" style="margin-top:6px"></div>
-                  </div>
-                  <div class="dk-set">
-                    <label class="lab" for="dkLgPass">Passphrase trên TV</label>
-                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="dkLgGo">Cài app lên TV</button></div>
-                  </div>
-                  <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+                <details class="kn-tip">
+                  <summary>Không biết TV loại nào? Xem cách nhận biết</summary>
+                  <p class="hs-note">Nhìn logo trên TV hoặc trên remote: chữ <b>SAMSUNG</b> là TV Samsung, chữ <b>LG</b> là TV LG. TV hãng khác (Sony, TCL, Xiaomi...) mà màn hình chính có chữ <b>Android TV</b> hoặc <b>Google TV</b>, hoặc có cửa hàng <b>Google Play (CH Play)</b>, là Android TV.</p>
                 </details>
-                <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
-                <!-- the phone apps (Android, iPhone): connect by the TV code, straight over the home network; Android can also put the app on the TV -->
-                <div class="mp-tv" id="mpLgBox" hidden>
-                  <ol class="dk-steps">
-                    <li>Trên TV LG bấm <b>Home</b> và mở app <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
-                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
-                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
-                  </ol>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
-                  <div class="hs-row" id="mpLgList" style="margin-top:6px"></div>
-                  <details class="tvd" id="mpLg">
-                    <summary id="mpLgSum">TV chưa có app Hóng Sub: cài lên TV LG</summary>
-                    <div id="mpLgAnd" hidden>
-                      <p class="hs-note">Làm một lần trên TV, phần còn lại điện thoại tự làm. Điện thoại và TV dùng chung Wi-Fi.</p>
-                      <ol class="dk-steps">
-                        <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
-                        <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
-                        <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
-                        <li>Bấm <b>Tìm TV LG trong nhà</b> ở trên (hoặc gõ IP của TV), gõ <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
-                      </ol>
-                      <div class="dk-set">
-                        <label class="lab" for="mpLgIp">IP của TV LG</label>
-                        <input class="hs-in" id="mpLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" autocomplete="off">
-                      </div>
-                      <div class="dk-set">
-                        <label class="lab" for="mpLgPass">Passphrase trên TV</label>
-                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="mpLgGo">Cài app lên TV</button></div>
-                      </div>
-                      <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
-                    </div>
-                    <div id="mpLgIos" hidden>
-                      <p class="hs-note">Bản Hóng Sub cho iPhone chưa tự cài app lên TV LG được. Cài một lần bằng một trong hai cách dưới, sau đó iPhone chỉ cần gõ Mã TV:</p>
-                      <ol class="dk-steps">
-                        <li>Điện thoại <b>Android</b> có Hóng Sub: Kết nối TV › TV LG › Cài app lên TV (TV bật Developer Mode, gõ Passphrase).</li>
-                        <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV LG, làm theo hướng dẫn.</li>
-                      </ol>
-                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng cài giúp (Zalo)</button></div>
-                    </div>
-                  </details>
-                  <div class="hs-msg" id="mpLgMsg" hidden></div>
-                  <p class="hs-note" id="mpLgNet" style="margin-top:8px"></p>
-                </div>
-                <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
               </div>
+              <div id="knTvBody" hidden>
+                <button class="dk-link kn-back" type="button" id="knTvBack">‹ Chọn loại TV khác</button>
+                <h3 class="kn-tvh" id="knTvH">Nối với Android TV / Google TV</h3>
+                <div class="tvs" id="hsTvState"><i></i><span id="hsTvStateT">Chưa nối TV</span><button class="hs-btn" type="button" id="hsTvStateB" hidden></button></div>
 
-              <div class="tvp" data-k="samsung">
-                <p class="hs-note">App Hóng Sub cho TV Samsung hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã.</p>
-                <div class="hs-row dk-only" id="dkTzDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkTzOpen">Mở Hóng Sub trên TV</button></div>
-                <details class="tvd dk-only" id="dkTz" open>
-                  <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần, khoảng 3 phút)</summary>
-                  <p class="hs-note">Không cần Tizen Studio. Hóng Sub tự xin chứng chỉ Samsung cho TV bằng tài khoản Samsung của bạn (miễn phí), tự ký và cài app lên TV. Dòng ✓ xanh là bước đó đã xong.</p>
-                  <ol class="dk-steps dk-tz">
-                    <li><b>Trên TV: bật Developer Mode.</b>
-                      <ul class="dk-tzsub">
-                        <li>Bấm <b>Home</b>, vào <b>Ứng dụng</b> (Apps). TV đời 2023 trở đi: Home › <b>Nội dung</b> (Features) › Ứng dụng. Nếu có ô <b>Cài đặt ứng dụng</b> (bánh răng) thì chọn ô đó.</li>
-                        <li>Bấm <b>1 2 3 4 5</b>. Remote không có phím số: bấm nút <b>123</b> để hiện bàn phím số rồi bấm.</li>
-                        <li>Bảng Developer mode: chọn <b>On</b>, ô <b>Host PC IP</b> gõ <span class="hs-code" id="dkTzPcIp">IP máy tính</span>, bấm <b>OK</b>.</li>
-                        <li>Khởi động lại TV: rút điện 30 giây rồi cắm lại. Vào lại Ứng dụng thấy chữ <b>Develop Mode</b> ở trên là được.</li>
-                      </ul>
-                      <div class="tzst" id="dkTzS1"></div></li>
-                    <li><b>Chọn TV.</b> Bấm Tìm TV Samsung, hoặc gõ IP của TV.
-                  <div class="dk-set">
-                    <label class="lab" for="dkTzIp">IP của TV Samsung</label>
-                    <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
-                    <div class="hs-row" id="dkTzList" style="margin-top:6px"></div>
-                    <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
-                  </div>
-                  </li>
-                    <li><b>Bấm Cài app lên TV.</b> Lần đầu Hóng Sub mở cửa sổ <b>đăng nhập tài khoản Samsung</b>: dùng email và mật khẩu (chưa có thì tạo miễn phí ở account.samsung.com; đăng nhập bằng Google không dùng được). Sau đó máy tính tự xin chứng chỉ, ký, cài và mở Hóng Sub trên TV; TV tự nối với máy tính, không cần gõ mã.</li>
+                <div class="tvp" data-k="android">
+                  <ol class="kn-steps">
+                    <li class="kn-step" id="knAnd1"><i class="kn-n">1</i><div class="kn-b"><h3>Cài app Hóng Sub TV lên TV</h3>
+                      <p class="hs-note">Cài xong, mở app trên TV rồi bấm "Bật phụ đề". Chỉ cài một lần.</p>
+                      <div class="hs-row"><button class="hs-btn" type="button" data-tvguide="android">Cách tải app lên TV</button></div>
+                    </div></li>
+                    <li class="kn-step dk-only kn-lan" id="knAnd2"><i class="kn-n">2</i><div class="kn-b"><h3>Tìm TV rồi bấm Nối</h3>
+                      <p class="hs-note" id="hsTvLanNote">TV và <span class="hs-devw">máy tính</span> phải dùng chung một modem hoặc Wi-Fi.</p>
+                      <div class="hs-row"><button class="hs-btn pri" id="hsTvFind" type="button">Tìm TV</button></div>
+                      <div class="hs-row" id="hsTvList"></div>
+                    </div></li>
+                    <li class="kn-step dk-only kn-lan" id="knAnd3"><i class="kn-n">3</i><div class="kn-b"><h3>Không tìm thấy TV? Gõ IP đang hiện trên TV</h3>
+                      <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="hsTvIp" type="text" inputmode="decimal" placeholder="VD: 192.168.1.50" aria-label="IP của TV"><button class="hs-btn" id="hsTvIpGo" type="button">Nối</button></div>
+                      <div class="kn-tv" role="img" aria-label="Màn hình app Hóng Sub TV trên TV: dòng IP MẠNG CỦA TV nằm dưới mã TV">
+                        <b>HÓNG SUB TV</b>
+                        <span>MÃ TV CỦA BẠN</span><i>K7P2QX</i>
+                        <span>IP MẠNG CỦA TV</span><i class="hit">192.168.1.50</i>
+                      </div>
+                      <p class="hs-note">Hình minh họa màn hình app Hóng Sub TV. Gõ dãy số ở dòng <b>IP MẠNG CỦA TV</b> trên TV của bạn.</p>
+                    </div></li>
                   </ol>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="dkTzAuto">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
-                  <details class="tvd" id="dkTzOld" style="margin-top:12px">
-                    <summary>Cách cũ: cài bằng Tizen Studio (khi cách trên không được)</summary>
-                    <ol class="dk-steps dk-tz">
-                    <li><b>Trên máy tính: cài Tizen Studio.</b> <button class="dk-link" type="button" data-url="https://developer.tizen.org/development/tizen-studio/download">Tải Tizen Studio</button> bản <b>Windows 64-bit</b> (IDE installer), cài vào <b>C:\tizen-studio</b>. Mở <b>Package Manager</b> › thẻ <b>Extension SDK</b> › bấm <b>Install</b> cho <b>TV Extensions</b>, <b>TV Extensions Tools</b> và <b>Samsung Certificate Extension</b>.
-                      <div class="tzst" id="dkTzS2"></div></li>
-                    <li><b>Trong Tizen Studio: tạo chứng chỉ Samsung</b> (TV đang bật).
-                      <ul class="dk-tzsub">
-                        <li><b>Tools › Device Manager</b> › bấm <b>Scan</b> (hoặc dấu <b>+</b>, gõ IP của TV) › gạt <b>Connection</b> sang <b>On</b>.</li>
-                        <li><b>Tools › Certificate Manager</b> › dấu <b>+</b> › <b>Samsung</b> › <b>TV</b> › đặt tên (vd <b>HongSub</b>) › <b>Create a new author certificate</b>: gõ tên, mật khẩu tự đặt › đăng nhập <b>tài khoản Samsung</b>.</li>
-                        <li>Bước Distributor: để <b>Public</b>, ô <b>DUID</b> có sẵn mã TV › <b>Finish</b>.</li>
-                      </ul>
-                      <div class="tzst" id="dkTzS3"></div></li>
+                </div>
+
+                <div class="tvp" data-k="lg">
+                  <p class="hs-note">App Hóng Sub cho TV LG hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Mã TV được điền sẵn khi cài từ máy tính.</p>
+                  <div class="hs-row dk-only" id="dkLgDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkLgOpen">Mở Hóng Sub trên TV</button></div>
+                  <label class="hs-sw dk-sw dk-only" id="dkLgAutoRow" hidden>Mở Hóng Sub trên TV LG khi mở phần mềm <input type="checkbox" id="dkLgAuto" checked></label>
+                  <details class="tvd dk-only kn-inst" id="dkLg" open>
+                    <summary id="dkLgSum">Cài app lên TV LG</summary>
+                    <p class="hs-note" id="dkLgState">Làm một lần trên TV, phần còn lại máy tính tự làm.</p>
+                    <ol class="kn-steps">
+                      <li class="kn-step" id="knLg1"><i class="kn-n">1</i><div class="kn-b"><h3>Trên TV: cài và bật Developer Mode</h3>
+                        <ol class="kn-sub">
+                          <li>Mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                          <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                          <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                        </ol>
+                      </div></li>
+                      <li class="kn-step" id="knLg2"><i class="kn-n">2</i><div class="kn-b"><h3>Chọn TV</h3>
+                        <div class="hs-row"><button class="hs-btn" type="button" id="dkLgFind">Tìm TV LG</button></div>
+                        <div class="hs-row" id="dkLgList"></div>
+                        <label class="lab kn-lab" for="dkLgIp">Hoặc gõ IP của TV LG</label>
+                        <input class="hs-in" id="dkLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal">
+                        <p class="hs-note">IP của TV có trong app Developer Mode trên TV.</p>
+                      </div></li>
+                      <li class="kn-step" id="knLg3"><i class="kn-n">3</i><div class="kn-b"><h3>Gõ Passphrase rồi cài app</h3>
+                        <label class="lab kn-lab" for="dkLgPass">Passphrase (6 chữ trong app Developer Mode trên TV)</label>
+                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="dkLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="dkLgGo">Cài app lên TV</button></div>
+                      </div></li>
                     </ol>
-                  <div class="dk-set">
-                    <label class="lab" for="dkTzProf">Chứng chỉ Samsung</label>
-                    <select class="hs-in" id="dkTzProf"></select>
-                  </div>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkTzGo">Cài bằng Tizen Studio</button></div>
+                    <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
                   </details>
-                  <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại. Không tự làm được: hẹn cửa hàng qua Zalo để cài giúp.</p>
-                </details>
-                <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
-                <!-- the phone apps: Samsung only installs apps signed with a Samsung certificate made for that TV (Tizen Studio on a computer),
-                     so the phone connects to the app already on the TV, by its code, straight over the home network -->
-                <div class="mp-tv" id="mpTzBox" hidden>
-                  <ol class="dk-steps">
-                    <li>Trên TV Samsung bấm <b>Home</b> › <b>Ứng dụng</b> và mở <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
-                    <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
-                    <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
-                  </ol>
-                  <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
-                  <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
-                  <details class="tvd" id="mpTz">
-                    <summary id="mpTzSum">TV chưa có app Hóng Sub: cài lên TV Samsung từ điện thoại</summary>
-                    <p class="hs-note">Cài thẳng từ điện thoại, khoảng 3 phút, không cần máy tính. Điện thoại và TV dùng chung Wi-Fi.</p>
+                  <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
+                  <!-- the phone apps (Android, iPhone): connect by the TV code, straight over the home network; Android can also put the app on the TV -->
+                  <div class="mp-tv" id="mpLgBox" hidden>
                     <ol class="dk-steps">
-                      <li>Trên TV mở <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> trên remote (remote không có số: bấm nút <b>123</b> để hiện bàn số).</li>
-                      <li>Bật <b>Developer mode: On</b>. Ô <b>Host PC IP</b> gõ IP của điện thoại này: <b id="mpTzMyIp">...</b>, bấm OK rồi <b>tắt TV và bật lại</b>.</li>
-                      <li>Bấm <b>Tìm TV Samsung trong nhà</b> ở trên (hoặc gõ IP của TV dưới đây), rồi bấm <b>Cài app lên TV</b>. Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b> (miễn phí, dùng email và mật khẩu) để Samsung cấp chứng chỉ cho TV.</li>
+                      <li>Trên TV LG bấm <b>Home</b> và mở app <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                      <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                      <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
                     </ol>
-                    <div class="dk-set">
-                      <label class="lab" for="mpTzIpIn">IP của TV Samsung</label>
-                      <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
-                    </div>
-                    <p class="hs-note" style="margin-top:8px">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng chứng chỉ làm riêng cho từng TV. Hóng Sub tự xin chứng chỉ bằng tài khoản Samsung của bạn và giữ trong điện thoại; lần sau cài lại không cần đăng nhập. App trên TV tự cập nhật.</p>
-                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng hướng dẫn (Zalo)</button></div>
-                  </details>
-                  <div class="hs-msg" id="mpTzMsg" hidden></div>
-                  <p class="hs-note" id="mpTzNet" style="margin-top:8px"></p>
-                </div>
-                <p class="hs-note hs-web">Cài app lên TV Samsung bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV Samsung): phần mềm làm giúp phần lớn các bước.</p>
-              </div>
-
-
-              <div class="tvc">
-                <div class="dk-set"><label class="lab" for="hsTv" id="hsTvCodeLab">Mã TV</label></div>
-                <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
-                  <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
-                  <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
-                </div>
-                <div class="tvc2">
-                  <div class="dk-set">
-                    <div class="lab">Cỡ chữ, màu chữ, nền và khung</div>
-                    <p class="hs-note" style="margin-top:4px" id="hsTvLook">Giống phụ đề trên máy tính</p>
-                    <button class="hs-btn" type="button" data-go="phude" style="margin-top:6px">Chỉnh ở mục Phụ đề</button>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                    <div class="hs-row" id="mpLgList" style="margin-top:6px"></div>
+                    <details class="tvd" id="mpLg">
+                      <summary id="mpLgSum">TV chưa có app Hóng Sub: cài lên TV LG</summary>
+                      <div id="mpLgAnd" hidden>
+                        <p class="hs-note">Làm một lần trên TV, phần còn lại điện thoại tự làm. Điện thoại và TV dùng chung Wi-Fi.</p>
+                        <ol class="dk-steps">
+                          <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                          <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                          <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                          <li>Bấm <b>Tìm TV LG trong nhà</b> ở trên (hoặc gõ IP của TV), gõ <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
+                        </ol>
+                        <div class="dk-set">
+                          <label class="lab" for="mpLgIp">IP của TV LG</label>
+                          <input class="hs-in" id="mpLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="dk-set">
+                          <label class="lab" for="mpLgPass">Passphrase trên TV</label>
+                          <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="mpLgGo">Cài app lên TV</button></div>
+                        </div>
+                        <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
+                      </div>
+                      <div id="mpLgIos" hidden>
+                        <p class="hs-note">Bản Hóng Sub cho iPhone chưa tự cài app lên TV LG được. Cài một lần bằng một trong hai cách dưới, sau đó iPhone chỉ cần gõ Mã TV:</p>
+                        <ol class="dk-steps">
+                          <li>Điện thoại <b>Android</b> có Hóng Sub: Kết nối TV › TV LG › Cài app lên TV (TV bật Developer Mode, gõ Passphrase).</li>
+                          <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV LG, làm theo hướng dẫn.</li>
+                        </ol>
+                        <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng cài giúp (Zalo)</button></div>
+                      </div>
+                    </details>
+                    <div class="hs-msg" id="mpLgMsg" hidden></div>
+                    <p class="hs-note" id="mpLgNet" style="margin-top:8px"></p>
                   </div>
-                  <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
+                  <p class="hs-note hs-web">Cài app lên TV LG bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV LG). Chưa cài thì mở trình duyệt trên TV vào <b>honggame.store/lg</b> và gõ mã đang hiện trên TV vào ô Mã TV.</p>
+                  <div class="kn-step kn-hdmi"><i class="kn-n">4</i><div class="kn-b"><h3>Chọn cổng HDMI đang cắm máy PS</h3>
+                    <div class="kn-seg" role="group" aria-label="Cổng HDMI đang cắm máy PS"><button class="hs-btn" type="button" data-hdmi="0" aria-pressed="true">TV tự tìm</button><button class="hs-btn" type="button" data-hdmi="1" aria-pressed="false">HDMI 1</button><button class="hs-btn" type="button" data-hdmi="2" aria-pressed="false">HDMI 2</button><button class="hs-btn" type="button" data-hdmi="3" aria-pressed="false">HDMI 3</button><button class="hs-btn" type="button" data-hdmi="4" aria-pressed="false">HDMI 4</button></div>
+                    <p class="hs-note">Nên để "TV tự tìm". TV không hiện hình máy PS thì chọn đúng cổng đang cắm.</p>
+                  </div></div>
                 </div>
-                <div class="dk-set"><label class="lab" for="hsTvRead">Đọc to phụ đề ở</label><select class="hs-in" id="hsTvRead"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng trên TV)</option><option value="both">Cả máy tính và TV</option></select></div>
-                <div class="dk-set" data-tvvolrow><div class="lab"><label for="hsTvVol">Âm lượng giọng đọc trên TV</label><output id="hsTvVolV">150%</output></div><input class="hs-range" id="hsTvVol" type="range" min="50" max="300" step="10" value="150"><p class="hs-note">Trên 100% là to hơn mức bình thường của TV (giọng đọc được khuếch đại). Chỉnh xong TV đọc thử ngay.</p></div>
-                <label class="hs-sw" style="margin-top:10px">Hiện câu gốc tiếng Anh dưới câu Việt <input type="checkbox" id="hsTvEn"></label>
-                <div class="dk-set tvlg-only"><label class="lab" for="hsTvHdmi">Cổng HDMI đang cắm máy PS</label><select class="hs-in" id="hsTvHdmi"><option value="0">TV tự tìm (khuyên dùng)</option><option value="1">HDMI 1</option><option value="2">HDMI 2</option><option value="3">HDMI 3</option><option value="4">HDMI 4</option></select></div>
-                <p class="hs-note" style="margin-top:6px">Mọi cài đặt chữ trên TV chỉnh ở đây. App trên TV chỉ để kết nối, đổi ở đây là TV đổi theo ngay.</p>
+
+                <div class="tvp" data-k="samsung">
+                  <p class="hs-note">App Hóng Sub cho TV Samsung hiện hình PS5 từ cổng HDMI, phụ đề nằm ngay trên hình. Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã.</p>
+                  <div class="hs-row dk-only" id="dkTzDone" hidden style="margin-top:10px"><button class="hs-btn pri" type="button" id="dkTzOpen">Mở Hóng Sub trên TV</button></div>
+                  <details class="tvd dk-only kn-inst" id="dkTz" open>
+                    <summary id="dkTzSum">Cài app lên TV Samsung (làm một lần, khoảng 3 phút)</summary>
+                    <ol class="kn-steps">
+                      <li class="kn-step" id="knTz1"><i class="kn-n">1</i><div class="kn-b"><h3>Trên TV: bật Developer Mode</h3>
+                        <ol class="kn-sub">
+                          <li>Bấm <b>Home</b>, vào <b>Ứng dụng</b> (Apps).</li>
+                          <li>Bấm lần lượt <b>1 2 3 4 5</b> trên remote.</li>
+                          <li>Chọn <b>On</b>, gõ dãy số dưới đây vào ô <b>Host PC IP</b>, bấm <b>OK</b>.</li>
+                          <li>Khởi động lại hẳn TV: giữ nút nguồn trên remote khoảng 5 giây tới khi TV tắt rồi tự bật lại, hoặc rút điện 30 giây rồi cắm lại. Vào lại Ứng dụng thấy chữ <b>Develop Mode</b> ở trên là được.</li>
+                        </ol>
+                        <div class="kn-copy"><span><small>Dãy số gõ vào ô Host PC IP</small><b class="hs-code" id="dkTzPcIp">IP máy tính</b></span><button class="hs-btn" type="button" id="knTzCopy">Sao chép</button></div>
+                        <details class="kn-tip">
+                          <summary>Remote không có phím số, hoặc TV đời 2023 trở đi?</summary>
+                          <p class="hs-note">Remote không có phím số: bấm nút <b>123</b> để hiện bàn phím số rồi bấm 1 2 3 4 5. TV đời 2023 trở đi: Home › <b>Nội dung</b> (Features) › Ứng dụng; nếu có ô <b>Cài đặt ứng dụng</b> (bánh răng) thì chọn ô đó rồi mới bấm 1 2 3 4 5.</p>
+                        </details>
+                        <div class="tzst" id="dkTzS1"></div>
+                      </div></li>
+                      <li class="kn-step" id="knTz2"><i class="kn-n">2</i><div class="kn-b"><h3>Chọn TV</h3>
+                        <div class="hs-row"><button class="hs-btn" type="button" id="dkTzFind">Tìm TV Samsung</button></div>
+                        <div class="hs-row" id="dkTzList"></div>
+                        <label class="lab kn-lab" for="dkTzIp">Hoặc gõ IP của TV Samsung</label>
+                        <input class="hs-in" id="dkTzIp" placeholder="VD: 192.168.1.30" inputmode="decimal">
+                        <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP.</p>
+                      </div></li>
+                      <li class="kn-step" id="knTz3"><i class="kn-n">3</i><div class="kn-b"><h3>Cài app lên TV</h3>
+                        <p class="hs-note">Lần đầu Hóng Sub mở cửa sổ <b>đăng nhập tài khoản Samsung</b>: dùng email và mật khẩu (chưa có thì tạo miễn phí ở account.samsung.com; đăng nhập bằng Google không dùng được). Sau đó máy tính tự xin chứng chỉ, ký, cài và mở Hóng Sub trên TV.</p>
+                        <div class="hs-row"><button class="hs-btn pri" type="button" id="dkTzAuto">Cài app lên TV</button><button class="hs-btn" type="button" id="dkTzCheck">Kiểm tra lại</button></div>
+                      </div></li>
+                    </ol>
+                  </details>
+                  <div class="hs-msg dk-only" id="dkTzMsg" hidden></div>
+                  <!-- the phone apps: Samsung only installs apps signed with a Samsung certificate made for that TV (Tizen Studio on a computer),
+                       so the phone connects to the app already on the TV, by its code, straight over the home network -->
+                  <div class="mp-tv" id="mpTzBox" hidden>
+                    <ol class="dk-steps">
+                      <li>Trên TV Samsung bấm <b>Home</b> › <b>Ứng dụng</b> và mở <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
+                      <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
+                      <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
+                    </ol>
+                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                    <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
+                    <details class="tvd" id="mpTz">
+                      <summary id="mpTzSum">TV chưa có app Hóng Sub: cài lên TV Samsung từ điện thoại</summary>
+                      <p class="hs-note">Cài thẳng từ điện thoại, khoảng 3 phút, không cần máy tính. Điện thoại và TV dùng chung Wi-Fi.</p>
+                      <ol class="dk-steps">
+                        <li>Trên TV mở <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> trên remote (remote không có số: bấm nút <b>123</b> để hiện bàn số).</li>
+                        <li>Bật <b>Developer mode: On</b>. Ô <b>Host PC IP</b> gõ IP của điện thoại này: <b id="mpTzMyIp">...</b>, bấm OK rồi <b>tắt TV và bật lại</b>.</li>
+                        <li>Bấm <b>Tìm TV Samsung trong nhà</b> ở trên (hoặc gõ IP của TV dưới đây), rồi bấm <b>Cài app lên TV</b>. Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b> (miễn phí, dùng email và mật khẩu) để Samsung cấp chứng chỉ cho TV.</li>
+                      </ol>
+                      <div class="dk-set">
+                        <label class="lab" for="mpTzIpIn">IP của TV Samsung</label>
+                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
+                      </div>
+                      <p class="hs-note" style="margin-top:8px">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng chứng chỉ làm riêng cho từng TV. Hóng Sub tự xin chứng chỉ bằng tài khoản Samsung của bạn và giữ trong điện thoại; lần sau cài lại không cần đăng nhập. App trên TV tự cập nhật.</p>
+                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng hướng dẫn (Zalo)</button></div>
+                    </details>
+                    <div class="hs-msg" id="mpTzMsg" hidden></div>
+                    <p class="hs-note" id="mpTzNet" style="margin-top:8px"></p>
+                  </div>
+                  <p class="hs-note hs-web">Cài app lên TV Samsung bằng phần mềm Hóng Sub cho Windows (Kết nối TV, chọn TV Samsung): phần mềm làm giúp phần lớn các bước.</p>
+                  <div class="kn-step kn-hdmi"><i class="kn-n">4</i><div class="kn-b"><h3>Chọn cổng HDMI đang cắm máy PS</h3>
+                    <div class="kn-seg" role="group" aria-label="Cổng HDMI đang cắm máy PS"><button class="hs-btn" type="button" data-hdmi="0" aria-pressed="true">TV tự tìm</button><button class="hs-btn" type="button" data-hdmi="1" aria-pressed="false">HDMI 1</button><button class="hs-btn" type="button" data-hdmi="2" aria-pressed="false">HDMI 2</button><button class="hs-btn" type="button" data-hdmi="3" aria-pressed="false">HDMI 3</button><button class="hs-btn" type="button" data-hdmi="4" aria-pressed="false">HDMI 4</button></div>
+                    <p class="hs-note">Nên để "TV tự tìm". TV không hiện hình máy PS thì chọn đúng cổng đang cắm.</p>
+                  </div></div>
+                  <details class="kn-more dk-only" id="knTzHelp">
+                    <summary><span><b>Không cài được?</b><small>Cách cũ: cài bằng Tizen Studio. Hoặc hẹn cửa hàng qua Zalo để cài giúp.</small></span></summary>
+                    <div class="kn-in">
+                      <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng cài giúp (Zalo 0367 879 283)</button></div>
+                      <details class="tvd" id="dkTzOld" style="margin-top:12px">
+                        <summary>Cách cũ: cài bằng Tizen Studio (khi cách trên không được)</summary>
+                        <ol class="dk-steps dk-tz">
+                        <li><b>Trên máy tính: cài Tizen Studio.</b> <button class="dk-link" type="button" data-url="https://developer.tizen.org/development/tizen-studio/download">Tải Tizen Studio</button> bản <b>Windows 64-bit</b> (IDE installer), cài vào <b>C:\tizen-studio</b>. Mở <b>Package Manager</b> › thẻ <b>Extension SDK</b> › bấm <b>Install</b> cho <b>TV Extensions</b>, <b>TV Extensions Tools</b> và <b>Samsung Certificate Extension</b>.
+                          <div class="tzst" id="dkTzS2"></div></li>
+                        <li><b>Trong Tizen Studio: tạo chứng chỉ Samsung</b> (TV đang bật).
+                          <ul class="dk-tzsub">
+                            <li><b>Tools › Device Manager</b> › bấm <b>Scan</b> (hoặc dấu <b>+</b>, gõ IP của TV) › gạt <b>Connection</b> sang <b>On</b>.</li>
+                            <li><b>Tools › Certificate Manager</b> › dấu <b>+</b> › <b>Samsung</b> › <b>TV</b> › đặt tên (vd <b>HongSub</b>) › <b>Create a new author certificate</b>: gõ tên, mật khẩu tự đặt › đăng nhập <b>tài khoản Samsung</b>.</li>
+                            <li>Bước Distributor: để <b>Public</b>, ô <b>DUID</b> có sẵn mã TV › <b>Finish</b>.</li>
+                          </ul>
+                          <div class="tzst" id="dkTzS3"></div></li>
+                        </ol>
+                      <div class="dk-set">
+                        <label class="lab" for="dkTzProf">Chứng chỉ Samsung</label>
+                        <select class="hs-in" id="dkTzProf"></select>
+                      </div>
+                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="dkTzGo">Cài bằng Tizen Studio</button></div>
+                      </details>
+                      <p class="hs-note" style="margin-top:8px">App Hóng Sub trên TV tự cập nhật: mỗi lần mở là dùng bản mới nhất, không cần cài lại.</p>
+                    </div>
+                  </details>
+                </div>
+
+                <details class="kn-more" id="knTvMore">
+                  <summary><span><b>Tùy chọn thêm cho TV</b><small>Mã TV, chỗ hiện chữ, giọng đọc và âm lượng trên TV.</small></span></summary>
+                  <div class="kn-in">
+                    <p class="hs-note dk-only dk-pcinfo" data-pcinfo hidden></p>
+                    <div class="tvc">
+                      <div class="dk-set"><label class="lab" for="hsTv" id="hsTvCodeLab">Mã TV</label></div>
+                      <div class="hs-row" style="margin-top:6px;flex-wrap:nowrap">
+                        <input class="hs-in" id="hsTv" type="text" maxlength="8" autocomplete="off" spellcheck="false" placeholder="VD: K7P2QX" aria-label="Mã TV" style="text-transform:uppercase;letter-spacing:.12em;font-weight:600">
+                        <button class="hs-btn" id="hsTvTest" type="button">Gửi thử</button>
+                      </div>
+                      <div class="tvc2">
+                        <div class="dk-set">
+                          <div class="lab">Cỡ chữ, màu chữ, nền và khung</div>
+                          <p class="hs-note" style="margin-top:4px" id="hsTvLook">Giống phụ đề trên máy tính</p>
+                          <button class="hs-btn" type="button" data-go="phude" style="margin-top:6px">Chỉnh ở mục Phụ đề</button>
+                        </div>
+                        <div class="dk-set"><label class="lab" for="hsTvPos">Chỗ hiện chữ</label><select class="hs-in" id="hsTvPos"><option value="bottom">Dưới màn hình</option><option value="top">Trên màn hình</option></select></div>
+                      </div>
+                      <div class="dk-set"><label class="lab" for="hsTvRead">Đọc to phụ đề ở</label><select class="hs-in" id="hsTvRead"><option value="pc">Máy tính (giọng của Hóng Sub)</option><option value="tv">TV (giọng trên TV)</option><option value="both">Cả máy tính và TV</option></select></div>
+                      <div class="dk-set" data-tvvolrow><div class="lab"><label for="hsTvVol">Âm lượng giọng đọc trên TV</label><output id="hsTvVolV">150%</output></div><input class="hs-range" id="hsTvVol" type="range" min="50" max="300" step="10" value="150"><p class="hs-note">Trên 100% là to hơn mức bình thường của TV (giọng đọc được khuếch đại). Chỉnh xong TV đọc thử ngay.</p></div>
+                      <label class="hs-sw" style="margin-top:10px">Hiện câu gốc tiếng Anh dưới câu Việt <input type="checkbox" id="hsTvEn"></label>
+                      <p class="hs-note" style="margin-top:6px">Mọi cài đặt chữ trên TV chỉnh ở đây. App trên TV chỉ để kết nối, đổi ở đây là TV đổi theo ngay.</p>
+                      <div hidden><select class="hs-in" id="hsTvHdmi"><option value="0">TV tự tìm (khuyên dùng)</option><option value="1">HDMI 1</option><option value="2">HDMI 2</option><option value="3">HDMI 3</option><option value="4">HDMI 4</option></select></div>
+                    </div>
+                  </div>
+                </details>
+                <div class="hs-msg" id="hsTvMsg" hidden></div>
               </div>
-              <div class="hs-msg" id="hsTvMsg" hidden></div>
             </div>
-            <div class="dk-card dk-only">
-              <h2>Kết nối lần đầu</h2>
-              <ol class="dk-steps">
-                <li>Trên PS5 bật <b>Settings › System › Remote Play › Enable Remote Play</b>. Máy tính và PS5 dùng chung mạng.</li>
-                <li>Bấm <b>Đăng nhập PSN</b> ở bên trái, đăng nhập trên trang của Sony. Không vào được thì bấm <b>Đăng nhập bằng trình duyệt</b>: đăng nhập trên Chrome hoặc Edge, xong chép địa chỉ trang (Ctrl+A, Ctrl+C), Hóng Sub tự nhận.</li>
-                <li>Bấm <b>Tìm máy</b>, rồi <b>Ghép máy</b>. Lấy mã 8 số ở <b>Settings › System › Remote Play › Link Device</b> (PS4: <b>Settings › Remote Play Connection Settings › Add Device</b>).</li>
-                <li>Bấm <b>Chơi</b>. Cắm tay cầm vào máy tính. Không có tay cầm: mũi tên, Enter là ✕, Backspace là ○, P là nút PS.</li>
-              </ol>
-            </div>
-            <div class="dk-card dk-only">
-              <h2>App PS Remote Play của Sony</h2>
-              <p class="hs-note" id="dkSonyState">Đang kiểm tra...</p>
-              <div class="hs-row">
-                <button class="hs-btn" type="button" id="dkSonyOpen">Mở PS Remote Play</button>
-                <button class="hs-btn" type="button" id="dkSonyGet">Tải PS Remote Play</button>
+            <details class="dk-card dk-only kn-more kn-help" id="knHelp">
+              <summary><span><b>Cách khác và trợ giúp</b><small>Chơi bằng app PS Remote Play của Sony, phím thay tay cầm, trang tài khoản Sony.</small></span></summary>
+              <div class="kn-in">
+                <h3>Không có tay cầm cắm vào máy tính</h3>
+                <p class="hs-note">Cắm tay cầm vào máy tính là chơi được ngay trong Hóng Sub. Không có tay cầm: mũi tên, Enter là ✕, Backspace là ○, P là nút PS.</p>
+                <h3>App PS Remote Play của Sony</h3>
+                <p class="hs-note" id="dkSonyState">Đang kiểm tra...</p>
+                <div class="hs-row">
+                  <button class="hs-btn" type="button" id="dkSonyOpen">Mở PS Remote Play</button>
+                  <button class="hs-btn" type="button" id="dkSonyGet">Tải PS Remote Play</button>
+                </div>
+                <h3>Tài khoản PlayStation</h3>
+                <p class="hs-note">Mở trang của Sony để xem Online ID, tạo tài khoản phụ hoặc đổi mật khẩu.</p>
+                <div class="hs-row">
+                  <button class="hs-btn" type="button" data-url="https://my.account.sony.com/">Trang tài khoản Sony</button>
+                  <button class="hs-btn" type="button" data-url="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">Hướng dẫn của Sony</button>
+                </div>
               </div>
-            </div>
-            <div class="dk-card dk-only">
-              <h2>Tài khoản PlayStation</h2>
-              <p class="hs-note">Mở trang của Sony để xem Online ID, tạo tài khoản phụ hoặc đổi mật khẩu.</p>
-              <div class="hs-row">
-                <button class="hs-btn" type="button" data-url="https://my.account.sony.com/">Trang tài khoản Sony</button>
-                <button class="hs-btn" type="button" data-url="https://www.playstation.com/en-vn/support/games/playstation-remote-play-on-pc-and-mac/">Hướng dẫn của Sony</button>
-              </div>
-            </div>
+            </details>
           </div>
         </div>
       </section>
@@ -3915,6 +4034,7 @@ $('hsTv').addEventListener('change',function(){this.value=tvCode(); save('tv',th
 function tvCodeFor(k){ return k===S.tvType?tvCode():String(load('tv_'+k,'')||''); }
 function tvTypeSet(k){
   if(!TVK[k]) return;
+  save('tvPick',true);
   if(k!==S.tvType){ save('tv_'+S.tvType,tvCode()); S.tvType=k; save('tvtype',k); $('hsTv').value=load('tv_'+k,''); save('tv',$('hsTv').value); S.tvSeen=0; S.tvLanSeen=0; S.tvHello=-1; S.tvOk=null; }
   tvTypeUi(); tvState();
 }
@@ -3923,8 +4043,18 @@ function tvTypeUi(){
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.setAttribute('aria-checked',b.getAttribute('data-k')===S.tvType?'true':'false'); });
   [].forEach.call(document.querySelectorAll('.tvp'),function(x){ x.classList.toggle('on',x.getAttribute('data-k')===S.tvType); });
   [].forEach.call(document.querySelectorAll('.tvlg-only'),function(x){ x.hidden=!lanTv(); });
+  var pk=$('knTvPick'), bd=$('knTvBody');   /* the Windows and phone apps: "which TV?" first, then only the steps of that TV */
+  if(pk&&bd){ var on=tvPicked(); pk.hidden=on; bd.hidden=!on; var th=$('knTvH'); if(th) th.textContent=S.tvType==='android'?'Nối với Android TV / Google TV':S.tvType==='lg'?'Cài và nối TV LG':'Cài và nối TV Samsung'; tvHdmiUi(); tvMoreUi(true); }
   var lab=$('hsTvCodeLab'); if(lab) lab.textContent=S.tvType==='android'?(TVD()?'Hoặc dùng mã TV (khi TV khác mạng)':'Mã TV (đang hiện trên app Hóng Sub TV)'):S.tvType==='lg'?'Mã TV (đang hiện trên TV LG)':S.tvType==='samsung'?'Mã TV (đang hiện trên TV Samsung)':'Mã TV (đang hiện trên trình duyệt TV)';
 }
+/* has the person said which TV they have? (people who connected a TV before this question existed have) */
+function tvPicked(){ var v=load('tvPick',null); if(v===null) v=!!(load('tvtype',null)||tvCode().length>=4||load('tvip','')); return !!v; }
+/* the HDMI port: one button per port in the LG and Samsung steps, kept in step with the saved choice */
+function tvHdmiUi(){ var hd=$('hsTvHdmi'); if(!hd) return; [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-hdmi')===String(hd.value)?'true':'false'); }); }
+/* "Tùy chọn thêm cho TV" (the TV code and how the text looks on the TV) opens by itself where the code is the way to connect */
+function tvMoreUi(first){ var m=$('knTvMore'); if(!m||m.open) return; var c=tvCode().length>=4;
+  var need=first?(!D||(S.tvType==='android'&&c&&!(tvIp()||load('tvip','')))):(S.tvType==='android'?S.tvOk===false:(!c&&!!(S.tvType==='lg'?window.hsLgOpen:window.hsTzOpen)));
+  if(need&&!(m.dataset.auto&&!first)){ m.open=true; m.dataset.auto='1'; } }
 /* what the TV is doing right now, in one line, with the one thing to do next */
 /* the Android TV app is older than the fixes this computer counts on (TVs before 1.0.112 do not say their version) */
 var TV_MIN=194;   /* 1.0.194: unpacks what comes through the TV code (place, colours, size of screen-text boxes) */
@@ -3944,7 +4074,7 @@ function tvStatus(){
     return {t:'Chưa nối TV.',a:TVD()?'Tìm TV':'',f:function(){ tvFindUi(false); }};
   }
   if(k==='lg'){
-    if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG ở dưới (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
+    if(c.length<4) return window.hsLgOpen?{bad:true,t:'TV LG chưa có mã. Bấm mở Hóng Sub trên TV.',a:'Mở trên TV',f:window.hsLgOpen}:{t:D&&D.lg?'Cài app Hóng Sub lên TV LG theo các bước dưới đây (làm một lần).':'Gõ mã đang hiện trên TV LG vào ô Mã TV.'};
     if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
     if(seen) return {ok:true,t:'TV LG đang mở Hóng Sub (mã '+c+'), nối qua internet.'+(window.hsLgOpen&&DPS&&DPS.fwFix?' Muốn nối thẳng qua mạng nhà (nhanh, ít mất kết nối): cho phép Hóng Sub qua tường lửa rồi mở lại app trên TV.':''),
       a:window.hsLgOpen&&DPS&&DPS.fwFix?'Cho phép qua tường lửa':'',f:function(){ tvMsg('','Windows sẽ hỏi quyền, bấm Có...'); DPS.fwFix().then(function(r){ if(r&&r.ok){ tvMsg('ok','Đã cho phép. Đang mở lại Hóng Sub trên TV...'); if(window.hsLgOpen) window.hsLgOpen(); } else tvMsg('err',r&&r.err==='canceled'?'Chưa cho phép vì đã bấm Không.':'Chưa sửa được tường lửa: '+((r&&r.err)||'')); }); }};
@@ -3952,7 +4082,7 @@ function tvStatus(){
     return {bad:true,t:'TV LG chưa mở Hóng Sub (mã '+c+').'+lanWhy(),a:window.hsLgOpen?'Mở trên TV':'',f:window.hsLgOpen};
   }
   if(k==='samsung'){
-    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:D?'Cài app Hóng Sub lên TV Samsung ở dưới (làm một lần), rồi gõ mã đang hiện trên TV.':'Trên TV Samsung mở app Hóng Sub, gõ mã đang hiện trên TV vào ô Mã TV.'};
+    if(c.length<4) return window.hsTzOpen?{bad:true,t:'TV Samsung chưa có mã. Bấm mở Hóng Sub trên TV, rồi gõ mã đang hiện vào ô Mã TV.',a:'Mở trên TV',f:window.hsTzOpen}:{t:D?'Cài app Hóng Sub lên TV Samsung theo các bước dưới đây (làm một lần).':'Trên TV Samsung mở app Hóng Sub, gõ mã đang hiện trên TV vào ô Mã TV.'};
     if(seen&&Date.now()-(S.tvLanSeen||0)<25000) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối thẳng qua mạng nhà.'};
     if(seen) return {ok:true,t:'TV Samsung đang mở Hóng Sub (mã '+c+'), nối qua internet.'};
     if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
@@ -3975,12 +4105,19 @@ function lanWhy(){
 function tvState(){
   var box=$('hsTvState'); if(!box) return;
   var st=tvStatus(), b=$('hsTvStateB');
+  if(st.ok&&!st.a&&$('knTvBody')&&$('hsTvTest')){ st.a='Gửi thử'; st.f=function(){ $('hsTvTest').click(); }; }   /* connected: one press shows a test line on the TV */
   box.className='tvs'+(st.ok?' ok':st.bad?' bad':'');
   if(st.html) $('hsTvStateT').innerHTML=st.t; else $('hsTvStateT').textContent=st.t;
   b.hidden=!(st.a&&st.f); if(st.a){ b.textContent=st.a; b.onclick=st.f; }
+  var chip=$('knChipTv'); if(chip){ chip.className='kn-chip'+(st.ok?' ok':st.bad&&tvPicked()?' bad':''); $('knChipTvT').textContent=st.ok?'TV: đã nối':st.bad&&tvPicked()?'TV: cần xem lại':'TV: chưa nối'; }
+  /* Android TV: steps 1 and 2 are done once the TV answers */
+  var a1=$('knAnd1'), a2=$('knAnd2'); if(a1&&a2){ var aok=S.tvType==='android'&&!!st.ok; a1.className='kn-step'+(aok?' ok':''); a2.className='kn-step dk-only kn-lan'+(aok&&tvIp()?' ok':''); }
+  tvMoreUi(false);
 }
 (function(){ var box=$('hsTvType'); if(!box) return;
   [].forEach.call(box.querySelectorAll('[data-k]'),function(b){ b.addEventListener('click',function(){ tvTypeSet(b.getAttribute('data-k')); }); });
+  var bk=$('knTvBack'); if(bk) bk.addEventListener('click',function(){ save('tvPick',false); tvTypeUi(); var f=box.querySelector('[data-k="'+S.tvType+'"]'); if(f) f.focus(); });
+  [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.addEventListener('click',function(){ var hd=$('hsTvHdmi'); if(!hd) return; hd.value=b.getAttribute('data-hdmi'); hd.dispatchEvent(new Event('change',{bubbles:true})); tvHdmiUi(); }); });
   tvTypeUi(); setInterval(tvState,3000);
 })();
 function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+cls; m.textContent=t;}
@@ -4113,7 +4250,7 @@ function tvWhy(ip){
 }
 function tvWhyText(ip){
   var n=S.tvNet||{}, e=String(S.tvErr||''), mine=esc((n.all||[]).join(', ')); ip=esc(ip);
-  var code=' Cách chắc chắn nhất: gõ <b>mã TV</b> (6 chữ đang hiện trên app Hóng Sub TV) vào ô "Hoặc dùng mã TV" bên dưới, phụ đề đi qua internet, không cần chung mạng.';
+  var code=' Cách chắc chắn nhất: gõ <b>mã TV</b> (6 chữ đang hiện trên app Hóng Sub TV) vào ô "Hoặc dùng mã TV" ở mục Tùy chọn thêm cho TV bên dưới, phụ đề đi qua internet, không cần chung mạng.';
   if(/ECONNREFUSED/.test(e)) return 'TV '+ip+' có trong mạng nhưng app Hóng Sub TV chưa mở. Trên TV mở app Hóng Sub TV, bấm "Bật phụ đề" (app phải chạy, rồi mới chuyển sang cổng HDMI của PS5).';
   if(n.sameNet===false) return 'Máy tính này không cùng mạng với TV: máy tính có IP '+(mine||'?')+', TV là '+ip+'. Cắm máy tính vào cùng modem/wifi với TV.'+code;
   return 'TV '+ip+' không trả lời: TV đã tắt, IP của TV đã đổi (bấm Tìm lại TV), hoặc modem chặn các máy nói chuyện với nhau (wifi khách, "AP isolation").'+code;
@@ -4131,6 +4268,7 @@ function tvUse(ip,info){
   /* the TV found on the home network gives its own code: an old or mistyped code in the box would send to nobody */
   if(info){ S.tvName=info.name||''; var ic=String(info.code||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(ic.length>=4&&ic!==tvCode()){ $('hsTv').value=ic; save('tv',ic); save('tv_android',ic); S.tvSeen=0; S.tvHello=-1; log('mã TV lấy từ TV '+(info.name||ip)+': '+ic); } S.tvBoot=info.boot||''; }
   tvLan(true,S.tvName); tvNotice('Đã nối với Hóng Sub trên '+(PH||IOS?'điện thoại':'máy tính')+'.');
+  if(S.tvType==='android'&&load('tvPick',null)!==true){ save('tvPick',true); tvTypeUi(); }   /* a TV found by itself answers "which TV?" */
 }
 function tvFindUi(silent){
   if(!TVD()) return Promise.resolve([]);
@@ -4224,7 +4362,7 @@ function tvLanInit(){
 tvLanInit();   /* the phone apps call it again once their core is there */
 /* every TV setting lives here on the computer; the TV app only connects and follows */
 (function(){ var ps=$('hsTvPos'), en=$('hsTvEn'), hd=$('hsTvHdmi'); ps.value=load('tvpos','bottom');
-  if(en) en.checked=load('tven',false); if(hd){ if(!load('tvhdmiFix1',false)){ save('tvhdmiFix1',true); save('tvhdmi',0); } hd.value=String(load('tvhdmi',0)); }   /* once: back to 'TV tự tìm'; HDMI 1 was the default and pulled every TV to HDMI 1 */
+  if(en) en.checked=load('tven',false); if(hd){ if(!load('tvhdmiFix1',false)){ save('tvhdmiFix1',true); save('tvhdmi',0); } hd.value=String(load('tvhdmi',0)); tvHdmiUi(); }   /* once: back to 'TV tự tìm'; HDMI 1 was the default and pulled every TV to HDMI 1 */
   function lookTxt(){ var lk=tvLook(), el=$('hsTvLook'); if(el) el.textContent='Giống phụ đề trên '+(PH?'điện thoại':'máy tính')+': kiểu chữ '+((FONTS[lk.font]||{}).n||lk.font).replace(/\s*\(.*\)$/,'')+', cỡ chữ '+$('hsSize').value+', nền đậm '+lk.bg+'%, khung rộng '+lk.wid+'%.'; }
   var t=0; function send(what){ lookTxt(); clearTimeout(t); t=setTimeout(function(){ lookTxt(); if(!(tvIp()||tvCode().length>=4)) return;
       if(what==='hdmi') tvSend({kind:'ctl'}).catch(function(){});
@@ -8830,19 +8968,17 @@ function psMsg(cls,t){var m=$('hsPsMsg'); if(!t){m.hidden=true;return;} if(t!==P
 function psAccUi(){
   var a=$('hsPsAcc');
   if(!PS.acc||!PS.acc.helper){a.innerHTML='<span class="hs-note">Bản cài này chưa có phần kết nối PS5. Tải bản Hóng Sub mới nhất.</span>'; return;}
-  a.innerHTML=PS.acc.loggedIn?('<span>PSN: <b>'+esc(PS.acc.onlineId||'đã đăng nhập')+'</b></span><button class="hs-btn" type="button" id="hsPsOut" style="padding:4px 10px">Đổi tài khoản</button>')
-    :'';   /* not signed in: the button is in step 1 */
-  if($('hsPsIn')) $('hsPsIn').onclick=psLogin;
-  var bb=a.querySelector('[data-ps=browser]'); if(bb){ if(!DPS.loginBrowser) bb.remove(); else bb.onclick=psLoginBrowser; }
-  if($('hsPsOut')) $('hsPsOut').onclick=function(){ DPS.logout().then(function(){ return psLogin(); }); };
+  a.innerHTML='';   /* the account, and the button to sign in or change it, are in step 1 */
+  psSteps();
 }
+function psLogout(){ return DPS.logout().then(function(){ return psLogin(); }); }
 function psLogin(){
   var m=$('hsPsMsg'); m.hidden=false; m.className='hs-msg';
   m.innerHTML='<b>Đã mở cửa sổ đăng nhập của Sony.</b> Đăng nhập tài khoản PSN trong cửa sổ đó (nhập mã xác minh nếu Sony hỏi). Đăng nhập xong cửa sổ tự đóng, không cần chép gì.'+
     '<div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
   m.querySelector('[data-ps=cancel]').onclick=function(){ DPS.loginCancel(); };
   return DPS.login().then(function(r){
-    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); }
     else if(r&&r.err==='blocked'){ if(!DPS.loginBrowser) psMsg('warn','Sony tạm chặn đăng nhập từ '+psDev()+' này. Đợi vài phút rồi bấm Đăng nhập PSN lại, hoặc đổi sang mạng 4G rồi thử.'); else { psMsg('warn','Sony chặn đăng nhập trong cửa sổ của Hóng Sub. Hóng Sub chuyển sang đăng nhập bằng trình duyệt...'); setTimeout(psLoginBrowser,1200); } }
     else if(r&&(r.err==='closed'||r.err==='again')){ psMsg('','Đã đóng cửa sổ đăng nhập. Bấm Đăng nhập PSN để thử lại.'); }
     else if(r&&r.err==='timeout') psMsg('warn','Lâu quá chưa đăng nhập xong nên Hóng Sub đã đóng cửa sổ. Bấm Đăng nhập PSN để thử lại.');
@@ -8858,7 +8994,7 @@ function psLoginBrowser(){
     '<div style="display:flex;gap:6px;margin-top:8px"><input class="hs-in" data-ps="paste" placeholder="Hoặc dán địa chỉ trang đó vào đây" spellcheck="false"><button class="hs-btn pri" type="button" data-ps="go">Xong</button><button class="hs-btn" type="button" data-ps="cancel">Hủy</button></div>';
   var inp=m.querySelector('[data-ps=paste]');
   function done(r){
-    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); }
+    if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); }
     else if(r&&(r.err==='closed'||r.err==='again')){ if(r.err==='closed') psMsg('',''); }
     else if(r&&r.err==='timeout') psMsg('warn','Chưa nhận được địa chỉ trang sau khi đăng nhập. Bấm lại "Dán địa chỉ đăng nhập".');
     else if(r&&r.err==='url') psMsg('err','Địa chỉ dán vào chưa đúng. Cần địa chỉ có chữ "remoteplay/redirect?code=".');
@@ -8874,30 +9010,39 @@ function psRefresh(){ return DPS.state().then(function(st){ PS.acc=st; psAccUi()
 var STATE_TXT={ready:'Đang bật',standby:'Đang nghỉ',offline:'Không thấy',unknown:'?'};
 function psList(){
   var L=$('hsPsList');
-  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm máy.</p>'; return; }
+  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm lại.</p>'; return; }
   L.innerHTML=PS.hosts.map(function(h,i){
-    return '<div class="hs-ps" data-i="'+i+'"><div class="r"><b>'+esc(h.name)+'</b><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span></div>'+
-      '<small>'+(h.ps5?'PS5':'PS4')+', '+esc(h.addr||'')+(h.app?', đang chơi '+esc(h.app):'')+'</small>'+
-      '<div class="hs-row" style="margin-top:8px">'+(h.registered?'<button class="hs-btn pri" data-a="play" type="button">Kết nối</button><button class="hs-btn" data-a="forget" type="button">Bỏ ghép</button>':'<button class="hs-btn pri" data-a="pair" type="button">Ghép máy</button>')+'</div>'+
-      '<div class="pin" hidden><input class="hs-in" inputmode="numeric" maxlength="8" placeholder="Mã 8 số trên máy"><button class="hs-btn pri" data-a="dopair" type="button">Ghép</button></div></div>';
+    return '<div class="hs-ps" data-i="'+i+'"><div class="r"><div class="kn-h"><b>'+esc(h.name)+'</b>'+
+      '<small><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span>, '+(h.ps5?'PS5':'PS4')+', '+esc(h.addr||'')+(h.app?', đang chơi '+esc(h.app):'')+'</small></div>'+
+      '<span class="kn-acts">'+(h.registered?'<button class="dk-link" data-a="forget" type="button">Bỏ ghép</button><button class="hs-btn pri" data-a="play" type="button">Kết nối</button>':'<button class="hs-btn pri" data-a="pair" type="button">Ghép máy</button>')+'</span></div>'+
+      '<div class="pin" hidden><input class="hs-in" inputmode="numeric" maxlength="8" placeholder="Mã 8 số trên máy PS" aria-label="Mã 8 số trên máy PS"><button class="hs-btn pri" data-a="dopair" type="button">Ghép</button></div></div>';
   }).join('');
   L.querySelectorAll('.hs-ps button').forEach(function(btn){
     btn.addEventListener('click',function(){
       var box=btn.closest('.hs-ps'), h=PS.hosts[+box.dataset.i], a=btn.dataset.a;
-      if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
+      if(a==='pair'){ if(!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước (bước 1), rồi bấm Ghép máy.'); return; } box.querySelector('.pin').hidden=false; box.querySelector('.pin input').focus(); psMsg('','Trên '+(h.ps5?'PS5 vào Settings › System › Remote Play › Link Device':'PS4 vào Settings › Remote Play Connection Settings › Add Device')+' để lấy mã 8 số.'); }
       else if(a==='dopair'){ var pin=box.querySelector('.pin input').value.replace(/\D/g,''); if(pin.length!==8){psMsg('err','Mã ghép gồm 8 số.');return;} btn.disabled=true; psMsg('','Đang ghép với '+h.name+'...');
-        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ PS.pairedAt=Date.now(); PS.n26=0; psMsg('ok','Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối (bước 3) để nhận hình.'); psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
+        DPS.regist(h,pin).then(function(r){ btn.disabled=false; if(r&&r.ok){ PS.pairedAt=Date.now(); PS.n26=0; PS.okMsg='Đã ghép xong '+(r.name||h.name)+'. Bấm Kết nối ở máy đó để nhận hình.'; psFind(); } else psMsg('err','Ghép chưa được ('+((r&&r.err)||'')+'). Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy.'); }); }
       else if(a==='forget'){ DPS.forget(h.id).then(psFind); }
-      else if(a==='play'){ psPlay(h); }
+      else if(a==='play'){ psRunHost(h); }
     });
   });
+  psSteps();
+}
+/* "Kết nối" on one machine of the list: the same care as the automatic connection (one at a time, the reason when it fails) */
+async function psRunHost(h){
+  if(PSST.running) return;
+  PS.block26=0; PSST.running=true; PS.err=''; PS.retry=0; psSteps();
+  try{ psFwCheck(false); await psPlay(h); }
+  catch(e){ PS.err=psErrText(e.message); psMsg('err','Kết nối lỗi: '+PS.err); }
+  finally{ PSST.running=false; psSteps(); }
 }
 function psFind(ip){
   psMsg('', ip?'Đang tìm máy ở '+ip+'...':'Đang tìm máy trong mạng...');
   return DPS.discover(ip||null).then(function(list){
     PS.hosts=Array.isArray(list)?list:[]; psList();
     log('PS: tìm máy'+(ip?' ở '+ip:'')+': '+(PS.hosts.length?PS.hosts.map(function(h){return h.name+' '+(h.ps5?'PS5':'PS4')+' '+h.addr+' '+h.state+(h.registered?' đã ghép':' chưa ghép');}).join('; '):'không thấy máy nào'));
-    psMsg('', '');   /* nothing found: the list says it, with what to check */
+    if(PS.okMsg){ psMsg('ok',PS.okMsg); PS.okMsg=''; } else psMsg('', '');   /* nothing found: the list says it, with what to check */
     return PS.hosts;
   });
 }
@@ -9117,7 +9262,7 @@ function psRepair(h){
   if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép lại.'); return; }
   psMsg('','Đang bỏ ghép cũ...');
   DPS.forget(h.id).then(function(){ return psFind(h.addr); }).then(function(){
-    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm máy.'); return; }
+    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm lại.'); return; }
     var box=document.querySelector('.hs-ps[data-i="'+i+'"]'), pb=box&&box.querySelector('[data-a=pair]'); if(pb) pb.click();
     if(box) box.scrollIntoView({behavior:'smooth',block:'center'});
   });
@@ -9390,51 +9535,69 @@ function psErrText(e){
 /* the whole way from opening Hóng Sub to Vietnamese on the TV, one step at a time */
 var PSST={running:false};
 function psSteps(){
-  var L=$('hsPsSteps'); if(!L||!DPS) return;
-  var acc=PS.acc||{}, reg=(Array.isArray(PS.hosts)?PS.hosts:[]).filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
-  var tst=tvStatus(), tvOn=!!tst.ok, tvSet=!!(tvIp()||tvCode().length>=4);
-  var found=Array.isArray(PS.hosts)?PS.hosts:[], dev=psDev(), ps5=!found.length||found.some(function(h){ return h.ps5; });
-  var PATH5='<b>Settings › System › Remote Play</b>', PATH4='<b>Settings › Remote Play Connection Settings</b>';
-  var st=[
-    {t:'Đăng nhập tài khoản PSN',ok:!!acc.loggedIn,d:acc.loggedIn?('PSN: '+(acc.onlineId||'đã đăng nhập')):'làm một lần',a:'Đăng nhập PSN',f:psLogin,
-     how:'Bấm <b>Đăng nhập PSN</b>: cửa sổ của Sony hiện ra, đăng nhập tài khoản PSN (nhập mã xác minh nếu Sony hỏi). Xong cửa sổ tự đóng.'+
-       '<br>Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+
-       (DPS.loginUrl?'<div style="margin-top:8px"><b>Đăng nhập thành công mà hiện ra trang trắng</b> (cửa sổ không tự đóng): copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>) rồi dán vào ô bên dưới, bấm <b>Xong</b>.</div>'+
-         '<div class="hs-row" style="margin-top:6px"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div>':'')+
-       (DPS.loginBrowser?'<div class="hs-row" style="margin-top:6px"><button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button></div>':'')},
-    {t:'Ghép Hóng Sub với máy PS',ok:reg.length>0,d:reg.length?reg.map(function(h){return h.name;}).join(', '):found.length?('thấy '+found.map(function(h){ return h.name; }).join(', ')+', chưa ghép'):'làm một lần',a:'Tìm máy PS',f:function(){ psFind(); var l=$('hsPsList'); if(l) l.scrollIntoView({behavior:'smooth',block:'center'}); },
-     how:'<ol><li>Trên máy PS mở '+(ps5?PATH5+', bật <b>Enable Remote Play</b>, rồi chọn <b>Link Device</b>':PATH4+', bật <b>Enable Remote Play</b>, rồi chọn <b>Add Device</b>')+': màn hình hiện <b>mã 8 số</b>.'+
-       (ps5&&found.length?'':'<br><small>PS4: '+PATH4+' › Add Device.</small>')+'</li>'+
-       '<li>Máy PS và '+dev+' dùng chung một modem/wifi.</li>'+
-       '<li>'+(found.length?'Ở danh sách <b>Máy PS trong mạng</b> bên dưới, bấm <b>Ghép máy</b> cạnh '+esc(found[0].name)+', nhập mã 8 số rồi bấm Ghép.':'Bấm <b>Tìm máy PS</b>. Không thấy máy thì bấm <b>Nhập IP</b> (IP xem trên PS5 ở Settings › Network › Connection Status).')+'</li></ol>'},
-    {t:'Kết nối vào máy PS',ok:live,d:live?('đang nhận hình '+PS.host.name):(PS.err?('lỗi: '+PS.err):(reg.length?(reg[0].state==='ready'?reg[0].name+' đang bật':reg[0].state==='offline'?'chưa thấy '+reg[0].name+' trong mạng':reg[0].name+' đang nghỉ, Hóng Sub sẽ tự bật'):'')),a:PS.fwNeed?'Cho phép qua tường lửa':PSST.running?'Đang kết nối...':'Kết nối',f:function(){ if(PS.fwNeed) psFwFix(); else psAutoRun(); },bad:(!!PS.err||!!PS.fwNeed)&&!live,
-     how:(PS.fwNeed?'<b>Windows đang chặn hình từ máy PS.</b> Bấm <b>Cho phép qua tường lửa</b>, rồi chọn <b>Có (Yes)</b> ở hộp hỏi của Windows.<br>':'')+'Bấm <b>Kết nối</b>: Hóng Sub tự bật máy PS (nếu đang nghỉ) và nhận hình. Không cần làm gì trên PS.'+
-       '<br>Nếu đang Chơi từ xa ở thiết bị khác (điện thoại, PS Portal) thì thoát ở thiết bị đó trước. Các lần sau mở Hóng Sub là tự kết nối.'},
-    {t:'Dịch phụ đề',ok:!!S.running,d:S.running?'đang dịch':'tự bật khi có hình',a:'Bắt đầu dịch',f:function(){ if(S.stream) startRun(); },
-     how:'Có hình là Hóng Sub tự dịch. Chưa thấy dịch thì bấm <b>Bắt đầu dịch</b>.'},
-    {t:'Hiện phụ đề lên TV (không bắt buộc)',ok:tvOn,d:tvSet||S.tvType!=='android'?tst.t:'chưa nối TV',a:tst.a||'Xem cách nối',f:function(){ if(tst.f) tst.f(); else { var el=$('hsTvSec'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); } },bad:!!tst.bad}
-  ];
-  var cur=-1; st.forEach(function(x,i){ if(cur<0&&!x.ok&&i<4) cur=i; });
-  var html=st.map(function(x,i){ var cls=x.ok?'ok':x.bad?'bad':i===cur?'now':cur>=0&&i>cur&&i<4?'fut':'';
-    var btn=!x.ok&&(i===cur||x.bad||i===4)&&!(i===3&&!live)?'<button class="hs-btn'+(i===cur?' pri':'')+'" type="button" data-s="'+i+'"'+(i===2&&PSST.running?' disabled':'')+'>'+x.a+'</button>':'<span></span>';
-    return '<li class="'+cls+'"><i>'+(x.ok?'✓':x.bad?'!':(i+1))+'</i><div>'+x.t+'<small>'+esc(x.d)+'</small></div>'+btn+(i===cur&&x.how?'<div class="how">'+x.how+'</div>':'')+'</li>'; }).join('');
-  if(L.dataset.h!==html){ var pu0=L.querySelector('[data-x=psurl]'), pv0=pu0?pu0.value:''; L.dataset.h=html; L.innerHTML=html; if(pv0&&L.querySelector('[data-x=psurl]')) L.querySelector('[data-x=psurl]').value=pv0;   /* a link being pasted survives the steps being redrawn */ L.querySelectorAll('[data-s]').forEach(function(b){ b.onclick=function(){ st[+b.dataset.s].f(); }; }); var bb=L.querySelector('[data-x=browser]'); if(bb) bb.onclick=psLoginBrowser;
+  var B1=$('hsPsS1B'); if(!B1||!DPS) return;
+  var acc=PS.acc||{}, found=Array.isArray(PS.hosts)?PS.hosts:[], reg=found.filter(function(h){return h.registered;}), live=!!(PS.host&&PS.frames>0);
+  var dev=psDev(), only4=found.length>0&&!found.some(function(h){ return h.ps5; });
+  if(reg.length&&!load('psRpOk',false)) save('psRpOk',true);   /* a paired machine: Remote Play is on, also the next time before the machines are found */
+  var known=!!PS.acc, ok1=!!acc.loggedIn, ok2=reg.length>0||!!load('psRpOk',false), ok3=live, bad3=(!!PS.err||!!PS.fwNeed)&&!live;
+  var cur=!known?0:!ok1?1:!ok2?2:!ok3?3:0;
+  var RP5='<b>Settings › System › Remote Play</b> (Cài đặt › Hệ thống › Chơi từ xa)', RP4='<b>Settings › Remote Play Connection Settings</b> (Cài đặt kết nối Chơi từ xa)';
+  /* 1: the PSN account */
+  var h1=!known?'Đang kiểm tra tài khoản...':ok1?'Đã đăng nhập: <b>'+esc(acc.onlineId||'tài khoản PSN')+'</b>. <button class="dk-link" type="button" data-x="out">Đổi tài khoản</button>'
+    :'Cửa sổ của Sony hiện ra, đăng nhập tài khoản PSN (nhập mã xác minh nếu Sony hỏi). Xong cửa sổ tự đóng. Dùng tài khoản đang có trên máy PS, nên là <b>tài khoản phụ</b>.'+
+      '<div class="hs-row"><button class="hs-btn pri" type="button" data-x="login">Đăng nhập PSN</button>'+(DPS.loginBrowser?'<button class="hs-btn" type="button" data-x="browser">Cửa sổ không hiện? Đăng nhập bằng trình duyệt</button>':'')+'</div>'+
+      (DPS.loginUrl?'<details class="kn-tip"><summary>Đăng nhập xong mà hiện ra trang trắng?</summary><p class="hs-note">Copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>), dán vào ô dưới rồi bấm <b>Xong</b>. Đừng gửi link này cho ai: trong link có mã đăng nhập của bạn.</p>'+
+        '<div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" aria-label="Link trang trắng sau khi đăng nhập" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div></details>':'');
+  /* 2: Remote Play switched on, on the PS itself (nothing tells the computer, so the person says when it is done; a paired machine proves it) */
+  var how2='Trên máy PS mở '+(only4?RP4:RP5)+', bật <b>Enable Remote Play</b> (Bật Chơi từ xa).'+(only4?'':'<br><small>PS4: '+RP4+', bật Enable Remote Play.</small>')+'<br>Máy PS và '+dev+' dùng chung một modem/Wi-Fi.';
+  var h2=ok2?(reg.length?'Đã bật.':'Đã bật. <button class="dk-link" type="button" data-x="rpno">Xem lại cách bật</button>')
+    :how2+(cur===2?'<div class="hs-row"><button class="hs-btn pri" type="button" data-x="rpok">Đã bật xong</button></div>':'');
+  /* 3: the machine: pair it once (8 digits), then Kết nối */
+  var h3='';
+  if(live) h3='Đang nhận hình <b>'+esc(PS.host.name)+'</b>.<div class="hs-row"><button class="hs-btn pri" type="button" data-x="choi">Về Màn hình chơi</button></div>';
+  else if(PS.fwNeed) h3='<b>Windows đang chặn hình từ máy PS.</b> Bấm Cho phép qua tường lửa, rồi chọn <b>Có (Yes)</b> ở hộp hỏi của Windows.<div class="hs-row"><button class="hs-btn pri" type="button" data-x="fw">Cho phép qua tường lửa</button></div>';
+  else if(PSST.running) h3='Đang kết nối...';
+  else if(PS.err) h3='<span class="kn-err">Chưa kết nối được: '+esc(PS.err)+'.</span> Bấm <b>Kết nối</b> để thử lại.';
+  else if(reg.length) h3='Bấm <b>Kết nối</b>: Hóng Sub tự bật máy PS (nếu đang nghỉ) và nhận hình. Đang Chơi từ xa ở thiết bị khác (điện thoại, PS Portal) thì thoát ở thiết bị đó trước.';
+  else if(found.length) h3='Lần đầu cần ghép máy: bấm <b>Ghép máy</b>, rồi nhập <b>mã 8 số</b> lấy trên máy PS ở '+(only4?'<b>Settings › Remote Play Connection Settings › Add Device</b>.':'<b>Settings › System › Remote Play › Link Device</b> (Chơi từ xa › Liên kết thiết bị).<br><small>PS4: Settings › Remote Play Connection Settings › Add Device.</small>');
+  else h3='Nhập địa chỉ IP thì xem IP trên PS5 ở <b>Settings › Network › Connection Status</b>.';
+  if(cur===1&&!bad3) h3=found.length?'Đã thấy '+esc(found.map(function(h){ return h.name; }).join(', '))+' trong mạng. Làm xong các bước trên rồi '+(reg.length?'kết nối':'ghép máy')+' ở đây.':'Làm xong các bước trên, rồi chọn máy PS ở đây.';
+  function put(el,html){
+    if(el.dataset.h===html) return;
+    var pu0=el.querySelector('[data-x=psurl]'), pv0=pu0?pu0.value:'', op=!!el.querySelector('details[open]');   /* a link being pasted survives the step being redrawn */
+    el.dataset.h=html; el.innerHTML=html;
+    var pu=el.querySelector('[data-x=psurl]'), pg=el.querySelector('[data-x=psurlgo]'), dt=el.querySelector('details');
+    if(pu&&pv0) pu.value=pv0; if(dt&&op) dt.open=true;
+    [].forEach.call(el.querySelectorAll('button[data-x]'),function(b){ var x=b.getAttribute('data-x');
+      if(x==='login') b.onclick=psLogin; else if(x==='browser') b.onclick=psLoginBrowser; else if(x==='out') b.onclick=psLogout; else if(x==='fw') b.onclick=function(){ psFwFix(); };
+      else if(x==='rpok') b.onclick=function(){ save('psRpOk',true); psMsg('',''); psSteps(); if(!PS.hosts||!PS.hosts.length) psFind(); };
+      else if(x==='rpno') b.onclick=function(){ save('psRpOk',false); psSteps(); };
+      else if(x==='choi') b.onclick=function(){ var n=document.querySelector('.dk-nav [data-p=choi]'); if(n) n.click(); }; });
     /* the link of the white page after logging in, pasted here */
-    var pu=L.querySelector('[data-x=psurl]'), pg=L.querySelector('[data-x=psurlgo]');
     if(pu&&pg){ pg.onclick=function(){ var u=pu.value.trim(); if(!u){ pu.focus(); return; }
         if(!/redirect\?.*code=|[?&]code=/.test(u)){ psMsg('err','Link chưa đúng. Cần link của trang trắng, có chữ "redirect?code=". Đăng nhập lại rồi copy đúng link đó.'); return; }
         pg.disabled=true; try{ DPS.loginCancel&&DPS.loginCancel(); }catch(e){}
         DPS.loginUrl(u).then(function(r){ pg.disabled=false;
-          if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Giờ bấm Tìm máy rồi Ghép máy.'); pu.value=''; }
+          if(r&&r.ok){ psMsg('ok','Đã đăng nhập PSN'+(r.onlineId?' ('+r.onlineId+')':'')+'. Làm tiếp bước 2.'); pu.value=''; }
           else if(r&&r.err==='url') psMsg('err','Link chưa đúng. Cần link có chữ "remoteplay/redirect?code=".');
           else psMsg('err','Đăng nhập chưa xong ('+((r&&r.err)||'lỗi')+'). Mã trong link chỉ dùng được một lần và trong vài phút: đăng nhập lại rồi dán link mới.');
           psRefresh(); },function(e){ pg.disabled=false; psMsg('err','Đăng nhập chưa xong: '+(e&&e.message||e)); });
       };
       pu.addEventListener('keydown',function(e){ if(e.key==='Enter') pg.click(); }); }
   }
-  var go=$('hsPsAutoGo'); go.disabled=PSST.running||live; go.textContent=PSST.running?'Đang kết nối...':live?'Đã kết nối':'Kết nối tự động';
-  if(go.parentNode) go.parentNode.hidden=true;                                      /* the steps have the one button to press (Kết nối, or the firewall) */
-  var hd=$('hsPsListH'); if(hd) hd.hidden=!found.length&&cur<1;
+  put(B1,h1); put($('hsPsS2B'),h2); put($('hsPsS3B'),h3);
+  $('hsPsS1').className='kn-step '+(ok1?'ok':cur===1?'now':'');
+  $('hsPsS2').className='kn-step '+(ok2?'ok':cur===2?'now':cur===1?'fut':'');
+  $('hsPsS3').className='kn-step '+(ok3?'ok':bad3?'bad':cur===3?'now':cur===1?'fut':'');
+  /* the buttons of the list follow what is going on */
+  [].forEach.call($('hsPsList').querySelectorAll('[data-a=play]'),function(b){ var h=found[+b.closest('.hs-ps').dataset.i], t=live&&h&&h.id===PS.host.id?'Đã kết nối':PSST.running&&h&&PS.last&&h.id===PS.last.id?'Đang kết nối...':'Kết nối';
+    b.disabled=PSST.running||live; if(b.textContent!==t) b.textContent=t; });
+  /* what Hóng Sub says about the PS sits in the step being done */
+  var m=$('hsPsMsg'), box=$(cur===1||!known?'hsPsS1':cur===2?'hsPsS2':'hsPsS3').querySelector('.kn-b'); if(m&&box&&m.parentNode!==box) box.appendChild(m);
+  var chip=$('knChipPs'); if(chip){ var left=(ok1?0:1)+(ok2?0:1)+(ok3?0:1);
+    chip.className='kn-chip '+(live?'ok':bad3?'bad':'warn');
+    $('knChipPsT').textContent=live?'Máy PS: đang nhận hình '+PS.host.name:PSST.running?'Máy PS: đang kết nối...':bad3?'Máy PS: chưa kết nối được':!known?'Máy PS: đang kiểm tra...':'Máy PS: còn '+left+' bước'; }
+  var go=$('hsPsAutoGo'); if(go) go.disabled=PSST.running||live;
 }
 async function psAutoRun(auto){
   if(PSST.running) return;
@@ -9443,7 +9606,7 @@ async function psAutoRun(auto){
   try{
     if(!PS.acc||!PS.acc.loggedIn){ await psRefresh(); if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Bước 1: đăng nhập PSN trước (chỉ một lần).'); psLogin(); return; } }
     var list=await psFind(); var reg=(list||[]).filter(function(h){return h.registered;});
-    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 2: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên PS5 (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', hoặc bấm Nhập IP.'); return; }
+    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 3: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên máy PS (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', rồi bấm Tìm lại hoặc nhập địa chỉ IP của máy PS.'); return; }
     var h=reg.filter(function(x){return x.state==='ready';})[0]||reg.filter(function(x){return x.state!=='offline';})[0]||reg[0];
     if(h.state==='offline'){ psMsg('','Đang thử bật '+h.name+' ở '+h.addr+'...'); h.state='standby'; }
     tvNotice((h.state==='ready'?'Đang kết nối ':'Đang bật ')+h.name+'...');
@@ -10051,7 +10214,7 @@ if(!D&&DPS){
     var c=null; [].forEach.call(col.querySelectorAll('.dk-card'),function(x){ var h=x.querySelector('h2'); if(h&&/trên điện thoại/.test(h.textContent)) c=x; });
     if(!c){ c=document.createElement('div'); c.className='dk-card'; col.insertBefore(c,col.firstChild); }
     c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2>'
-      +'<ol class="dk-steps"><li><b>Chơi PS5 / PS4 ngay trong Hóng Sub (khuyên dùng):</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Điện thoại và PS5 dùng chung Wi-Fi. Làm 3 bước ở mục <b>PS5 / PS4 ngay trong Hóng Sub</b> bên dưới: đăng nhập PSN, ghép máy bằng mã 8 số, bấm Kết nối. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt.</li>'
+      +'<ol class="dk-steps"><li><b>Chơi PS5 / PS4 ngay trong Hóng Sub (khuyên dùng):</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Điện thoại và PS5 dùng chung Wi-Fi. Làm 3 bước ở mục <b>PS5 / PS4 ngay trong Hóng Sub</b> bên dưới: đăng nhập PSN, bật Chơi từ xa, chọn máy PS (lần đầu ghép bằng mã 8 số) rồi bấm Kết nối. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt.</li>'
       +'<li><b>Camera chĩa vào TV:</b> kê điện thoại trên giá sao cho camera thấy trọn màn hình TV. Bấm <b>Camera chĩa vào TV</b>, kéo 4 chấm vàng vào 4 góc TV, khoanh dòng phụ đề rồi bấm Bắt đầu dịch.</li>'
       +(PH?'<li><b>App PS Remote Play của Sony:</b> bấm <b>Chia sẻ màn hình</b> rồi mở PS Remote Play. Bấm nút <b>H</b> vàng nổi trên game để khoanh phụ đề.</li>':'')
       +'<li><b>Hiện chữ Việt lên TV:</b> cài app Hóng Sub TV (mục bên dưới), gõ mã đang hiện trên TV vào ô <b>Mã TV</b>.</li></ol>';
@@ -10607,6 +10770,7 @@ function openOnTv(){
 }
 function done(st){
   $('dkLgDone').hidden=!st.installed; $('dkLgAutoRow').hidden=!st.installed; $('dkLgAuto').checked=st.auto!==false;
+  ['knLg1','knLg2','knLg3'].forEach(function(id){ var el=$(id); if(el) el.className='kn-step'+(st.installed?' ok':''); });
   if(st.installed){
     window.hsLgOpen=openOnTv;
     $('dkLgState').innerHTML='Đã cài trên TV LG <b>'+st.ip+'</b>. Cài lại khi có bản mới hoặc khi TV đã gỡ app.';
@@ -10672,17 +10836,25 @@ function openOnTv(){
   var au=auto();
   return (au&&au.ip&&window.hsTzi?window.hsTzi.launch(au.ip).then(function(r){ return r&&r.ok?r:D.samsung.launch(); }):D.samsung.launch()).then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được. '+((r&&r.err)||'')); if(A.tvState) A.tvState(); });
 }
+/* the three steps: a tick on the ones done, the first one not done stands out */
+var tvi=null;
+function steps(){
+  var s1=$('dkTzS1').classList.contains('ok'), b1=$('dkTzS1').classList.contains('bad')&&!!(tvi&&tvi.ok), s2=!!(tvi&&tvi.ok), s3=!!(st&&st.installed)||!!auto();
+  var cur=!s1?1:!s2?2:!s3?3:0;
+  [[1,s1,b1],[2,s2,false],[3,s3,false]].forEach(function(x){ var el=$('knTz'+x[0]); if(el) el.className='kn-step'+(x[1]?' ok':x[2]?' bad':x[0]===cur?' now':''); });
+}
 function tvCheck(){
-  var ip=$('dkTzIp').value.trim();
-  if(!ip){ line('dkTzS1',null,'Gõ IP của TV hoặc bấm Tìm TV Samsung ở dưới để kiểm tra bước này.'); return Promise.resolve(); }
-  line('dkTzS1',null,'Đang hỏi TV '+ip+'...');
+  var ip=$('dkTzIp').value.trim(); tvi=null;
+  if(!ip){ line('dkTzS1',null,'Chọn TV ở bước 2 để Hóng Sub kiểm tra bước này.'); steps(); return Promise.resolve(); }
+  line('dkTzS1',null,'Đang hỏi TV '+ip+'...'); steps();
   return D.samsung.info(ip).then(function(i){
-    var pcs=(st&&st.pcIps)||[];
+    var pcs=(st&&st.pcIps)||[]; tvi=i||null;
     if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
     else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0&&pcs.indexOf(i.devIp.split('.').reverse().join('.'))>=0) line('dkTzS1',false,(i.name||'TV')+': TV lưu Host PC IP bị đảo ngược ('+i.devIp+'). Vào lại bảng Developer mode, gõ IP theo thứ tự ngược: '+pcs.filter(function(x){return x===i.devIp.split('.').reverse().join('.');})[0].split('.').reverse().join('.')+', rồi khởi động lại TV.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(window.hsPcIp||pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
     else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
+    steps();
   });
 }
 function draw(s){
@@ -10693,16 +10865,24 @@ function draw(s){
   sel.innerHTML=pr.length?pr.map(function(x){ return '<option value="'+esc(x.name)+'">'+esc(x.name)+(x.samsung?' (Samsung)':' (không phải Samsung)')+'</option>'; }).join(''):'<option value="">Chưa có chứng chỉ</option>';
   if(keep&&pr.some(function(x){return x.name===keep;})) sel.value=keep;
   var sam=pr.filter(function(x){return x.samsung;});
-  line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Làm bước 3 rồi bấm Kiểm tra lại.');
+  line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Tạo chứng chỉ ở bước trên rồi bấm Kiểm tra lại.');
   if(st.ip&&!$('dkTzIp').value) $('dkTzIp').value=st.ip;
   var inst=st.installed||!!auto();
   if(!st.ip&&auto()&&!$('dkTzIp').value) $('dkTzIp').value=auto().ip;
   $('dkTzDone').hidden=!inst;
   if(inst){ $('dkTzAuto').textContent='Cài lại / cập nhật'; }
   if(st.installed){ window.hsTzOpen=openOnTv; $('dkTzSum').textContent='Cài lại / cập nhật app trên TV Samsung'; $('dkTzGo').textContent='Cài lại'; $('dkTz').open=false; }
+  steps();
   if(A.tvState) A.tvState();
 }
 function refresh(){ return D.samsung.state().then(draw).then(tvCheck); }
+/* the number to type on the TV (Host PC IP), copied with one press */
+(function(){ var b=$('knTzCopy'); if(!b) return; b.onclick=function(){
+  var t=String($('dkTzPcIp').textContent||'').trim(); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(t)){ msg('warn','Chưa biết IP của máy tính này. Kiểm tra máy tính đã nối mạng rồi bấm Kiểm tra lại.'); return; }
+  var done=function(){ b.textContent='Đã chép'; setTimeout(function(){ b.textContent='Sao chép'; },1600); };
+  var old=function(){ var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(ta); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,old); else old();
+}; })();
 D.samsung.onProgress(function(t){ msg('',t); });
 $('dkTzCheck').onclick=function(){ msg('',''); refresh(); };
 $('dkTzIp').addEventListener('change',tvCheck);
@@ -10725,7 +10905,7 @@ $('dkTzGo').onclick=function(){
   var b=this, c=code();
   D.samsung.install(ip,$('dkTzProf').value,c).then(function(r){
     busy=false; b.disabled=false;
-    if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở ô bên dưới là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
+    if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở bước 4 là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
     else msg('err',(r&&r.err)||'Chưa cài được.');
   });
 };

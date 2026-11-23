@@ -516,6 +516,7 @@ function openOnTv(){
 }
 function done(st){
   $('dkLgDone').hidden=!st.installed; $('dkLgAutoRow').hidden=!st.installed; $('dkLgAuto').checked=st.auto!==false;
+  ['knLg1','knLg2','knLg3'].forEach(function(id){ var el=$(id); if(el) el.className='kn-step'+(st.installed?' ok':''); });
   if(st.installed){
     window.hsLgOpen=openOnTv;
     $('dkLgState').innerHTML='Đã cài trên TV LG <b>'+st.ip+'</b>. Cài lại khi có bản mới hoặc khi TV đã gỡ app.';
@@ -581,17 +582,25 @@ function openOnTv(){
   var au=auto();
   return (au&&au.ip&&window.hsTzi?window.hsTzi.launch(au.ip).then(function(r){ return r&&r.ok?r:D.samsung.launch(); }):D.samsung.launch()).then(function(r){ msg(r&&r.ok?'ok':'err',r&&r.ok?'Đã mở Hóng Sub trên TV.':'Chưa mở được. '+((r&&r.err)||'')); if(A.tvState) A.tvState(); });
 }
+/* the three steps: a tick on the ones done, the first one not done stands out */
+var tvi=null;
+function steps(){
+  var s1=$('dkTzS1').classList.contains('ok'), b1=$('dkTzS1').classList.contains('bad')&&!!(tvi&&tvi.ok), s2=!!(tvi&&tvi.ok), s3=!!(st&&st.installed)||!!auto();
+  var cur=!s1?1:!s2?2:!s3?3:0;
+  [[1,s1,b1],[2,s2,false],[3,s3,false]].forEach(function(x){ var el=$('knTz'+x[0]); if(el) el.className='kn-step'+(x[1]?' ok':x[2]?' bad':x[0]===cur?' now':''); });
+}
 function tvCheck(){
-  var ip=$('dkTzIp').value.trim();
-  if(!ip){ line('dkTzS1',null,'Gõ IP của TV hoặc bấm Tìm TV Samsung ở dưới để kiểm tra bước này.'); return Promise.resolve(); }
-  line('dkTzS1',null,'Đang hỏi TV '+ip+'...');
+  var ip=$('dkTzIp').value.trim(); tvi=null;
+  if(!ip){ line('dkTzS1',null,'Chọn TV ở bước 2 để Hóng Sub kiểm tra bước này.'); steps(); return Promise.resolve(); }
+  line('dkTzS1',null,'Đang hỏi TV '+ip+'...'); steps();
   return D.samsung.info(ip).then(function(i){
-    var pcs=(st&&st.pcIps)||[];
+    var pcs=(st&&st.pcIps)||[]; tvi=i||null;
     if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
     else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0&&pcs.indexOf(i.devIp.split('.').reverse().join('.'))>=0) line('dkTzS1',false,(i.name||'TV')+': TV lưu Host PC IP bị đảo ngược ('+i.devIp+'). Vào lại bảng Developer mode, gõ IP theo thứ tự ngược: '+pcs.filter(function(x){return x===i.devIp.split('.').reverse().join('.');})[0].split('.').reverse().join('.')+', rồi khởi động lại TV.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(window.hsPcIp||pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
     else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
+    steps();
   });
 }
 function draw(s){
@@ -602,16 +611,24 @@ function draw(s){
   sel.innerHTML=pr.length?pr.map(function(x){ return '<option value="'+esc(x.name)+'">'+esc(x.name)+(x.samsung?' (Samsung)':' (không phải Samsung)')+'</option>'; }).join(''):'<option value="">Chưa có chứng chỉ</option>';
   if(keep&&pr.some(function(x){return x.name===keep;})) sel.value=keep;
   var sam=pr.filter(function(x){return x.samsung;});
-  line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Làm bước 3 rồi bấm Kiểm tra lại.');
+  line('dkTzS3',!st.tools?null:sam.length?true:false,!st.tools?'':sam.length?'Đã có chứng chỉ Samsung: '+sam.map(function(x){return x.name;}).join(', ')+'.':pr.length?'Chứng chỉ đang có không phải loại Samsung. Tạo chứng chỉ chọn Samsung › TV.':'Chưa có chứng chỉ Samsung. Tạo chứng chỉ ở bước trên rồi bấm Kiểm tra lại.');
   if(st.ip&&!$('dkTzIp').value) $('dkTzIp').value=st.ip;
   var inst=st.installed||!!auto();
   if(!st.ip&&auto()&&!$('dkTzIp').value) $('dkTzIp').value=auto().ip;
   $('dkTzDone').hidden=!inst;
   if(inst){ $('dkTzAuto').textContent='Cài lại / cập nhật'; }
   if(st.installed){ window.hsTzOpen=openOnTv; $('dkTzSum').textContent='Cài lại / cập nhật app trên TV Samsung'; $('dkTzGo').textContent='Cài lại'; $('dkTz').open=false; }
+  steps();
   if(A.tvState) A.tvState();
 }
 function refresh(){ return D.samsung.state().then(draw).then(tvCheck); }
+/* the number to type on the TV (Host PC IP), copied with one press */
+(function(){ var b=$('knTzCopy'); if(!b) return; b.onclick=function(){
+  var t=String($('dkTzPcIp').textContent||'').trim(); if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(t)){ msg('warn','Chưa biết IP của máy tính này. Kiểm tra máy tính đã nối mạng rồi bấm Kiểm tra lại.'); return; }
+  var done=function(){ b.textContent='Đã chép'; setTimeout(function(){ b.textContent='Sao chép'; },1600); };
+  var old=function(){ var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(ta); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,old); else old();
+}; })();
 D.samsung.onProgress(function(t){ msg('',t); });
 $('dkTzCheck').onclick=function(){ msg('',''); refresh(); };
 $('dkTzIp').addEventListener('change',tvCheck);
@@ -634,7 +651,7 @@ $('dkTzGo').onclick=function(){
   var b=this, c=code();
   D.samsung.install(ip,$('dkTzProf').value,c).then(function(r){
     busy=false; b.disabled=false;
-    if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở ô bên dưới là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
+    if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở bước 4 là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
     else msg('err',(r&&r.err)||'Chưa cài được.');
   });
 };
