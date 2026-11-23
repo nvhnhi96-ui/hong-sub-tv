@@ -5934,7 +5934,9 @@ async function tmRedoRun(){
     :(!presetOf($('hsGame').value)&&tmDiffers())?'Game này chưa có bộ luật sẵn và máy này đang dùng ghi chú riêng: kết quả sẽ ghi vào kho cho mọi máy nên không chạy.'
     :!tmShare()?'Bật "Góp câu tôi dịch vào kho chung" rồi bấm lại.':'';
   if(no){ R.n=0; R.note=no; tmRedoUi(); return; }
-  var keys=T.seq.filter(function(s){ var e=T.map[s]; return e&&!T.zmap[s]&&!tmJunk(e); });   /* dialogue only: no menu, button or mission text */
+  /* dialogue only (no menu, button or mission text), and only lines not already marked as translated with the game's
+     own settings: a second run after the store has been marked costs only what is left to do */
+  var keys=T.seq.filter(function(s){ var e=T.map[s]; return e&&!T.zmap[s]&&!tmJunk(e)&&!e.std; });
   var sig=tmSig(), sv=load('tmRedo',null), i0=0, chg0=0;
   if(sv&&sv.sig===sig&&sv.i>0){ var at=sv.k?keys.indexOf(sv.k):-1; i0=at>=0?at:Math.min(sv.i,keys.length); chg0=sv.chg||0; }
   R.on=true; R.stop=false; R.n=keys.length; R.i=R.i0=i0; R.chg=chg0; R.err=0; R.fail=0; R.note=''; R.t0=Date.now(); R.win=0; R.winAt=Date.now();
