@@ -1248,7 +1248,7 @@ function keys(){ var k=gKeys(); return k.length?k:(vipOn()?['VIP']:[]); }
 /* ---------- VIP: translation through the shop's server (honggame.store), with a VIP code bought at the shop.
    The AI key stays on the server; the app only sends the code, this computer's id and the line to translate. ---------- */
 var VIPAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/vip/';
-S.vip=load('vip',{code:'',ok:false,until:0}); S.vipDown=0;
+S.vip=load('vip',{code:'',ok:false,until:0}); S.vipDown=0; S.vipOut=0;   /* vipDown: the VIP server is busy for a moment; vipOut: the VIP package has no lines left today */
 function vipDev(){ var d=load('vipdev',''); if(!d){ var a=new Uint8Array(12); (window.crypto||{getRandomValues:function(x){ for(var i=0;i<x.length;i++) x[i]=Math.random()*256|0; return x; }}).getRandomValues(a); d='d'+Array.prototype.map.call(a,function(b){ return ('0'+b.toString(16)).slice(-2); }).join(''); save('vipdev',d); } return d; }
 function vipOn(){ return !!(S.vip&&S.vip.ok&&S.vip.code&&(!S.vip.until||S.vip.until>Date.now())); }
 function vipShape(s){   /* the JSON shape the server must answer in, from the Gemini schema */
@@ -1263,7 +1263,7 @@ function vipLeft(){ return S.vip.until?Math.max(0,Math.ceil((S.vip.until-Date.no
 function vipUi(){
   var on=vipOn(), el=$('hsVip');
   if(el&&!el.value&&S.vip.code) el.value=S.vip.code;
-  if(on) vipMsg('ok','Bạn đang dùng gói '+(S.vip.tier&&S.vip.tier!=='VIP'?S.vip.tier:'VIP')+(S.vip.lim?' (tối đa '+vipMoney(S.vip.lim).replace('đ','')+' câu mỗi ngày)':S.vip.tier?' (không giới hạn câu)':'')+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini.');
+  if(on) vipMsg('ok','Bạn đang dùng gói '+(S.vip.tier&&S.vip.tier!=='VIP'?S.vip.tier:'VIP')+(S.vip.lim?' (tối đa '+vipMoney(S.vip.lim).replace('đ','')+' câu mỗi ngày)':S.vip.tier?' (không giới hạn câu)':'')+(S.vip.until?', còn '+vipLeft()+' ngày (đến '+new Date(S.vip.until).toLocaleDateString('vi-VN')+')':'')+'. Hóng Sub dịch bằng máy chủ riêng của shop, không cần mã Gemini. Mã Gemini của bạn (nếu có) không bị dùng tới, chỉ dùng khi gói VIP hết số câu trong ngày.');
   else if(S.vip.err) vipMsg('err',S.vip.err);
   else vipMsg('','');
   var set=function(id,f){ var x=$(id); if(x) f(x); };
@@ -1398,7 +1398,7 @@ async function vipAskCall(body,ms){
 async function vipAsk(prompt,b64,schema,mode){
   var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64; if(mode) body.mode=mode;
   var t0=performance.now(), x;
-  try{ x=await vipAskCall(body,15000); }catch(e){ S.vipDown=Date.now()+20e3; throw e; }
+  try{ x=await vipAskCall(body,15000); }catch(e){ S.vipDown=Date.now()+8e3; throw e; }   /* back to the VIP server quickly: a VIP member's lines are not sent with their own keys */
   if(x.r.ok&&x.j.ok){
     count('vip-server','v');
     if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
@@ -1409,7 +1409,8 @@ async function vipAsk(prompt,b64,schema,mode){
   var c=x.j.code||'', m=x.j.message||('VIP lỗi '+x.r.status);
   log('VIP '+x.r.status+' '+c+': '+m.slice(0,160));
   if(c==='vip_bad'||c==='vip_expired'||c==='vip_device'||c==='vip_off') vipStop(x.j);
-  else S.vipDown=Date.now()+(c==='vip_limit'?60e3:30e3);   /* busy or out of credit: the customer's own keys / the free translator for a moment */
+  else if(c==='vip_limit'){ S.vipOut=Date.now()+10*60e3; S.vipDown=Date.now()+60e3; log('VIP: gói VIP đã hết số câu của hôm nay, tạm dịch bằng mã của bạn'); }   /* nothing left today: the customer's own keys, so the subtitles do not get worse */
+  else S.vipDown=Date.now()+10e3;   /* busy for a moment: the line goes to Groq / the free translator, not to the customer's own keys */
   var e=new Error(m); e.status=x.r.status; e.cool=(c==='vip_limit'); throw e;
 }
 (function(){
@@ -2632,14 +2633,13 @@ function hedged(order,key,prompt,b64,schema){
     start(); arm();
   });
 }
+/* A VIP member's lines go to the VIP server ONLY: the customer's own Gemini keys are never asked while VIP works, so
+   their own free quota stays untouched (before: both went out together on every line and whichever answered first won).
+   The own keys come back only when the VIP package has no lines left for today, so the subtitles do not get worse. */
 async function gemini(prompt,b64,schema){
-  if(vipOn()&&Date.now()>=S.vipDown){
-    if(gKeys().length){   /* VIP and the customer's own Gemini keys at the same time: the first good answer (VIP's server takes 2-8 s) */
-      var own=geminiOwn(prompt,b64,schema), vip=vipAsk(prompt,b64,schema);
-      return await new Promise(function(ok,bad){ var n=0, err=null; function f(e){ err=err||e; if(++n===2) bad(err); }
-        own.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); vip.then(function(r){ if(r) ok(r); else f(new Error('trống')); },f); });
-    }
-    return await vipAsk(prompt,b64,schema);
+  if(vipOn()&&Date.now()>=S.vipOut){
+    if(Date.now()>=S.vipDown) return await vipAsk(prompt,b64,schema);
+    var e=new Error('VIP tạm bận, thử lại sau giây lát'); e.cool=true; throw e;   /* the VIP server stumbled a moment ago: this line goes to Groq or the free translator */
   }
   return geminiOwn(prompt,b64,schema);
 }
