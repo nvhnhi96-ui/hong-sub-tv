@@ -328,6 +328,31 @@ html.hs-ios #dkVipNav,html.hs-ios #dkVipChip,html.hs-ios #p-vip,html.hs-ios #hsV
 .vip-store,.vip-phonepay{display:none}html.hs-mps .vip-phonepay{display:block}html.hs-ios .vip-sell,html.hs-play .vip-sell{display:none!important}html.hs-ios .vip-store,html.hs-play .vip-store{display:block}html.hs-phone .dk-vipchip{display:none!important}   /* điện thoại: đã có tab Gói VIP ở thanh dưới */
 .vip-plan{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;color:var(--ink);font-family:inherit}.vip-plan b{display:block;font-size:15px}.vip-plan span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .vip-plan.on{border-color:#FFC400;background:rgba(255,196,0,.10)}.vip-plan.on span{color:#FFD54A}
+/* VIP plans: one card per gói, then thời gian chips, then the automatic-payment note */
+.vip-plans.vt{display:block}
+.vt-tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:6px}
+.vt-tier{position:relative;display:flex;flex-direction:column;text-align:left;border:1.5px solid var(--line2);background:var(--sunk);border-radius:12px;padding:15px 16px 13px;cursor:pointer;color:var(--ink);font-family:inherit;transition:border-color .15s,background .15s,box-shadow .15s}
+.vt-tier:hover{border-color:rgba(255,196,0,.55)}
+.vt-tier.on{border-color:#FFC400;background:rgba(255,196,0,.07);box-shadow:0 0 0 3px rgba(255,196,0,.12)}
+.vt-radio{position:absolute;top:16px;right:16px;width:18px;height:18px;border-radius:50%;border:2px solid var(--line2);box-sizing:border-box}
+.vt-tier.on .vt-radio{border-color:#FFC400;background:radial-gradient(circle,#FFC400 0 4px,transparent 4.5px)}
+.vt-name{font-size:16.5px;font-weight:700;padding-right:28px}
+.vt-from{font-size:13px;color:var(--muted);margin-top:3px}.vt-from strong{color:var(--ink);font-weight:700;font-size:14px}
+.vt-tier ul{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--line);display:grid;gap:8px}
+.vt-tier li{display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--muted)}
+.vt-tier li svg{flex:none;width:15px;height:15px;margin-top:2px;stroke:#FFC400;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.vt-tier li.x{color:var(--ink);font-weight:600}
+.vt-badge{position:absolute;top:-10px;left:14px;font-style:normal;font-size:11px;font-weight:700;letter-spacing:.02em;background:#FFC400;color:#1A1400;padding:2px 9px;border-radius:999px}
+.vt-lab{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--soft);margin:18px 0 8px}
+.vt-durs{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+@media (max-width:560px){.vt-durs{grid-template-columns:repeat(2,1fr)}}html.hs-phone .vt-durs{grid-template-columns:repeat(2,1fr)}
+.vt-dur{border:1.5px solid var(--line2);background:var(--sunk);border-radius:10px;padding:10px 8px;cursor:pointer;color:var(--ink);font-family:inherit;text-align:center;transition:border-color .15s,background .15s}
+.vt-dur:hover{border-color:rgba(255,196,0,.55)}
+.vt-dur b{display:block;font-size:14px;font-weight:700}.vt-dur span{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.vt-dur.on{border-color:#FFC400;background:rgba(255,196,0,.10)}.vt-dur.on span{color:var(--ink);font-weight:600}
+.vt-tier:focus-visible,.vt-dur:focus-visible{outline:2px solid #FFC400;outline-offset:2px}
+.vt-pay{display:flex;gap:9px;align-items:center;margin-top:14px;padding:9px 12px;border-radius:10px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.28);font-size:12.5px;line-height:1.45;color:var(--muted)}
+.vt-pay svg{flex:none;width:17px;height:17px;stroke:#2ECC71;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.vt-pay b{color:var(--ink);font-weight:600}
 .vip-f{margin-top:10px}.vip-f label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
 .vip-nudge{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(255,196,0,.10);border:1px solid rgba(255,196,0,.45);font-size:13.5px}.vip-nudge[hidden]{display:none}
 .vip-nudge>svg{width:17px;height:17px;flex:none;fill:#FFC400}.vip-nudge span{flex:1}.vip-nudge .hs-btn{padding:6px 12px!important;font-size:13px!important}.vip-x{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px}
@@ -1109,7 +1134,7 @@ div.kn-step{margin-top:8px}
         <div class="dk-cols">
           <div class="dk-card vip-reg vip-sell" id="hsVipBuy">
             <h2 id="hsVipBuyH">Mua gói VIP</h2>
-            <p class="hs-note" id="hsVipBuyNote">Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, mã VIP được tạo tự động, mua lúc nào cũng được.</p>
+            <p class="hs-note" id="hsVipBuyNote">Chọn gói và thời gian sử dụng, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Mua lúc nào cũng được.</p>
             <div class="vip-plans" id="hsVipPlans" role="radiogroup" aria-label="Chọn gói VIP"></div>
             <div id="hsVipForm">
               <div class="vip-f"><label for="hsVipPhone">Số điện thoại (không bắt buộc, để shop hỗ trợ khi cần)</label><input class="hs-in" id="hsVipPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="VD: 0912 345 678"></div>
@@ -2190,17 +2215,52 @@ S.vipPlans=load('vipplans',[]); S.vipPlan=load('vipplan',0); S.vipReg=load('vipr
 function vipRegMsg(cls,t){ var m=$('hsVipRegMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg '+cls; m.textContent=t||''; }
 function vipMoney(n){ return (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'đ'; }
 function vipPlanList(){ return S.vipPlans.length?S.vipPlans:[{id:0,name:'VIP Cơ bản',days:30,price:'',amount:0},{id:1,name:'VIP Nâng cao',days:30,price:'',amount:0},{id:2,name:'VIP Cao cấp',days:30,price:'',amount:0}]; }
+function vipSplit(n){ n=String(n||''); var i=n.indexOf(' · '); return i>0&&n.slice(i+3).trim()?[n.slice(0,i).trim(),n.slice(i+3).trim()]:null; }
+function vipPayPerk(p){ return /thanh to[aá]n|qu[ée]t.{0,10}qr|t[ựu] k[íi]ch ho[ạa]t/i.test(String(p||'')); }
 function vipBuyMode(){ var pl=vipPlanList()[S.vipPlan]; return !!(S.vipCanBuy&&pl&&pl.amount>0); }
 function vipPlansUi(){
   var box=$('hsVipPlans'); if(!box) return;
   var pl=vipPlanList(); if(S.vipPlan>=pl.length) S.vipPlan=0;
-  box.innerHTML=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per+(x.days<60&&!x.once?' / '+(x.days===30?'tháng':x.days+' ngày'):''):'Đang cập nhật giá')+'</span>'+(Array.isArray(x.perks)&&x.perks.length?'<ul>'+x.perks.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join('')+'</ul>':'')+'</button>'; }).join('');
+  /* Plans named "Gói · thời gian" (VD "Tiêu chuẩn · 4 giờ") are shown as one card per gói with its quyền lợi listed once,
+     then a row of thời gian with prices. "Thanh toán tự động" is how you pay, not a quyền lợi: it is taken out of the
+     lists and shown once under the plans. Other names fall back to one card per plan. */
+  var payTx='', groups=[], gi={}, own=Object.prototype.hasOwnProperty;
+  if(pl.every(function(x){ return vipSplit(x.name); })) pl.forEach(function(x,i){
+    var s=vipSplit(x.name); if(!own.call(gi,s[0])){ gi[s[0]]=groups.length; groups.push({name:s[0],items:[],perks:[]}); }
+    var g=groups[gi[s[0]]]; g.items.push({i:i,dur:s[1],x:x});
+    (Array.isArray(x.perks)?x.perks:[]).forEach(function(p){ if(vipPayPerk(p)){ payTx=payTx||p; return; } if(g.perks.indexOf(p)<0) g.perks.push(p); });
+  });
+  var ck='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>', h;
+  if(groups.length>=2){
+    var cg=gi[vipSplit(pl[S.vipPlan].name)[0]];
+    var common=function(p){ return groups.every(function(g){ return g.perks.indexOf(p)>=0; }); };
+    h='<div class="vt-tiers" role="radiogroup" aria-label="Chọn gói">'+groups.map(function(g,k){
+      var am=g.items.map(function(t){ return t.x.amount||0; }).filter(function(a){ return a>0; }), min=am.length?Math.min.apply(null,am):0;
+      return '<button type="button" class="vt-tier'+(k===cg?' on':'')+'" role="radio" aria-checked="'+(k===cg)+'" data-g="'+k+'">'
+        +(/cao c[aấ]p/i.test(g.name)?'<em class="vt-badge">Đầy đủ nhất</em>':'')+'<span class="vt-radio"></span>'
+        +'<b class="vt-name">'+esc(g.name)+'</b><span class="vt-from">'+(min?'Chỉ từ <strong>'+vipMoney(min)+'</strong>':'Đang cập nhật giá')+'</span>'
+        +(g.perks.length?'<ul>'+g.perks.map(function(p){ return '<li'+(common(p)?'':' class="x"')+'>'+ck+'<span>'+esc(p)+'</span></li>'; }).join('')+'</ul>':'')+'</button>';
+    }).join('')+'</div>'
+    +'<div class="vt-lab">Thời gian sử dụng</div><div class="vt-durs" role="radiogroup" aria-label="Chọn thời gian sử dụng">'+groups[cg].items.map(function(t){
+      var on=t.i===S.vipPlan; return '<button type="button" class="vt-dur'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" data-i="'+t.i+'"><b>'+esc(t.dur)+'</b><span>'+(t.x.amount?vipMoney(t.x.amount):'Đang cập nhật')+'</span></button>';
+    }).join('')+'</div>';
+  } else {
+    h=pl.map(function(x,i){ var per=x.amount&&x.days>=60?' · '+vipMoney(Math.round(x.amount/(x.days/30)/1000)*1000)+'/tháng':''; var pk=(Array.isArray(x.perks)?x.perks:[]).filter(function(p){ if(vipPayPerk(p)){ payTx=payTx||p; return false; } return true; }); return '<button type="button" class="vip-plan'+(i===S.vipPlan?' on':'')+'" role="radio" aria-checked="'+(i===S.vipPlan)+'" data-i="'+i+'"><b>'+esc(x.name)+'</b><span>'+(x.amount?vipMoney(x.amount)+per+(x.days<60&&!x.once?' / '+(x.days===30?'tháng':x.days+' ngày'):''):'Đang cập nhật giá')+'</span>'+(pk.length?'<ul>'+pk.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join('')+'</ul>':'')+'</button>'; }).join('');
+  }
+  var pt=payTx||'Thanh toán tự động: quét mã QR chuyển khoản, VIP tự kích hoạt ngay', pc=pt.indexOf(':');
+  h+='<div class="vt-pay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>'+(pc>0?'<b>'+esc(pt.slice(0,pc))+'</b>'+esc(pt.slice(pc)):esc(pt))+'</span></div>';
+  box.classList.toggle('vt',groups.length>=2);
+  box.innerHTML=h;
   var pk=$('hsVipPerks'); if(pk) pk.hidden=pl.some(function(x){ return Array.isArray(x.perks)&&x.perks.length; });
-  box.querySelectorAll('.vip-plan').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
+  box.querySelectorAll('.vip-plan,.vt-dur').forEach(function(b){ b.addEventListener('click',function(){ S.vipPlan=+b.dataset.i; save('vipplan',S.vipPlan); vipPlansUi(); }); });
+  box.querySelectorAll('.vt-tier').forEach(function(b){ b.addEventListener('click',function(){
+    var g=groups[+b.dataset.g], d=vipSplit(pl[S.vipPlan].name)[1], t=g.items.filter(function(t){ return t.dur===d; })[0]||g.items[0];
+    S.vipPlan=t.i; save('vipplan',S.vipPlan); vipPlansUi();
+  }); });
   var on=vipOn(), buy=vipBuyMode(), set=function(id,f){ var x=$(id); if(x) f(x); };
   set('hsVipBuyH',function(x){ x.textContent=on?'Gia hạn VIP':'Mua gói VIP'; });
-  set('hsVipBuyNote',function(x){ x.textContent=on?'Mua thêm gói: số ngày được cộng vào VIP đang dùng trên máy này, tiền vào là tự gia hạn.':'Chọn gói, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Tiền vào là VIP tự bật trên máy này sau vài giây, mã VIP được tạo tự động, mua lúc nào cũng được.'; });
-  set('hsVipReg',function(x){ x.textContent=on?'Gia hạn ngay':'Mua ngay'; x.disabled=!buy; x.title=buy?'':'Tạm thời chưa mua được, quay lại sau ít phút'; });
+  set('hsVipBuyNote',function(x){ x.textContent=on?'Thời gian mua thêm được cộng dồn vào VIP đang dùng trên máy này.':'Chọn gói và thời gian sử dụng, bấm Mua ngay rồi quét mã QR bằng app ngân hàng. Mua lúc nào cũng được.'; });
+  set('hsVipReg',function(x){ var a=(pl[S.vipPlan]||{}).amount; x.textContent=(on?'Gia hạn ngay':'Mua ngay')+(a?' · '+vipMoney(a):''); x.disabled=!buy; x.title=buy?'':'Tạm thời chưa mua được, quay lại sau ít phút'; });
 }
 function vipPlansLoad(){
   if(!$('hsVipPlans')) return;
