@@ -5,77 +5,42 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 248
+          "ms": 250
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 143
+          "ms": 132
         },
         {
           "t": "",
           "c": 0,
-          "ms": 41
+          "ms": 38
         },
         {
           "t": "Stay close. The bridge w",
           "c": 97,
-          "ms": 155
+          "ms": 154
         },
         {
           "t": "ge will not hold for long.",
-          "c": 94,
-          "ms": 148
+          "c": 88,
+          "ms": 160
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 180
+          "ms": 166
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 446
+          "ms": 432
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 134
-        },
-        {
-          "t": "",
-          "c": 0,
-          "ms": 48
-        },
-        {
-          "t": "Stay close. The bridge w",
-          "c": 96,
-          "ms": 136
-        },
-        {
-          "t": "ge will not hold for long.",
-          "c": 94,
-          "ms": 131
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 398
-        },
-        {
-          "t": "ot hold for long.",
-          "c": 90,
-          "ms": 235
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 421
-        },
-        {
-          "t": "File Edit View Window",
-          "c": 89,
-          "ms": 126
+          "ms": 133
         },
         {
           "t": "",
@@ -84,53 +49,88 @@
         },
         {
           "t": "Stay close. The bridge w",
-          "c": 97,
-          "ms": 127
+          "c": 96,
+          "ms": 123
         },
         {
           "t": "ge will not hold for long.",
-          "c": 88,
-          "ms": 121
+          "c": 93,
+          "ms": 125
         },
         {
-          "t": "I told you this place was cursed.",
-          "c": 90,
-          "ms": 146
-        },
-        {
-          "t": "File Edit View Window\nI told you this place was cursed.",
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 383
+          "ms": 361
+        },
+        {
+          "t": "Il not hold for long.",
+          "c": 85,
+          "ms": 276
+        },
+        {
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 407
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 125
+          "ms": 113
         },
         {
           "t": "",
           "c": 0,
-          "ms": 35
+          "ms": 33
         },
         {
           "t": "I told you this plac",
           "c": 96,
-          "ms": 106
+          "ms": 113
         },
         {
           "t": "place was cursed.",
           "c": 93,
-          "ms": 110
+          "ms": 117
+        },
+        {
+          "t": "I told you this place was cursed.",
+          "c": 89,
+          "ms": 143
+        },
+        {
+          "t": "File Edit View Window\nI told you this place was cursed.",
+          "c": 91,
+          "ms": 380
+        },
+        {
+          "t": "File Edit View Window",
+          "c": 89,
+          "ms": 109
+        },
+        {
+          "t": "",
+          "c": 0,
+          "ms": 46
+        },
+        {
+          "t": "I told you this plac",
+          "c": 87,
+          "ms": 107
+        },
+        {
+          "t": "place was cursed.",
+          "c": 93,
+          "ms": 113
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 159
+          "ms": 157
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 165
+          "ms": 166
         },
         {
           "t": "Grab the map. We head north at dawn.",
@@ -145,42 +145,17 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 174
+          "ms": 159
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 164
+          "ms": 152
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 158
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 89,
-          "ms": 168
-        },
-        {
-          "t": "File Edit View Window\nGrab the map. We head north at dawn.",
-          "c": 92,
-          "ms": 411
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 92,
-          "ms": 167
+          "ms": 160
         },
         {
           "t": "Grab the map. We head north at dawn.",
@@ -190,87 +165,117 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 185
+          "ms": 158
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 89,
+          "ms": 160
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 157
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 164
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 258
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 161
+        },
+        {
+          "t": "File Edit View Window\nWe need to get out of here before sunrise.",
+          "c": 91,
+          "ms": 383
         },
         {
           "t": "We need to get out of here before sunrise.",
-          "c": 96,
-          "ms": 158
+          "c": 92,
+          "ms": 157
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 101
+          "ms": 104
         },
         {
           "t": "",
           "c": 0,
-          "ms": 38
+          "ms": 36
         },
         {
           "t": "We need to get out of h",
           "c": 96,
-          "ms": 128
+          "ms": 121
         },
         {
           "t": "of here before sunrise.",
           "c": 96,
-          "ms": 153
+          "ms": 135
         },
         {
           "t": "File Edit View Window\nWe need to get out of here before sunrise.",
           "c": 92,
-          "ms": 368
+          "ms": 359
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 149
+          "ms": 159
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 383
+          "ms": 368
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 101
+          "ms": 102
         },
         {
           "t": "",
           "c": 0,
-          "ms": 40
+          "ms": 37
         },
         {
           "t": "Stay close. The bridge w",
           "c": 97,
-          "ms": 127
+          "ms": 120
         },
         {
           "t": "ge will not hold for long.",
           "c": 88,
-          "ms": 131
+          "ms": 112
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 386
+          "ms": 369
         },
         {
-          "t": "e bridge will not hold for long",
-          "c": 95,
+          "t": "bridge will not hold for long.",
+          "c": 94,
           "ms": 305
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 375
+          "ms": 360
         },
         {
-          "t": "ge will not hold for long.",
-          "c": 91,
-          "ms": 279
+          "t": "will not hold for long.",
+          "c": 89,
+          "ms": 246
         }
       ],
       "asked": [
@@ -334,77 +339,42 @@
         {
           "t": "Stay close, we leave at dawn.",
           "c": 97,
-          "ms": 248
+          "ms": 250
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 143
+          "ms": 132
         },
         {
           "t": "",
           "c": 0,
-          "ms": 41
+          "ms": 38
         },
         {
           "t": "Stay close. The bridge w",
           "c": 97,
-          "ms": 155
+          "ms": 154
         },
         {
           "t": "ge will not hold for long.",
-          "c": 94,
-          "ms": 148
+          "c": 88,
+          "ms": 160
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 180
+          "ms": 166
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 446
+          "ms": 432
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 134
-        },
-        {
-          "t": "",
-          "c": 0,
-          "ms": 48
-        },
-        {
-          "t": "Stay close. The bridge w",
-          "c": 96,
-          "ms": 136
-        },
-        {
-          "t": "ge will not hold for long.",
-          "c": 94,
-          "ms": 131
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 398
-        },
-        {
-          "t": "ot hold for long.",
-          "c": 90,
-          "ms": 235
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 421
-        },
-        {
-          "t": "File Edit View Window",
-          "c": 89,
-          "ms": 126
+          "ms": 133
         },
         {
           "t": "",
@@ -413,53 +383,88 @@
         },
         {
           "t": "Stay close. The bridge w",
-          "c": 97,
-          "ms": 127
+          "c": 96,
+          "ms": 123
         },
         {
           "t": "ge will not hold for long.",
-          "c": 88,
-          "ms": 121
+          "c": 93,
+          "ms": 125
         },
         {
-          "t": "I told you this place was cursed.",
-          "c": 90,
-          "ms": 146
-        },
-        {
-          "t": "File Edit View Window\nI told you this place was cursed.",
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 383
+          "ms": 361
+        },
+        {
+          "t": "Il not hold for long.",
+          "c": 85,
+          "ms": 276
+        },
+        {
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 407
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 125
+          "ms": 113
         },
         {
           "t": "",
           "c": 0,
-          "ms": 35
+          "ms": 33
         },
         {
           "t": "I told you this plac",
           "c": 96,
-          "ms": 106
+          "ms": 113
         },
         {
           "t": "place was cursed.",
           "c": 93,
-          "ms": 110
+          "ms": 117
+        },
+        {
+          "t": "I told you this place was cursed.",
+          "c": 89,
+          "ms": 143
+        },
+        {
+          "t": "File Edit View Window\nI told you this place was cursed.",
+          "c": 91,
+          "ms": 380
+        },
+        {
+          "t": "File Edit View Window",
+          "c": 89,
+          "ms": 109
+        },
+        {
+          "t": "",
+          "c": 0,
+          "ms": 46
+        },
+        {
+          "t": "I told you this plac",
+          "c": 87,
+          "ms": 107
+        },
+        {
+          "t": "place was cursed.",
+          "c": 93,
+          "ms": 113
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 159
+          "ms": 157
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 165
+          "ms": 166
         },
         {
           "t": "Grab the map. We head north at dawn.",
@@ -474,42 +479,17 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 174
+          "ms": 159
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 164
+          "ms": 152
         },
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 158
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 89,
-          "ms": 168
-        },
-        {
-          "t": "File Edit View Window\nGrab the map. We head north at dawn.",
-          "c": 92,
-          "ms": 411
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 92,
-          "ms": 167
+          "ms": 160
         },
         {
           "t": "Grab the map. We head north at dawn.",
@@ -519,102 +499,82 @@
         {
           "t": "Grab the map. We head north at dawn.",
           "c": 90,
-          "ms": 185
+          "ms": 158
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 89,
+          "ms": 160
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 157
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 164
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 258
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 161
+        },
+        {
+          "t": "File Edit View Window\nWe need to get out of here before sunrise.",
+          "c": 91,
+          "ms": 383
         },
         {
           "t": "We need to get out of here before sunrise.",
-          "c": 96,
-          "ms": 158
+          "c": 92,
+          "ms": 157
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 101
+          "ms": 104
         },
         {
           "t": "",
           "c": 0,
-          "ms": 38
+          "ms": 36
         },
         {
           "t": "We need to get out of h",
           "c": 96,
-          "ms": 128
+          "ms": 121
         },
         {
           "t": "of here before sunrise.",
           "c": 96,
-          "ms": 153
+          "ms": 135
         },
         {
           "t": "File Edit View Window\nWe need to get out of here before sunrise.",
           "c": 92,
-          "ms": 368
+          "ms": 359
         },
         {
           "t": "Stay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 149
+          "ms": 159
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 383
+          "ms": 368
         },
         {
           "t": "File Edit View Window",
           "c": 89,
-          "ms": 101
-        },
-        {
-          "t": "",
-          "c": 0,
-          "ms": 40
-        },
-        {
-          "t": "Stay close. The bridge w",
-          "c": 97,
-          "ms": 127
-        },
-        {
-          "t": "ge will not hold for long.",
-          "c": 88,
-          "ms": 131
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 386
-        },
-        {
-          "t": "e bridge will not hold for long",
-          "c": 95,
-          "ms": 305
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 375
-        },
-        {
-          "t": "ge will not hold for long.",
-          "c": 91,
-          "ms": 279
-        },
-        {
-          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
-          "c": 92,
-          "ms": 421
-        },
-        {
-          "t": "",
-          "c": 0,
-          "ms": 34
-        },
-        {
-          "t": "File Edit View Window",
-          "c": 89,
-          "ms": 109
+          "ms": 102
         },
         {
           "t": "",
@@ -623,43 +583,188 @@
         },
         {
           "t": "Stay close. The bridge w",
-          "c": 96,
-          "ms": 130
+          "c": 97,
+          "ms": 120
         },
         {
           "t": "ge will not hold for long.",
-          "c": 93,
-          "ms": 153
+          "c": 88,
+          "ms": 112
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 383
+          "ms": 369
         },
         {
-          "t": "Stay close. The bridge will not hold for lo",
-          "c": 92,
-          "ms": 350
+          "t": "bridge will not hold for long.",
+          "c": 94,
+          "ms": 305
         },
         {
           "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
           "c": 92,
-          "ms": 407
+          "ms": 360
         },
         {
-          "t": "File Edit View Window\nI told you this place was cursed.",
-          "c": 93,
-          "ms": 377
+          "t": "will not hold for long.",
+          "c": 89,
+          "ms": 246
+        },
+        {
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 379
         },
         {
           "t": "",
           "c": 0,
-          "ms": 30
+          "ms": 29
+        },
+        {
+          "t": "File Edit View Window",
+          "c": 89,
+          "ms": 110
+        },
+        {
+          "t": "",
+          "c": 0,
+          "ms": 44
+        },
+        {
+          "t": "Stay close. The bridge w",
+          "c": 96,
+          "ms": 119
+        },
+        {
+          "t": "ge will not hold for long.",
+          "c": 93,
+          "ms": 120
+        },
+        {
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 382
+        },
+        {
+          "t": "Stay close. The bridge will not hold for Io",
+          "c": 92,
+          "ms": 336
+        },
+        {
+          "t": "File Edit View Window\nStay close. The bridge will not hold for long.",
+          "c": 92,
+          "ms": 370
+        },
+        {
+          "t": "File Edit View Window\nI told you this place was cursed.",
+          "c": 91,
+          "ms": 364
+        },
+        {
+          "t": "d you this place was cursed.",
+          "c": 90,
+          "ms": 289
         },
         {
           "t": "I told you this place was cursed.",
           "c": 93,
-          "ms": 142
+          "ms": 137
+        },
+        {
+          "t": "File Edit View Window",
+          "c": 89,
+          "ms": 113
+        },
+        {
+          "t": "",
+          "c": 0,
+          "ms": 35
+        },
+        {
+          "t": "I told you this plac",
+          "c": 90,
+          "ms": 109
+        },
+        {
+          "t": "place was cursed.",
+          "c": 93,
+          "ms": 109
+        },
+        {
+          "t": "File Edit View Window\nI told you this place was cursed.",
+          "c": 96,
+          "ms": 348
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 91,
+          "ms": 164
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 171
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 164
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 157
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 163
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 161
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 169
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 159
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 155
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 166
+        },
+        {
+          "t": "File Edit View Window\nGrab the map. We head north at dawn.",
+          "c": 92,
+          "ms": 374
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 93,
+          "ms": 326
+        },
+        {
+          "t": "Grab the map. We head north at dawn.",
+          "c": 90,
+          "ms": 164
+        },
+        {
+          "t": "We need to get out of here before sunrise.",
+          "c": 95,
+          "ms": 151
         },
         {
           "t": "File Edit View Window",
@@ -672,114 +777,19 @@
           "ms": 41
         },
         {
-          "t": "I told you this plac",
-          "c": 90,
-          "ms": 113
-        },
-        {
-          "t": "place was cursed.",
-          "c": 93,
-          "ms": 108
-        },
-        {
-          "t": "File Edit View Window\nI told you this place was cursed.",
-          "c": 92,
-          "ms": 376
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 91,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 160
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 172
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 166
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 160
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 164
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 180
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 170
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 170
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 167
-        },
-        {
-          "t": "File Edit View Window\nGrab the map. We head north at dawn.",
-          "c": 92,
-          "ms": 381
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 93,
-          "ms": 329
-        },
-        {
-          "t": "Grab the map. We head north at dawn.",
-          "c": 90,
-          "ms": 189
-        },
-        {
-          "t": "We need to get out of here before sunrise.",
-          "c": 95,
-          "ms": 165
-        },
-        {
-          "t": "File Edit View Window",
-          "c": 89,
-          "ms": 112
-        },
-        {
-          "t": "",
-          "c": 0,
-          "ms": 49
-        },
-        {
           "t": "We need to get out of h",
           "c": 90,
-          "ms": 119
+          "ms": 123
         },
         {
           "t": "of here before sunrise.",
-          "c": 91,
-          "ms": 143
+          "c": 96,
+          "ms": 132
         },
         {
           "t": "File Edit View Window\nWe need to get out of here before sunrise.",
           "c": 91,
-          "ms": 379
+          "ms": 363
         }
       ],
       "asked": [
