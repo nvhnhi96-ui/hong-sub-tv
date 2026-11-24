@@ -410,6 +410,20 @@ function zoneShow(j,vi){
   if(!vi){ zoneOff(id); return; }
   var z=zones[id]; if(!z){ z=zones[id]={el:document.createElement('div'),t:0}; z.el.className='zb'; $('zl').appendChild(z.el); }
   var W=window.innerWidth, H=window.innerHeight;
+  /* the box as a picture drawn on the computer (screen text over the home network): shown as it is, at its place,
+     so the TV looks exactly like the computer: same letters, same lines, the game's button icons */
+  if(typeof j.zimg==='string'&&/^data:image\/(png|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(j.zimg)){
+    var has=function(k,d){ return j.hasOwnProperty(k)&&isFinite(+j[k])?+j[k]:d; };
+    z.el.removeAttribute('style'); z.el.textContent='';
+    var im=document.createElement('img'); im.alt=''; im.src=j.zimg; im.style.cssText='display:block;width:100%;height:100%';
+    z.el.appendChild(im);
+    var st=z.el.style; st.left=has('zix',+j.x||0)*W+'px'; st.top=has('ziy',+j.y||0)*H+'px'; st.width=Math.max(.004,has('ziw',+j.w||.1))*W+'px'; st.height=Math.max(.004,has('zih',+j.h||.05))*H+'px';
+    st.padding='0'; st.background='transparent'; st.borderRadius='0'; st.overflow='visible'; st.textShadow='none';
+    z.img=true; z.j=null; z.vi=vi; clearTimeout(z.t);
+    var hold0=+j.hold||0; z.t=setTimeout(function(){ zoneOff(id); },hold0>0?hold0*1000:300000);
+    return;
+  }
+  if(z.img){ z.el.removeAttribute('style'); z.img=false; }   /* the same box as text again (no home network now) */
   z.el.style.left=(+j.x||0)*W+'px'; z.el.style.top=(+j.y||0)*H+'px'; z.el.style.width=Math.max(j.zgrow?.005:.06,+j.w||.3)*W+'px'; z.el.style.height=Math.max(j.zgrow?.005:.04,+j.h||.15)*H+'px';
   if(j.zv&&j.zic&&j.zic.length) z.el.innerHTML=icHtml(String(j.zv),j.zic); else z.el.textContent=vi;   /* with the game's button icons */
   z.el.style.textAlign={l:'left',c:'center',r:'right'}[j.zal]||'left';   /* lined up like the original text */
@@ -582,14 +596,19 @@ function takeAll(j,after){
   if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(unpack(it)); }); return; }
   handle(unpack(j));
 }
-var mids=[];
+var mids=[], midsPic=[];
 function handle(j){
   pcAt=Date.now(); if(j.hasOwnProperty('hb')) hbOn=true;
-  if(j.mid){ if(mids.indexOf(j.mid)>=0) return; mids.push(j.mid); if(mids.length>60) mids.shift(); }   /* came both ways: show it once */
+  /* came both ways: show it once. A box as the computer drew it (its picture, home network only) still replaces the
+     text copy of the same box that came first through the internet; a text copy after the picture is dropped */
+  if(j.mid){ var seenM=mids.indexOf(j.mid)>=0, picM=!!j.zimg; if(seenM&&!(picM&&midsPic.indexOf(j.mid)<0)) return;
+    if(!seenM){ mids.push(j.mid); if(mids.length>60) mids.shift(); } if(picM){ midsPic.push(j.mid); if(midsPic.length>60) midsPic.shift(); } }
   var kind=j.kind||'sub', vi=String(j.vi||'').trim();
   /* "Đọc phụ đề" turned off on the computer (rd:false) wins over every TV setting, "Luôn đọc" included */
   var pcOff=j.rd===false;
-  var readIt=!pcOff&&(P.read==='on'||(P.read==='auto'&&!!j.speak));   /* "auto": the computer decides where lines are read */
+  /* "auto": the computer decides where lines are read. pcv: the computer sends its own voice for the TV to play
+     (kind "say"), so the TV's voice stays quiet even on "Luôn đọc": two voices read the same line */
+  var readIt=!pcOff&&!j.pcv&&(P.read==='on'||(P.read==='auto'&&!!j.speak));
   if(pcOff||(kind==='ctl'&&P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak)) sayStop();   /* an area or a notice never cuts the line being read */
   var size=+j.size||0, pos=j.pos||'', changed=false;
   if(size>=10&&size!==P.size){ P.size=size; save('size',size); changed=true; }

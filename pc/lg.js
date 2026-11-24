@@ -199,7 +199,7 @@ function setup({ ipcMain, app, net, getWin, log }) {
   function push(code, msg) {
     code = String(code || '').toUpperCase(); if (!/^[A-Z0-9]{4,8}$/.test(code)) return false;
     const b = box(code); b.seq++; b.msg = Object.assign({}, msg, { seq: b.seq });
-    b.items.push(b.msg); if (b.items.length > 12) b.items.shift();
+    b.items.push(b.msg); if (b.items.length > 48) b.items.shift();   /* a menu of thirty boxes sent at once: none lost before the TV asks */
     const ws = b.waiters; b.waiters = [];
     ws.forEach((w) => { clearTimeout(w.t); try { answer(w.res, b, w.since); } catch (e) { /* ignore */ } });
     return true;

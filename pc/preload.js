@@ -4,12 +4,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-/* Every line is read in full, none is skipped or cut (11/2026: lines cut half-way or dropped when the voice fell behind).
+/* A line being read is never cut (11/2026: lines cut half-way or dropped when the voice fell behind).
    Each line's voice is made the moment its Vietnamese shows, so the next line is ready when the one before it ends.
-   When lines come faster than they can be read, the reading gets faster instead: the line being read speeds up, and
-   the waiting ones are read faster the more of them wait (up to 1.8x), so the voice catches up with the subtitles. */
+   When lines come faster than they can be read, the reading gets faster: the line being read speeds up, and
+   the waiting ones are read faster the more of them wait (up to 1.8x), so the voice catches up with the subtitles.
+   Still far behind (fast dialogue): a line that has waited more than STALE_MS while newer lines wait behind it is left
+   out, whole, before it starts: the voice stays within a few seconds of the subtitles instead of reading lines that
+   left the screen long ago (11/2026: "the reading does not keep up with the text"). */
 const lines = []; let cur = null;
-const STUCK_MS = 9000, BACKLOG_MAX = 8;
+const STUCK_MS = 9000, BACKLOG_MAX = 4, STALE_MS = 9000;
 /* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
    such line kept the reading silent for the rest of the session */
 setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - Math.max(cur.at, cur.curAt || 0) > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
@@ -98,6 +101,7 @@ function startNext() {
   while (lines.length) {
     const L = lines.shift();
     if (L.dropped) continue;
+    if (Date.now() - L.at > STALE_MS && lines.some((x) => !x.dropped)) { lineDrop(L); said(L, false, 'bỏ qua câu cũ để giọng theo kịp chữ'); continue; }
     L.curAt = Date.now(); L.boost = Math.max(L.boost || 1, backlogBoost());
     cur = L; L.playing = false; playPart(); return;
   }
@@ -111,7 +115,7 @@ function hurry() {
 function enqueue(L, queue) {
   if (!queue) stopAll();
   else {
-    while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());   /* only when far, far behind (8 lines waiting) */
+    while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());   /* only when far behind (4 lines waiting) */
     if (cur) hurry();                                    /* the line being read goes faster: the next one is waiting */
     lines.forEach((x) => { x.boost = Math.max(x.boost || 1, 1.15 + 0.12 * lines.length); });
   }

@@ -3128,7 +3128,7 @@ function tvBody(o){ o=tvIcons(o); if(lanTv()&&S.lanPc) o.pc=S.lanPc; if(S.appVer
   /* not over the English: the Vietnamese sits right above the game's own subtitle (like on the computer), not at the
      TV's fixed place where the two lines ran over each other */
   if(!o.cov){ var ar=S.region&&S.stream?subAbove():null; o.abv=ar?camRect(ar):null; var sb=S.subBox; if(o.abv&&sb&&sb.xb>0&&Date.now()-sb.at<60000){ o.axb=+(sb.xb*S.region.h*(o.abv.h/ar.h)).toFixed(5); o.acap=sb.caps?1:0; } }   /* above the English: as tall as the English letters too */
-  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn(); o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  if(o.cov) o.bg=Math.max(o.bg,88); o.pos=$('hsTvPos').value; o.sen=!!($('hsTvEn')&&$('hsTvEn').checked); if(lanTv()&&$('hsTvHdmi')&&+$('hsTvHdmi').value>0) o.hdmi=+$('hsTvHdmi').value;   /* 0: the TV finds the port the PS5 is on itself (every message used to force HDMI 1) */ if(!o.sen&&o.kind!=='notice') o.en=''; var clipV=tvClipOn(); if(o.speak===undefined) o.speak=$('hsSpeak').checked&&speakWhere()!=='pc'&&!clipV; if(clipV){ o.speak=false; o.pcv=1; }   /* this computer's voice plays on the TV: the TV's own voice stays quiet */ o.rd=!!$('hsSpeak').checked; if(!o.rd) o.speak=false; o.mid=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(o.vo){ var v=o.vo; o.size=Math.max(10,Math.min(90,Math.round(v.size*30/28))); o.col=v.color; o.bg=v.bg; o.font=v.font; o.cov=null; delete o.cspot; delete o.cal; delete o.cfs; delete o.cn; o.pos=v.pos==='top'?'top':'bottom'; o.voice=1; }   /* a spoken line: its own look, at the top or bottom of the TV */
   if(o.mcol) o.col=o.mcol; delete o.mcol;   /* a line of the main character: its own colour */
   delete o.vo; return o; }   /* mid: the TV shows a line once even if it arrives both ways */
@@ -3155,7 +3155,7 @@ function b64u(s){ return btoa(unescape(encodeURIComponent(s))); }
 function relayPack(o){
   var keep={room:1,vi:1,en:1,who:1,size:1,pos:1,kind:1,mid:1}, x={}, any=false, kind=o.kind||'sub';
   Object.keys(o).forEach(function(k){ if(!keep[k]&&o[k]!==undefined&&o[k]!==null){ var v=o[k]; x[k]=typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1e4)/1e4:v; any=true; } });   /* 4 decimals: a box's place needs no more, and long numbers made the packed message too long for the store */
-  if(x.speak===false) delete x.speak;
+  if(x.speak===false) x.speak=0;   /* kept (as 0): without it the Android TV app falls back to its own "read aloud" switch, on by default, and read with the TV's voice whenever this copy came before the home-network one */
   ['zimg','zix','ziy','ziw','zih'].forEach(function(k){ delete x[k]; });   /* a picture is far too big for honggame.store */
   if(x.font&&x.font===x.zfont) delete x.font;
   if(!{sub:1,zone:1,notice:1,hello:1,alive:1}[kind]){ x.k=kind; any=true; kind='zone'; }
@@ -3187,6 +3187,10 @@ function tvSend(o){
   /* TV LG with the app: straight over the home network (the TV asks this computer), and through honggame.store as a backup */
   if(lanTv()&&LGP()&&LGP().push&&tvCode().length>=4){
     LGP().push(tvCode(),o);
+    /* a screen-text box travels as the picture drawn here, over the home network only. While the TV is listening
+       there, no text copy goes through the internet: it often came first, and the TV then drew that one itself
+       (other letters and lines, no button icons), not like on the computer */
+    if(o.kind==='zone'&&o.zimg&&Date.now()-(S.tvLanSeen||0)<15000) return Promise.resolve({ok:true});
     return tvRelay(o).catch(function(e){ if(Date.now()-S.tvLanSeen<15000) return {ok:true}; throw e; });
   }
   /* Android TV with its code known: both ways at once (the TV shows a line once, by its mid), so a TV whose address
@@ -4038,8 +4042,13 @@ function speak(t,res){
   var pcVoice=devPick(mode,g,castAutoOn()?who:''), sel=tvVoiceSel(), tvV=sel==='same'?pcVoice:sel, same=tvV===pcVoice;
   var rate=fitRate(t,src,tvV);
   if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true,src);
+  /* the voice of a line is made the moment its Vietnamese shows, also while the line before it is still being made
+     or sent (before: one after the other, so the TV's voice fell further behind with every line); they still play
+     in order. A line that waited more than 9 s with newer ones behind it is left out, so the voice keeps up */
+  var my=(S.clipN=(S.clipN||0)+1), t0=Date.now(), made=D.voiceClip(t,tvV).catch(function(){ return null; });
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
-    return D.voiceClip(t,tvV).then(function(c){
+    return made.then(function(c){
+      if(S.clipN-my>=2&&Date.now()-t0>9000){ log('đọc trên TV: bỏ qua một câu cũ để giọng theo kịp chữ'); return; }
       if(!c||!c.ok){ if(where==='tv'||where==='both'&&same) devSpeak(t,mode,g,who,null,true,src); return; }   /* the TV's voice could not be made: this computer reads, the line is never silent */
       if(where==='both'&&same) D.playClip(c,rate,pitch,true);
       tvSay(c,rate,same?pitch:1);
@@ -4049,7 +4058,13 @@ function speak(t,res){
 /* the voice on the TV: the voice of this computer (made here, sent over the home network) or the TV's own voice */
 function tvVoiceSel(){ var s=$('hsTvVoice'); return (s&&s.value)||load('tvVoice','same'); }
 function tvLanOk(){ return S.tvType==='android'?!!(tvIp()&&S.tvOk):!!(lanTv()&&S.tvLanSeen&&Date.now()-S.tvLanSeen<25000&&tvCode().length>=4); }
-function tvClipOn(){ return !!(D&&D.voiceClip&&$('hsSpeak').checked&&speakWhere()!=='pc'&&tvVoiceSel()!=='tv'&&tvLanOk()&&((S.tvType==='android'&&D.tv&&D.tv.say)||(lanTv()&&D.lg&&D.lg.push))); }
+/* the home network dropping for a moment (one message not answered) does not hand the reading to the TV's own voice:
+   that made the TV's voice cut in between lines read with the voice chosen here. Only after 45 s without the link */
+function tvClipOn(){
+  if(!(D&&D.voiceClip&&$('hsSpeak').checked&&speakWhere()!=='pc'&&tvVoiceSel()!=='tv'&&((S.tvType==='android'&&D.tv&&D.tv.say)||(lanTv()&&D.lg&&D.lg.push)))) return false;
+  var now=Date.now(); if(tvLanOk()){ S.clipOkAt=now; return true; }
+  return now-(S.clipOkAt||0)<45000;
+}
 function tvSay(c,rate,pitch){
   var o={kind:'say',vol:tvVol(),rate:+Math.max(0.5,Math.min(2.5,rate*pitch)).toFixed(2),rd:true,mid:Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
   if(S.tvType==='android'){ o.aud=c.b64; o.mime=c.mime; D.tv.say(tvIp(),o).catch(function(){}); }
@@ -6655,7 +6670,7 @@ function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
    streets, shops and map signs stay as in the game. Works without "Tự dịch chữ khác" too (only while the map is open). */
 function mapOn(){ return GUARD.kind==='map'&&mapTrOn(); }
 function mapTrOn(){ var c=$('hsMapTr'); return c?c.checked:load('mapTr',true); }
-function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn()||S.fl.mic)||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
+function flStart(){ if(S.fl.on||!(fsLiveOn()||mapOn()||S.fl.mic)||!S.running) return; S.fl.on=true; S.fl.prev=null; S.fl.items=[]; S.fl.cands=[]; S.fl.last=Date.now(); var my=++S.fl.seq; S.fl.timer=later(function(){ flTick(my); },400); }
 /* the switch is on but nothing is being read: say why in the log, so a problem report shows what is holding it up */
 setInterval(function(){
   if(!S.running||!S.stream||!fsLiveOn()) return;
@@ -6719,13 +6734,13 @@ function flOwns(text){
     var e=norm(b.en); return e.indexOf(t)>=0||dice(e,t)>0.6||String(b.en).split('\n').some(function(l){ var n=norm(l); return n.length>5&&(t.indexOf(n)>=0||dice(n,t)>0.7); });
   });
 }
-function flSkip(b){
+function flSkip(b,hud){
   /* the subtitle line has its own translation; the areas the person set up too */
   var R=S.region; if(R&&!b.panel&&!S.fl.mic&&flIn({x:R.x-0.01,y:R.y-0.015,w:R.w+0.02,h:R.h+0.03},b)>0.6) return true;   /* a paragraph that only reaches into the subtitle area (a phone held low) is screen text */   /* the mic button: the player asked for the whole screen, so a message in the subtitle area is translated too (the line reader leaves it alone: flOwns) */
   if((S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })) return true;
   if(!b.panel&&S.lastRaw&&Date.now()-(S.lastShownAt||0)<15000&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.7)) return true;
   if(notiLike(b.en)||viPlain(b.en)||rpBanner(b)) return true;
-  if(signLike(b)) return true;
+  if(!hud&&signLike(b)) return true;   /* hud: the same words at the same place while the picture under them moved on: text of the screen, not a sign */
   if(hintLow(b)) return true;
   return false;
 }
@@ -6758,6 +6773,7 @@ function signLike(b){
   if(!en||words>6) return false;
   if(/[.!?…]["”’)\]]*$/.test(en)||/[a-z].*[.!?…,]\s+[A-Za-z]/.test(en)) return false;   /* a sentence is meant to be read */
   if(GLOSS_UI_N[glossNorm(en)]||glossExact(en)) return false;                          /* a game menu word */
+  if(objLike(en)) return false;                                                         /* an objective ("Go to the warehouse"): no sign says that */
   if((c.plain||0)>=0.5) return false;                                                   /* on a panel: the game's own interface */
   return true;
 }
@@ -6786,13 +6802,27 @@ function flTick(my){
      (text over moving scenery stays put) */
   var moved=0; for(i=0;i<N;i++) if(S.fl.still[i]===0) moved++;
   var ch=S.fl.items.filter(function(it){ return flChanged(g,it); });
-  if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0; }); flDraw(); }
+  if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ var n0=S.fl.items.length;
+    S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0||it.hud; });   /* a box known to sit over moving scenery is read again instead: the scenery always changes under it */
+    ch.forEach(function(it){ if(it.hud) it.chk=true; }); if(S.fl.items.length!==n0) flDraw(); }
   else ch.forEach(function(it){ it.chk=true; });
   if(S.fl.busy||S.ocrBusy||!ocrOn()||viMode()||(GUARD.kind&&GUARD.kind!=='map')){ S.fl.why=S.fl.busy?'đang đọc dở':S.ocrBusy?'bộ đọc chữ đang bận đọc phụ đề':!ocrOn()?'bộ đọc chữ chưa sẵn sàng (cách đọc: '+readMode()+')':viMode()?'game đang để tiếng Việt':'màn hình của máy PS ('+GUARD.kind+')'; return; }   /* the game map: its text is translated (not the place names) */
-  if(!S.fl.mic&&subPrio()){ S.fl.why='đang nhường cho câu phụ đề'; return; }        /* a subtitle line is coming: it is read first */
-  if(S.fl.mic&&!S.fl.micRead){ S.fl.micRead=true; S.fl.dirty.fill(1); flRead(my,true); return; }   /* the mic: read at once, not after the picture was seen still */
   var now=Date.now(), talk=!S.fl.mic&&subTalk();
-  if(S.fl.items.some(function(it){ return it.chk; })){ if(!talk||now-(S.fl.vAt||0)>1500){ S.fl.vAt=now; flVerify(my); } return; }
+  /* a subtitle line is coming: it is read first. But with scenery moving under the subtitle area and no line in it,
+     that area "changes" all the time: the screen text then waited for ever (problem reports: "đang nhường cho câu
+     phụ đề" for minutes). It waits a few seconds at most, longer while a line is half read or characters talk */
+  var due=S.fl.items.some(function(it){ return it.chk&&now-(it.vAt||0)>1800; });
+  if(!S.fl.mic&&subPrio()){
+    /* a box to look at again (a small piece of the picture, quick) does not wait as long as a whole-screen read:
+       a box whose text is gone must not stay up */
+    if(due&&!S.cand&&now-Math.max(S.fl.last,S.fl.vAt||0)>1500){ S.fl.vAt=now; flVerify(my); return; }
+    if(!S.cand&&!S.fl.busy&&!S.ocrBusy&&(S.fl.cands||[]).some(function(k){ return !k.tried; })&&now-S.fl.last>1300&&ocrOn()&&!viMode()&&!(GUARD.kind&&GUARD.kind!=='map')){ flRead(my,'c'); return; }   /* the second look at text seen once: small pieces too */
+    if(now-S.fl.last<(S.cand?15000:talk?9000:4000)){ S.fl.why='đang nhường cho câu phụ đề'; return; }
+  }
+  if(S.fl.mic&&!S.fl.micRead){ S.fl.micRead=true; S.fl.dirty.fill(1); flRead(my,true); return; }   /* the mic: read at once, not after the picture was seen still */
+  /* a box whose picture changed is read again on its own. A box over moving scenery changes all the time: checked
+     again every 1.8 s, not on every tick (that kept the reader busy and no new text on the screen was found) */
+  if(due&&(!talk||now-(S.fl.vAt||0)>1500)){ S.fl.vAt=now; flVerify(my); return; }
   if(now-S.fl.last<(S.fl.mic?400:talk?2500:900)){ S.fl.why='vừa đọc xong, chờ lượt sau'; return; }   /* characters talking: the screen text every 2.5 s, not every 0.9 s */
   var fresh=0, dirtyN=0;
   for(i=0;i<N;i++) if(S.fl.dirty[i]){ dirtyN++; if(S.fl.still[i]>=2) fresh++; }
@@ -6800,24 +6830,33 @@ function flTick(my){
      the player's hand sways all the time: parts of a chat were read on one press and not on the next) */
   if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my,S.fl.mic);
   else if(S.fl.mic&&dirtyN>=8&&now-S.fl.last>1200) flRead(my,true);
+  /* text drawn straight over moving scenery (an objective, a button hint while the player runs): nothing under it
+     ever stands still, so it was never read. Seen once, it is looked at again a moment later (same text at the same
+     place = text of the screen, not a sign going past); and while the whole picture keeps moving the screen is read
+     every few seconds */
+  else if((S.fl.cands||[]).some(function(k){ return !k.tried; })&&now-S.fl.last>1300) flRead(my,'c');
+  else if(dirtyN>=300&&now-S.fl.last>(talk?12000:4500)) flRead(my,false);
   else S.fl.why='chưa thấy chỗ nào vừa đổi vừa đứng yên (đổi '+dirtyN+', đứng yên '+fresh+'/40)';
 }
 /* the boxes whose picture changed, read again one by one: same text -> it stays (new picture kept), else it goes */
 async function flVerify(my){
   S.fl.busy=true; S.ocrBusy=true;
-  var vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk; }).slice(0,4), gone=[], recol=false;
+  var vnow=Date.now(), vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk&&vnow-(it.vAt||0)>1800; }).slice(0,4), gone=[], recol=false;
+  list.forEach(function(it){ it.vAt=vnow; });
   try{
     var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours now */
     for(var k=0;k<list.length;k++){
       var it=list[k], px=it.w*0.15, py=it.h*0.35, x=Math.max(0,it.x-px), y=Math.max(0,it.y-py), w=Math.min(1-x,it.w+2*px), h=Math.min(1-y,it.h+2*py);
       var got=await fsRead(x*vw,y*vh,w*vw,h*vh,900), txt=got.map(function(b){ return b.en; }).join('\n');
       var a=norm(it.en), bb=norm(txt);
-      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.sig=flPatch(S.fl.prev,it);
+      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.miss=0; it.sig=flPatch(S.fl.prev,it);
         /* the same text, another look: the menu's highlight moved onto it or off it. Its box takes the new colours, the
            translation stays (no AI, no flicker) */
         if(it.lc) recol=true;   /* rows of a list: each row's colours are taken again when drawn */
         try{ var c2=zColors(flc,it); if(c2&&c2.bg&&c2.plain>=0.5&&(c2.bg!==it.bg||(c2.fg||'')!==(it.fg||''))){ it.bg=c2.bg; it.fg=c2.fg||''; recol=true; }
           else if(c2&&c2.bg&&c2.plain<0.35&&it.bg){ delete it.bg; delete it.fg; recol=true; } }catch(e){} }
+      else if(it.hud&&!it.bg&&!(it.miss>=1)){ it.miss=(it.miss||0)+1; it.chk=false; it.vAt=vnow-1000; it.missTxt=txt; }
+      else if(it.hud&&!it.bg){ log('chữ trên màn hình: bỏ khung trên nền động "'+String(it.en).replace(/\s+/g,' ').slice(0,30)+'", đọc lại ra: "'+String(it.missTxt||'').replace(/\s+/g,' ').slice(0,30)+'" rồi "'+String(txt).replace(/\s+/g,' ').slice(0,30)+'"'); gone.push(it); }   /* over moving scenery one reading can fail: gone after two */
       else gone.push(it);
     }
   }catch(e){}
@@ -6827,19 +6866,23 @@ async function flVerify(my){
   else if(recol) flDraw();
 }
 async function flRead(my,first){
+  var conf=first==='c'; if(conf) first=false;   /* the second look at text seen once over moving scenery: only those places */
   S.fl.busy=true; S.fl.last=Date.now(); S.fl.reads++;
   var vw=video.videoWidth, vh=video.videoHeight, g=S.fl.prev, still=S.fl.still;
   /* the region that changed and is still now: read it again, larger, so small text is not missed */
   var x0=160,y0=90,x1=0,y1=0,i;
   for(i=0;i<g.length;i++) if(S.fl.dirty[i]&&still[i]>=2){ var x=i%160, y=(i/160)|0; if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y; }
-  S.fl.dirty.fill(0);
+  if(!conf) S.fl.dirty.fill(0);
   var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<600) await new Promise(function(r){later(r,30);});
   if(S.ocrBusy||my!==S.fl.seq){ S.fl.busy=false; return; }
   S.ocrBusy=true; var all=[];
   try{
     var part=S.fl.items.length&&x1>=x0&&(x1-x0+1)*(y1-y0+1)<160*90*0.35;   /* boxes up, a small part changed (the cursor moved): that part only */
-    if(!part) all=all.concat(await fsRead(0,0,vw,vh,1600));
-    if(x1>=x0){ var bx=Math.max(0,(x0-4)/160*vw), by=Math.max(0,(y0-3)/90*vh), bw=Math.min(vw-bx,(x1-x0+9)/160*vw), bh=Math.min(vh-by,(y1-y0+7)/90*vh);
+    if(conf){ var cl=(S.fl.cands||[]).filter(function(k){ return !k.tried; }).slice(0,4);
+      for(var ci=0;ci<cl.length;ci++){ var k0=cl[ci], kh=k0.h||0.05, cx=Math.max(0,k0.x-k0.w*0.1-0.01), cy=Math.max(0,k0.y-kh*0.5-0.01), cw=Math.min(1-cx,k0.w*1.2+0.02), chh=Math.min(1-cy,kh*2+0.02);
+        all=all.concat(await fsRead(cx*vw,cy*vh,cw*vw,chh*vh,1100)); } }
+    else if(!part) all=all.concat(await fsRead(0,0,vw,vh,1600));
+    if(!conf&&x1>=x0){ var bx=Math.max(0,(x0-4)/160*vw), by=Math.max(0,(y0-3)/90*vh), bw=Math.min(vw-bx,(x1-x0+9)/160*vw), bh=Math.min(vh-by,(y1-y0+7)/90*vh);
       if(bw*bh<vw*vh*0.5&&bw>40&&bh>20) all=all.concat(await fsRead(bx,by,bw,bh,1400)); }
     var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours */
   }catch(e){ all=[]; }
@@ -6858,9 +6901,20 @@ async function flRead(my,first){
   fsInkAll(blocks);
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
-  S.fl.seen=blocks.slice(0,40);
+  if(!conf) S.fl.seen=blocks.slice(0,40);
+  var cOld=S.fl.cands||[], cNew=[], cNow=Date.now();
+  var mvN=0; for(i=0;i<still.length;i++) if(still[i]<2) mvN++;
+  var busyPic=mvN>still.length*0.35;   /* the picture as a whole is moving (the player runs, the camera turns) */
   blocks.forEach(function(b){
-    if(flSkip(b)||!first&&flStill(b)<0.7) return;               /* moving things (signs going past) are not read */
+    /* moving things (signs going past) are not read. But text of the screen over moving scenery is: it is at the
+       same place in two readings, a sign has moved on */
+    var mv=!first&&flStill(b)<0.7, c0=null;
+    if(mv){ c0=cOld.filter(function(k){ return cNow-k.at<15000&&Math.abs(k.x+k.w/2-b.x-b.w/2)<0.02&&Math.abs(k.y+(k.h||0)/2-b.y-b.h/2)<0.02&&(fsSameText(k.en,b.en)||dice(k.en,b.en)>0.8); })[0]; if(c0) c0.hit=1; }
+    var hud=!!(c0&&cNow-c0.at>=600);
+    var seenOnce=function(){ if(!conf) cNew.push(c0||{en:b.en,x:b.x,y:b.y,w:b.w,h:b.h,at:cNow}); };
+    if(flSkip(b,hud)){ if(mv&&!hud&&!flSkip(b,true)) seenOnce(); return; }   /* a few words that may be a sign: the second look tells */
+    if(mv&&!hud){ seenOnce(); return; }
+    if(hud||busyPic&&!first) b.hud=true;   /* a box over a moving picture: kept by reading it again, not dropped the moment the picture under it changes */
     if(dictJunk(b.en)) return;                                    /* a misreading ("BREAY", "DREAATAJI KUN"): not translated, no box */
     var gx=glossExact(b.en); if(gx&&norm(gx)===norm(b.en)) return;   /* a name or brand kept as it is in this game: nothing to cover */
     if(S.fl.items.some(function(it){ return fsNear(it,b)&&fsSameText(b.en,it.en); })) return;   /* already on screen in a box with this text (a fuller one) */
@@ -6873,6 +6927,9 @@ async function flRead(my,first){
     try{ var c=b.col||zColors(flc,b); if(c&&c.bg&&(c.plain>=0.55||flStill(b)>=0.92&&c.plain>=0.35)){ b.bg=c.bg; b.fg=c.fg||''; } }catch(e){}   /* a plain background (a panel, a phone screen): the same colours as the original; text over scenery: the dark box */
     add.push(b);
   });
+  /* seen once: looked at again in a moment. After that second look, the ones not found there wait for the next
+     whole-screen read (no third look) */
+  S.fl.cands=conf?cOld.filter(function(k){ return !k.hit&&cNow-k.at<15000; }).map(function(k){ k.tried=1; return k; }):cNew.slice(0,6);
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
   add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c==null&&!(b.ic&&b.ic.length)){ var gq=glossExact(b.en); if(gq) c=gq; } if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
@@ -7016,7 +7073,7 @@ function autoReport(kind,head){
 }
 window.hsRep={send:autoReport,text:reportText};
 window.hsGuardT=function(){ return GUARD.kind; };
-window.hsFitT={view:function(){ return fsView(S.fl.items).map(function(i){ return i.en.slice(0,20); }); },worth:function(){ return S.fl.items.map(function(i){ return i.en.slice(0,14)+":"+fsWorth(i); }); },vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
+window.hsFitT={tvb:function(o){ return tvBody(o); },rpk:function(o){ return relayPack(o); },clipOn:function(){ return tvClipOn(); },flWhy:function(b){ return {skip:flSkip(b),still:+flStill(b).toFixed(2),junk:dictJunk(b.en),sign:signLike(b),noti:notiLike(b.en),vi:viPlain(b.en),rp:rpBanner(b),zone:(S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })}; },view:function(){ return fsView(S.fl.items).map(function(i){ return i.en.slice(0,20); }); },worth:function(){ return S.fl.items.map(function(i){ return i.en.slice(0,14)+":"+fsWorth(i); }); },vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
   var info=reportText();
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
