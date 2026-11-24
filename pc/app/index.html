@@ -1381,7 +1381,7 @@ div.kn-step{margin-top:8px}
             <label class="hs-sw dk-sw dk-only">Hiện phụ đề nổi trên game <input type="checkbox" id="dkOvl" checked></label>
             <label class="hs-sw dk-sw">Đè chữ Việt lên chỗ phụ đề gốc (trên hình game và TV) <input type="checkbox" id="hsCover" checked></label>
             <label class="hs-sw dk-sw">Khung ôm sát từng dòng chữ gốc (Cỡ chữ 28 là bằng chữ gốc) <input type="checkbox" id="hsSubSpot" checked></label>
-            <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng) <input type="checkbox" id="hsLines" checked></label>
+            <label class="hs-sw dk-sw">Chữ Việt xuống dòng giống phụ đề gốc (cùng số dòng; tắt: một dòng nếu vừa, dài thì xuống dòng chỗ ngắt câu) <input type="checkbox" id="hsLines"></label>
             <label class="hs-sw dk-sw">Hiện câu gốc (chưa dịch) <input type="checkbox" id="hsShowEn" checked></label>
             <div class="dk-set">
               <div class="lab"><label for="hsSize">Cỡ chữ</label><output><span id="hsSizeV">28</span> px</output></div>
@@ -4482,6 +4482,44 @@ function placeSync(){
   if(k!==S.placeK){ S.placeK=k; D.subPlace(r); }
 }
 setInterval(placeSync,1500);
+/* The Vietnamese of the main subtitle on as few lines as it needs, at the size "Cỡ chữ" gives: one line when it fits
+   in the width it may use (the translation area), else two (three for a very long line), cut where the sentence
+   allows a pause: after a comma or a sentence end, before "và, nhưng, thì, khi, để, của...", never right after "tôi,
+   anh, nó..." or before "lại, đi, rồi, nhé...", and no line of a single word; the lines as even as those cuts allow.
+   d: the box's text element, already holding the line and its font. Returns the number of lines, 0 when it is not a
+   single speaker's line (left as it was), -1 when even three lines do not fit (the letters then get a little smaller). */
+function viFit(d,maxW){
+  if(/class="who"[\s\S]*class="who"|<div/i.test(d.innerHTML)) return 0;
+  d.innerHTML=d.innerHTML.replace(/\s*<br\s*\/?>\s*/gi,' '); d.style.whiteSpace='nowrap';
+  var total=d.scrollWidth; if(total<=maxW) return 1;
+  var tw=document.createTreeWalker(d,NodeFilter.SHOW_TEXT), sp=[], n, txt='';
+  while((n=tw.nextNode())){ var t=n.nodeValue; for(var i=0;i<t.length;i++) if(t[i]===' ') sp.push({n:n,i:i,at:txt.length+i}); txt+=t; }
+  if(!sp.length) return -1;
+  var base=d.getBoundingClientRect().left, rg=document.createRange();
+  var X=sp.map(function(p){ rg.setStart(p.n,p.i); rg.setEnd(p.n,p.i+1); var r=rg.getBoundingClientRect(); return {l:r.left-base,r:r.right-base}; });
+  function word(a,b){ return txt.slice(a,b).trim(); }
+  var pen=sp.map(function(p,k){
+    var prev=word(k?sp[k-1].at:0,p.at), next=word(p.at+1,k+1<sp.length?sp[k+1].at:txt.length), pl=prev.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,''), nl=next.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
+    var v=0;
+    if(/[.!?…]["'”’)]*$/.test(prev)) v-=0.5; else if(/[,;:)\]—–-]["'”’]*$/.test(prev)) v-=0.35;
+    if(VI_START.test(nl)) v-=0.25;
+    if(VI_PRON.test(pl)&&!/[,.!?…;:]$/.test(prev)) v+=0.3;
+    if(VI_TAIL.test(nl)) v+=0.3;
+    if(VI_START.test(pl)&&!/[,.!?…;:]$/.test(prev)) v+=0.35;   /* "thì | hãy", "của | anh": the little word belongs with what follows */
+    if(/^[\p{Lu}]/u.test(next)&&/^[\p{Lu}]/u.test(prev)&&!/[,.!?…;:]$/.test(prev)) v+=0.25;   /* inside a name ("Ngọc Lan") */
+    return v; });
+  var nW=sp.length;
+  function seg(a,b){ return (b<0?total:X[b].l)-(a<0?0:X[a].r); }   /* width from after space a to before space b (-1: the ends) */
+  function words(a,b){ return (b<0?nW:b)-(a<0?0:a+1)+1; }
+  var best=null, k, j;
+  for(k=0;k<nW;k++){ var w1=seg(-1,k), w2=seg(k,-1); if(Math.max(w1,w2)>maxW) continue;
+    var sc=Math.max(w1,w2)/maxW+pen[k]+(words(-1,k)<2||words(k,-1)<2?0.5:0); if(!best||sc<best.sc) best={sc:sc,cut:[k]}; }
+  if(!best) for(k=0;k<nW;k++) for(j=k+1;j<nW;j++){ var a=seg(-1,k), b=seg(k,j), c=seg(j,-1); if(Math.max(a,b,c)>maxW) continue;
+    var sc3=Math.max(a,b,c)/maxW+pen[k]+pen[j]+(words(-1,k)<2||words(k,j)<2||words(j,-1)<2?0.5:0); if(!best||sc3<best.sc) best={sc:sc3,cut:[k,j]}; }
+  if(!best) return -1;
+  best.cut.slice().reverse().forEach(function(k){ var p=sp[k], rest=p.n.splitText(p.i); rest.nodeValue=rest.nodeValue.slice(1); rest.parentNode.insertBefore(document.createElement('br'),rest); });
+  return best.cut.length+1;
+}
 function coverEl(){ var c=document.getElementById('hsCoverBox'); if(!c){ c=document.createElement('div'); c.id='hsCoverBox'; c.className='hs-cover'; c.hidden=true; c.innerHTML='<div></div>'; $('hsStage').appendChild(c); } return c; }
 function stageFs(){ var f=document.fullscreenElement||document.webkitFullscreenElement; return !!f&&f===$('hsStage'); }
 function coverAt(){ return coverOn()||stageFs(); }   /* full screen: always on the original subtitle */
@@ -4508,8 +4546,10 @@ function coverUp(c,html,b,st,ox,oy){
   c.style.left=(ox+lx)+'px'; c.style.width=w+'px'; c.style.minHeight='0'; c.style.height='auto';
   var size=+$('hsSize').value||28, sk=Math.max(.4,Math.min(2.5,size/28));
   var fs=Math.max(8,xb>0?xb*b.h/fontRatio(subFont(),!!sb.caps)*sk:size*30/28*u); d.style.fontSize=fs+'px';
-  d.style.whiteSpace=lineMatch()?'nowrap':'';
-  if(lineMatch()&&d.scrollWidth>w-48*u){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); }   /* too long for the original's lines: one more line */
+  var R1=S.region||a, rW=Math.max(w,R1.w*b.w); if(rW>w){ w=Math.min(b.w,rW); lx=Math.max(b.l,Math.min(b.l+b.w-w,cx-w/2)); c.style.left=(ox+lx)+'px'; c.style.width=w+'px'; }   /* as wide as the translation area */
+  var fitU=0; if(!lineMatch()) for(var fj=0;fj<6;fj++){ fitU=viFit(d,w-48*u); if(fitU!==-1||fs<=9*u) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }   /* one line if it fits, else cut where the sentence pauses */
+  if(fitU<=0){ d.style.whiteSpace=lineMatch()?'nowrap':'';
+    if(lineMatch()&&d.scrollWidth>w-48*u){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); } }   /* too long for the original's lines: one more line */
   for(var i=0;i<12&&c.offsetHeight>b.h*0.42&&fs>9*u;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }   /* smaller only when it would cover almost half the picture */
   var top=oy+b.t+a.y*b.h-c.offsetHeight-2*u; c.style.top=Math.max(oy+b.t,top)+'px';
   S.coverHtml=html;
@@ -4534,8 +4574,15 @@ function coverShow(html,vl){
   var sk=Math.max(.4,Math.min(2.5,(+$('hsSize').value||28)/28));   /* "Cỡ chữ": 28 = the original letters' size over the original line */
   var fs=r.spot?Math.max(8,viFz(r.lh,r.xb,r.caps)*b.h*sk):Math.max(8,(+$('hsSize').value||28)*1.7*b.h/1080); d.style.fontSize=fs+'px';   /* the original letters' size, or "Cỡ chữ" (on a 1080-line picture) */ c.style.padding=(w<360||r.spot?'2px 6px':'');
   d.style.whiteSpace=lineMatch()||r.spot?'nowrap':''; d.style.textAlign=r.spot?({l:'left',c:'center',r:'right'}[r.al]||'center'):''; c.style.justifyContent=r.spot?({l:'flex-start',c:'center',r:'flex-end'}[r.al]||'center'):'';
-  if(r.spot){ var need=d.scrollWidth+16, maxW=Math.min(1,lw/100)*b.w; if(need>w){ var nw=Math.max(w,Math.min(maxW,need)), left0=parseFloat(c.style.left)-ox; var nl=r.al==='l'?left0:r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(b.l,Math.min(b.l+b.w-nw,nl)); c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; } }   /* wider first, up to "Độ rộng khung phụ đề" */
-  if(d.scrollWidth>c.clientWidth-8){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); }   /* still too long: one more line, the letters keep their size (every subtitle the same size) */
+  /* the box may grow to the whole translation area ("vùng dịch") so the line stays on one line at this size; a line
+     longer than that goes on two lines cut where the sentence pauses (viFit) */
+  var R0=S.region||r, regL=b.l+R0.x*b.w, regW=Math.max(60,R0.w*b.w), padX=r.spot||w<360?16:40, fitN=0;
+  if(!lineMatch()) for(var fi=0;fi<6;fi++){ fitN=viFit(d,regW-padX); if(fitN!==-1||fs<=9) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }
+  if(fitN>0){ var need=d.scrollWidth+padX, w0=r.spot?w:Math.min(w,regW), nw=Math.min(regW,Math.max(need,r.spot?w0:Math.min(w0,need+80))), left0=parseFloat(c.style.left)-ox;
+    var nl=r.spot&&r.al==='l'?left0:r.spot&&r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(Math.max(b.l,regL),Math.min(Math.min(b.l+b.w,regL+regW)-nw,nl));
+    c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; }
+  else if(r.spot){ var need0=d.scrollWidth+16, maxW0=Math.min(1,lw/100)*b.w; if(need0>w){ var nw0=Math.max(w,Math.min(maxW0,need0)), l0=parseFloat(c.style.left)-ox; var nl0=r.al==='l'?l0:r.al==='r'?l0+w-nw0:l0+w/2-nw0/2; nl0=Math.max(b.l,Math.min(b.l+b.w-nw0,nl0)); c.style.left=(ox+nl0)+'px'; c.style.width=nw0+'px'; } }   /* wider first, up to "Độ rộng khung phụ đề" */
+  if(fitN<=0&&d.scrollWidth>c.clientWidth-8){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); }   /* still too long: one more line, the letters keep their size (every subtitle the same size) */
   /* bigger letters make the box taller (still centred on the original line, never smaller than it); letters only shrink
      when a line is too wide or the box would take almost half the picture */
   c.style.height='auto'; var maxH=Math.max(h,b.h*0.45);
@@ -8175,7 +8222,7 @@ function tvVol(){ var v=+load('tvVol',150); return Math.max(50,Math.min(300,v||1
   });
 })();
 function toastOnce(m){ status('warn',m); }
-(function(){ var l=$('hsLines'); if(l){ var lv=load('lines',null); if(lv!==null) l.checked=lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
+(function(){ var l=$('hsLines'); if(l){ if(!load('linesFit',false)){ save('linesFit',true); save('lines',false); } var lv=load('lines',null); if(lv!==null) l.checked=lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
 (function(){ var c=document.getElementById('hsSubSpot'); if(!c) return; c.checked=load('subspot',true);
   c.addEventListener('change',function(){ save('subspot',c.checked); S.placeK=null; placeSync(); if(S.coverHtml) coverShow(S.coverHtml); if(S.hist[0]) tvPush(S.hist[0].vi,S.hist[0].en,S.hist[0].who,false); }); })();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
