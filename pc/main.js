@@ -613,7 +613,17 @@ function piperStart() {
   p.on('exit', gone); p.on('error', gone);
   return true;
 }
-function piperSpeak(text) {
+/* a line lost because the Piper process stopped under it (it crashed on another line, or was closed) is asked once
+   more from a fresh process, instead of failing: with voices now also made ahead of time, one bad line took the
+   lines waiting behind it with it (11/2026: "đọc trên TV: chưa tạo được giọng cho câu này" on every line) */
+async function piperSpeak(text) {
+  const t0 = Date.now(); let r = await piperSpeak1(text);
+  if (!r.wav && r.err !== 'novoice' && r.err !== 'timeout' && Date.now() - t0 < 8000) { piperErr = String(r.err || ''); r = await piperSpeak1(text); }
+  if (!r.wav) piperErr = String(r.err || '?');
+  return r;
+}
+let piperErr = '';
+function piperSpeak1(text) {
   if (!piperStart()) return Promise.resolve({ err: 'novoice' });
   const p = piper;
   return new Promise((done) => {
@@ -1053,13 +1063,19 @@ function setupIpc() {
     if (!buf && !warm && aiv.ready) buf = await aivClip(text, voice.slice(3));
     return buf ? { buf, mime: 'audio/wav', ra: true } : null;
   });
+  let clipErr = '';
   const clipKept = (text, voice, warm) => vcGet(vcKey('C', text, voice, ''), async () => {
     let buf = null, mime = 'audio/wav', fb = false;
     if (voice.startsWith('gg:')) { try { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; } catch (x) { if (warm) return null; throw x; } }
     else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
     else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
-    if (!buf) { fb = /^(gg|az|win):/.test(voice); const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
-    if (!buf) { fb = true; const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+    let why = '';
+    if (!buf) { fb = /^(gg|az|win):/.test(voice); const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); else why = 'piper: ' + (r.err || '?'); }
+    /* Piper could not read it: the online voice, then Windows' own, as for a line read on this computer (the TV got
+       nothing at all before, while this computer went on reading with the online voice) */
+    if (!buf && !warm && Date.now() > (onlineOff['gg:'] || 0)) { try { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; fb = true; } catch (x) { buf = null; why += '; google: ' + String(x && x.message || x).slice(0, 60); } }
+    if (!buf && !warm) { fb = true; const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r && r.wav) buf = Buffer.from(r.wav, 'base64'); else why += '; windows: ' + ((r && r.err) || 'no sound'); }
+    if (!buf) clipErr = why;
     return buf ? { buf, mime, ra: true, fb } : null;
   });
   const speakRaw = async (text, voice, rate) => {
@@ -1143,9 +1159,13 @@ function setupIpc() {
         for (let i = 0; i < 40 && aiv.proc && !aiv.ready; i++) await new Promise((r2) => setTimeout(r2, 500));
         r = await aiKept(text, voice, false);
         if (!r) return { ok: false, err: 'ai' };
-      } else r = await clipKept(text, voice, false);
+      } else {
+        r = await clipKept(text, voice, false);
+        /* it was being made ahead of time (no fallback voices there) and failed: now with the fallbacks */
+        if (!r) { await new Promise((r2) => setTimeout(r2, 20)); r = await clipKept(text, voice, false); }
+      }
       const buf = r && r.buf, mime = r ? r.mime : 'audio/wav';
-      if (!buf || buf.length < 200) return { ok: false };
+      if (!buf || buf.length < 200) return { ok: false, err: clipErr || 'no sound' };
       const id = lgApi && lgApi.clipPut ? lgApi.clipPut(buf, mime) : '';
       return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length, dur: wavDur(buf, mime) };
     } catch (err) { return { ok: false, err: String(err && err.message || err) }; }

@@ -4090,7 +4090,7 @@ function speak(t,res){
       if(c&&c.ok&&c.dur>0&&fit){ var lf=Math.max(fit.floor,fit.due-Date.now())/1000, wait=Math.max(0,S.clipN-my); rate=Math.round(Math.max(fit.base,Math.min(2,c.dur/lf*(1+0.15*wait)))*20)/20; }
       /* the chosen voice could not be made for this line: no other voice reads it in between (that sounded like the
          TV's own voice cutting in). Only when it keeps failing (3 lines in a row) this computer reads, so it is not silent */
-      if(!c||!c.ok){ S.clipFail=(S.clipFail||0)+1; log('đọc trên TV: chưa tạo được giọng cho câu này'+(c&&c.err==='ai'?' (giọng AI chưa sẵn sàng)':'')+', bỏ qua câu đó');
+      if(!c||!c.ok){ S.clipFail=(S.clipFail||0)+1; log('đọc trên TV: chưa tạo được giọng cho câu này'+(c&&c.err==='ai'?' (giọng AI chưa sẵn sàng)':c&&c.err?' ('+String(c.err).slice(0,120)+')':!c?' (không nhận được trả lời)':'')+', bỏ qua câu đó');
         if(S.clipFail>=3&&(where==='tv'||where==='both'&&same)) devSpeak(t,mode,g,who,null,true,src); return; }
       S.clipFail=0;
       if(where==='both'&&same) D.playClip(c,rate,pitch,true,fit);
@@ -5732,7 +5732,8 @@ function micPressed(how){
              moving scenery (palms, a turning gun) is left alone. The one-shot whole-screen translation started over on
              every small change, and never read a menu whose background moves */
     log('nút mic ('+how+'): dịch menu, tự dịch tiếp khi menu đổi'); status('busy','Đang dịch menu. Bấm mic lần nữa để tắt.');
-    if(S.fs.on) fsStop(); S.fl.mic=true; S.fl.micRead=false; S.micMenu.fl=true;
+    var mm0=S.micMenu; if(S.fs.on){ fsStop(); S.micMenu=mm0; }   /* fsStop also ends a mic menu: this one has just begun (page error 'fl' of null, 11/2026) */
+    S.fl.mic=true; S.fl.micRead=false; S.micMenu.fl=true;
     if(!S.fl.on) flStart(); else { S.fl.last=0; if(S.fl.dirty) S.fl.dirty.fill(1); flDraw(); }
   }
   micBadge();
@@ -6053,7 +6054,7 @@ function fsShare(c,k){
 /* what is drawn of a list of boxes: translated, worth showing, one box per text, none over another */
 function fsView(src){ fsTint(src); return fsNoOverlap(src.filter(function(it){ return it.vi&&fsWorth(it); })); }
 /* the most height a box may take: its own plus a little (letters with marks above) only into the empty room below */
-function fsMaxH(it,bh){ var h=it.h*bh; return h+Math.min(h*0.15+6,Math.max(0,(it.gb==null?1:it.gb)*bh-2)); }
+function fsMaxH(it,bh){ var h=it.h*bh; return h+Math.min(Math.max(h*0.15+6,(it.gd||0)*bh),Math.max(0,(it.gb==null?1:it.gb)*bh-2)); }   /* gd: the empty panel under it (fsRoom) */
 /* letters smaller until the text fits (9px, then down to 7px if it must); lines kept as lines, wrapped only at the end */
 function fsFit(el){
   var f=parseFloat(el.style.fontSize), mh=parseFloat(el.style.maxHeight)||1e9;
@@ -6196,7 +6197,8 @@ function fsLinesHtml(it,b,font,list){
   var al=it.al==='r'?'right':it.al==='c'?'center':'left', h='';
   /* a longer Vietnamese line may first use the empty room beside it inside the same text (up to its widest line),
      or beside a one-line label up to the next text on its row, before its letters are squeezed */
-  var fr=G.length===1&&list?fsFree(it,list):null, fr1=fr?Math.min(0.3*G[0].w,al==='right'?fr.l:al==='center'?2*Math.min(fr.l,fr.r):fr.r):0;
+  var grow=al==='right'?(it.gl||0):al==='center'?2*Math.min(it.gl||0,it.gr||0):(it.gr||0);   /* the empty panel beside the text, measured on the picture (fsRoom): the letters keep their size there */
+  var fr=G.length===1&&list?fsFree(it,list):null, fr1=fr?Math.min(Math.max(0.3*G[0].w,grow),al==='right'?fr.l:al==='center'?2*Math.min(fr.l,fr.r):fr.r):0;
   /* a list read as one block (menu rows next to each other): each row takes its own colours from the picture, so the
      highlighted row keeps its light box and the others their dark one, and they follow the cursor */
   if(G.length>1&&S.fl.items.indexOf(it)>=0&&it.lcN!==FLC_N){ it.lcN=FLC_N; try{ it.lc=G.map(function(g){ var c=zColors(flc,{x:g.x,y:g.y,w:g.w,h:g.h}); return c&&c.bg&&c.plain>=0.5?{bg:c.bg,fg:c.fg||''}:null; }); }catch(e){ it.lc=null; } }
@@ -6206,12 +6208,12 @@ function fsLinesHtml(it,b,font,list){
   if(fsPara(it,G)){
     var Fm=G[0].f, LH=G[0].lh, H0=(y1-y0)*b.h, tx=G.map(function(g){ return String(g.vi||'').trim(); }).filter(Boolean).join(' ');
     var pi='<div class="hs-fllp" style="width:'+((x1-x0)*b.w)+'px;font-size:'+Math.max(7,Fm*b.h).toFixed(1)+'px;line-height:'+(LH*b.h).toFixed(1)+'px;padding-top:'+Math.max(0,G[0].pt*b.h).toFixed(1)+'px;text-align:'+al+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(tx,it.ic):esc(tx))+'</div>';
-    return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" data-para="1" data-maxh="'+(H0*1.35).toFixed(1)+'" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;font-family:'+font+'">'+pi+'</div>';
+    return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" data-para="1" data-maxh="'+(H0+Math.max(H0*0.35,(it.gd||0)*b.h)).toFixed(1)+'" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;font-family:'+font+'">'+pi+'</div>';
   }
   G.forEach(function(g,gi){
     var t=g.vi; if(!String(t).trim()) return;
     var lc=it.lc&&it.lc[gi], lbg=lc?lc.bg:it.bg, lfg=lc?lc.fg:it.fg;
-    var W=g.w*b.w, room=(G.length>1?(al==='right'?g.x-x0:al==='center'?2*Math.min(g.x-x0,x1-g.x-g.w):x1-g.x-g.w):fr1)*b.w;
+    var W=g.w*b.w, room=(G.length>1?(al==='right'?g.x-x0:al==='center'?2*Math.min(g.x-x0,x1-g.x-g.w):x1-g.x-g.w)+grow:fr1)*b.w;
     h+='<div class="hs-fll1" data-w="'+W+'" data-room="'+Math.max(0,room)+'" data-al="'+al+'" style="left:'+((g.x-x0)*b.w)+'px;top:'+((g.y-y0)*b.h)+'px;height:'+(g.h*b.h)+'px;padding-top:'+Math.max(0,g.pt*b.h)+'px;line-height:'+(g.lh*b.h)+'px;min-width:'+W+'px;font-size:'+Math.max(7,g.f*b.h).toFixed(1)+'px;text-align:'+al+(lbg?';background:'+lbg:'')+(lfg?';color:'+lfg:'')+'">'+(it.ic&&it.ic.length?zIcHtml(t,it.ic):esc(t))+'</div>';
   });
   return '<div class="hs-fsb hs-flb hs-fll" data-lines="1" style="left:'+(b.l+x0*b.w)+'px;top:'+(b.t+y0*b.h)+'px;width:'+((x1-x0)*b.w)+'px;height:'+((y1-y0)*b.h)+'px;font-family:'+font+'">'+h+'</div>';
@@ -6358,6 +6360,26 @@ function tvTone(hex){
   return '#'+c.map(function(v){ v=(gy+(v-gy)*0.8)*0.93; return ('0'+Math.max(0,Math.min(255,Math.round(v))).toString(16)).slice(-2); }).join('');
 }
 /* the empty room beside a box on its own row, less the width of a button icon, left and right */
+/* ---------- room for the Vietnamese at the size of the English letters (11/2026) ----------
+   The Vietnamese is longer than the English. A label could only grow 12% wider than the English word, so "Store" ->
+   "Cửa hàng" was drawn in much smaller letters than the rows around it, and a paragraph could only grow 15% taller.
+   When the text sits on a plain panel (a button, a card), the empty panel beside and under it is measured on the
+   picture: the box may use that room, and the letters keep the size of the original. Over scenery nothing changes. */
+function fsRoom(cv,b){
+  try{
+    var hex=b.bg||(b.col&&b.col.plain>=0.55&&b.col.bg); if(!hex||fsTurn(b)) return;
+    var bg=hexRgb(hex), W=cv.width, H=cv.height, g=cv.getContext('2d'), lh=b.lh||b.h;
+    function plain(x,y,w,h){ var X=Math.max(0,Math.round(x*W)), Y=Math.max(0,Math.round(y*H)), w2=Math.min(W-X,Math.round(w*W)), h2=Math.min(H-Y,Math.round(h*H)); if(w2<2||h2<2) return false;
+      var d=g.getImageData(X,Y,w2,h2).data, bad=0, n=d.length/4; for(var i=0;i<d.length;i+=4){ if(Math.abs(d[i]-bg[0])+Math.abs(d[i+1]-bg[1])+Math.abs(d[i+2]-bg[2])>54) bad++; } return bad<=n*0.03; }
+    function side(dir){ var step=Math.max(0.006,b.w*0.2), max=Math.min(0.3,Math.max(b.w*1.5,lh*3)), got=0;
+      while(got+step<=max){ var x=dir>0?b.x+b.w+got:b.x-got-step; if(x<0||x+step>1||!plain(x,b.y,step,b.h)) break; got+=step; }
+      return Math.max(0,got-lh*0.9*(H/W)); }   /* stops a little before the edge of the panel */
+    b.gr=side(1); b.gl=side(-1);
+    var st=lh*0.5, gd=0, maxD=Math.min(0.2,b.h*1.2+lh);
+    while(gd+st<=maxD&&b.y+b.h+gd+st<=1&&plain(b.x,b.y+b.h+gd,b.w,st)) gd+=st;
+    b.gd=Math.max(0,gd-lh*0.25);
+  }catch(e){}
+}
 function fsFree(it,list){
   var h=it.lh||it.h, a=h*1.6, L=Infinity, R=Infinity;
   list.forEach(function(o){
@@ -6606,6 +6628,17 @@ function fsMergePara(list,cv){
       if(gap>lm*1.3) break;                                                    /* too far below: the rest is lower still */
       if(gap<-lm*0.4||la/lb>1.3||lb/la>1.3) continue;
       if(capsOnly(a.en)!==capsOnly(b.en)) continue;                            /* a heading and its text */
+      /* rows of a table and a heading over its text are not one paragraph (11/2026: a difficulty panel, its title, five
+         rows of numbers and the description under them were joined into one block, and the translation was drawn as one
+         lump at the top). A sentence wrapped over lines breaks only where the line is full and goes on in lower case:
+         - two short labels one under the other (up to 4 words each, no full stop) are a list;
+         - a short last line with no full stop, then a line starting with a capital: a heading, then another text;
+         - far apart (most of a line of empty room) and not going on in lower case: rows */
+      var lastA=a.lr&&a.lr.length?a.lr[a.lr.length-1]:a, lastT=String(a.en).split('\n').pop().trim(), firstB=String(b.en).split('\n')[0].trim();
+      var endsA=/[.!?…:;,]["”’)]?$/.test(lastT), cont=/^[a-z(]/.test(firstB), lbl=function(t){ return t.split(/\s+/).length<=4&&t.length<=32&&!/[.!?…:;,]["”’)]?$/.test(t); };
+      if(!cont&&lbl(lastT)&&lbl(firstB)) continue;
+      if(!cont&&!endsA&&lastA.w<Math.max(a.w,b.w)*0.72) continue;
+      if(!cont&&gap>lm*0.8) continue;
       var ox=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
       if(!(Math.abs(a.x-b.x)<lm*1.5||ox>=Math.min(a.w,b.w)*0.6)) continue;      /* not lined up */
       if(!cv) continue;
@@ -6795,7 +6828,8 @@ function flDraw(){
     var L=b.l+it.x*b.w, W=Math.max(24,it.w*b.w), one=it.en.indexOf('\n')<0&&it.vi.indexOf('\n')<0;
     /* a one-line label ("EXIT", "ADD MARKER") stays on one line: the Vietnamese is longer, so the box grows sideways
        (to the left for a list lined up on the right) instead of wrapping into tiny letters */
-    var fr=one?fsFree(it,view):null, room=fr?Math.min(W*1.12+8,W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w):0;
+    var grow=(it.al==='l'?(it.gr||0):it.al==='r'?(it.gl||0):2*Math.min(it.gl||0,it.gr||0))*b.w;   /* the empty panel beside it (fsRoom) */
+    var fr=one?fsFree(it,view):null, room=fr?Math.min(W*1.12+8+grow,W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w):0;
     if(fr&&fsCell(it)) room=W+(it.al==='l'?fr.r:it.al==='r'?fr.l:2*Math.min(fr.l,fr.r))*b.w;   /* a tab or button: its own frame */
     html+='<div class="hs-fsb hs-flb" data-one="'+(one?1:'')+'" data-l="'+L+'" data-w="'+W+'" data-room="'+room+'" data-al="'+(it.al||'c')+'" style="left:'+L+'px;top:'+(b.t+it.y*b.h)+'px;'+(one?'white-space:nowrap;min-width:'+W+'px':'width:'+W+'px'+(it.vi.split('\n').length===it.en.split('\n').length?';white-space:nowrap':''))+';min-height:'+(it.h*b.h)+'px;max-height:'+fsMaxH(it,b.h)+'px;font-size:'+Math.max(10,Math.round(viFz(it.lh,it.xb,it.caps,null,0.74)*b.h))+'px;font-family:'+subFont().replace(/"/g,"'")+(it.bg?';background:'+it.bg:'')+(it.fg?';color:'+it.fg:'')+(it.al==='r'?';text-align:right':it.al==='l'?';text-align:left':'')+'">'+fsHtml(it)+'</div>';
   });
@@ -6821,7 +6855,10 @@ window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
 function flPatch(g,it){ var r=flRect(it), o=[]; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++) o.push(g[y*160+x]); return o; }
-function flChanged(g,it){ if(!it.sig) return false; var r=flRect(it), k=0, n=0, big=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ var d=Math.abs(g[y*160+x]-it.sig[k++]); n++; if(d>26) big++; } return n&&big/n>0.22; }
+/* small thin letters on a dark page (a title screen) are a few grey points in the small picture: when they went away
+   hardly a point changed "a lot", and their box stayed up over the next screen for good (11/2026). The average
+   change of the patch counts too */
+function flChanged(g,it){ if(!it.sig) return false; var r=flRect(it), k=0, n=0, big=0, sum=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ var d=Math.abs(g[y*160+x]-it.sig[k++]); n++; sum+=d; if(d>26) big++; } return n&&(big/n>0.22||sum/n>7); }
 function flStill(it){ var r=flRect(it), n=0, s=0; for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++){ n++; if(S.fl.still[y*160+x]>=2) s++; } return n?s/n:0; }
 /* share of a text's words that another text has: a second, partial reading of the same paragraph */
 function flWordsIn(a,b){ var A=norm(a).split(' ').filter(function(w){ return w.length>2; }), B=' '+norm(b)+' '; if(!A.length) return 0; return A.filter(function(w){ return B.indexOf(' '+w+' ')>=0; }).length/A.length; }
@@ -6913,7 +6950,7 @@ function flTick(my){
   /* a subtitle line is coming: it is read first. But with scenery moving under the subtitle area and no line in it,
      that area "changes" all the time: the screen text then waited for ever (problem reports: "đang nhường cho câu
      phụ đề" for minutes). It waits a few seconds at most, longer while a line is half read or characters talk */
-  var due=S.fl.items.some(function(it){ return it.chk&&now-(it.vAt||0)>1800; });
+  var due=S.fl.items.some(function(it){ return it.chk&&(!it.soft||it.miss)&&now-(it.vAt||0)>1800; });   /* the idle look (soft) waits for an idle moment */
   if(!S.fl.mic&&subPrio()){
     /* a box to look at again (a small piece of the picture, quick) does not wait as long as a whole-screen read:
        a box whose text is gone must not stay up */
@@ -6938,12 +6975,16 @@ function flTick(my){
      every few seconds */
   else if((S.fl.cands||[]).some(function(k){ return !k.tried; })&&now-S.fl.last>1300) flRead(my,'c');
   else if(dirtyN>=300&&now-S.fl.last>(talk?12000:4500)) flRead(my,false);
+  /* nothing new to read: the boxes that have been up for a while are looked at again, a few at a time (their text
+     may have gone without the small picture showing it). Only when idle, so new text is never kept waiting */
+  else if(!talk&&now-(S.fl.vAt||0)>1500&&S.fl.items.some(function(it){ return now-Math.max(it.vAt||0,it.at||0)>6000; })){
+    S.fl.items.forEach(function(it){ if(now-Math.max(it.vAt||0,it.at||0)>6000){ it.chk=true; it.soft=true; } }); S.fl.vAt=now; flVerify(my); }
   else S.fl.why='chưa thấy chỗ nào vừa đổi vừa đứng yên (đổi '+dirtyN+', đứng yên '+fresh+'/40)';
 }
 /* the boxes whose picture changed, read again one by one: same text -> it stays (new picture kept), else it goes */
 async function flVerify(my){
   S.fl.busy=true; S.ocrBusy=true;
-  var vnow=Date.now(), vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk&&vnow-(it.vAt||0)>1800; }).slice(0,4), gone=[], recol=false;
+  var vnow=Date.now(), vw=video.videoWidth, vh=video.videoHeight, list=S.fl.items.filter(function(it){ return it.chk&&vnow-(it.vAt||0)>1800; }).sort(function(a,b){ return (a.soft&&!a.miss?1:0)-(b.soft&&!b.miss?1:0); }).slice(0,4), gone=[], recol=false;
   list.forEach(function(it){ it.vAt=vnow; });
   try{
     var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours now */
@@ -6951,13 +6992,15 @@ async function flVerify(my){
       var it=list[k], px=it.w*0.15, py=it.h*0.35, x=Math.max(0,it.x-px), y=Math.max(0,it.y-py), w=Math.min(1-x,it.w+2*px), h=Math.min(1-y,it.h+2*py);
       var got=await fsRead(x*vw,y*vh,w*vw,h*vh,900), txt=got.map(function(b){ return b.en; }).join('\n');
       var a=norm(it.en), bb=norm(txt);
-      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.miss=0; it.sig=flPatch(S.fl.prev,it);
+      if(txt&&(similar(it.en,txt)||dice(it.en,txt)>0.7||bb.indexOf(a)>=0||a.indexOf(bb)>=0&&bb.length>=a.length*0.6)){ it.chk=false; it.soft=false; it.miss=0; it.sig=flPatch(S.fl.prev,it);
         /* the same text, another look: the menu's highlight moved onto it or off it. Its box takes the new colours, the
            translation stays (no AI, no flicker) */
         if(it.lc) recol=true;   /* rows of a list: each row's colours are taken again when drawn */
         try{ var c2=zColors(flc,it); if(c2&&c2.bg&&c2.plain>=0.5&&(c2.bg!==it.bg||(c2.fg||'')!==(it.fg||''))){ it.bg=c2.bg; it.fg=c2.fg||''; recol=true; }
           else if(c2&&c2.bg&&c2.plain<0.35&&it.bg){ delete it.bg; delete it.fg; recol=true; } }catch(e){} }
-      else if(it.hud&&!it.bg&&!(it.miss>=1)){ it.miss=(it.miss||0)+1; it.chk=false; it.vAt=vnow-1000; it.missTxt=txt; }
+      else if(it.soft&&txt&&dice(it.en,txt)>0.3){ it.chk=false; it.soft=false; it.miss=0; }   /* the idle look read it a little differently: still there */
+      else if((it.soft||it.hud&&!it.bg)&&!(it.miss>=1)){ it.miss=(it.miss||0)+1; it.chk=!!it.soft; it.vAt=vnow-(it.soft?4800:1000); it.missTxt=txt; }   /* the idle look: one failed reading is not enough, it is read once more */
+      else if(it.soft){ log('chữ trên màn hình: bỏ khung "'+String(it.en).replace(/\s+/g,' ').slice(0,30)+'", chữ gốc không còn trên màn hình'); gone.push(it); }
       else if(it.hud&&!it.bg){ log('chữ trên màn hình: bỏ khung trên nền động "'+String(it.en).replace(/\s+/g,' ').slice(0,30)+'", đọc lại ra: "'+String(it.missTxt||'').replace(/\s+/g,' ').slice(0,30)+'" rồi "'+String(txt).replace(/\s+/g,' ').slice(0,30)+'"'); gone.push(it); }   /* over moving scenery one reading can fail: gone after two */
       else gone.push(it);
     }
@@ -6977,15 +7020,15 @@ async function flRead(my,first){
   if(!conf) S.fl.dirty.fill(0);
   var t0=Date.now(); while(S.ocrBusy&&Date.now()-t0<600) await new Promise(function(r){later(r,30);});
   if(S.ocrBusy||my!==S.fl.seq){ S.fl.busy=false; return; }
-  S.ocrBusy=true; var all=[];
+  S.ocrBusy=true; var all=[], rdA=null;
   try{
     var part=S.fl.items.length&&x1>=x0&&(x1-x0+1)*(y1-y0+1)<160*90*0.35;   /* boxes up, a small part changed (the cursor moved): that part only */
     if(conf){ var cl=(S.fl.cands||[]).filter(function(k){ return !k.tried; }).slice(0,4);
       for(var ci=0;ci<cl.length;ci++){ var k0=cl[ci], kh=k0.h||0.05, cx=Math.max(0,k0.x-k0.w*0.1-0.01), cy=Math.max(0,k0.y-kh*0.5-0.01), cw=Math.min(1-cx,k0.w*1.2+0.02), chh=Math.min(1-cy,kh*2+0.02);
         all=all.concat(await fsRead(cx*vw,cy*vh,cw*vw,chh*vh,1100)); } }
-    else if(!part) all=all.concat(await fsRead(0,0,vw,vh,1600));
+    else if(!part){ all=all.concat(await fsRead(0,0,vw,vh,1600)); rdA={x:0,y:0,w:1,h:1}; }
     if(!conf&&x1>=x0){ var bx=Math.max(0,(x0-4)/160*vw), by=Math.max(0,(y0-3)/90*vh), bw=Math.min(vw-bx,(x1-x0+9)/160*vw), bh=Math.min(vh-by,(y1-y0+7)/90*vh);
-      if(bw*bh<vw*vh*0.5&&bw>40&&bh>20) all=all.concat(await fsRead(bx,by,bw,bh,1400)); }
+      if(bw*bh<vw*vh*0.5&&bw>40&&bh>20){ all=all.concat(await fsRead(bx,by,bw,bh,1400)); if(!rdA) rdA={x:bx/vw,y:by/vh,w:bw/vw,h:bh/vh}; } }
     var sc=Math.min(1,960/vw); flc.width=Math.round(vw*sc); flc.height=Math.round(vh*sc); flcx.drawImage(video,0,0,flc.width,flc.height); FLC_N++;   /* for the colours */
   }catch(e){ all=[]; }
   finally{ S.ocrBusy=false; }
@@ -7001,6 +7044,13 @@ async function flRead(my,first){
   blocks=fsMergePara(blocks,flc);
   fsRowsAlign(blocks); fsLowCol(blocks);
   fsInkAll(blocks);
+  /* a box inside the part just read whose text was not read there: its text is probably gone (the next page of a
+     rotating panel, another screen). It is looked at again at once, on its own, and goes if the text is not there */
+  if(!conf&&rdA){ var tNow=Date.now(), lost=0;
+    S.fl.items.forEach(function(it){ if(it.chk||tNow-(it.at||0)<1500||flIn(rdA,it)<0.9) return;
+      if(blocks.some(function(b){ return fsNear(it,b)&&(fsSameText(it.en,b.en)||dice(it.en,b.en)>0.6||flWordsIn(it.en,b.en)>=0.6||flWordsIn(b.en,it.en)>=0.75); })) return;
+      it.chk=true; it.soft=false; it.vAt=0; lost++; });
+    if(lost) S.fl.vAt=0; }
   var g2=S.fl.prev, add=[];
   blocks.forEach(function(b){ try{ var c0=zColors(flc,b); b.col=c0; var L=parseInt(String(c0.bg||'#000').slice(1),16), lum=((L>>16&255)*0.3+(L>>8&255)*0.59+(L&255)*0.11)/255; b.panel=c0.plain>=0.6&&lum>0.55; }catch(e){} });   /* dark letters on a plain light page (a phone, a note): screen text, even in the subtitle area */
   if(!conf) S.fl.seen=blocks.slice(0,40);
@@ -7024,9 +7074,9 @@ async function flRead(my,first){
     var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
     if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0||flWordsIn(b.en,it.en)>=0.75&&fsOverlap(it,b)>0.4; })) return;   /* already on screen (also read as one line or two, or only part of it this time) */   /* already on screen (also read as one line or two) */
     if(same.length) S.fl.items=S.fl.items.filter(function(it){ return same.indexOf(it)<0; });
-    b.sig=flPatch(g2,b);
+    b.sig=flPatch(g2,b); b.at=Date.now();
     if(b.panel&&S.lastHtml&&S.lastRaw&&(similar(b.en,S.lastRaw)||dice(b.en,S.lastRaw)>0.6||norm(b.en).indexOf(norm(S.lastRaw))>=0)){ clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); }   /* the subtitle reader had taken a piece of the page for a subtitle */
-    try{ var c=b.col||zColors(flc,b); if(c&&c.bg&&(c.plain>=0.55||flStill(b)>=0.92&&c.plain>=0.35)){ b.bg=c.bg; b.fg=c.fg||''; } }catch(e){}   /* a plain background (a panel, a phone screen): the same colours as the original; text over scenery: the dark box */
+    try{ var c=b.col||zColors(flc,b); if(c&&c.bg&&(c.plain>=0.55||flStill(b)>=0.92&&c.plain>=0.35)){ b.bg=c.bg; b.fg=c.fg||''; if(c.plain>=0.55) fsRoom(flc,b); } }catch(e){}   /* a plain background (a panel, a phone screen): the same colours as the original; text over scenery: the dark box */
     add.push(b);
   });
   /* seen once: looked at again in a moment. After that second look, the ones not found there wait for the next
