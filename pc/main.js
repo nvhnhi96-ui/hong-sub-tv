@@ -695,21 +695,89 @@ function aivStart() {
   aivNotify();
   return true;
 }
+/* ---------- a voice made once is kept (11/2026: "the reading must start the moment the Vietnamese shows") ----------
+   Making the voice of a line takes 0.3-1 s (the AI voice: more), and it used to start only when the Vietnamese showed.
+   Now the page asks for the voices of the lines it expects next (the shared store knows which line usually follows)
+   while the current one is read, and every voice made is kept: in memory, and on this computer's disk (voice-cache in
+   the app's data folder, 300 MB at most, the oldest go first). A line met again is read with no wait at all. */
+const vc = { mem: new Map(), dir: '', idx: null };
+function vcDir() { if (!vc.dir) { vc.dir = path.join(app.getPath('userData'), 'voice-cache'); try { fs.mkdirSync(vc.dir, { recursive: true }); } catch (e) { /* ignore */ } } return vc.dir; }
+function vcIdx() {
+  if (vc.idx) return vc.idx;
+  vc.idx = new Map();
+  try { fs.readdirSync(vcDir()).forEach((f) => { const m = /^([0-9a-f]{40})\.[an]\.(wav|mp3)$/.exec(f); if (m) vc.idx.set(m[1], f); }); } catch (e) { /* ignore */ }
+  setTimeout(vcPrune, 20000);
+  return vc.idx;
+}
+async function vcPrune() {
+  try {
+    const dir = vcDir(), list = [];
+    for (const f of await fs.promises.readdir(dir)) { try { const st = await fs.promises.stat(path.join(dir, f)); list.push({ f, n: st.size, t: st.mtimeMs }); } catch (e) { /* ignore */ } }
+    let sum = list.reduce((a, x) => a + x.n, 0);
+    if (sum < 300e6) return;
+    list.sort((a, b) => a.t - b.t);
+    for (const x of list) { if (sum < 220e6) break; try { await fs.promises.unlink(path.join(dir, x.f)); sum -= x.n; const k = x.f.slice(0, 40); if (vc.idx && vc.idx.get(k) === x.f) vc.idx.delete(k); } catch (e) { /* ignore */ } }
+  } catch (e) { /* ignore */ }
+}
+/* the same words give the same voice: capitals and commas may differ between the line made ahead and the line shown */
+function vcKey(kind, text, voice, rk) { return require('crypto').createHash('sha1').update([kind, voice || '', rk || '', String(text).normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}?]+/gu, ' ').trim()].join('\u0001')).digest('hex'); }
+function vcHas(key) { return vc.mem.has(key) || vcIdx().has(key); }
+/* make(): {buf, mime, ra (the reading speed is set when it plays), fb (another voice read it: not kept on disk)} or null */
+function vcGet(key, make) {
+  const had = vc.mem.get(key);
+  if (had) { vc.mem.delete(key); vc.mem.set(key, had); return had; }
+  const p = (async () => {
+    const f = vcIdx().get(key);
+    if (f) {
+      try { const buf = await fs.promises.readFile(path.join(vcDir(), f)); if (buf.length >= 200) return { buf, mime: /mp3$/.test(f) ? 'audio/mpeg' : 'audio/wav', ra: f.charAt(41) === 'a' }; } catch (e) { /* ignore */ }
+      vc.idx.delete(key);
+    }
+    const r = await make();
+    if (!r || !r.buf || r.buf.length < 200) return null;
+    if (!r.fb) {
+      const name = key + '.' + (r.ra ? 'a' : 'n') + '.' + (r.mime === 'audio/mpeg' ? 'mp3' : 'wav');
+      fs.promises.writeFile(path.join(vcDir(), name), r.buf).then(() => { vc.idx.set(key, name); }, () => {});
+    }
+    return r;
+  })().catch(() => null);
+  vc.mem.set(key, p);
+  p.then((r) => { if (!r && vc.mem.get(key) === p) vc.mem.delete(key); });
+  while (vc.mem.size > 120) vc.mem.delete(vc.mem.keys().next().value);
+  return p;
+}
+
 /* one AI voice clip: the AI voice sends a long line in pieces (each a WAV file); join them into one WAV */
 let aivClipSeq = 0;
-function aivClip(text, voice) {
+const aivWarm = new Set();   /* clips being made ahead of time: a line that must be read NOW goes first */
+function aivWarmDrop() {
+  aivWarm.forEach((id) => { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'drop', id }) + '\n'); } catch (x) { /* ignore */ } const f = aivClips.get(id); if (f) f({ type: 'drop' }); });
+  aivWarm.clear();
+}
+function aivClip(text, voice, warm) {
   if (!aiv.proc) aivStart();
   if (!aiv.proc || !aiv.ready) return Promise.resolve(null);
   const id = 'clip' + (++aivClipSeq), parts = [];
-  return new Promise((done) => {
+  if (warm) aivWarm.add(id);
+  return new Promise((done0) => {
+    const done = (v) => { aivWarm.delete(id); done0(v); };
     const t = setTimeout(() => { aivClips.delete(id); done(parts.length ? wavJoin(parts) : null); }, 45000);
     aivClips.set(id, (m) => {
+      if (m.type === 'drop') { clearTimeout(t); aivClips.delete(id); done(null); return; }
       if (m.type === 'error') { clearTimeout(t); aivClips.delete(id); done(parts.length ? wavJoin(parts) : null); return; }
       parts.push(Buffer.from(m.wav, 'base64'));
       if (m.last) { clearTimeout(t); aivClips.delete(id); done(wavJoin(parts)); }
     });
     try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id, text, voice: voice || '' }) + '\n'); } catch (x) { clearTimeout(t); aivClips.delete(id); done(null); }
   });
+}
+/* seconds of sound in a WAV clip (0: not known) */
+function wavDur(b, mime) {
+  try {
+    if (mime !== 'audio/wav' || b.length < 44 || b.toString('ascii', 0, 4) !== 'RIFF') return 0;
+    let o = 12, rate = 0;
+    while (o + 8 <= b.length) { const id = b.toString('ascii', o, o + 4), n = b.readUInt32LE(o + 4); if (id === 'fmt ') rate = b.readUInt32LE(o + 16); if (id === 'data') return rate ? Math.min(n, b.length - o - 8) / rate : 0; o += 8 + n + (n & 1); }
+  } catch (e) { /* ignore */ }
+  return 0;
 }
 function wavJoin(bufs) {
   const pcm = []; let fmt = null;
@@ -825,7 +893,7 @@ function setupIpc() {
   ipcMain.on('aiv-speak', (e, m) => { if (!aiv.proc) aivStart();
     /* not ready (starting, or stopped): the line is read with this computer's voice now; it never waits for a voice that is not there */
     if (!aiv.proc || !aiv.ready) { aivSend('aiv-audio', { type: 'error', id: m.id, err: 'Bộ giọng AI chưa sẵn sàng' }); return; }
-    aivPend.add(m.id);
+    aivPend.add(m.id); aivWarmDrop();
     if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'speak', id: m.id, text: String(m.text || '').replace(/[\r\n]+/g, ' '), voice: m.voice || '' }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-drop', (e, id) => { if (aiv.proc) { try { aiv.proc.stdin.write(JSON.stringify({ cmd: 'drop', id }) + '\n'); } catch (x) { /* ignore */ } } });
   ipcMain.on('aiv-stop', () => { if (aiv.proc) { try { aiv.proc.stdin.write('{"cmd":"stop"}\n'); } catch (x) { /* ignore */ } } });
@@ -943,9 +1011,58 @@ function setupIpc() {
     return list;
   });
   const onlineFails = {}, onlineOff = {};
-  ipcMain.handle('speak', async (e, text, voice, rate) => {
-    if (!text) return { stop: true };
-    voice = voice || '';
+  /* the voices of Windows and Azure take the speed when they are made; a voice made ahead of time (speed 1, the speed of
+     the line is not known yet) is played faster instead, as Hóng Sub's own voice always is */
+  const speakKept = async (text, voice, rate, warm) => {
+    voice = voice || ''; rate = rate || 1;
+    const baked = voice.startsWith('win:') || voice.startsWith('az:'), k1 = vcKey('S', text, voice, baked ? '1' : '');
+    let raw = null;
+    const mk = (rt) => async () => { raw = await speakRaw(text, voice, rt); return raw && raw.wav ? { buf: Buffer.from(raw.wav, 'base64'), mime: raw.mime || 'audio/wav', ra: !!raw.rateApply, fb: (/^(gg|az):/.test(voice) && raw.mime !== 'audio/mpeg') || (!baked && !raw.rateApply) } : null; };
+    if (!baked || warm || vcHas(k1)) {
+      const r = await vcGet(k1, mk(1));
+      if (r) return { wav: r.buf.toString('base64'), mime: r.mime, rateApply: true };   /* made at speed 1: the speed is set when it plays */
+      if (!baked || warm) return raw || { err: 'no sound' };
+    }
+    const r = await vcGet(vcKey('S', text, voice, rate.toFixed(2)), mk(rate));
+    return r ? { wav: r.buf.toString('base64'), mime: r.mime, rateApply: r.ra } : (raw || { err: 'no sound' });
+  };
+  ipcMain.handle('speak', (e, text, voice, rate) => { if (!text) return { stop: true }; return speakKept(String(text), voice, rate, false); });
+  /* the voice of a line expected next, made while the current one is read. S: a piece read on this computer,
+     A: a whole line in an AI voice, C: a whole line for the TV */
+  ipcMain.handle('voice-warm', async (e, kind, text, voice) => {
+    text = String(text || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 600); voice = String(voice || '');
+    if (!text) return false;
+    try {
+      if (kind === 'S') return !!(await speakKept(text, voice, 1, true)).wav;
+      if (voice.startsWith('ai:')) return !!(await aiKept(text, voice, true));
+      return !!(await clipKept(text, voice, true));
+    } catch (x) { return false; }
+  });
+  /* an AI voice line made ahead of time (or being made right now): the reading uses it instead of asking again */
+  ipcMain.handle('voice-get', async (e, text, voice) => {
+    text = String(text || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 600);
+    const k = vcKey('A', text, String(voice || ''), '');
+    if (!vcHas(k)) return null;
+    const r = await vcGet(k, async () => null);
+    return r ? { wav: r.buf.toString('base64'), mime: r.mime } : null;
+  });
+  const aiKept = (text, voice, warm) => vcGet(vcKey('A', text, voice, ''), async () => {
+    if (warm && (!aiv.proc || !aiv.ready)) return null;
+    if (!warm) aivWarmDrop();   /* this line is read now: it does not wait behind lines made ahead of time */
+    let buf = await aivClip(text, voice.slice(3), warm);
+    if (!buf && !warm && aiv.ready) buf = await aivClip(text, voice.slice(3));
+    return buf ? { buf, mime: 'audio/wav', ra: true } : null;
+  });
+  const clipKept = (text, voice, warm) => vcGet(vcKey('C', text, voice, ''), async () => {
+    let buf = null, mime = 'audio/wav', fb = false;
+    if (voice.startsWith('gg:')) { try { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; } catch (x) { if (warm) return null; throw x; } }
+    else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
+    else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+    if (!buf) { fb = /^(gg|az|win):/.test(voice); const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+    if (!buf) { fb = true; const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+    return buf ? { buf, mime, ra: true, fb } : null;
+  });
+  const speakRaw = async (text, voice, rate) => {
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
     if (voice.startsWith('az:') && Date.now() > (onlineOff.az || 0)) {
       try { const mp3 = await azSpeak(text, voice, rate); onlineFails.az = 0; return { wav: mp3.toString('base64'), mime: 'audio/mpeg', rateApply: false }; }
@@ -976,7 +1093,7 @@ function setupIpc() {
     const w = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: rate || 1 }, 20000);
     if (!(w && w.wav)) console.warn('voice: piper ' + (r.err || '') + ', windows ' + ((w && w.err) || 'no sound'));
     return w && w.wav ? w : { err: 'piper: ' + (r.err || '?') + '; windows: ' + ((w && w.err) || 'no sound') };
-  });
+  };
   ipcMain.handle('az-set', (e, key, region) => {
     key = String(key || '').trim(); region = String(region || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     if (key && region) cfg.az = { key, region }; else delete cfg.az;
@@ -1017,25 +1134,20 @@ function setupIpc() {
     text = String(text || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 600); voice = String(voice || '');
     if (!text) return { ok: false };
     try {
-      let buf = null, mime = 'audio/wav';
+      let r = null;
       /* the AI voice still starting (first lines after opening) or one line failing: wait for it and try again, rather
          than reading that line with another voice (Hóng Sub's own, then Windows'). Those other voices cutting in
          between AI lines sounded like the TV's own voice (11/2026) */
       if (voice.startsWith('ai:')) {
         if (!aiv.proc) aivStart();
-        for (let i = 0; i < 40 && aiv.proc && !aiv.ready; i++) await new Promise((r) => setTimeout(r, 500));
-        buf = await aivClip(text, voice.slice(3));
-        if (!buf && aiv.ready) buf = await aivClip(text, voice.slice(3));
-        if (!buf) return { ok: false, err: 'ai' };
-      }
-      else if (voice.startsWith('gg:')) { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; }
-      else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
-      else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
-      if (!buf) { const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
-      if (!buf) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
+        for (let i = 0; i < 40 && aiv.proc && !aiv.ready; i++) await new Promise((r2) => setTimeout(r2, 500));
+        r = await aiKept(text, voice, false);
+        if (!r) return { ok: false, err: 'ai' };
+      } else r = await clipKept(text, voice, false);
+      const buf = r && r.buf, mime = r ? r.mime : 'audio/wav';
       if (!buf || buf.length < 200) return { ok: false };
       const id = lgApi && lgApi.clipPut ? lgApi.clipPut(buf, mime) : '';
-      return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length };
+      return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length, dur: wavDur(buf, mime) };
     } catch (err) { return { ok: false, err: String(err && err.message || err) }; }
   });
   /* Android TV: the clip goes to the TV in the message itself (the TV may not reach this computer through Windows Firewall) */

@@ -4,15 +4,16 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const selftest = process.argv.includes('--hs-selftest');
 let audio = null, seq = 0;
-/* A line being read is never cut (11/2026: lines cut half-way or dropped when the voice fell behind).
-   Each line's voice is made the moment its Vietnamese shows, so the next line is ready when the one before it ends.
-   When lines come faster than they can be read, the reading gets faster: the line being read speeds up, and
-   the waiting ones are read faster the more of them wait (up to 1.8x), so the voice catches up with the subtitles.
-   Still far behind (fast dialogue): a line that has waited more than STALE_MS while newer lines wait behind it is left
-   out, whole, before it starts: the voice stays within a few seconds of the subtitles instead of reading lines that
-   left the screen long ago (11/2026: "the reading does not keep up with the text"). */
+/* Every line is read in full, in order (11/2026, the owner's choice: "đọc đủ"): a line being read is never cut and a
+   waiting line is never left out. The voice keeps up in other ways:
+   - the voice of a line is made BEFORE its Vietnamese shows when the page can tell which line comes next (voiceWarm),
+     and every voice made is kept on this computer (main.js, voice-cache): such a line starts with no wait;
+   - a line not expected: its first clause is made first and starts while the rest is made;
+   - the speed of a line comes from the real length of its sound and the time the character talks (fit);
+   - when lines come faster than they can be read, the line being read speeds up and the waiting ones are read
+     faster the more of them wait (up to 1.8x). */
 const lines = []; let cur = null;
-const STUCK_MS = 9000, BACKLOG_MAX = 4, STALE_MS = 9000;
+const STUCK_MS = 9000, BACKLOG_MAX = 12;   /* 12 lines waiting: only a broken voice gets there */
 /* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
    such line kept the reading silent for the rest of the session */
 setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - Math.max(cur.at, cur.curAt || 0) > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
@@ -25,6 +26,7 @@ function stopAll() {
 /* start making the voice of a line now (it plays later) */
 /* what happened to the last line read aloud (for the problem report) */
 let lastSpeak = null;
+const waits = [];   /* ms from a line being asked to its first sound (the last 30 lines) */
 function said(L, ok, err) { lastSpeak = { at: new Date().toTimeString().slice(0, 8), voice: (L.ai ? 'ai:' : '') + (L.voice || 'mặc định'), ok: !!ok, err: err || '' }; }
 /* the chosen voice made nothing: the line is read again with this computer's own Vietnamese voice, never silent */
 function fallback(L, why) {
@@ -38,25 +40,39 @@ function fallback(L, why) {
 function splitLine(t) {
   const a = String(t || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/).filter(Boolean), out = [];
   a.forEach((x) => { if (out.length && out[out.length - 1].length < 24) out[out.length - 1] += ' ' + x; else out.push(x); });
-  return out.length > 3 ? [out[0], out.slice(1).join(' ')] : out;
+  let r = out.length > 3 ? [out[0], out.slice(1).join(' ')] : out;
+  /* a long first sentence: its first clause (to the first comma) is a piece of its own, its sound is ready sooner */
+  const f = r[0] || '';
+  if (f.length > 70) { const m = /^(.{8,60}?[,;:])\s+(.{12,})$/.exec(f); if (m) r = [m[1], m[2]].concat(r.slice(1)); }
+  return r;
 }
 function prepare(L) {
   L.id = ++seq; L.parts = []; L.ended = false; L.at = Date.now();
-  if (L.pre) { L.parts.push({ wav: L.pre.b64, mime: L.pre.mime, rateApply: true, last: true }); L.ended = true; return; }   /* a clip made already (also sent to the TV) */
+  if (L.pre) { L.parts.push({ wav: L.pre.b64, mime: L.pre.mime, rateApply: true, last: true, frac: 1 }); L.ended = true; return; }   /* a clip made already (also sent to the TV) */
   if (L.ai) {
-    ipcRenderer.send('aiv-speak', { id: L.id, text: L.text, voice: L.voice });
-    /* the AI voice says nothing within 6 s (stopped, busy, starting): this computer's voice reads the line */
-    setTimeout(() => { if (!L.got && !L.fell && !L.dropped) { ipcRenderer.send('aiv-drop', L.id); fallback(L, 'giọng AI không trả lời'); } }, 6000);
+    const ask = () => {
+      if (L.dropped) return;
+      ipcRenderer.send('aiv-speak', { id: L.id, text: L.text, voice: L.voice });
+      /* the AI voice says nothing within 6 s (stopped, busy, starting): this computer's voice reads the line */
+      setTimeout(() => { if (!L.got && !L.fell && !L.dropped) { ipcRenderer.send('aiv-drop', L.id); fallback(L, 'giọng AI không trả lời'); } }, 6000);
+    };
+    /* made ahead of time, or kept from before: it plays now */
+    (L.text.length <= 600 ? ipcRenderer.invoke('voice-get', L.text, 'ai:' + L.voice) : Promise.resolve(null)).then((r) => {
+      if (L.dropped) return;
+      if (!(r && r.wav)) { ask(); return; }
+      L.got = true; L.kept = true; said(L, true); L.parts.push({ wav: r.wav, mime: r.mime, last: true, frac: 1 }); L.ended = true;
+      if (cur === L) playPart(); else takeOver(L);
+    }, ask);
     return;
   }
   /* a line of several sentences: the first sentence's voice is made first and starts while the rest is made, so the
      reading begins sooner after the Vietnamese shows */
   const pieces = splitLine(L.text);
   if (pieces.length > 1) {
-    const got = new Array(pieces.length); let next = 0;
+    const got = new Array(pieces.length), all = pieces.reduce((n, x) => n + x.length, 0) || 1; let next = 0;
     const flush = () => {
       if (L.dropped) return;
-      while (next < pieces.length && got[next] !== undefined) { const r = got[next]; if (r && r.wav) { if (!L.parts.length && !L.startAt) said(L, true); L.parts.push({ wav: r.wav, mime: r.mime, rateApply: !!r.rateApply, last: next === pieces.length - 1 }); } next++; }
+      while (next < pieces.length && got[next] !== undefined) { const r = got[next]; if (r && r.wav) { if (!L.parts.length && !L.startAt) said(L, true); L.parts.push({ wav: r.wav, mime: r.mime, rateApply: !!r.rateApply, last: next === pieces.length - 1, frac: pieces[next].length / all }); } next++; }
       if (next >= pieces.length) {
         if (!L.parts.length && !L.startAt) { if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; } said(L, false, 'không đọc được'); }
         L.ended = true;
@@ -67,7 +83,7 @@ function prepare(L) {
     return;
   }
   ipcRenderer.invoke('speak', L.text, L.voice, L.rate).then((res) => {
-    if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true }); said(L, true); }
+    if (res && res.wav) { L.parts.push({ wav: res.wav, mime: res.mime, rateApply: !!res.rateApply, last: true, frac: 1 }); said(L, true); }
     else if (L.voice) { fallback(L, 'giọng ' + L.voice + ' không đọc được'); return; }
     else said(L, !!(res && res.ok !== false), res && res.err ? String(res.err) : '');
     L.ended = true; if (cur === L) playPart(); else if (L.parts.length) takeOver(L);
@@ -85,7 +101,7 @@ function playPart() {
   if (!c || c.playing) return;
   const p = c.parts.shift();
   if (!p) { if (c.ended) finish(c); return; }
-  c.playing = true; if (!c.startAt) c.startAt = Date.now();
+  c.playing = true; if (!c.startAt) { c.startAt = Date.now(); waits.push(c.startAt - c.at); if (waits.length > 30) waits.shift(); }
   audio = new Audio('data:' + (p.mime || 'audio/wav') + ';base64,' + p.wav);
   c.applyRate = !!(c.ai || p.rateApply);
   const sp = speedOf(c);
@@ -93,6 +109,15 @@ function playPart() {
   if (c.applyRate) audio.playbackRate = c.rate * c.pitch * sp;
   else if (c.pitch !== 1 || sp !== 1) audio.playbackRate = c.pitch * sp;
   const a = audio;
+  /* the speed from the real length of the sound: the whole line must fit in the time the character talks (before: from
+     a count of syllables, often too fast or too slow) */
+  if (c.fit && !c.fitted && p.frac && c.applyRate) a.addEventListener('loadedmetadata', () => {
+    if (cur !== c || audio !== a || c.fitted || !isFinite(a.duration) || a.duration <= 0) return;
+    c.fitted = true;
+    const total = a.duration / p.frac, left = Math.max(c.fit.floor || 1300, c.fit.due - Date.now()) / 1000;
+    c.rate = Math.max(c.fit.base || 1, Math.min(2, total / left));
+    a.playbackRate = c.rate * c.pitch * speedOf(c);
+  });
   const done = () => { if (cur !== c || audio !== a) return; c.playing = false; audio = null; if (p.last) finish(c); else playPart(); };
   a.onended = done; a.onerror = done; a.play().catch(done);
 }
@@ -101,7 +126,6 @@ function startNext() {
   while (lines.length) {
     const L = lines.shift();
     if (L.dropped) continue;
-    if (Date.now() - L.at > STALE_MS && lines.some((x) => !x.dropped)) { lineDrop(L); said(L, false, 'bỏ qua câu cũ để giọng theo kịp chữ'); continue; }
     L.curAt = Date.now(); L.boost = Math.max(L.boost || 1, backlogBoost());
     cur = L; L.playing = false; playPart(); return;
   }
@@ -115,7 +139,7 @@ function hurry() {
 function enqueue(L, queue) {
   if (!queue) stopAll();
   else {
-    while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());   /* only when far behind (4 lines waiting) */
+    while (lines.length >= BACKLOG_MAX) lineDrop(lines.shift());
     if (cur) hurry();                                    /* the line being read goes faster: the next one is waiting */
     lines.forEach((x) => { x.boost = Math.max(x.boost || 1, 1.15 + 0.12 * lines.length); });
   }
@@ -185,11 +209,18 @@ const api = {
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
   voices: () => ipcRenderer.invoke('voices'),
   /* queue=true for subtitles (wait for the line being read), false for samples and tests (cut in right away) */
-  speakState: () => lastSpeak,
-  speak: async (text, voice, rate, pitch, queue) => {
+  speakState: () => (lastSpeak ? Object.assign({}, lastSpeak, { cho: waits.length ? Math.round(waits.slice().sort((x, y) => x - y)[waits.length >> 1]) : null, choMax: waits.length ? Math.max.apply(null, waits) : null, dangCho: lines.length }) : lastSpeak),
+  /* fit: {due: when the character stops talking (ms), floor: the least time to give the line (ms), base: the speed set in the app} */
+  speak: async (text, voice, rate, pitch, queue, fit) => {
     if (!text) { stopAll(); return; }
     const v = String(voice || '');
-    enqueue({ text, ai: v.startsWith('ai:'), voice: v.startsWith('ai:') ? v.slice(3) : v, rate: rate || 1, pitch: pitch || 1, boost: 1 }, queue);
+    enqueue({ text, ai: v.startsWith('ai:'), voice: v.startsWith('ai:') ? v.slice(3) : v, rate: rate || 1, pitch: pitch || 1, boost: 1, fit: fit && fit.due ? fit : null }, queue);
+  },
+  /* make the voice of a line expected next, now (it is kept; speak() and voiceClip() then answer at once) */
+  voiceWarm: (text, voice, clip) => {
+    const v = String(voice || ''); text = String(text || '').trim(); if (!text) return Promise.resolve(false);
+    if (clip || v.startsWith('ai:')) return ipcRenderer.invoke('voice-warm', 'C', text, v);
+    return Promise.all(splitLine(text).map((t) => ipcRenderer.invoke('voice-warm', 'S', t, v)));
   },
   voiceSettings: () => ipcRenderer.send('voice-settings'),
   az: {
@@ -200,9 +231,9 @@ const api = {
   netInfo: (tvIp) => ipcRenderer.invoke('net-info', tvIp || ''),
   voiceClip: (text, voice) => ipcRenderer.invoke('voice-clip', text, voice),
   /* play a clip made by voiceClip here too (same queue as the subtitles read aloud) */
-  playClip: (clip, rate, pitch, queue) => {
+  playClip: (clip, rate, pitch, queue, fit) => {
     if (!clip || !clip.b64) return;
-    enqueue({ text: '', ai: false, pre: { b64: clip.b64, mime: clip.mime }, rate: rate || 1, pitch: pitch || 1, boost: 1 }, queue);
+    enqueue({ text: '', ai: false, pre: { b64: clip.b64, mime: clip.mime }, rate: rate || 1, pitch: pitch || 1, boost: 1, fit: fit && fit.due ? fit : null }, queue);
   },
   llm: {
     state: () => ipcRenderer.invoke('llm-state'),

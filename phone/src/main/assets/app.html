@@ -5008,7 +5008,7 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   var rate=parseFloat($('hsRate').value);
   if(src!=null&&queue) rate=fitRate(t,src,D?devPick(mode,g,castAutoOn()?who:''):'');
   if(pitch==null){ var ce=castOf(who); pitch=ce&&castAutoOn()?(ce.p||1):1; }
-  if(D){ D.speak(t,devPick(mode,g,castAutoOn()?who:''),rate,pitch,!!queue); return; }
+  if(D){ D.speak(t,devPick(mode,g,castAutoOn()?who:''),rate,pitch,!!queue,src!=null&&queue?S.fitLast:null); return; }
   var v0=mode==='gg:vi'?null:webVoice(mode,g);
   if(PH&&v0&&v0.ph){ try{ PH.speak(t,v0.name,rate,pitch||1,!!queue); }catch(e){} return; }   /* a voice of the phone (Android) */
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
@@ -5041,7 +5041,7 @@ function spwNow(){                                              /* seconds the c
   return Math.max(0.26,Math.min(0.6,m));
 }
 function fitRate(vi,src,voice){
-  var base=parseFloat($('hsRate').value)||1;
+  var base=parseFloat($('hsRate').value)||1; S.fitLast=null;
   if(!fitOn()||!vi) return base;
   var w=Math.max(1,wordsOf(src)), syl=wordsOf(vi);
   if(syl<4) return base;
@@ -5049,6 +5049,7 @@ function fitRate(vi,src,voice){
   var L=S.subLines&&S.subLines[S.subLines.length-1], now=Date.now();
   var late=L&&now-L.from<9000?(now-L.from)/1000:1.5;             /* the character has been talking this long already */
   var left=Math.max(1.3,talk*0.55,talk-late+0.5);
+  S.fitLast={due:now+left*1000,floor:Math.max(1.3,talk*0.55)*1000,base:base};   /* the Windows app sets the speed from the real length of the sound */
   var sps=/^ai:/.test(voice||'')?3.5:/^az:/.test(voice||'')?4.3:3.9;   /* syllables a second at speed 1 */
   var need=syl/sps/left;
   var r=Math.max(base,Math.min(2,need));
@@ -5058,6 +5059,7 @@ function speak(t,res){
   if(!t) return;
   if(!$('hsSpeak').checked){ if(!S.speakOffLog||Date.now()-S.speakOffLog>60000){ S.speakOffLog=Date.now(); log('không đọc: mục Đọc phụ đề đang tắt'); } return; }
   log('đọc ('+speakWhere()+'): '+String(t).replace(/\s+/g,' ').slice(0,60));
+  voAhead(res);
   var where=speakWhere(), mode=voiceMode(), who=(res&&(res.speaker||res._who||res._vk))||'', g=((res&&res.gender)||'').toLowerCase();
   if(mode==='ai') mode='auto';
   var ch=castOf(who);
@@ -5069,24 +5071,59 @@ function speak(t,res){
   /* the TV plays the voice of this computer: the line is made here once, sent over the home network */
   var ce=castOf(who), pitch=ce&&castAutoOn()?(ce.p||1):1;
   var pcVoice=devPick(mode,g,castAutoOn()?who:''), sel=tvVoiceSel(), tvV=sel==='same'?pcVoice:sel, same=tvV===pcVoice;
-  var rate=fitRate(t,src,tvV);
+  var rate=fitRate(t,src,tvV), fit=S.fitLast;
   if(where==='both'&&!same) devSpeak(t,mode,g,who,null,true,src);
-  /* the voice of a line is made the moment its Vietnamese shows, also while the line before it is still being made
-     or sent (before: one after the other, so the TV's voice fell further behind with every line); they still play
-     in order. A line that waited more than 9 s with newer ones behind it is left out, so the voice keeps up */
+  /* the voice of a line is made the moment its Vietnamese shows (or before: voAhead), also while the line before it
+     is still being made or sent; they play in order, and every line is read (the owner's choice, 11/2026: "đọc đủ") */
   var my=(S.clipN=(S.clipN||0)+1), t0=Date.now(), made=D.voiceClip(t,tvV).catch(function(){ return null; });
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
     return made.then(function(c){
-      if(S.clipN-my>=2&&Date.now()-t0>9000){ log('đọc trên TV: bỏ qua một câu cũ để giọng theo kịp chữ'); return; }
+      /* the speed from the real length of the clip and the time the character still talks */
+      if(c&&c.ok&&c.dur>0&&fit){ var lf=Math.max(fit.floor,fit.due-Date.now())/1000, wait=Math.max(0,S.clipN-my); rate=Math.round(Math.max(fit.base,Math.min(2,c.dur/lf*(1+0.15*wait)))*20)/20; }
       /* the chosen voice could not be made for this line: no other voice reads it in between (that sounded like the
          TV's own voice cutting in). Only when it keeps failing (3 lines in a row) this computer reads, so it is not silent */
       if(!c||!c.ok){ S.clipFail=(S.clipFail||0)+1; log('đọc trên TV: chưa tạo được giọng cho câu này'+(c&&c.err==='ai'?' (giọng AI chưa sẵn sàng)':'')+', bỏ qua câu đó');
         if(S.clipFail>=3&&(where==='tv'||where==='both'&&same)) devSpeak(t,mode,g,who,null,true,src); return; }
       S.clipFail=0;
-      if(where==='both'&&same) D.playClip(c,rate,pitch,true);
+      if(where==='both'&&same) D.playClip(c,rate,pitch,true,fit);
       tvSay(c,rate,same?pitch:1);
     });
   }).catch(function(){});
+}
+/* ---------- the voice is ready before the Vietnamese shows (Windows / Mac app) ----------
+   Making a voice takes 0.3-1 s (an AI voice more). voWarm asks for it ahead of time; the app keeps every voice it made
+   (also on disk), so the reading of that line starts with no wait.
+   - voAhead: while a line is read, the 2 lines the shared store expects next (the order players met them);
+   - a translated line waiting its turn to show (takeResult): its voice is made while it waits. */
+function voWarm(vi,who,g,now){
+  try{
+    if(!D||!D.voiceWarm||!vi||!$('hsSpeak').checked) return;
+    var where=speakWhere(), clipTv=where!=='pc'&&tvClipOn(); if(where==='tv'&&!clipTv) return;
+    var mode=voiceMode(); if(mode==='ai') mode='auto';
+    g=String(g||'').toLowerCase(); who=String(who||'').trim(); var ch=castOf(who); if(ch){ if(ch.g) g=ch.g; if(ch.v&&mode==='auto') mode=ch.v; }
+    var pcVoice=devPick(mode,g,castAutoOn()?who:''), t=String(vi).replace(/\s+/g,' ').trim(), jobs=[]; if(t.length<2||t.length>600) return;
+    if(!clipTv) jobs.push([t,pcVoice,false]);
+    else { var sel=tvVoiceSel(), tvV=sel==='same'?pcVoice:sel; jobs.push([t,tvV,true]); if(where==='both'&&tvV!==pcVoice) jobs.push([t,pcVoice,false]); }
+    S.voW=S.voW||{};
+    jobs.forEach(function(x){
+      var k=x[1]+'|'+(x[2]?1:0)+'|'+x[0]; if(S.voW[k]) return; S.voW[k]=1; S.voWn=(S.voWn||0)+1; if(S.voWn>600){ S.voW={}; S.voWn=0; }
+      if(now){ try{ D.voiceWarm(x[0],x[1],x[2]).catch(function(){}); }catch(e){} return; }
+      S.voQ=(S.voQ||Promise.resolve()).then(function(){ return D.voiceWarm(x[0],x[1],x[2]); }).catch(function(){});   /* one after the other: a line that must be read now is not kept waiting behind them */
+    });
+  }catch(e){}
+}
+function voAhead(res){
+  try{
+    if(!D||!D.voiceWarm||!res) return;
+    var T=S.tm; if(!T||!T.ix||!T.seq) return;
+    var k=res._k||trKey(res._src||res.en||''), i0=T.ix[k]; if(i0==null) return;
+    var F=tmFitStore(), n=0;
+    for(var i=i0+1;i<T.seq.length&&i<=i0+4&&n<2;i++){
+      var sk=T.seq[i], e=T.map[sk]; if(!e||!e.vi||tmJunk(e)) continue;
+      var vi=F.m[sk]||e.vi; vi=caseFix(e.en,punctFix(e.en,tmLay(e.en,vi)));   /* as it will show: it ends and is capitalised like the English */
+      voWarm(vi,e.who,e.gd,false); n++;
+    }
+  }catch(e){}
 }
 /* the voice on the TV: the voice of this computer (made here, sent over the home network) or the TV's own voice */
 function tvVoiceSel(){ var s=$('hsTvVoice'); return (s&&s.value)||load('tvVoice','same'); }
@@ -5501,6 +5538,8 @@ function liveDone(seq){ if(S.live[seq]){ delete S.live[seq]; flushReady(); } }
 function takeResult(res,seq,raw){
   delete S.live[seq];
   S.ready.push({res:res,seq:seq,raw:raw,at:Date.now()}); S.ready.sort(function(a,b){ return a.seq-b.seq; });
+  /* its voice is made now, also while the line waits its turn to show */
+  try{ if(D&&D.voiceWarm&&res&&res.vi&&$('hsSpeak').checked){ var w0=splitSpeaker(JSON.parse(JSON.stringify(res)),raw); if(w0&&w0.vi) voWarm(punctFix(w0.en||raw,w0.vi),w0.speaker,w0.gender,true); } }catch(e){}
   flushReady();
 }
 function flushReady(){
@@ -7747,7 +7786,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
