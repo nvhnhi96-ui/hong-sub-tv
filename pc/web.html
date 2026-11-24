@@ -6967,8 +6967,13 @@ function flTick(my){
   for(i=0;i<N;i++) if(S.fl.dirty[i]){ dirtyN++; if(S.fl.still[i]>=2) fresh++; }
   /* the mic button: the player asked for THIS screen, so it is read even while it keeps moving a little (the phone in
      the player's hand sways all the time: parts of a chat were read on one press and not on the next) */
-  if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my,S.fl.mic);
-  else if(S.fl.mic&&dirtyN>=8&&now-S.fl.last>1200) flRead(my,true);
+  /* after the press itself (read at once, everything), the menu is followed: text in a part of the picture that is
+     still moving (a panel sliding in, words being typed, a carousel turning) is taken only when it is read twice
+     with the same words at the same place. Before, every such read was taken as it was: half words and cut lines
+     got boxes and were sent to the AI again and again, over the boxes already there (11/2026: "dịch menu bằng mic
+     ảnh hưởng đến việc tự dịch chữ khác trên màn hình") */
+  if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my,S.fl.mic?'m':false);
+  else if(S.fl.mic&&dirtyN>=8&&now-S.fl.last>1200) flRead(my,'m');
   /* text drawn straight over moving scenery (an objective, a button hint while the player runs): nothing under it
      ever stands still, so it was never read. Seen once, it is looked at again a moment later (same text at the same
      place = text of the screen, not a sign going past); and while the whole picture keeps moving the screen is read
@@ -7012,6 +7017,8 @@ async function flVerify(my){
 }
 async function flRead(my,first){
   var conf=first==='c'; if(conf) first=false;   /* the second look at text seen once over moving scenery: only those places */
+  var micF=first==='m'; if(micF) first=false;   /* following a menu opened with the mic: moving text is confirmed by a second look */
+  var cTol=S.fl.mic?0.05:0.02, cMax=S.fl.mic?12:6;   /* a phone in the player's hand sways: the same text a little further is still the same text */
   S.fl.busy=true; S.fl.last=Date.now(); S.fl.reads++;
   var vw=video.videoWidth, vh=video.videoHeight, g=S.fl.prev, still=S.fl.still;
   /* the region that changed and is still now: read it again, larger, so small text is not missed */
@@ -7023,7 +7030,7 @@ async function flRead(my,first){
   S.ocrBusy=true; var all=[], rdA=null;
   try{
     var part=S.fl.items.length&&x1>=x0&&(x1-x0+1)*(y1-y0+1)<160*90*0.35;   /* boxes up, a small part changed (the cursor moved): that part only */
-    if(conf){ var cl=(S.fl.cands||[]).filter(function(k){ return !k.tried; }).slice(0,4);
+    if(conf){ var cl=(S.fl.cands||[]).filter(function(k){ return !k.tried; }).slice(0,S.fl.mic?8:4);
       for(var ci=0;ci<cl.length;ci++){ var k0=cl[ci], kh=k0.h||0.05, cx=Math.max(0,k0.x-k0.w*0.1-0.01), cy=Math.max(0,k0.y-kh*0.5-0.01), cw=Math.min(1-cx,k0.w*1.2+0.02), chh=Math.min(1-cy,kh*2+0.02);
         all=all.concat(await fsRead(cx*vw,cy*vh,cw*vw,chh*vh,1100)); } }
     else if(!part){ all=all.concat(await fsRead(0,0,vw,vh,1600)); rdA={x:0,y:0,w:1,h:1}; }
@@ -7061,7 +7068,7 @@ async function flRead(my,first){
     /* moving things (signs going past) are not read. But text of the screen over moving scenery is: it is at the
        same place in two readings, a sign has moved on */
     var mv=!first&&flStill(b)<0.7, c0=null;
-    if(mv){ c0=cOld.filter(function(k){ return cNow-k.at<15000&&Math.abs(k.x+k.w/2-b.x-b.w/2)<0.02&&Math.abs(k.y+(k.h||0)/2-b.y-b.h/2)<0.02&&(fsSameText(k.en,b.en)||dice(k.en,b.en)>0.8); })[0]; if(c0) c0.hit=1; }
+    if(mv){ c0=cOld.filter(function(k){ return cNow-k.at<15000&&Math.abs(k.x+k.w/2-b.x-b.w/2)<cTol&&Math.abs(k.y+(k.h||0)/2-b.y-b.h/2)<cTol&&(fsSameText(k.en,b.en)||dice(k.en,b.en)>0.8); })[0]; if(c0) c0.hit=1; }
     var hud=!!(c0&&cNow-c0.at>=600);
     var seenOnce=function(){ if(!conf) cNew.push(c0||{en:b.en,x:b.x,y:b.y,w:b.w,h:b.h,at:cNow}); };
     if(flSkip(b,hud)){ if(mv&&!hud&&!flSkip(b,true)) seenOnce(); return; }   /* a few words that may be a sign: the second look tells */
@@ -7081,10 +7088,30 @@ async function flRead(my,first){
   });
   /* seen once: looked at again in a moment. After that second look, the ones not found there wait for the next
      whole-screen read (no third look) */
-  S.fl.cands=conf?cOld.filter(function(k){ return !k.hit&&cNow-k.at<15000; }).map(function(k){ k.tried=1; return k; }):cNew.slice(0,6);
+  S.fl.cands=conf?cOld.filter(function(k){ return !k.hit&&cNow-k.at<15000; }).map(function(k){ k.tried=1; return k; }):cNew.slice(0,cMax);
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
   add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c==null&&!(b.ic&&b.ic.length)){ var gq=glossExact(b.en); if(gq) c=gq; } if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
+  /* text still being written (typed letter by letter, a line filling in) was read half-way, got a box and went to
+     the AI; a moment later the longer text did the same, and again: pieces of sentences in boxes over each other,
+     and the AI asked several times for one line. A new text with fresh changes inside it waits a moment: when the
+     picture at its place (and just after its end) has changed again, it is not taken now and is read again once it
+     stands. The same words read a second time are taken at once (a text over a moving picture never "stands") */
+  var held=add.filter(function(b){ return !b.hud&&!first&&flStill(b)<0.985&&!(S.fl.heldT&&S.fl.heldT[norm(b.en)]); });
+  if(held.length){
+    var ext=function(b){ return {x:b.x,y:b.y,w:Math.min(1-b.x,b.w+0.035),h:Math.min(1-b.y,b.h+0.012)}; };
+    held.forEach(function(b){ b.sigX=flPatch(g2,ext(b)); });
+    add=add.filter(function(b){ return held.indexOf(b)<0; }); need=need.filter(function(b){ return held.indexOf(b)<0; });
+    later(function(){
+      if(my!==S.fl.seq||!S.fl.on) return; var gN=S.fl.prev, ok=[];
+      held.forEach(function(b){ var p=flPatch(gN,ext(b)), ch=0; for(var q=0;q<p.length;q++) if(Math.abs(p[q]-b.sigX[q])>18) ch++;
+        if(ch>Math.max(1,p.length*0.02)){ (S.fl.heldT=S.fl.heldT||{})[norm(b.en)]=1; var r=flRect(ext(b)); for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++) S.fl.dirty[y*160+x]=1; }   /* read again when it stands */
+        else ok.push(b); });
+      if(ok.length){ ok.forEach(function(b){ var r=flRect(b); for(var y=r[1];y<r[3];y++) for(var x=r[0];x<r[2];x++) S.fl.dirty[y*160+x]=1; }); S.fl.heldT=S.fl.heldT||{}; ok.forEach(function(b){ S.fl.heldT[norm(b.en)]=1; }); S.fl.last=0; }   /* it stands: taken on the next read, at once */
+      var hk=Object.keys(S.fl.heldT||{}); if(hk.length>200) S.fl.heldT={};
+    },560);
+    if(!add.length){ S.fl.busy=false; return; }
+  }
   S.fl.items=S.fl.items.concat(add); flDraw();
   log('chữ trên màn hình: '+add.length+' khối mới'+(need.length?' ('+need.length+' cần dịch)':'')+': '+add.map(function(b){ return b.en.replace(/\s+/g,' ').slice(0,40); }).join(' | ').slice(0,200));
   S.fl.busy=false;
