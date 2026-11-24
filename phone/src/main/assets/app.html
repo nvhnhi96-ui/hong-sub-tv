@@ -3392,7 +3392,7 @@ async function zoneTick(force,only){
         var w0=Date.now(); while(S.ocrBusy&&Date.now()-w0<2000) await new Promise(function(r){setTimeout(r,40);});
         S.ocrBusy=true; try{ var o=await HsOcr.read(zcv,{blocks:true,icons:true}); text=zText(o); zic=o.zic; bl=zBlocks(o,z.h,zcv).filter(function(b){ if(notiLike(b.en)){ log(zName(z)+': bỏ qua bảng thông báo: '+String(b.en).replace(/\n/g,' / ').slice(0,80)); return false; } return true; }); if(notiLike(text)) text=bl.length?bl.map(function(b){ return b.en; }).join('\n'):''; if(window.__zdbg) window.__zdbg.push({B:o.blocks.map(function(b){ return [b.text,Math.round(b.x),Math.round(b.y),Math.round(b.w),Math.round(b.h),+b.conf.toFixed(2)]; }),L:o.lines.map(function(l){ return [l.text,Math.round(l.y),+l.conf.toFixed(2)]; }),bl:bl.map(function(b){ return b.en; })}); try{ bl.forEach(function(b){ var c=zColors(zcv,b); b.bg=c.bg; b.fg=c.fg; }); }catch(e){}
           if(!force&&zPlayOnly(z)&&menuLike(o.lines)){ z.lastText=''; if(z.vi||z.items) zWipe(z); text=''; bl=null; }   /* a game menu (a list of short items): not while playing */
-          if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); text=''; bl=null; } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
+          if(!force&&guardOn()&&S.running){ var gk=guardKind(o.lines.filter(function(l){ return l.conf>=0.6; }).map(function(l){ return l.text; })); if(gk){ guardSet(gk); if(GUARD.kind){ text=''; bl=null; } } }   /* PS5 screen or map read in the area: stop here */ var la=linesAlign(o.lines.filter(function(l){ return l.conf>=0.55&&l.text; }),zcv.width); if(la) z.alAuto=la; } finally{ S.ocrBusy=false; }
       }
       if(!text&&!ocrOn()&&(keys().length||groqKeys().length)){
         var r=await ask('Read the '+LN()+' text in this crop of a video game screen ('+ZKINDS[z.kind].d+') and translate it into short, clear Vietnamese, one line per line. Keep names as they are. Leave out controller hints (L1, R2, R3, ✕ ○ △ □, "Press ... to ...", "Back / Select"). Return JSON {"vi":""}.\n'+context(),zcv.toDataURL('image/jpeg',.85).split(',')[1],{type:'OBJECT',properties:{vi:{type:'STRING'}},required:['vi']},'{"vi":""}');
@@ -6688,19 +6688,20 @@ var PS_WEAK_VI={opt:/^tuy chon$/,act:/^hoat dong$/,troph:/^danh hieu$/,notif:/^t
 var PS_ONLY={games:1,media:1,notif:1,friends:1,party:1,acc:1,mic:1,switcher:1,trophy:1,act:1,wish:1,installed:1,purchased:1,captures:1,addons:1,ready:1,seeall:1,vi_act:1,vi_troph:1,vi_notif:1,vi_friends:1,vi_games:1,vi_media:1};
 var GAME_W=/\b(chapter|mission|checkpoint|retry|restart mission|resume|continue|quit|load game|save game|photo (studio|mode)|objectives?|quests?|difficulty|controls|gameplay|brightness|graphics|subtitles|new game|main menu|episode|act [0-9ivx]+)\b/;
 function guardKind(texts){
-  var weak={}, mp={}, strong=false, game=false;
+  var weak={}, mp={}, strong=false, game=false, why=[];
   (texts||[]).forEach(function(t0){
     var sv=String(t0||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ');
-    if(PS_VI.test(sv)) strong=true;   /* the PS5's own screens in Vietnamese */
+    var mv=PS_VI.exec(sv); if(mv){ strong=true; why.push(mv[0]); }   /* the PS5's own screens in Vietnamese */
     if(sv.trim().split(' ').length<=3) Object.keys(PS_WEAK_VI).forEach(function(k){ if(PS_WEAK_VI[k].test(sv.trim())) weak['vi_'+k]=1; });
     var s=String(t0||'').toLowerCase().replace(/[^a-z0-9&+\- ]+/g,' ').replace(/\s+/g,' ').trim(); if(!s) return;
-    if(PS_STRONG.test(s)) strong=true;
+    var ms=PS_STRONG.exec(s); if(ms){ strong=true; why.push(ms[0]); }
     if(GAME_W.test(s)) game=true;
     if(s.split(' ').length>4) return;                                       /* only short pieces: menu words and button hints */
     Object.keys(PS_WEAK).forEach(function(k){ if(PS_WEAK[k].test(s)) weak[k]=1; });
     Object.keys(MAP_W).forEach(function(k){ if(MAP_W[k].test(s)) mp[k]=1; });
   });
-  var psw=Object.keys(weak).filter(function(k){ return PS_ONLY[k]; }).length;   /* Store, Settings, Online, Help... are in game menus too: two of the console's own words are needed */
+  var psw=Object.keys(weak).filter(function(k){ return PS_ONLY[k]; }).length;
+  GUARD.why=(why.length?why:Object.keys(weak)).slice(0,6).join(', '); GUARD.strong=strong;   /* the words that made it look like the PS's screen: in the log and the error report */   /* Store, Settings, Online, Help... are in game menus too: two of the console's own words are needed */
   if(strong||!game&&Object.keys(weak).length>=3&&psw>=2||weak.games&&weak.media||weak.vi_games&&weak.vi_media) return 'ps';   /* the Remote Play banner ("Đã kết nối Chơi từ xa") shows over games too: not a sign */   /* "Games  Media": the two tabs at the top of the PS5 home screen */
   var mk=Object.keys(mp); if(mk.length>=2&&mk.some(function(k){ return MAP_ONLY[k]; })) return 'map';
   return '';
@@ -6709,8 +6710,14 @@ function guardKind(texts){
 function guardHint(s){ s=String(s||'').toLowerCase(); if(s.split(/\s+/).length>8) return false;
   return Object.keys(MAP_W).some(function(k){ return MAP_W[k].test(s); })||/\b(games|media|notifications|trophies|activities|switcher|game base)\b/.test(s); }
 function guardSet(k){
+  /* the picture is moving like a game being played: words that look like the PS's own screens (a game's own menu,
+     a HUD, a sign in the world) do not stop the translating, and a pause that was started is ended. Before, a word
+     seen at the edge of Assassin's Creed Mirage kept translation stopped for minutes while the player was playing. */
+  if(k==='ps'&&playing()&&(!GUARD.strong||S.mv.hist.slice(-5).every(function(f){ return f>=0.05; }))){
+    if(Date.now()-(GUARD.vetoAt||0)>60000){ GUARD.vetoAt=Date.now(); log('chữ giống màn hình máy PS ('+(GUARD.why||'')+') nhưng hình đang chuyển động như đang chơi: vẫn dịch'); }
+    k=''; }
   if(k){ GUARD.neg=0; if(GUARD.kind===k) return;
-    GUARD.kind=k; log('ngừng dịch: '+(k==='map'?'đang mở bản đồ':'đang ở màn hình của máy PS'));
+    GUARD.kind=k; log('ngừng dịch: '+(k==='map'?'đang mở bản đồ':'đang ở màn hình của máy PS (thấy chữ: '+(GUARD.why||'')+')'));
     coverHide(); S.cand=null; clearTimeout(S.holdT); $('hsVi').innerHTML=''; $('hsEn').textContent=''; S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''});
     S.zones.forEach(function(z){ clearTimeout(ZT[z.id]); var had=!!z.vi; z.vi=''; z.items=null; z.lastText=''; z.doneMask=null; z.prevMask=null; z.pending=false; if(had) zTv(z); });
     zShow(); zList(); zPush();
@@ -7919,7 +7926,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
@@ -8111,7 +8118,7 @@ async function flRead(my,first){
   if(my!==S.fl.seq||!S.fl.on){ S.fl.busy=false; return; }
   if(guardOn()&&S.running){ var gk=guardKind([].concat.apply([],all.map(function(b){ return b.en.split('\n'); })));   /* the whole picture: the PS5 or PS4 home screen, the store, settings, or a map */
     if(gk==='map'&&mapTrOn()) guardSet('map');   /* the game map with "Dịch bản đồ game" on: its text is translated (the place names stay), not dropped */
-    else if(gk){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); guardSet(gk); S.fl.busy=false; return; } }
+    else if(gk){ guardSet(gk); if(GUARD.kind){ log('chữ trên màn hình: '+(gk==='ps'?'màn hình của máy PS':'bản đồ')+', không dịch'); S.fl.busy=false; return; } } }
   all=fsSplitWins(all); all.sort(fsDupOrder);
   var blocks=[];
   all.forEach(function(b){ if(!blocks.some(function(k){ return fsDup(k,b); })) blocks.push(b); });
