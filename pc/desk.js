@@ -592,12 +592,15 @@ function steps(){
 function tvCheck(){
   var ip=$('dkTzIp').value.trim(); tvi=null;
   if(!ip){ line('dkTzS1',null,'Chọn TV ở bước 2 để Hóng Sub kiểm tra bước này.'); steps(); return Promise.resolve(); }
+  if(window.hsNetLook) window.hsNetLook();
   line('dkTzS1',null,'Đang hỏi TV '+ip+'...'); steps();
   return D.samsung.info(ip).then(function(i){
-    var pcs=(st&&st.pcIps)||[]; tvi=i||null;
+    var pcs=(i&&i.pcIps)||(st&&st.pcIps)||[]; tvi=i||null;
+    if(i&&i.ok&&i.pcIp){ window.hsPcIp=i.pcIp; $('dkTzPcIp').textContent=i.pcIp; }   /* the number to type: the address this computer really uses to reach this TV */
     if(!i||!i.ok) line('dkTzS1',false,'Không thấy TV Samsung ở '+ip+'. Kiểm tra TV đang bật, cùng mạng wifi/modem với máy tính, IP gõ đúng.');
     else if(!i.dev) line('dkTzS1',false,(i.name||'TV')+': Developer Mode đang tắt. Làm lại bước 1 và nhớ tắt TV hẳn rồi bật lại.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0&&pcs.indexOf(i.devIp.split('.').reverse().join('.'))>=0) line('dkTzS1',false,(i.name||'TV')+': TV lưu Host PC IP bị đảo ngược ('+i.devIp+'). Vào lại bảng Developer mode, gõ IP theo thứ tự ngược: '+pcs.filter(function(x){return x===i.devIp.split('.').reverse().join('.');})[0].split('.').reverse().join('.')+', rồi khởi động lại TV.');
+    else if(i.devIp&&i.pcIp&&i.devIp!==i.pcIp&&pcs.indexOf(i.devIp)>=0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+'. Số này là của máy tính này, nhưng máy tính có nhiều đường mạng (Wi-Fi và dây mạng) và đang nối với TV bằng IP '+i.pcIp+'. Sửa Host PC IP trên TV thành '+i.pcIp+' (hoặc tắt bớt Wi-Fi hay rút dây mạng), rồi tắt TV hẳn, bật lại.');
     else if(i.devIp&&pcs.indexOf(i.devIp)<0) line('dkTzS1',false,(i.name||'TV')+': Host PC IP đang là '+i.devIp+', phải là '+(window.hsPcIp||pcs[0]||'IP máy tính này')+'. Sửa lại trên TV rồi tắt TV hẳn, bật lại.');
     else line('dkTzS1',true,(i.name||'TV Samsung')+(i.model?' ('+i.model+')':'')+': Developer Mode đã bật cho máy tính này.');
     steps();
@@ -692,7 +695,9 @@ refresh();
     ['hsTvGuidePcIp','dkTzPcIp'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=n.ip; });
     window.hsPcIp=n.ip;
   }
-  function look(){ var t=document.getElementById('hsTvIp'), z=document.getElementById('dkTzIp'); D.netInfo((t&&t.value.trim())||(z&&z.value.trim())||'').then(fill).catch(function(){}); }
+  function look(){ var t=document.getElementById('hsTvIp'), z=document.getElementById('dkTzIp'), A=window.hsApi, sam=A&&A.tvType&&A.tvType()==='samsung';
+    var tv=sam?((z&&z.value.trim())||(t&&t.value.trim())):((t&&t.value.trim())||(z&&z.value.trim()));   /* the TV being set up decides which of this computer's addresses to show */
+    D.netInfo(tv||'').then(fill).catch(function(){}); }
   look(); setInterval(look,60000);
   window.hsNetLook=look;
 })();

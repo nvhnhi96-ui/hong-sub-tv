@@ -19,6 +19,26 @@ function homeIps(tvIp) {
   const score = (x) => (tvIp && x.ip.startsWith(pre) ? 0 : 10) + (VIRT.test(x.name) ? 5 : 0) + (/^(192\.168|10\.)/.test(x.ip) ? 0 : /^172\.(1[6-9]|2\d|3[01])/.test(x.ip) ? 1 : 3);
   return list.sort((a, b) => score(a) - score(b)).map((x) => x.ip);
 }
+/* the address this computer really uses to reach the TV: the system picks it from its routes (no packet is sent).
+   With Wi-Fi and a network cable both on, only this one is accepted by a TV that checks "Host PC IP" */
+function routeIp(tvIp) {
+  return new Promise((resolve) => {
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(String(tvIp || ''))) { resolve(''); return; }
+    let s, done = false;
+    const end = (v) => { if (done) return; done = true; try { s.close(); } catch (e) { /* ignore */ } resolve(v || ''); };
+    try {
+      s = dgram.createSocket('udp4');
+      s.on('error', () => end(''));
+      s.connect(26101, String(tvIp), (err) => { if (err) { end(''); return; } try { end(s.address().address); } catch (e) { end(''); } });
+      setTimeout(() => end(''), 1500);
+    } catch (e) { end(''); }
+  });
+}
+/* "192.168.001.005 " as some TVs keep it -> "192.168.1.5" */
+function normIp(x) {
+  const p = String(x || '').trim().split('.');
+  return p.length === 4 && p.every((o) => /^\d{1,3}$/.test(o)) ? p.map((o) => String(parseInt(o, 10))).join('.') : String(x || '').trim();
+}
 let ssh2 = null;
 const sshLib = () => (ssh2 = ssh2 || require('./vendor/ssh2.js'));   /* loaded only when a TV LG is used */
 
@@ -264,4 +284,4 @@ function selfTest() {
   const ok = sshLib().utils.parseKey(privateKey, 'ABC123'), bad = sshLib().utils.parseKey(privateKey, 'WRONG1');
   return { encrypted: /ENCRYPTED/.test(privateKey), opens: !(ok instanceof Error) && !!ok && ok.type === 'ssh-rsa', wrongRejected: bad instanceof Error };
 }
-module.exports = { setup, APP_ID, selfTest, homeIps };
+module.exports = { setup, APP_ID, selfTest, homeIps, routeIp, normIp };

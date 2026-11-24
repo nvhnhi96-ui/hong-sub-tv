@@ -19,6 +19,14 @@ const tizenModule = require('./tizen');
 const tzRaw = require('./tzraw');
 const llm = require('./llm');
 let lgApi = null;   /* the home-network server for the TV apps (lg.js) */
+/* this computer's "ip:port" for a TV: the address the system really uses to reach that TV comes first */
+async function pcAddr(tvIp) {
+  const a = lgApi && lgApi.myAddr ? lgApi.myAddr(tvIp || '') : '';
+  const r = tvIp ? await lgModule.routeIp(tvIp).catch(() => '') : '';
+  if (!r || !require('./lg').homeIps(tvIp).includes(r)) return a;
+  const port = a ? a.split(':')[1] : '';
+  return port ? r + ':' + port : r;
+}
 
 const SELFTEST = process.argv.includes('--selftest') || process.env.HS_SELFTEST === '1';
 const ROOT = __dirname;
@@ -1024,10 +1032,10 @@ function setupIpc() {
   /* Android TV: the clip goes to the TV in the message itself (the TV may not reach this computer through Windows Firewall) */
   ipcMain.handle('tv-say', (e, ip, msg) => tvHttp(ip, '/sub', msg));
   /* this computer on the home network: the IP the TVs need, and the port Hóng Sub answers them on */
-  ipcMain.handle('net-info', (e, tvIp) => {
+  ipcMain.handle('net-info', async (e, tvIp) => {
     tvIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(String(tvIp || '')) ? String(tvIp) : '';
     const all = require('./lg').homeIps(tvIp);
-    const a = lgApi && lgApi.myAddr ? lgApi.myAddr(tvIp) : '';
+    const a = await pcAddr(tvIp);
     const pre = tvIp.split('.').slice(0, 3).join('.') + '.';
     return { ip: a ? a.split(':')[0] : (all[0] || ''), port: a ? +a.split(':')[1] : 0, all, sameNet: tvIp ? all.some((x) => x.startsWith(pre)) : null };
   });
@@ -1248,9 +1256,9 @@ app.whenReady().then(async () => {
   setupCapture();
   setupIpc();
   try { lgApi = lgModule.setup({ ipcMain, app, net, getWin: () => win, log: null }); } catch (e) { console.error('lg', e); }
-  try { tizenModule.setup({ ipcMain, net, getWin: () => win, cfgDir: app.getPath('userData'), lanAddr: async () => (lgApi && lgApi.myAddr ? lgApi.myAddr('') : '') }); } catch (e) { console.error('samsung', e); }
+  try { tizenModule.setup({ ipcMain, net, getWin: () => win, cfgDir: app.getPath('userData'), lanAddr: async (tvIp) => pcAddr(tvIp || '') }); } catch (e) { console.error('samsung', e); }
   try { llm.setup({ ipcMain, app, net, getWin: () => win, get cfg() { return cfg; }, saveCfg }); } catch (e) { console.error('local ai', e); }
-  try { tzRaw.setup({ ipcMain, BrowserWindow, getWin: () => win, lanAddr: async (tvIp) => (lgApi && lgApi.myAddr ? lgApi.myAddr(tvIp || '') : '') }); } catch (e) { console.error('samsung auto', e); }
+  try { tzRaw.setup({ ipcMain, BrowserWindow, getWin: () => win, lanAddr: async (tvIp) => pcAddr(tvIp || '') }); } catch (e) { console.error('samsung auto', e); }
   ps = psModule.setup({ userData: app.getPath('userData'), helperPath: rpHelper, getWin: () => win, log: (m) => { if (SELFTEST) { try { fs.appendFileSync(path.join(process.env.HS_SELFTEST_OUT || os.tmpdir(), 'log.txt'), m + '\n'); } catch (e) { /* ignore */ } } } });
   createOverlay();
   if (!SELFTEST) { setTimeout(updateTick, 15000); setInterval(updateTick, 30 * 60 * 1000); }

@@ -10,6 +10,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const dgram = require('dgram');
+const { routeIp, normIp } = require('./lg');
 
 const PKG_ID = 'HongSubTv1.HongSub';
 const WGT_URL = 'https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/download/hong-sub-samsung.wgt';
@@ -81,10 +82,16 @@ function find() {
 }
 
 /* what the TV says about itself on port 8001: name, model, and whether Developer Mode is on and for which computer */
-function info(ip) {
+async function info(ip) {
+  let i = await info1(ip, 2500);
+  if (!i.ok && i.err === 'timeout') i = await info1(ip, 5000);   /* a TV that just woke up answers slowly */
+  if (i.ok) { i.devIp = normIp(i.devIp); i.pcIps = myIps(); const r = await routeIp(ip).catch(() => ''); i.pcIp = i.pcIps.includes(r) ? r : ''; }
+  return i;
+}
+function info1(ip, ms) {
   return new Promise((resolve) => {
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(String(ip || ''))) { resolve({ ok: false, err: 'ip' }); return; }
-    const rq = http.get({ host: ip, port: 8001, path: '/api/v2/', timeout: 2500 }, (res) => {
+    const rq = http.get({ host: ip, port: 8001, path: '/api/v2/', timeout: ms }, (res) => {
       let x = ''; res.setEncoding('utf8');
       res.on('data', (d) => { x += d; });
       res.on('end', () => {
@@ -127,12 +134,13 @@ function run(exe, args, ms, onLine) {
 /* the TV would not take the install connection: what it says about itself (port 8001) names the one step that is missing */
 async function whyClosed(ip, pc) {
   const d = await info(ip).catch(() => null);
-  const mine = myIps(), my = String(pc || '').split(':')[0] || mine[0] || '';
+  const mine = myIps(), my = (d && d.pcIp) || String(pc || '').split(':')[0] || mine[0] || '';
   const boot = 'khởi động lại hẳn TV: giữ nút nguồn trên remote khoảng 5 giây tới khi TV tắt rồi tự bật lại (hoặc rút dây điện TV 30 giây rồi cắm lại; bấm tắt bình thường chưa đủ)';
   const open = 'Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 trên remote › Developer mode: On, Host PC IP: ' + (my || 'IP của máy tính này') + ', bấm OK';
   if (!d || !d.ok) return '';   /* the TV says nothing on 8001: the general advice */
   const name = d.name ? ' (' + d.name + ')' : '';
   if (!d.dev) return 'TV' + name + ' chưa bật Developer mode nên chưa nhận cài app. ' + open + ', rồi ' + boot + '. Xong bấm Cài lại.';
+  if (d.devIp && d.pcIp && d.devIp !== d.pcIp && mine.indexOf(d.devIp) >= 0) return 'TV' + name + ' đang ghi Host PC IP là ' + d.devIp + '. Số này đúng là của máy tính này, nhưng máy tính có nhiều đường mạng (Wi-Fi và dây mạng) và đang nối với TV bằng IP ' + d.pcIp + '. Sửa ô Host PC IP trên TV thành ' + d.pcIp + ' (hoặc tắt bớt Wi-Fi hay rút dây mạng), rồi ' + boot + '. Xong bấm Cài lại.';
   if (d.devIp && mine.length && mine.indexOf(d.devIp) < 0) return 'TV' + name + ' đã bật Developer mode nhưng đang ghi Host PC IP là ' + d.devIp + ', còn máy tính này là ' + (my || mine.join(' / ')) + '. Sửa ô Host PC IP trên TV cho đúng, rồi ' + boot + '. Xong bấm Cài lại.';
   return 'TV' + name + ' đã bật Developer mode đúng cho máy tính này nhưng chưa nhận cài app. Hãy ' + boot + '. Nếu máy tính đang bật VPN thì tắt đi. Rồi bấm Cài lại.';
 }
@@ -190,7 +198,7 @@ function setup({ ipcMain, net, getWin, cfgDir, lanAddr }) {
     if (!fs.existsSync(path.join(src, 'config.xml'))) return { ok: false, err: 'Không mở được gói app: ' + ex.out.slice(-200) };
     ['author-signature.xml', 'signature1.xml'].forEach((f) => { try { fs.unlinkSync(path.join(src, f)); } catch (e) { /* ignore */ } });
     /* the TV app starts already paired: same code as here, and the address of this computer on the home network */
-    const pc = lanAddr ? await lanAddr() : '';
+    const pc = lanAddr ? await lanAddr(ip) : '';
     fs.writeFileSync(path.join(src, 'preset.js'), 'window.HS_PRESET=' + JSON.stringify({ code: String(code || '').toUpperCase(), pc: pc || '' }) + ';\n');
 
     say('Đang nối với TV ' + ip + '...');

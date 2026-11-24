@@ -10010,7 +10010,7 @@ var TZI=(function(){
        turns "the install port is closed" into the one step that is missing on this TV */
     function tvSays(){
       var q;
-      try{ q=(D&&D.samsung&&D.samsung.info)?D.samsung.info(ip).then(function(r){ return r&&r.ok?{developerMode:r.dev?'1':'0',developerIP:r.devIp||'',name:r.name||''}:null; })
+      try{ q=(D&&D.samsung&&D.samsung.info)?D.samsung.info(ip).then(function(r){ return r&&r.ok?{developerMode:r.dev?'1':'0',developerIP:r.devIp||'',name:r.name||'',pcIp:r.pcIp||'',pcIps:r.pcIps||[]}:null; })
         :(DPS&&DPS.lan&&DPS.lan.get)?DPS.lan.get(ip+':8001','/api/v2/',null).then(function(r){ return r&&r.device?r.device:null; })
         :Promise.resolve(null); }catch(x){ q=Promise.resolve(null); }
       return Promise.race([q.catch(function(){ return null; }),new Promise(function(ok){ setTimeout(function(){ ok(null); },3500); })]);
@@ -10025,8 +10025,12 @@ var TZI=(function(){
       if(m!=='refused'&&m!=='closed') throw e;
       return tvSays().then(function(d){
         var on=d?String(d.developerMode)==='1':null, tip=d?String(d.developerIP||'').trim():'', name=d&&d.name?' ('+String(d.name).replace(/^\[TV\]\s*/,'')+')':'';
-        var wrong=on&&tip&&my&&tip!==my;
+        if(/^\d+\.\d+\.\d+\.\d+$/.test(tip)) tip=tip.split('.').map(function(o){ return String(parseInt(o,10)); }).join('.');   /* "192.168.001.005" as some TVs keep it */
+        if(d&&d.pcIp){ my=d.pcIp; myT=my; open='Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 trên remote › Developer mode: On, Host PC IP: '+myT+', bấm OK'; fix=open+', rồi '+boot+'.'; }   /* the address this computer really uses to reach the TV */
+        var mine=(d&&d.pcIps)||[], other=on&&tip&&my&&tip!==my&&mine.indexOf(tip)>=0;
+        var wrong=on&&tip&&my&&tip!==my&&!other;
         var t=on===false?'TV'+name+' chưa bật Developer mode nên chưa nhận cài app. '+fix+' Xong bấm Cài lại.'
+          :other?'TV'+name+' đang ghi Host PC IP là '+tip+'. Số này là của '+dev+' này, nhưng '+dev+' có nhiều đường mạng (Wi-Fi và dây mạng) và đang nối với TV bằng IP '+my+'. Sửa ô Host PC IP trên TV thành '+my+' (hoặc tắt bớt Wi-Fi hay rút dây mạng), rồi '+boot+'. Xong bấm Cài lại.'
           :wrong?'TV'+name+' đã bật Developer mode nhưng đang ghi Host PC IP là '+tip+', còn '+dev+' này là '+my+'. '+open.replace('Developer mode: On, ','')+' (sửa đúng số này), rồi '+boot+'. Xong bấm Cài lại.'
           :on&&m==='refused'?'TV'+name+' đã bật Developer mode'+(tip?' đúng cho '+dev+' này':'')+' nhưng chưa khởi động lại nên chưa nhận cài app. Hãy '+boot+', rồi bấm Cài lại.'
           :on?'TV'+name+' đã bật Developer mode nhưng vẫn từ chối '+dev+' này. Hãy '+boot+'.'+(D?' Nếu máy tính đang bật VPN thì tắt đi; máy tính và TV phải chung một modem/Wi-Fi.':'')+' Rồi bấm Cài lại.'
