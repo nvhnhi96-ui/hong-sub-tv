@@ -19,9 +19,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Keeps Hóng Sub TV up to date by itself: looks at the newest release on GitHub, downloads hong-sub-tv.apk
- * and hands it to Android's installer. On Android 12+ later updates go through without a press once this app
- * installed itself; otherwise Android shows one "Cập nhật" button.
+ * Keeps the Hóng Sub phone app (the copy from honggame.store) up to date by itself: looks at the newest release on
+ * GitHub, downloads hong-sub-android.apk and hands it to Android's installer. On Android 12+ later updates go through
+ * without a press once this app installed itself; otherwise Android shows one "Cập nhật" button. Each step is told to
+ * the page (Hỗ trợ › Phiên bản), which also has a "Kiểm tra cập nhật" button.
  */
 final class Updater {
     static final String STORE = "site";
@@ -32,6 +33,9 @@ final class Updater {
 
     private static volatile boolean running = false;
     private static long lastCheck = 0;
+    /* the last step, for the page when it opens after the check began: {"t":..,"busy":..} */
+    static volatile String last = "";
+    static String state() { return last; }
 
     /** "1.0.78" -> 78 (the build number), 0 if it cannot be read */
     static int build(String v) {
@@ -64,7 +68,9 @@ final class Updater {
     static void check(Context ctx, boolean userHere, long minGapMs, Listener ui) {
         final Context c = ctx.getApplicationContext();
         final Handler main = new Handler(Looper.getMainLooper());
-        final Listener say = (t, b) -> { if (ui != null) main.post(() -> ui.onState(t, b)); };
+        final Listener say = (t, b) -> {
+            try { last = new JSONObject().put("t", t).put("busy", b).toString(); } catch (Exception ignored) { }
+            if (ui != null) main.post(() -> ui.onState(t, b)); };
         if (running) return;
         if (System.currentTimeMillis() - lastCheck < minGapMs) return;
         running = true; lastCheck = System.currentTimeMillis();
@@ -86,7 +92,7 @@ final class Updater {
                 if (!userHere && !silentPossible(c)) {
                     // the game is on: do not throw a dialog over it, ask next time the app is opened
                     c.getSharedPreferences("hongsub", Context.MODE_PRIVATE).edit().putString("updWaiting", nv).apply();
-                    say.onState("Có bản " + nv + ". Mở app Hóng Sub TV để cập nhật.", false);
+                    say.onState("Có bản " + nv + ". Mở app Hóng Sub để cập nhật.", false);
                     return;
                 }
                 say.onState("Đang tải bản " + nv + "...", true);
@@ -122,7 +128,7 @@ final class Updater {
             Intent done2 = new Intent(c, UpdateReceiver.class).setAction(UpdateReceiver.ACTION);
             int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
             PendingIntent pend = PendingIntent.getBroadcast(c, id, done2, fl);
-            say.onState("Đang cài bản " + nv + ". Nếu TV hỏi, bấm Cập nhật.", true);
+            say.onState("Đang cài bản " + nv + ". Android hỏi thì bấm Cập nhật (lần đầu có thể phải cho phép Hóng Sub cài ứng dụng).", true);
             s.commit(pend.getIntentSender());
         } catch (Exception e) {
             try { pi.abandonSession(id); } catch (Exception ignored) { }

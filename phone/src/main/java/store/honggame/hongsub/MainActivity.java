@@ -117,8 +117,13 @@ public class MainActivity extends Activity {
         web.loadDataWithBaseURL(BASE, html, "text/html", "utf-8", null);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
-        Updater.check(this, true, 10 * 60 * 1000L, null);
+        /* a newer Hóng Sub: download and hand it to Android's installer (honggame.store copy), each step told to the
+           page; a little later, so the page is there to hear it */
+        main.postDelayed(() -> Updater.check(this, true, 10 * 60 * 1000L, UPD), 5000);
     }
+    static final Updater.Listener UPD = (t, busy) -> {
+        try { event("upd", new org.json.JSONObject().put("t", t).put("busy", busy).toString()); } catch (Exception ignored) { }
+    };
 
     private String readAsset(String name) {
         try (InputStream in = getAssets().open(name)) {
@@ -265,6 +270,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }
         /* "site" (downloaded from honggame.store) or "play" (Google Play): the Play copy does not sell VIP inside the app */
         @JavascriptInterface public String store() { return Updater.STORE; }
+        /* the update check's last step ({"t":..,"busy":..} or "") */
+        @JavascriptInterface public String updState() { return Updater.state(); }
         /* "Dịch khi tắt màn hình": on while translating, off when it stops */
         @JavascriptInterface public void awake(boolean on) { AwakeService.set(MainActivity.this, on); if (on) main.post(MainActivity.this::askBattery); }
         /* PS5 / PS4 inside Hóng Sub: where the Remote Play core listens, and the Sony sign-in */
@@ -278,6 +285,7 @@ public class MainActivity extends Activity {
         else if ("psnCancel".equals(cmd)) { PsnLogin.cancel(); reply(id, "{\"ok\":true}"); }
         else if (cmd != null && cmd.startsWith("samsungLogin:")) SamsungTv.login(this, cmd.substring(13), json -> reply(id, json));
         else if ("samsungClose".equals(cmd)) { SamsungTv.close(); reply(id, "{\"ok\":true}"); }
+        else if ("update".equals(cmd)) { Updater.check(this, true, 0, UPD); reply(id, "{\"ok\":true,\"store\":\"" + Updater.STORE + "\"}"); }   /* "Kiểm tra cập nhật" */
         else if (cmd != null && cmd.startsWith("http:")) {   /* TV Samsung: Samsung's certificate service */
             new Thread(() -> {
                 String r;

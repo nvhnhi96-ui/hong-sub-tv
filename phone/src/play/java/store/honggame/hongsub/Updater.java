@@ -16,4 +16,5 @@ final class Updater {
     }
 
     static void check(Context ctx, boolean userHere, long minGapMs, Listener ui) { }
+    static String state() { return ""; }
 }

@@ -1581,6 +1581,12 @@ div.kn-step{margin-top:8px}
               <p class="hs-note">Chơi PS5 / PS4 ngay trong app, 25 giọng AI tiếng Việt, phím tắt khi đang chơi, gửi phụ đề lên TV qua mạng nhà. Miễn phí.</p>
               <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" data-url="https://honggame.store/hongsubpc">Tải cho Windows</button><button class="hs-btn" type="button" data-url="https://honggame.store/hongsubtv">App Hóng Sub TV</button></div>
             </div>
+            <div class="dk-card" id="mpVerCard" hidden>
+              <h2>Phiên bản</h2>
+              <p class="hs-note" id="mpVerNote"></p>
+              <div class="hs-row" style="margin-top:8px"><button class="hs-btn pri" type="button" id="mpVerCheck">Kiểm tra cập nhật</button><button class="hs-btn" type="button" id="mpVerGo" hidden>Cập nhật</button></div>
+              <p class="hs-note" id="mpVerRes" role="status" aria-live="polite" hidden></p>
+            </div>
             <div class="dk-card dk-only">
               <h2>Phiên bản</h2>
               <p class="hs-note" id="dkVerNote"></p>
@@ -10265,6 +10271,64 @@ function mpTvInit(){
   }
   setInterval(net,4000); net();
 }
+/* ---------- the phone apps keep themselves up to date ----------
+   Android (copy from honggame.store): the app looks for a newer build when it opens, downloads it and hands it to
+   Android's installer (one "Cập nhật" press); each step shows here and "Kiểm tra cập nhật" looks again. The Google Play
+   copy is updated by Google Play. iPhone: the app cannot install itself; it asks the App Store whether a newer
+   version is out and, if so, says so with a button that opens Hóng Sub in the App Store. */
+var MPV={iosUrl:'https://apps.apple.com/app/id6838228143', iosId:'6838228143'};
+function verNum(v){ var p=String(v||'').replace(/^[vV]/,'').split('.'); return (+p[0]||0)*1e8+(+p[1]||0)*1e4+(+p[2]||0); }
+function mpVerSay(t,cls){ var r=$('mpVerRes'); if(!r) return; r.hidden=!t; r.textContent=t||''; r.style.color=cls?'#f5c84b':''; r.style.fontWeight=cls?'600':''; }
+function mpVerAnd(st){
+  if(!st||!st.t) return;
+  mpVerSay(st.t, /Có bản|Đang tải|Đang cài/.test(st.t)?'hs-warn':'');
+  if(/Có bản|Đang tải bản [\d.]+\.\.\.$|Đang cài/.test(st.t)&&!S.mpUpdSaid){ S.mpUpdSaid=true; log('cập nhật app: '+st.t); status('busy',st.t.replace(/\.\.\. \d+%$/,'...')); }
+  if(!st.busy&&/mới nhất|kiểm tra được/.test(st.t)){ var b=$('mpVerCheck'); if(b){ b.disabled=false; b.textContent='Kiểm tra cập nhật'; } }
+}
+function mpVerIos(force){
+  var R=DPS&&DPS.raw; if(!R||!R.call) return Promise.resolve(null);
+  var at=load('mpVerIosAt',0); if(!force&&Date.now()-at<6*3600000){ var c=load('mpVerIos',null); return Promise.resolve(c); }
+  var url='https://itunes.apple.com/lookup?id='+MPV.iosId+'&country=vn&t='+Date.now();
+  return R.call('http:'+JSON.stringify({url:url,method:'GET',headers:{}})).then(function(r){
+    if(!r||!r.ok||r.status!==200) throw new Error('mạng');
+    var t=''; try{ t=decodeURIComponent(escape(atob(r.b64||''))); }catch(e){ t=atob(r.b64||''); }
+    var j=JSON.parse(t), x=(j.results||[])[0]||null, v=x?{ver:String(x.version||''),url:String(x.trackViewUrl||MPV.iosUrl).replace(/\?.*$/,'')}:{ver:''};
+    save('mpVerIosAt',Date.now()); save('mpVerIos',v); return v;
+  });
+}
+function mpVerIosShow(v,asked){
+  var cur=S.appVer||(window.HSIOS&&HSIOS.ver)||'', go=$('mpVerGo');
+  if(v&&v.ver&&verNum(v.ver)>verNum(cur)){
+    MPV.iosUrl=v.url||MPV.iosUrl; if(go){ go.hidden=false; go.textContent='Cập nhật trên App Store'; }
+    var t='Có bản Hóng Sub mới '+v.ver+' (máy đang dùng '+cur+'). Bấm Cập nhật trên App Store.'; mpVerSay(t,'hs-warn');
+    if(!S.mpUpdSaid){ S.mpUpdSaid=true; log('cập nhật app: '+t); status('warn','Có bản Hóng Sub mới '+v.ver+': vào Hỗ trợ › Phiên bản để cập nhật.'); }
+  } else { if(go) go.hidden=true; mpVerSay(asked?(v&&v.ver?'Bản '+cur+' là bản mới nhất.':'Đã là bản mới nhất.'):'',''); }
+}
+function mpVerInit(){
+  var card=$('mpVerCard'); if(!card||D||!(PH||IOS)) return;
+  card.hidden=false;
+  var play=PH&&PH.store&&(function(){ try{ return PH.store()==='play'; }catch(e){ return false; } })();
+  var cur=S.appVer||(IOS&&IOS.ver)||''; try{ if(PH&&PH.version) cur=PH.version()||cur; }catch(e){}
+  $('mpVerNote').textContent=(IOS?'App iPhone':'App Android')+' bản '+(cur||'?')+'. '+(IOS?'Cập nhật qua App Store (nên bật Tự động cập nhật trong Cài đặt › App Store).':play?'Bản Google Play: Google Play tự cập nhật.':'App tự xem có bản mới mỗi lần mở và tải về cho bạn; Android hỏi thì bấm Cập nhật.');
+  var chk=$('mpVerCheck'), go=$('mpVerGo');
+  if(IOS){
+    go.addEventListener('click',function(){ window.open(MPV.iosUrl,'_blank'); });
+    chk.addEventListener('click',function(){ chk.disabled=true; chk.textContent='Đang kiểm tra...'; mpVerSay('');
+      mpVerIos(true).then(function(v){ mpVerIosShow(v,true); },function(){ mpVerSay('Chưa kiểm tra được (mạng?). Thử lại sau.','hs-warn'); }).then(function(){ chk.disabled=false; chk.textContent='Kiểm tra cập nhật'; }); });
+    later(function(){ mpVerIos(false).then(function(v){ mpVerIosShow(v,false); }).catch(function(){}); },8000);
+    return;
+  }
+  if(play){ chk.textContent='Mở Google Play'; chk.addEventListener('click',function(){ try{ PH.openUrl('https://play.google.com/store/apps/details?id=store.honggame.hongsub'); }catch(e){} }); return; }
+  var prevEvt=window.hsPhoneEvt;
+  window.hsPhoneEvt=function(type,data){ if(type==='upd'){ var d={}; try{ d=typeof data==='string'?JSON.parse(data||'{}'):(data||{}); }catch(e){} mpVerAnd(d); return; } return prevEvt&&prevEvt(type,data); };
+  try{ var st=PH.updState&&PH.updState(); if(st) mpVerAnd(JSON.parse(st)); }catch(e){}
+  chk.addEventListener('click',function(){
+    if(!PH.nat){ mpVerSay('Bản app này chưa tự cập nhật được: tải bản mới tại honggame.store/hong-sub.','hs-warn'); return; }
+    chk.disabled=true; chk.textContent='Đang kiểm tra...'; S.mpUpdSaid=false;
+    try{ PH.nat('update','upd'+Date.now()); }catch(e){ chk.disabled=false; chk.textContent='Kiểm tra cập nhật'; }
+    setTimeout(function(){ chk.disabled=false; chk.textContent='Kiểm tra cập nhật'; },20000);
+  });
+}
 /* ---------- TV Samsung: put the Hóng Sub app on the TV from the phone (Android and iPhone) ----------
    What Samsung's Tizen Studio does on a computer, done here:
    1. the phone talks to the TV's developer service (sdb, port 26101) once the TV's Developer Mode names this phone
@@ -10650,7 +10714,7 @@ if(!D&&DPS){
   if(typeof VideoDecoder==='undefined') psMsg('err',IOS?'iPhone cần iOS 16.4 trở lên để nhận hình PS5. Vào Cài đặt › Cài đặt chung › Cập nhật phần mềm.':'Điện thoại cần cập nhật Android System WebView (hoặc Chrome) để nhận hình PS5.');
   psInit();
   window.hsPsApi={PS:PS,view:psStartView,dps:DPS,login:psLogin,find:psFind,ev:psEvent,tick:psWatchTick};   /* for testing */
-  tvLanInit(); lanPcPhone(); mpTvInit(); tvTypeUi&&tvTypeUi(); tvState&&tvState();
+  tvLanInit(); lanPcPhone(); mpTvInit(); try{ mpVerInit(); }catch(e){ log("phiên bản: "+e.message); } tvTypeUi&&tvTypeUi(); tvState&&tvState();
   [].forEach.call(document.querySelectorAll('.hs-devw'),function(e){ e.textContent='điện thoại'; });
   DPS.ping().then(function(r){ log('PS: lõi Remote Play '+(r&&r.core?r.core:'chưa chạy ('+((r&&r.err)||'')+')')); });
 }
