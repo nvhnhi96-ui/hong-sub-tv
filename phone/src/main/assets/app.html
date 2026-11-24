@@ -5574,19 +5574,21 @@ S.tm={g:'',name:'',map:{},zmap:{},bk:{},bg:{},seq:[],ix:{},n:0,total:0,loading:f
 S.played=load('played',{});
 function tmGame(n){ return String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]+/g,' ').trim().slice(0,80); }
 function tmShare(){ var c=$('hsTmShare'); return !c||c.checked; }
-function tmPutLocal(kind,en,vi,who,gd){
+/* std: this line was translated with the game's OWN settings (its style, its character notes, its rules), not with
+   one player's personal ones. A player who also uses the game's settings shows it as it is, with no AI at all. */
+function tmPutLocal(kind,en,vi,who,gd,std){
   var k=trKey(en); if(k.length<2||!vi) return;
   if(creditPair(en,vi)) return;
   if(kind==='z'){ S.tm.zmap[k]=vi; return; }
   if(!S.tm.map[k]){ S.tm.n++; var b=Math.round(k.length/6); (S.tm.bk[b]=S.tm.bk[b]||[]).push(k); S.tm.ix[k]=S.tm.seq.length; S.tm.seq.push(k); }   /* the order players met the lines: what usually comes next */
-  S.tm.map[k]={en:en,vi:vi,who:who||'',gd:gd||''};
+  S.tm.map[k]={en:en,vi:vi,who:who||'',gd:gd||'',std:std?1:0};
 }
 /* while translating: the lines other players of the same game added in the last minutes, every 3 minutes */
 async function tmTop(){
   var my=S.tm; if(!S.running||!my||!my.g||my.loading||my.last==null) return;
   try{ var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(my.g)+'&since='+my.last,{cache:'no-store'}); if(!r.ok) return;
     var d=await r.json(); if(S.tm!==my) return; var got=0;
-    (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); got++; });
+    (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4],l[5]); got++; });
     if(d.last) my.last=d.last; if(d.total!=null) my.total=d.total; if(got){ log('kho dịch chung: thêm '+got+' câu người khác vừa dịch'); tmUi(); }
   }catch(e){}
 }
@@ -5599,11 +5601,13 @@ async function tmLoad(name){
   /* the lines of this game kept on this machine from last time: ready at once, then only new lines are fetched */
   var kept=null, raw=[];
   try{ kept=JSON.parse(localStorage.getItem('hst.tmpack')||'null'); }catch(e){ kept=null; }
-  if(kept&&kept.g===g&&Array.isArray(kept.lines)){ raw=kept.lines; raw.forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); }); my.total=Math.max(my.total,kept.total||0); tmUi(); }
+  if(kept&&kept.g===g&&Array.isArray(kept.lines)){ raw=kept.lines; raw.forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4],l[5]); }); my.total=Math.max(my.total,kept.total||0); tmUi(); }
   else kept=null;
   /* once a day the whole store is fetched again, not only the new lines: a line that was fixed in the store keeps its
      number, so a machine that already had it never got the fixed wording (it only asked for lines after its last one) */
-  var stale=!!kept&&(!kept.at||Date.now()-kept.at>20*36e5);
+  /* a store kept from before the mark "translated with the game's own settings" existed: fetched again once, so
+     the lines that carry the mark can be shown without asking the AI */
+  var stale=!!kept&&(!kept.at||Date.now()-kept.at>20*36e5||!(kept.lines[0]&&kept.lines[0].length>5));
   if(stale) raw=[];
   try{
     var since=kept&&!stale?(kept.last||0):0, got=0;
@@ -5612,7 +5616,7 @@ async function tmLoad(name){
       if(!r.ok) throw new Error('HTTP '+r.status);
       var d=await r.json(); if(S.tm!==my) return;   /* the game was changed meanwhile */
       if(d.total!=null) my.total=d.total;
-      (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4]); raw.push(l); got++; });
+      (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4],l[5]); raw.push(l); got++; });
       since=d.last||since; tmUi();
       if(!d.more) break;
     }
