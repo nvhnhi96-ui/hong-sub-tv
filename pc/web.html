@@ -5413,6 +5413,10 @@ async function ocrStep(m,force){
   if(S.ocrBusy){ if(!S.quick) S.quick=later(function(){ S.quick=null; tick(force); },60); return; }   /* the reader is busy (the screen check, screen text): the subtitle is read the moment it is free */
   var again=S.forceOcr; S.forceOcr=false;
   if(!force&&!again&&S.ocrMask&&maskDiff(m,S.ocrMask)<0.06) return;               /* nothing changed since the last reading */
+  /* scenery moving behind the subtitle area made it read again and again (same line each time), and the screen text
+     never got the reader: in a game it was then slow (8-10 s) and its boxes stayed after the text was gone. When the
+     last readings found the same line and the screen text is waiting, the subtitle area takes a short break (0.45 s) */
+  if(!force&&!again&&subScenery()&&S.fl&&S.fl.on&&Date.now()-(S.fl.last||0)>1200&&Date.now()-(S.subReadEnd||0)<450){ if(!S.quick) S.quick=later(function(){ S.quick=null; tick(false); },460); return; }
   S.ocrBusy=true;
   ocv.width=cap.width; ocv.height=cap.height; ocx2.drawImage(cap,0,0);             /* the next tick redraws cap while we read */
   var o;
@@ -5420,6 +5424,7 @@ async function ocrStep(m,force){
   try{ o=await HsOcr.read(ocv); }catch(e){ OCR.fails++; log('đọc chữ lỗi: '+e.message); S.ocrBusy=false; return; }
   S.ocrBusy=false; S.subReadEnd=Date.now(); S.perf.o=o.ms; S.ocrMask=m;
   var txt=capsSpeaker(dictFix(ocrText(o)));
+  var tk=String(txt||'').toLowerCase().replace(/[^a-z0-9]+/g,''); S.subSame=tk===S.subLastK?(S.subSame||0)+1:0; S.subLastK=tk;
   S.subLive=!!(txt&&subLike(txt));
   if(txt){ subBoxFrom(o,ocv.width,ocv.height); if(S.subLive) subSeen(txt); }
   if(!txt){ S.subMiss=(S.subMiss||0)+1; if(S.subMiss>=3&&S.maskShown&&maskDiff(m,S.maskShown)>0.25) subGone(); else if(S.subMiss<3) S.forceOcr=true; } else S.subMiss=0;   /* empty readings AND the text area looks different from when the line came: the original is gone (a reader that misses a line now and then no longer takes the Vietnamese away) */
@@ -5522,7 +5527,10 @@ function uiLike(t){
    for it, and while characters are talking the screen text is read less often. Before, the screen text (read over the
    whole picture, up to ~1 s) and the screen check took the reader just when a line came, and the Vietnamese came a
    line late on the TV */
-function subPrio(){ return !!S.running&&!!(S.cand||S.forceOcr||Date.now()-(S.subChgAt||0)<1200); }
+/* the subtitle area "changes" but each reading finds the same line (or none): it is the scenery moving behind it,
+   not a new line. Those changes then do not hold the screen text back */
+function subScenery(){ return (S.subSame||0)>=2; }
+function subPrio(){ return !!S.running&&!!(S.cand||S.forceOcr||Date.now()-(S.subChgAt||0)<1200&&!subScenery()); }
 /* a reading of the screen text or the screen check that began before a subtitle line appeared: between two of its
    boxes it gives the reader to the subtitle (read at once), then goes on where it was. Waiting for the whole screen to
    be read put ~0.5-1 s on every line while the screen text was on */
