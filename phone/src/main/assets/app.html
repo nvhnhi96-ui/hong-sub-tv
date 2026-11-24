@@ -454,6 +454,8 @@ div.kn-step{margin-top:8px}
 .kn-inst:not([open]){border:1px dashed var(--line2);padding:10px 12px;border-radius:10px}
 .kn-inst > .hs-note{margin:4px 0 0}
 .kn-inst:not([open]) ~ .kn-hdmi > .kn-n,body:not(.desk) .kn-hdmi > .kn-n{display:none}
+.mp-tv .kn-inst > summary{margin-top:6px}
+html.hs-ios .mp-and,html:not(.hs-ios) .mp-ios{display:none!important}
 .kn-tv{display:grid;justify-items:start;gap:1px;margin-top:10px;max-width:250px;padding:12px 14px;border-radius:8px;border:3px solid var(--line2);background:#07090C;font-size:11px;line-height:1.3}
 .kn-tv b{font-size:14px;color:#fff;margin-bottom:4px}.kn-tv span{color:#FFC400;font-weight:700;margin-top:4px}.kn-tv i{font-style:normal;font-weight:800;font-size:15px;color:#fff;letter-spacing:.06em}
 .kn-tv i.hit{outline:2px dashed #FFC400;outline-offset:3px;border-radius:3px;margin-top:5px}
@@ -1048,41 +1050,36 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                   <div class="hs-msg dk-only" id="dkLgMsg" hidden></div>
                   <!-- the phone apps (Android, iPhone): connect by the TV code, straight over the home network; Android can also put the app on the TV -->
                   <div class="mp-tv" id="mpLgBox" hidden>
-                    <ol class="dk-steps">
-                      <li>Trên TV LG bấm <b>Home</b> và mở app <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
-                      <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
-                      <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
-                    </ol>
-                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
-                    <div class="hs-row" id="mpLgList" style="margin-top:6px"></div>
-                    <details class="tvd" id="mpLg">
-                      <summary id="mpLgSum">TV chưa có app Hóng Sub: cài lên TV LG</summary>
-                      <div id="mpLgAnd" hidden>
-                        <p class="hs-note">Làm một lần trên TV, phần còn lại điện thoại tự làm. Điện thoại và TV dùng chung Wi-Fi.</p>
-                        <ol class="dk-steps">
-                          <li>Trên TV mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
-                          <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
-                          <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
-                          <li>Bấm <b>Tìm TV LG trong nhà</b> ở trên (hoặc gõ IP của TV), gõ <b>Passphrase</b> (6 chữ trong app Developer Mode) rồi bấm Cài.</li>
-                        </ol>
-                        <div class="dk-set">
-                          <label class="lab" for="mpLgIp">IP của TV LG</label>
+                    <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="mpLgOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                    <details class="tvd kn-inst" id="mpLg" open>
+                      <summary id="mpLgSum">Cài app lên TV LG (làm một lần)</summary>
+                      <ol class="kn-steps">
+                        <li class="kn-step mp-and"><i class="kn-n">1</i><div class="kn-b"><h3>Trên TV: cài và bật Developer Mode</h3>
+                          <ol class="kn-sub">
+                            <li>Mở <b>LG Content Store</b>, tìm và cài app <b>Developer Mode</b>.</li>
+                            <li>Mở Developer Mode, đăng nhập tài khoản LG Developer. Chưa có thì tạo miễn phí tại <button class="dk-link" type="button" data-url="https://webostv.developer.lge.com/login">webostv.developer.lge.com</button>.</li>
+                            <li>Bật <b>Dev Mode Status</b> (TV tự khởi động lại), mở lại app, bật <b>Key Server</b>.</li>
+                          </ol>
+                        </div></li>
+                        <li class="kn-step mp-ios" id="mpLgIos"><i class="kn-n">1</i><div class="kn-b"><h3>Cài app lên TV bằng điện thoại Android hoặc máy tính</h3>
+                          <p class="hs-note">iPhone chưa tự cài app lên TV LG được. Cài một lần bằng điện thoại <b>Android</b> có Hóng Sub (Kết nối PS và TV › TV LG) hoặc phần mềm Hóng Sub trên máy tính <b>Windows</b>. Sau đó iPhone chỉ cần gõ Mã TV.</p>
+                        </div></li>
+                        <li class="kn-step"><i class="kn-n">2</i><div class="kn-b"><h3>Chọn TV</h3>
+                          <div class="hs-row"><button class="hs-btn" type="button" id="mpLgFind">Tìm TV LG trong nhà</button></div>
+                          <div class="hs-row" id="mpLgList"></div>
+                          <div class="mp-and"><label class="lab kn-lab" for="mpLgIp">Hoặc gõ IP của TV LG</label>
                           <input class="hs-in" id="mpLgIp" placeholder="VD: 192.168.1.20" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="dk-set">
-                          <label class="lab" for="mpLgPass">Passphrase trên TV</label>
+                          <p class="hs-note">IP của TV có trong app Developer Mode trên TV. Điện thoại và TV dùng chung Wi-Fi.</p></div>
+                        </div></li>
+                        <li class="kn-step mp-and" id="mpLgAnd"><i class="kn-n">3</i><div class="kn-b"><h3>Gõ Passphrase rồi cài app</h3>
+                          <label class="lab kn-lab" for="mpLgPass">Passphrase (6 chữ trong app Developer Mode trên TV)</label>
                           <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpLgPass" placeholder="VD: A1B2C3" maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.15em"><button class="hs-btn pri" type="button" id="mpLgGo">Cài app lên TV</button></div>
-                        </div>
-                        <p class="hs-note" style="margin-top:8px">Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app. Có bản mới thì bấm Cài lại.</p>
-                      </div>
-                      <div id="mpLgIos" hidden>
-                        <p class="hs-note">Bản Hóng Sub cho iPhone chưa tự cài app lên TV LG được. Cài một lần bằng một trong hai cách dưới, sau đó iPhone chỉ cần gõ Mã TV:</p>
-                        <ol class="dk-steps">
-                          <li>Điện thoại <b>Android</b> có Hóng Sub: Kết nối TV › TV LG › Cài app lên TV (TV bật Developer Mode, gõ Passphrase).</li>
-                          <li>Máy tính <b>Windows</b> có phần mềm Hóng Sub: Kết nối TV › TV LG, làm theo hướng dẫn.</li>
-                        </ol>
-                        <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng cài giúp (Zalo)</button></div>
-                      </div>
+                          <p class="hs-note">Cài từ điện thoại này thì Mã TV được điền sẵn. Khoảng 1000 giờ một lần, mở Developer Mode trên TV bấm <b>Extend</b>, nếu không TV sẽ gỡ app.</p>
+                        </div></li>
+                        <li class="kn-step mp-ios"><i class="kn-n">3</i><div class="kn-b"><h3>Mở app trên TV, gõ Mã TV</h3>
+                          <p class="hs-note">Trên TV LG bấm <b>Home</b>, mở app <b>Hóng Sub</b>: TV hiện <b>Mã TV</b> (6 chữ). Gõ mã đó vào ô <b>Mã TV</b> ở mục <b>Tùy chọn thêm cho TV</b> bên dưới rồi bấm <b>Gửi thử</b>.</p>
+                        </div></li>
+                      </ol>
                     </details>
                     <div class="hs-msg" id="mpLgMsg" hidden></div>
                     <p class="hs-note" id="mpLgNet" style="margin-top:8px"></p>
@@ -1131,28 +1128,37 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                   <!-- the phone apps: Samsung only installs apps signed with a Samsung certificate made for that TV (Tizen Studio on a computer),
                        so the phone connects to the app already on the TV, by its code, straight over the home network -->
                   <div class="mp-tv" id="mpTzBox" hidden>
-                    <ol class="dk-steps">
-                      <li>Trên TV Samsung bấm <b>Home</b> › <b>Ứng dụng</b> và mở <b>Hóng Sub</b>. TV hiện <b>Mã TV</b> (6 chữ).</li>
-                      <li>Gõ mã đó vào ô <b>Mã TV</b> ở dưới rồi bấm <b>Gửi thử</b>: TV hiện chữ là đã nối.</li>
-                      <li>Điện thoại và TV dùng chung Wi-Fi thì chữ đi thẳng qua mạng nhà (nhanh, ít trễ). Khác mạng vẫn chạy qua internet.</li>
-                    </ol>
-                    <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
-                    <div class="hs-row" id="mpTzList" style="margin-top:6px"></div>
-                    <details class="tvd" id="mpTz">
-                      <summary id="mpTzSum">TV chưa có app Hóng Sub: cài lên TV Samsung từ điện thoại</summary>
-                      <p class="hs-note">Cài thẳng từ điện thoại, khoảng 3 phút, không cần máy tính. Điện thoại và TV dùng chung Wi-Fi.</p>
-                      <ol class="dk-steps">
-                        <li>Trên TV mở <b>Ứng dụng</b> (Apps), bấm lần lượt <b>1 2 3 4 5</b> trên remote (remote không có số: bấm nút <b>123</b> để hiện bàn số).</li>
-                        <li>Bật <b>Developer mode: On</b>. Ô <b>Host PC IP</b> gõ IP của điện thoại này: <b id="mpTzMyIp">...</b>, bấm OK rồi <b>tắt TV và bật lại</b>.</li>
-                        <li>Bấm <b>Tìm TV Samsung trong nhà</b> ở trên (hoặc gõ IP của TV dưới đây), rồi bấm <b>Cài app lên TV</b>. Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b> (miễn phí, dùng email và mật khẩu) để Samsung cấp chứng chỉ cho TV.</li>
+                    <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="mpTzOpen" hidden>Mở Hóng Sub trên TV</button></div>
+                    <details class="tvd kn-inst" id="mpTz" open>
+                      <summary id="mpTzSum">Cài app lên TV Samsung (làm một lần, khoảng 3 phút)</summary>
+                      <ol class="kn-steps">
+                        <li class="kn-step"><i class="kn-n">1</i><div class="kn-b"><h3>Trên TV: bật Developer Mode</h3>
+                          <ol class="kn-sub">
+                            <li>Bấm <b>Home</b>, vào <b>Ứng dụng</b> (Apps).</li>
+                            <li>Bấm lần lượt <b>1 2 3 4 5</b> trên remote.</li>
+                            <li>Chọn <b>On</b>, gõ dãy số dưới đây vào ô <b>Host PC IP</b>, bấm <b>OK</b>.</li>
+                            <li>Khởi động lại hẳn TV: giữ nút nguồn trên remote khoảng 5 giây tới khi TV tắt rồi tự bật lại, hoặc rút điện 30 giây rồi cắm lại. Vào lại Ứng dụng thấy chữ <b>Develop Mode</b> ở trên là được.</li>
+                          </ol>
+                          <div class="kn-copy"><span><small>Dãy số gõ vào ô Host PC IP (IP của điện thoại này)</small><b class="hs-code" id="mpTzMyIp">Đang tìm...</b><small class="kn-err" id="mpTzMyIpWhy" hidden></small></span><button class="hs-btn" type="button" id="mpTzCopy">Sao chép</button></div>
+                          <details class="kn-tip">
+                            <summary>Remote không có phím số, hoặc TV đời 2023 trở đi?</summary>
+                            <p class="hs-note">Remote không có phím số: bấm nút <b>123</b> để hiện bàn phím số rồi bấm 1 2 3 4 5. TV đời 2023 trở đi: Home › <b>Nội dung</b> (Features) › Ứng dụng; nếu có ô <b>Cài đặt ứng dụng</b> (bánh răng) thì chọn ô đó rồi mới bấm 1 2 3 4 5.</p>
+                          </details>
+                        </div></li>
+                        <li class="kn-step"><i class="kn-n">2</i><div class="kn-b"><h3>Chọn TV</h3>
+                          <div class="hs-row"><button class="hs-btn" type="button" id="mpTzFind">Tìm TV Samsung trong nhà</button></div>
+                          <div class="hs-row" id="mpTzList"></div>
+                          <label class="lab kn-lab" for="mpTzIpIn">Hoặc gõ IP của TV Samsung</label>
+                          <input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off">
+                          <p class="hs-note">Xem IP của TV: Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP. Điện thoại và TV dùng chung Wi-Fi.</p>
+                        </div></li>
+                        <li class="kn-step"><i class="kn-n">3</i><div class="kn-b"><h3>Cài app lên TV</h3>
+                          <p class="hs-note">Lần đầu điện thoại mở trang <b>đăng nhập tài khoản Samsung</b>: dùng email và mật khẩu (chưa có thì tạo miễn phí ở account.samsung.com; đăng nhập bằng Google không dùng được). Sau đó điện thoại tự xin chứng chỉ, cài và mở Hóng Sub trên TV, Mã TV được điền sẵn. Lần sau cài lại không cần đăng nhập.</p>
+                          <div class="hs-row"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
+                        </div></li>
                       </ol>
-                      <div class="dk-set">
-                        <label class="lab" for="mpTzIpIn">IP của TV Samsung</label>
-                        <div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" id="mpTzIpIn" placeholder="VD: 192.168.1.30" inputmode="decimal" autocomplete="off"><button class="hs-btn pri" type="button" id="mpTzGo">Cài app lên TV</button></div>
-                      </div>
-                      <p class="hs-note" style="margin-top:8px">Samsung chỉ cho cài app ngoài cửa hàng khi app được ký bằng chứng chỉ làm riêng cho từng TV. Hóng Sub tự xin chứng chỉ bằng tài khoản Samsung của bạn và giữ trong điện thoại; lần sau cài lại không cần đăng nhập. App trên TV tự cập nhật.</p>
-                      <div class="hs-row" style="margin-top:8px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng hướng dẫn (Zalo)</button></div>
                     </details>
+                    <p class="hs-note" style="margin-top:8px">TV đã có app Hóng Sub (cài từ máy khác)? Mở app trên TV, gõ <b>Mã TV</b> đang hiện vào ô Mã TV ở mục <b>Tùy chọn thêm cho TV</b> bên dưới rồi bấm <b>Gửi thử</b>.</p>
                     <div class="hs-msg" id="mpTzMsg" hidden></div>
                     <p class="hs-note" id="mpTzNet" style="margin-top:8px"></p>
                   </div>
@@ -1162,9 +1168,8 @@ html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
                     <p class="hs-note">Nên để "TV tự tìm". TV không hiện hình máy PS thì chọn đúng cổng đang cắm.</p>
                   </div></div>
                   <details class="kn-more dk-only" id="knTzHelp">
-                    <summary><span><b>Không cài được?</b><small>Cách cũ: cài bằng Tizen Studio. Hoặc hẹn cửa hàng qua Zalo để cài giúp.</small></span></summary>
+                    <summary><span><b>Không cài được?</b><small>Cách cũ: cài bằng Tizen Studio.</small></span></summary>
                     <div class="kn-in">
-                      <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://zalo.me/0367879283">Nhờ cửa hàng cài giúp (Zalo 0367 879 283)</button></div>
                       <details class="tvd" id="dkTzOld" style="margin-top:12px">
                         <summary>Cách cũ: cài bằng Tizen Studio (khi cách trên không được)</summary>
                         <ol class="dk-steps dk-tz">
@@ -9952,7 +9957,7 @@ function mpLgAutoUpdate(){
 }
 function mpLgUi(st){
   var inst=st&&st.installed; S.mpLgInst=!!inst; $('mpLgOpen').hidden=!inst; window.hsLgOpen=inst?mpLgOpen:null;
-  $('mpLgSum').textContent=inst?'Cài lại / cập nhật app trên TV LG':'TV chưa có app Hóng Sub: cài lên TV LG';
+  $('mpLgSum').textContent=inst?'Cài lại / cập nhật app trên TV LG':'Cài app lên TV LG (làm một lần)'; if(inst) $('mpLg').open=false;
   $('mpLgGo').textContent=inst?'Cài lại':'Cài app lên TV'; if(inst&&!$('mpLgIp').value) $('mpLgIp').value=st.ip||'';
   tvState();
 }
@@ -9962,7 +9967,9 @@ function mpTvInit(){
   /* the computer's install parts and notes are for the Windows app */
   [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] .hs-web,.tvp[data-k=samsung] .hs-web'),function(n){ n.style.display='none'; });
   [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] > .hs-note,.tvp[data-k=samsung] > .hs-note'),function(n){ if(/Mã TV được điền sẵn|không cần gõ mã/.test(n.textContent)) n.textContent=n.textContent.replace(/ Mã TV được điền sẵn khi cài từ máy tính\./,' Cài từ điện thoại Android hoặc máy tính thì mã TV được điền sẵn.').replace(/ Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã\./,' Điện thoại nối với app trên TV bằng Mã TV.'); });
-  var andr=!!(PH&&PH.nat)&&!IOS; $('mpLgAnd').hidden=!andr; $('mpLgIos').hidden=andr;
+  var andr=!!(PH&&PH.nat)&&!IOS;   /* the phone that can put the app on a TV LG (Android) sees those steps, the other one how to do it once elsewhere */
+  [].forEach.call(document.querySelectorAll('#mpLgBox .mp-and'),function(n){ n.hidden=!andr; }); [].forEach.call(document.querySelectorAll('#mpLgBox .mp-ios'),function(n){ n.hidden=andr; });
+  if(!andr){ [].forEach.call(document.querySelectorAll('#mpLgBox .mp-ios'),function(n){ n.style.setProperty('display','flex','important'); }); [].forEach.call(document.querySelectorAll('#mpLgBox .mp-and'),function(n){ n.style.setProperty('display','none','important'); }); }
   $('mpLgFind').addEventListener('click',function(){ mpFind('lg'); });
   $('mpTzFind').addEventListener('click',function(){ mpFind('samsung'); });
   $('mpTzOpen').addEventListener('click',function(){ mpTzOpen(); });
@@ -9971,11 +9978,20 @@ function mpTvInit(){
   mpTzReady();
   /* TV Samsung: install from the phone (both phones) */
   $('mpTzIpIn').value=load('mpTzIp','');
-  setInterval(function(){ var e=$('mpTzMyIp'); if(!e) return; var me=S.lanPc?S.lanPc.split(':')[0]:'', tv=($('mpTzIpIn').value||'').trim();
+  /* the phone's own address, shown big with a copy button: the number to type in the TV's Host PC IP box */
+  var myIp=function(){ var e=$('mpTzMyIp'), w=$('mpTzMyIpWhy'); if(!e) return; var me=S.lanPc?S.lanPc.split(':')[0]:'', tv=($('mpTzIpIn').value||'').trim();
     var other=me&&/^\d{1,3}(\.\d{1,3}){3}$/.test(tv)&&me.split('.').slice(0,3).join('.')!==tv.split('.').slice(0,3).join('.');
-    e.textContent=me?me+(other?' (khác mạng với TV '+tv+': điện thoại đang dùng Wi-Fi khác hoặc dữ liệu di động, hãy nối cùng Wi-Fi với TV)':''):'(bật Wi-Fi, nối cùng Wi-Fi với TV rồi mở lại mục này)'; },2000);
+    var t=me||'Chưa biết', why=!me?(IOS?'Bật Wi-Fi, nối cùng Wi-Fi với TV. iPhone: vào Cài đặt › Hóng Sub, bật Mạng cục bộ, rồi mở lại mục này.':'Bật Wi-Fi, nối cùng Wi-Fi với TV rồi mở lại mục này.')
+      :other?'Khác mạng với TV ('+tv+'): điện thoại đang dùng Wi-Fi khác hoặc dữ liệu di động. Nối cùng Wi-Fi với TV.':'';
+    if(e.textContent!==t) e.textContent=t; if(w){ w.hidden=!why; w.textContent=why; } };
+  setInterval(myIp,2000); myIp(); if(!S.lanPc) DPS.lan.addr().then(myIp).catch(function(){});
+  $('mpTzCopy').addEventListener('click',function(){ var b=$('mpTzCopy'), t=S.lanPc?S.lanPc.split(':')[0]:'';
+    if(!t){ mpTvMsg('samsung','warn','Chưa biết IP của điện thoại. Bật Wi-Fi, nối cùng Wi-Fi với TV.'); DPS.lan.addr().then(myIp).catch(function(){}); return; }
+    var done=function(){ b.textContent='Đã chép'; setTimeout(function(){ b.textContent='Sao chép'; },1600); };
+    var old=function(){ var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(ta); };
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done,old); else old(); }catch(e){ old(); } });
   $('mpTzIpIn').addEventListener('change',function(){ DPS.lan.addr().catch(function(){}); });   /* the phone's address on this TV's network */
-  if(load('tzInstalled',null)) $('mpTzSum').textContent='Cài lại app Hóng Sub lên TV Samsung';
+  if(load('tzInstalled',null)){ $('mpTzSum').textContent='Cài lại app Hóng Sub lên TV Samsung'; $('mpTz').open=false; }
   $('mpTzGo').addEventListener('click',function(){
     var b=$('mpTzGo'), ip=($('mpTzIpIn').value||'').trim();
     if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ mpTvMsg('samsung','err','Bấm Tìm TV Samsung trong nhà, hoặc gõ IP của TV (Cài đặt › Chung › Mạng › Trạng thái mạng › Cài đặt IP).'); return; }
