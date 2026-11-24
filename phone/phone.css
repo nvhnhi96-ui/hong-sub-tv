@@ -17,10 +17,10 @@ html.hs-phone .dk-top h1{grid-column:1;grid-row:1;font-size:19px;font-weight:800
 html.hs-phone .dk-top .sp{display:none}
 html.hs-phone .dk-top .hs-pill{grid-column:1;grid-row:2;justify-self:start;max-width:100%!important;background:none;border:0;padding:0;font-size:12.5px;font-weight:600;gap:6px}
 html.hs-phone .dk-top .hs-pill .hs-dot{width:7px;height:7px}
-html.hs-phone .dk-chip{grid-column:2;grid-row:1/3;width:42px;height:42px;padding:0;justify-content:center;border-radius:50%;background:var(--panel2);border-color:var(--line2)}
+html.hs-phone .dk-top>.dk-chip{grid-column:2;grid-row:1/3;width:42px;height:42px;padding:0;justify-content:center;border-radius:50%;background:var(--panel2);border-color:var(--line2)}
 html.hs-phone #dkSpeakTx{display:none}
-html.hs-phone .dk-chip svg{width:20px;height:20px}
-html.hs-phone .dk-chip[aria-pressed=true]{color:#000;background:var(--brand);border-color:var(--brand)}
+html.hs-phone .dk-top>.dk-chip svg{width:20px;height:20px}
+html.hs-phone .dk-top>.dk-chip[aria-pressed=true]{color:#000;background:var(--brand);border-color:var(--brand)}
 html.hs-phone .dk-bell{grid-column:3;grid-row:1/3;width:42px;height:42px;background:var(--panel2);border-color:var(--line2)}
 html.hs-phone #dkUpdBtn{grid-column:1/4;grid-row:3;margin-top:6px}
 html.hs-phone .dk-noti{position:fixed;left:10px;right:10px;top:64px;width:auto;max-height:65vh;border-radius:16px}
@@ -118,3 +118,9 @@ html.hs-phone .dk-prev b{font-size:clamp(15px,5vw,21px)!important}
 html.hs-phone input[type=range]{height:28px}
 html.hs-phone .hs-zrow{border-radius:16px}
 html.hs-phone .hs-zg{grid-template-columns:1fr 1fr!important}
+
+/* the speaker menu: reading on / off, and where it reads */
+html.hs-phone .hs-spkmenu{padding:10px}
+html.hs-phone .hs-spkmenu h3{margin:6px 6px 8px;font-size:14px}
+html.hs-phone .hs-spkmenu .sm-row{display:grid;gap:8px;margin:0 4px 8px}
+html.hs-phone .hs-spkmenu .hs-btn{width:100%;min-height:46px;font-size:15px}

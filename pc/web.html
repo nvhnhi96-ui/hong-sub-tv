@@ -3707,7 +3707,7 @@ function engineNow(){
 }
 function engineUi(){
   var box=$('hsEngine'); if(!box) return;
-  var now=engineNow(), list=D?engines():[{k:'browser',n:PH?'Giọng điện thoại':'Giọng của trình duyệt',s:webViCount()?webViCount()+' giọng':'máy chưa có'},{k:'gg',n:'Google',s:'online'}];
+  var now=engineNow(), list=D?engines():[{k:'browser',n:PH||IOS?'Giọng điện thoại':'Giọng của trình duyệt',s:webViCount()?webViCount()+' giọng':'máy chưa có'},{k:'gg',n:'Google',s:'online'}];
   box.innerHTML=list.map(function(e){ return '<button type="button" class="dk-chip" data-e="'+e.k+'" aria-pressed="'+(e.k===now)+'">'+esc(e.n)+(e.s?' <small>'+esc(e.s)+'</small>':'')+'</button>'; }).join('');
 }
 function webViCount(){ return (voices||[]).filter(function(v){return /^vi/i.test(v.lang);}).length; }
@@ -7524,8 +7524,44 @@ window.hsPhoneEvt=function(type,data){
     if(r.w>0.02&&r.h>0.01){ S.region=r; save('region',r); save('regionSet',true); setDraw(false); showRegion(); S.lastSig=null; steps(); placeSync(); status('idle','Đã khoanh vùng phụ đề'); }
   }
 };
+/* ---------- the phone apps (Android and iPhone): the words say "điện thoại", and the speaker button in the top bar
+   opens a small menu: reading on / off and where it reads (11/2026) ---------- */
+function phoneCommon(ios){
+  try{
+    ['hsSpeakWhere','hsTvRead'].forEach(function(id){ var sl=$(id); if(!sl) return; [].forEach.call(sl.options,function(o){ if(o.value==='pc') o.textContent='Điện thoại (giọng của điện thoại)'; else o.textContent=o.textContent.replace(/máy tính/g,'điện thoại'); }); });
+    [].forEach.call(document.querySelectorAll('#p-giong .hs-note'),function(n){ var t=n.textContent;
+      if(/^Khi đã nối TV: chọn đọc trên máy tính/.test(t)) n.textContent='Khi đã nối TV: chọn đọc trên điện thoại, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.';
+      else if(/^Các bộ đọc có trong danh sách/.test(t)) n.innerHTML=ios?'Các bộ đọc: <b>Giọng điện thoại</b> (giọng tiếng Việt có sẵn của iPhone, không cần mạng) và <b>Google</b> (giọng nữ, cần mạng, không cần mã). iPhone chưa có giọng Việt: vào Cài đặt › Trợ năng › Nội dung được đọc › Giọng nói, tải Tiếng Việt.'
+        :'Các bộ đọc: <b>Giọng điện thoại</b> (giọng tiếng Việt có sẵn của Android, không cần mạng) và <b>Google</b> (giọng nữ, cần mạng, không cần mã). Điện thoại chưa có giọng Việt: vào Cài đặt Android › Chuyển văn bản thành giọng nói, tải tiếng Việt.'; });
+    [].forEach.call(document.querySelectorAll('#hsTvVoiceNote'),function(n){ n.textContent=n.textContent.replace(/máy tính/g,'điện thoại'); });
+  }catch(e){}
+  /* the speaker button: a menu instead of a plain on / off */
+  var chip=$('dkSpeakChip'); if(!chip) return;
+  var box=document.createElement('div'); box.className='dk-noti hs-spkmenu'; box.id='hsSpkMenu'; box.hidden=true; (chip.parentNode||document.body).appendChild(box);
+  function draw(){
+    var on=$('hsSpeak').checked, w=speakWhere(), tv=!!(tvIp()||tvCode().length>=4);
+    var opt=function(v,t){ return '<button type="button" class="hs-btn'+(on&&w===v?' pri':'')+'" data-w="'+v+'">'+t+'</button>'; };
+    box.innerHTML='<h3>Đọc to phụ đề</h3><div class="sm-row">'+
+      '<button type="button" class="hs-btn'+(on?'':' pri')+'" data-w="off">Tắt đọc</button></div>'+
+      '<h3>Đọc ở</h3><div class="sm-row">'+opt('pc','Điện thoại')+opt('tv','TV')+opt('both','Cả điện thoại và TV')+'</div>'+
+      (tv?'':'<p class="hs-note" style="margin:8px 10px 6px">Chưa nối TV: muốn đọc trên TV thì vào <b>Kết nối</b> để nối TV trước.</p>');
+  }
+  function close(){ box.hidden=true; chip.setAttribute('aria-expanded','false'); }
+  box.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-w]'); if(!b) return; var v=b.dataset.w;
+    if(v==='off') setSpeak(false);
+    else { var sl=$('hsSpeakWhere'); if(sl){ sl.value=v; sl.dispatchEvent(new Event('change')); } if(!$('hsSpeak').checked) setSpeak(true); status(S.running?'run':'idle',v==='pc'?'Đọc phụ đề trên điện thoại':v==='tv'?'Đọc phụ đề trên TV':'Đọc phụ đề trên điện thoại và TV'); }
+    $('hsSpeak').dispatchEvent(new Event('hs-speak')); close();
+  });
+  document.addEventListener('click',function(e){
+    if(e.target.closest&&e.target.closest('#dkSpeakChip')){ e.stopPropagation(); e.preventDefault(); if(box.hidden){ draw(); box.hidden=false; chip.setAttribute('aria-expanded','true'); var nb=$('dkNoti'); if(nb) nb.hidden=true; } else close(); return; }
+    if(!box.hidden&&!(e.target.closest&&e.target.closest('#hsSpkMenu'))) close();
+  },true);
+  chip.title='Đọc to phụ đề: bật, tắt, chọn đọc ở đâu';
+}
 if(PH){
   document.documentElement.classList.add('hs-phone');
+  phoneCommon(false);
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chia sẻ màn hình điện thoại';
     [].forEach.call(e.querySelectorAll('p'),function(p){ p.className=''; p.hidden=true; });
     var p=e.querySelector('p'); if(p){ p.hidden=false; p.textContent='Bấm nút dưới, cho phép Hóng Sub ghi màn hình, rồi mở app PS Remote Play. Trên game có nút H nổi màu vàng: bấm vào để khoanh phụ đề, bắt đầu dịch, dịch cả màn hình.'; }
@@ -7538,11 +7574,7 @@ if(PH){
   $('hsSpeak').addEventListener('change',function(){ phState(S.running); });
   (function(){   /* phone: drop the browser / Windows-only notes, add phone steps */
     [].forEach.call(document.querySelectorAll('.hs-web'),function(el){ if(el.closest('.dk-nav')) return; if(!el.classList.contains('hs-note')||/Cửa sổ nổi/.test(el.textContent)) el.style.display='none'; });
-    [].forEach.call(document.querySelectorAll('#p-giong .hs-note'),function(n){ var t=n.textContent;
-      if(/^Khi đã nối TV: chọn đọc trên máy tính/.test(t)) n.textContent='Khi đã nối TV: chọn đọc trên điện thoại, trên TV, hoặc cả hai. Tắt "Đọc to phụ đề" là tắt luôn trên TV.';
-      else if(/^Các bộ đọc có trong danh sách/.test(t)) n.innerHTML='Các bộ đọc: <b>Giọng điện thoại</b> (giọng tiếng Việt có sẵn của Android, không cần mạng) và <b>Google</b> (giọng nữ, cần mạng, không cần mã). Điện thoại chưa có giọng Việt: vào Cài đặt Android › Chuyển văn bản thành giọng nói, tải tiếng Việt.'; });
     var k2=document.getElementById('dkKeys2'); if(k2){ k2.style.display='none'; if(k2.previousElementSibling) k2.previousElementSibling.style.display='none'; }
-    ['hsSpeakWhere','hsTvRead'].forEach(function(id){ var sl=$(id); if(!sl) return; [].forEach.call(sl.options,function(o){ if(o.value==='pc') o.textContent='Điện thoại (giọng của điện thoại)'; else o.textContent=o.textContent.replace(/máy tính/g,'điện thoại'); }); });
     var kn=document.getElementById('p-ketnoi'), col=kn&&kn.querySelector('.dk-cols>div'); if(!col) return;
     var c=document.createElement('div'); c.className='dk-card';
     c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2>'
@@ -9660,6 +9692,7 @@ if(!D&&DPS){
 }
 /* ---------- the iPhone app: same page as the Android app, without screen sharing (iOS does not allow it) ---------- */
 if(IOS){
+  phoneCommon(true);
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chọn nguồn hình game';
     if($('hsPick')) $('hsPick').style.display='none';
     if($('hsCam')) $('hsCam').style.display='none';   /* no camera pointed at the TV (not workable) */
