@@ -5594,6 +5594,12 @@ async function tmTop(){
   }catch(e){}
 }
 setInterval(tmTop,180000);
+/* a small store on this device with no 5 MB limit (IndexedDB). The store of a big game (GTA VI: 78,000 lines, over
+   10 MB) never fitted in localStorage: saving it failed without a word, so every start downloaded the whole store again
+   (11/2026: the phone app showed "13.289 câu", it was still downloading) */
+function kvDb(){ return S.kvP||(S.kvP=new Promise(function(ok){ try{ var q=indexedDB.open('hongsub-kv',1); q.onupgradeneeded=function(){ q.result.createObjectStore('kv'); }; q.onsuccess=function(){ ok(q.result); }; q.onerror=q.onblocked=function(){ ok(null); }; }catch(e){ ok(null); } })); }
+function kvGet(k){ return kvDb().then(function(db){ if(!db) return null; return new Promise(function(ok){ try{ var q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=function(){ ok(q.result==null?null:q.result); }; q.onerror=function(){ ok(null); }; }catch(e){ ok(null); } }); }); }
+function kvSet(k,v){ return kvDb().then(function(db){ if(!db) return false; return new Promise(function(ok){ try{ var tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=function(){ ok(true); }; tx.onerror=tx.onabort=function(){ ok(false); }; }catch(e){ ok(false); } }); }); }
 async function tmLoad(name){
   var g=tmGame(name); if(g===S.tm.g&&(S.tm.loading||S.tm.n||S.tm.total===0&&S.tm.g)) return;
   S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},bg:{},seq:[],ix:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
@@ -5601,7 +5607,10 @@ async function tmLoad(name){
   var my=S.tm; my.loading=true; tmUi();
   /* the lines of this game kept on this machine from last time: ready at once, then only new lines are fetched */
   var kept=null, raw=[];
-  try{ kept=JSON.parse(localStorage.getItem('hst.tmpack')||'null'); }catch(e){ kept=null; }
+  try{ kept=await kvGet('tmpack'); }catch(e){ kept=null; }
+  if(S.tm!==my) return;
+  if(!kept){ try{ kept=JSON.parse(localStorage.getItem('hst.tmpack')||'null'); }catch(e){ kept=null; } }
+  try{ localStorage.removeItem('hst.tmpack'); }catch(e){}
   if(kept&&kept.g===g&&Array.isArray(kept.lines)){ raw=kept.lines; raw.forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4],l[5]); }); my.total=Math.max(my.total,kept.total||0); tmUi(); }
   else kept=null;
   /* once a day the whole store is fetched again, not only the new lines: a line that was fixed in the store keeps its
@@ -5610,22 +5619,33 @@ async function tmLoad(name){
      the lines that carry the mark can be shown without asking the AI */
   var stale=!!kept&&(!kept.at||Date.now()-kept.at>20*36e5||!(kept.lines[0]&&kept.lines[0].length>5));
   if(stale) raw=[];
+  var since=kept&&!stale?(kept.last||0):0, got=0, fails=0;
+  my.rows=raw.length;
+  var keep=function(){ return kvSet('tmpack',{g:g,last:since,total:my.total,at:stale||!kept?Date.now():(kept.at||Date.now()),lines:raw}); };
   try{
-    var since=kept&&!stale?(kept.last||0):0, got=0;
-    for(var page=0;page<40;page++){
-      var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(g)+'&since='+since,{cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      var d=await r.json(); if(S.tm!==my) return;   /* the game was changed meanwhile */
+    for(var page=0;page<80;page++){
+      var d=null;
+      /* a page that fails (the phone's network drops for a moment) is asked again; the download goes on from the
+         last line received, it never starts over */
+      try{ var r=await fetch(TMAPI+'pack?game='+encodeURIComponent(g)+'&since='+since,{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); d=await r.json(); }
+      catch(e){ if(S.tm!==my) return; if(++fails>6) throw e; my.err=e.message; tmUi(); await new Promise(function(ok){ setTimeout(ok,Math.min(20000,2000*fails)); }); if(S.tm!==my) return; page--; continue; }
+      if(S.tm!==my) return;   /* the game was changed meanwhile */
+      my.err='';
       if(d.total!=null) my.total=d.total;
       (d.lines||[]).forEach(function(l){ tmPutLocal(l[0],l[1],l[2],l[3],l[4],l[5]); raw.push(l); got++; });
-      since=d.last||since; tmUi();
+      since=d.last||since; my.rows=raw.length; tmUi();
       if(!d.more) break;
     }
     my.last=since;
     log('kho dịch chung: '+my.n+' câu có sẵn cho '+my.name+(kept&&!stale?' (lấy thêm '+got+' câu mới)':kept?' (tải lại cả kho, có cả các câu đã được sửa)':''));
     tmWarm(my);
-    if(got||!kept){ try{ localStorage.setItem('hst.tmpack',JSON.stringify({g:g,last:since,total:my.total,at:stale||!kept?Date.now():(kept.at||Date.now()),lines:raw})); }catch(e){ try{ localStorage.removeItem('hst.tmpack'); }catch(x){} } }
-  }catch(e){ my.err=e.message; log('kho dịch chung chưa tải được: '+e.message); }
+    if(got||!kept||stale) keep().then(function(ok){ if(!ok) log('kho dịch chung: chưa lưu được vào máy, lần mở sau sẽ tải lại'); });
+  }catch(e){
+    my.err=e.message; log('kho dịch chung chưa tải hết: '+e.message+' (được '+my.n+' câu)');
+    /* what was received is kept: the next start goes on from there */
+    if(got&&!stale){ my.last=since; keep(); }
+    my.part=true;
+  }
   finally{ my.loading=false; if(S.tm===my) tmUi(); }
 }
 /* a line read now that is in the store: the same words, or almost (the reader missed a letter) */
@@ -6045,6 +6065,8 @@ function tmUi(){
   if(!T.g) txt='Chọn game để dùng kho dịch chung.';
   else if(T.loading&&!T.n) txt='Đang tải câu dịch sẵn của '+T.name+'...';
   else if(T.err&&!T.n) txt='Chưa tải được kho dịch chung ('+T.err+'). Vẫn dịch bình thường.';
+  else if(T.n&&T.loading&&T.total>0&&T.rows<T.total) txt=T.name+': đang tải kho dịch chung, được '+Math.min(99,Math.round(T.rows/T.total*100))+'% ('+T.n.toLocaleString('vi-VN')+' câu)'+(T.err?', mạng chập chờn, đang thử lại':'')+'. Câu đã tải dùng được ngay.';
+  else if(T.n&&T.part) txt=T.name+': mới tải được '+T.n.toLocaleString('vi-VN')+' câu, chưa hết kho (mạng lỗi). Mở lại app để tải tiếp; câu đã tải vẫn dùng được.';
   else if(T.n) txt=T.name+': có sẵn '+T.n.toLocaleString('vi-VN')+' câu đã dịch. Câu nào có sẵn hiện ngay, không tốn lượt mã'+(T.hits?' (đã dùng '+T.hits+' câu)':'')+'.';
   else txt=T.name+': chưa có câu nào. Bạn chơi trước, những câu bạn dịch sẽ giúp người chơi sau dịch nhanh hơn.';
   el.textContent=txt;
