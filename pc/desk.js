@@ -536,6 +536,7 @@ $('dkLgFind').onclick=function(){
     [].forEach.call($('dkLgList').querySelectorAll('[data-ip]'),function(el){ el.onclick=function(){ $('dkLgIp').value=el.getAttribute('data-ip'); }; });
   });
 };
+function tvRep(k,err){ try{ if(window.hsRep&&window.hsRep.tv) window.hsRep.tv(k,err); }catch(e){} }
 $('dkLgGo').onclick=function(){
   if(busy) return;
   var ip=$('dkLgIp').value.trim(), pass=$('dkLgPass').value.trim().toUpperCase();
@@ -547,7 +548,7 @@ $('dkLgGo').onclick=function(){
   D.lg.install(ip,pass,c).then(function(r){
     busy=false; b.disabled=false;
     if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. Trên TV chọn cổng HDMI của máy PS5 là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV LG'); D.lg.state().then(done); }
-    else msg('err',(r&&r.err)||'Chưa cài được.');
+    else { msg('err',(r&&r.err)||'Chưa cài được.'); if(A.log) A.log('cài app TV LG lỗi: '+((r&&r.err)||'')); tvRep('lg',(r&&r.err)||'Chưa cài được.'); }
   });
 };
 $('dkLgOpen').onclick=function(){ openOnTv(); };
@@ -654,6 +655,7 @@ $('dkTzGo').onclick=function(){
   var b=this, c=code();
   D.samsung.install(ip,$('dkTzProf').value,c).then(function(r){
     busy=false; b.disabled=false;
+    if(!(r&&r.ok)){ if(A.log) A.log('cài app TV Samsung (Tizen Studio) lỗi: '+((r&&r.err)||'')); tvRep('samsung','Tizen Studio: '+((r&&r.err)||'Chưa cài được.')); }
     if(r&&r.ok){ msg('ok','Đã cài xong và mở Hóng Sub trên TV. TV tự nối với máy tính (mã '+c+'). Chọn cổng HDMI của máy PS5 ở bước 4 là phụ đề nằm trên hình game.'); if(A.toast) A.toast('Đã cài Hóng Sub lên TV Samsung'); refresh(); }
     else msg('err',(r&&r.err)||'Chưa cài được.');
   });
@@ -668,7 +670,7 @@ $('dkTzAuto').onclick=function(){
   if(!window.hsTzi||!RAW){ msg('err','Bản Hóng Sub này chưa cài tự động được. Cập nhật Hóng Sub rồi thử lại.'); return; }
   busy=true; var b=this; b.disabled=true;
   if(A.tvType()!=='samsung') A.setTvType('samsung');
-  var c=code(), say=function(t){ msg('',t); };
+  var c=code(), say=function(t){ msg('',t); if(A.log&&!/\d+%$/.test(t)) A.log('TV Samsung: '+t); };
   RAW.call('pcaddr:'+ip).then(function(r){ return window.hsTzi.install(ip,c,(r&&r.addr)||'',say); }).then(function(r){
     busy=false; b.disabled=false;
     A.save('tzAuto',{ip:ip,duid:r&&r.duid||'',at:Date.now()});
@@ -677,7 +679,7 @@ $('dkTzAuto').onclick=function(){
   },function(e){
     busy=false; b.disabled=false;
     var t=String(e&&e.message||e);
-    msg('err',t); if(A.log) A.log('cài app TV Samsung (tự động) lỗi: '+t);
+    msg('err',t); if(A.log) A.log('cài app TV Samsung (tự động) lỗi: '+t); tvRep('samsung',t);
   });
 };
 $('dkTzOpen').onclick=function(){ openOnTv(); };

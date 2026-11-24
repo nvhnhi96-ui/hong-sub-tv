@@ -7152,7 +7152,7 @@ $('hsFsLive').addEventListener('change',function(){ save('fslive',this.checked);
 $('hsPerf').checked=load('perf',false); $('hsPerf').addEventListener('change',function(){ save('perf',this.checked); perfTag(); });
 $('hsKeys').addEventListener('input',keyStats); $('hsGroq').addEventListener('input',keyStats); keyStats();
 if(D) ocrLoad();
-function reportVer(){ return (D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần mềm Windows ')+S.appVer):('Trang web'); }
+function reportVer(){ return (D&&S.appVer)?((MAC?'Phần mềm Mac ':'Phần mềm Windows ')+S.appVer):IOS?'App iPhone '+(S.appVer||''):PH?'App Android '+(S.appVer||''):'Trang web'; }
 function reportText(){
   var ver=reportVer();
   var info=['Hóng Sub - báo lỗi', 'Thời gian: '+new Date().toLocaleString('vi-VN'), 'Bản: '+ver, 'Trình duyệt: '+navigator.userAgent,
@@ -7166,6 +7166,7 @@ function reportText(){
 }
 /* a PS connection that fails sends its log to the shop by itself (AI keys hidden), so support can see why without the customer doing anything */
 var REPAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/report';
+function tvInstallRep(k,err){ autoReport(k==='lg'?'tv-lg':'tv-samsung','Cài app TV '+(k==='lg'?'LG':'Samsung')+' lỗi: '+String(err||'').slice(0,170)); }
 function autoReport(kind,head){
   try{
     S.repT=S.repT||{}; var now=Date.now(); if(S.repT[kind]&&now-S.repT[kind]<10*60000) return false; S.repT[kind]=now;
@@ -7173,7 +7174,7 @@ function autoReport(kind,head){
     return true;
   }catch(e){ return false; }
 }
-window.hsRep={send:autoReport,text:reportText};
+window.hsRep={send:autoReport,text:reportText,tv:tvInstallRep};
 window.hsGuardT=function(){ return GUARD.kind; };
 window.hsFitT={tvb:function(o){ return tvBody(o); },rpk:function(o){ return relayPack(o); },clipOn:function(){ return tvClipOn(); },flWhy:function(b){ return {skip:flSkip(b),still:+flStill(b).toFixed(2),junk:dictJunk(b.en),sign:signLike(b),noti:notiLike(b.en),vi:viPlain(b.en),rp:rpBanner(b),zone:(S.zones||[]).some(function(z){ return z.on!==false&&fsOverlap(z,b)>0.3; })}; },view:function(){ return fsView(S.fl.items).map(function(i){ return i.en.slice(0,20); }); },worth:function(){ return S.fl.items.map(function(i){ return i.en.slice(0,14)+":"+fsWorth(i); }); },vac:vipAskCall,lb:letterBody,lbr:letterBodyRot,fr:fontRatio,vz:viFz,caps:capsText,sub:function(){ return S.subBox; },snap:function(el,it){ return fsSnap(el,it); },fsTv:function(l){ fsTv(l); },relay:function(o){ var b=relayPack(tvBody(o)); return {len:String(b.en||'').length,packed:/^HSX1:/.test(b.en||''),x:/^HSX1:/.test(b.en||'')?relayUnpack({en:b.en}):null}; },fsIc:function(l,i,e){ return fsIcPrep(l,i,e); },fsVi:function(b,v){ return fsVi(b,v); },fsList:function(l){ return fsList(l); },fsWords:function(l,r){ return fsWords(l,r); },fsAlign:function(l){ return fsAlign(l); },guard:function(t){ return guardKind(t); },align:function(v,l){ return alignVi(v,l); },enl:function(t,L){ S.ocrLineTexts=L; return enLinesFor(t,L.length); },refuse:function(c,h){ PS.last=h; return psRefused(c); },cs:caseFix,prep:function(t){ return zPrep(t,[]); },icHtml:function(t,ic){ return zIcHtml(t,ic); },punct:punctFix,noti:notiLike,gone:function(){ subGone(); },ui:uiLike,guard:function(a){ return guardKind(a); },rate:fitRate,spw:spwNow,prefer:speakPrefer,live:function(n){ liveAdd(n); },take:function(r,n,raw){ takeResult(r,n,raw); },subGame:function(){ return subGame(); },enq:function(t){ enqueue(t); },dict:function(t){ dictLoad(); return dictFix(t); }};
 $('hsReport').addEventListener('click',function(){
@@ -8877,7 +8878,7 @@ if(D){
    and update it. TV Samsung: installing needs a Samsung certificate made on a computer, so the phone finds the TV,
    opens the app on it and connects by its code. */
 var MPTV={lg:[],tz:[]};
-function mpTvMsg(k,cls,t){ var m=$(k==='lg'?'mpLgMsg':'mpTzMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function mpTvMsg(k,cls,t){ if(t&&cls!=='ok'&&t!==S['mpTvLast'+k]){ S['mpTvLast'+k]=t; log('TV '+(k==='lg'?'LG':'Samsung')+': '+t); } var m=$(k==='lg'?'mpLgMsg':'mpTzMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 function mpCode(k){
   var v=String(tvCodeFor(k)||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(v.length<4){ var AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v=''; for(var i=0;i<6;i++) v+=AL.charAt(Math.floor(Math.random()*AL.length));
@@ -9215,7 +9216,7 @@ function mpLgAutoUpdate(){
     if(S.mpLgUpd||!r||r.ago<0||r.ago>20000||!r.ver||vn(r.ver)>=vn(S.appVer)) return;
     S.mpLgUpd=true; log('app trên TV LG là bản '+r.ver+', đang cập nhật lên '+S.appVer); status('busy','Đang cập nhật app Hóng Sub trên TV LG...');
     (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'update',code:tvCode(),pc:pc||''}); }).then(function(x){
-      log(x&&x.ok?'đã cập nhật app trên TV LG':'cập nhật app TV LG chưa được: '+((x&&x.err)||'')); status(S.running?'run':'idle',x&&x.ok?'Đã cập nhật app trên TV LG':'Chưa cập nhật được app trên TV LG, vào Kết nối TV bấm Cài lại'); });
+      log(x&&x.ok?'đã cập nhật app trên TV LG':'cập nhật app TV LG chưa được: '+((x&&x.err)||'')); if(!(x&&x.ok)) tvInstallRep('lg','cập nhật: '+((x&&x.err)||'')); status(S.running?'run':'idle',x&&x.ok?'Đã cập nhật app trên TV LG':'Chưa cập nhật được app trên TV LG, vào Kết nối TV bấm Cài lại'); });
   }).catch(function(){});
 }
 function mpLgUi(st){
@@ -9263,7 +9264,7 @@ function mpTvInit(){
     DPS.lan.addr().then(function(pc){ return TZI.install(ip,mpCode('samsung'),pc||'',say); }).then(function(r){
       b.disabled=false; save('tzInstalled',{ip:ip,duid:r.duid,at:Date.now()}); $('mpTz').open=false; $('mpTzSum').textContent='Cài lại app Hóng Sub lên TV Samsung';
       mpTvMsg('samsung','ok','Đã cài và mở Hóng Sub trên TV Samsung, mã TV '+tvCodeFor('samsung')+'. Có thể tắt Developer mode trên TV. Bấm Gửi thử để xem chữ trên TV.'); tvState();
-    },function(e){ b.disabled=false; mpTvMsg('samsung','err',String(e&&e.message||e)); log('cài app TV Samsung lỗi: '+String(e&&e.message||e)); });
+    },function(e){ b.disabled=false; mpTvMsg('samsung','err',String(e&&e.message||e)); log('cài app TV Samsung lỗi: '+String(e&&e.message||e)); tvInstallRep('samsung',e&&e.message||e); });
   });
   if(andr&&mpLgNat()){
     var prevNat=window.hsNat;   /* answers from the app for the TV LG part come back here */
@@ -9282,7 +9283,7 @@ function mpTvInit(){
       (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'install',ip:ip,pass:pass,code:mpCode('lg'),pc:pc||''}); }).then(function(r){
         b.disabled=false;
         if(r&&r.ok){ mpTvMsg('lg','ok','Đã cài và mở Hóng Sub trên TV LG, mã TV '+tvCodeFor('lg')+'. Bấm Gửi thử để xem chữ trên TV.'); $('mpLg').open=false; mpLg({do:'state'}).then(mpLgUi); }
-        else mpTvMsg('lg','err',(r&&r.err)||'Chưa cài được.');
+        else { mpTvMsg('lg','err',(r&&r.err)||'Chưa cài được.'); tvInstallRep('lg',(r&&r.err)||'Chưa cài được.'); }
       });
     });
   }
