@@ -9152,6 +9152,10 @@ function psWaitDraw(sec,sub){
 function psWatchStop(){ if(PS.watch){ clearInterval(PS.watch); PS.watch=null; } }
 function psWatchTick(){
   if(!PS.host||!PS.cvs||PS.frames>0){ psWatchStop(); return; }
+  /* the PS asks for its passcode: the time the player takes to type it does not count. Before, 30 s after connecting
+     the app gave up and connected again while the player was typing, or right after the PS unlocked, and the PS then
+     refused the new connection for a while (0x80108b10, "already in use") */
+  if(PS.pinWait){ PS.t0=Date.now(); psWaitDraw(0,'Máy PS có mã khóa: nhập mã trong Hóng Sub để vào máy'); return; }
   var s=Math.round((Date.now()-PS.t0)/1000);
   psWaitDraw(s, PS.pk?'Đã nhận dữ liệu hình, đang giải hình':PS.conn?'Đã nối máy, đang chờ máy gửi hình':'Đang nối với máy');
   if(s===10&&PS.pk>0&&!PS.sw){ PS.sw=true; log('PS: 10 giây có '+PS.pk+' gói hình nhưng chưa giải được, đổi sang giải bằng phần mềm'); if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; } PS.waitKey=true; psIdr(); }
@@ -9391,7 +9395,7 @@ function psStartView(){
   }
   PS.ctx.fillStyle='#000'; PS.ctx.fillRect(0,0,PS.cvs.width,PS.cvs.height);
   var stage=$('hsStage'); if(PS.cvs.parentNode!==stage) stage.insertBefore(PS.cvs,$('hsOv'));
-  PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now(); PS.jank=[]; PS.jankSaid=false;
+  PS.pinWait=false; PS.waitKey=true; PS.frames=0; PS.ts=0; PS.codec=''; PS.hdr=null; PS.hdrCodec=''; PS.decTry=0; PS.pk=0; PS.decErr=0; PS.sw=false; PS.t0=Date.now(); PS.jank=[]; PS.jankSaid=false;
   PS.aIn=0; PS.aOut=0; PS.aErr=0; PS.aChecked=false; PS.vAt=0;
   if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; }
   psWatchStop(); if(!(D&&D.selftest)){ PS.watch=setInterval(psWatchTick,1000); psWaitDraw(0,'Đang nối với máy'); }
@@ -9544,9 +9548,12 @@ function psEvent(ev){
   if(ev.ev!=='rumble') log('PS sự kiện: '+JSON.stringify(ev).slice(0,300));
   if(ev.ev==='connected'){ PS.conn=true; psMsg('','Đã kết nối, đang chờ hình...'); }
   else if(ev.ev==='pin'){
+    PS.pinWait=true;
     psMsg('warn',ev.incorrect?'Mã khóa máy sai, nhập lại bên dưới.':'Máy có đặt mã khóa (passcode). Nhập mã bên dưới.');
     var box=$('hsPsMsg'); box.insertAdjacentHTML('beforeend','<div class="pin" style="display:flex;gap:6px;margin-top:6px"><input class="hs-in" id="hsPsPass" inputmode="numeric" maxlength="4"><button class="hs-btn pri" type="button" id="hsPsPassGo">Gửi</button></div>');
-    $('hsPsPassGo').onclick=function(){ DPS.input('p '+$('hsPsPass').value.replace(/\D/g,'')); psMsg('','Đang mở khóa...'); };
+    $('hsPsPassGo').onclick=function(){ var v=$('hsPsPass').value.replace(/\D/g,''); if(v.length<4){ $('hsPsPass').focus(); return; } PS.pinWait=false; PS.t0=Date.now(); DPS.input('p '+v); psMsg('','Đang mở khóa...'); };
+    $('hsPsPass').addEventListener('keydown',function(e){ if(e.key==='Enter') $('hsPsPassGo').click(); });
+    try{ $('hsPsPass').focus(); }catch(e){}
   }
   else if(ev.ev==='quit'){
     var t=ev.text||'', msg='Đã ngắt kết nối'+(t?': '+(QUIT_TXT[t]||t):'')+(ev.str?' ('+ev.str+')':'');
@@ -9557,6 +9564,7 @@ function psEvent(ev){
   else if(ev.ev==='closed'){ if(!PS.retrying&&PS.host&&!PS.frames&&!PS.err){ PS.err='kết nối đóng khi chưa có hình'; autoReport('ps-closed','Kết nối đóng khi chưa có hình ('+(ev.code)+') '+String(ev.err||'').slice(0,120)); psMsg('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại.'); status('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại ở trang Kết nối PS và TV.'); } psStopView(); }
 }
 function psInit(){
+  window.hsPsT={PS:PS,dps:DPS,ev:psEvent,tick:psWatchTick};   /* for testing */
   if(!DPS) return;
   DPS.onVideo(psVideo); DPS.onAudioHeader(psAudioHeader); DPS.onAudio(psAudio); DPS.onEvent(psEvent);
   document.addEventListener('keydown',function(e){psKey(e,true);},true);
@@ -9673,6 +9681,7 @@ function psSteps(){
 }
 async function psAutoRun(auto){
   if(PSST.running) return;
+  if(auto===true&&PS.pinWait&&PS.host){ log('PS: không tự kết nối lại: máy PS đang chờ nhập mã khóa'); return; }   /* the TV app opening, Hóng Sub waking up: not while the player types the passcode */
   if(auto===true&&PS.block26&&Date.now()<PS.block26){ log('PS: không tự kết nối: máy PS vừa từ chối (mã 26), chờ khởi động lại PS5 rồi bấm Kết nối'); return; }
   if(auto!==true) PS.block26=0; PSST.running=true; PS.err=''; PS.retry=0; log('PS: kết nối tự động');
   try{
@@ -10298,7 +10307,7 @@ if(!D&&DPS){
   })();
   if(typeof VideoDecoder==='undefined') psMsg('err',IOS?'iPhone cần iOS 16.4 trở lên để nhận hình PS5. Vào Cài đặt › Cài đặt chung › Cập nhật phần mềm.':'Điện thoại cần cập nhật Android System WebView (hoặc Chrome) để nhận hình PS5.');
   psInit();
-  window.hsPsApi={PS:PS,view:psStartView,dps:DPS,login:psLogin,find:psFind};   /* for testing */
+  window.hsPsApi={PS:PS,view:psStartView,dps:DPS,login:psLogin,find:psFind,ev:psEvent,tick:psWatchTick};   /* for testing */
   tvLanInit(); lanPcPhone(); mpTvInit(); tvTypeUi&&tvTypeUi(); tvState&&tvState();
   [].forEach.call(document.querySelectorAll('.hs-devw'),function(e){ e.textContent='điện thoại'; });
   DPS.ping().then(function(r){ log('PS: lõi Remote Play '+(r&&r.core?r.core:'chưa chạy ('+((r&&r.err)||'')+')')); });
