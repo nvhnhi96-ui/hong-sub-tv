@@ -111,6 +111,7 @@ public class OverlayService extends Service {
         return b;
     }
 
+    private long sayAt = -600000;
     private void clipAdd(String b64, String mime, float rate) {
         try {
             byte[] data = Base64.decode(b64, Base64.DEFAULT);
@@ -952,12 +953,17 @@ public class OverlayService extends Service {
         // Hóng Sub on the computer says whether the TV reads aloud (off, or read on the computer instead)
         // "Đọc phụ đề" turned off on the computer (rd:false) always wins
         boolean pcOff = j.has("rd") && !j.optBoolean("rd", true);
-        boolean read = !pcOff && (j.has("speak") ? j.optBoolean("speak", false) : prefs.speak());
+        // a message without the reading flag (an older computer, a copy that did not fit through honggame.store): while
+        // the computer is sending its own voice ("say" in the last minute), the TV's voice stays quiet
+        boolean clipLive = android.os.SystemClock.elapsedRealtime() - sayAt < 60000;
+        boolean read = !pcOff && !j.optBoolean("pcv", false) && (j.has("speak") ? j.optBoolean("speak", false) : (prefs.speak() && !clipLive));
         // an area translation or a notice never cuts the line being read; only a subtitle or a setting change does
         boolean stops = pcOff || (j.has("speak") && !read && (kind.equals("sub") || kind.equals("ctl")));
         if (stops && tts != null) { tts.stop(); ttsPending.set(0); }
         if (pcOff) clipStop();
         if (kind.equals("say")) {   // only the sound of a line, in the voice chosen on the computer
+            sayAt = android.os.SystemClock.elapsedRealtime();
+            if (tts != null) { tts.stop(); ttsPending.set(0); }   // the TV's own voice never reads over it
             if (!pcOff) clipAdd(j.optString("aud", ""), j.optString("mime", "audio/wav"), (float) Math.max(0.5, Math.min(2.5, j.optDouble("rate", 1))));
             return;
         }

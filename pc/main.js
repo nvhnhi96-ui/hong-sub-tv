@@ -1018,7 +1018,16 @@ function setupIpc() {
     if (!text) return { ok: false };
     try {
       let buf = null, mime = 'audio/wav';
-      if (voice.startsWith('ai:')) buf = await aivClip(text, voice.slice(3));
+      /* the AI voice still starting (first lines after opening) or one line failing: wait for it and try again, rather
+         than reading that line with another voice (Hóng Sub's own, then Windows'). Those other voices cutting in
+         between AI lines sounded like the TV's own voice (11/2026) */
+      if (voice.startsWith('ai:')) {
+        if (!aiv.proc) aivStart();
+        for (let i = 0; i < 40 && aiv.proc && !aiv.ready; i++) await new Promise((r) => setTimeout(r, 500));
+        buf = await aivClip(text, voice.slice(3));
+        if (!buf && aiv.ready) buf = await aivClip(text, voice.slice(3));
+        if (!buf) return { ok: false, err: 'ai' };
+      }
       else if (voice.startsWith('gg:')) { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; }
       else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
       else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }

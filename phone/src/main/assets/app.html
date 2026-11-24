@@ -4196,8 +4196,10 @@ function relayPack(o){
   if(o.kind==='zone'&&o.zid){ ['cov','cspot','cal','cfs','cn','abv','wid','col','bg','sen','name','zfit','zs'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* always: a box needs none of these, and a short message never loses its place */
   drop.forEach(function(k){ if(s.length>600&&x[k]!==undefined){ delete x[k]; s='HSX1:'+b64u(JSON.stringify(x)); } });
   if(s.length>600&&x.zgrow&&x.zmaxw!=null&&x.zx===x.x&&x.zw===x.w){ ['zx','zy','zw','zh'].forEach(function(k){ delete x[k]; }); s='HSX1:'+b64u(JSON.stringify(x)); }   /* the box's own place as its room: the TV gets the same from zmaxw */
+  /* still too long (a long line with its look): what decides the reading and the line's number always goes, so the
+     TV never falls back to its own voice because the rest of the message did not fit */
+  if(s.length>600){ var y={}; ['speak','pcv','rd','sid','k','vol','pos','cov','cspot','cal','cfs','abv','col','bg','size'].forEach(function(k){ if(x[k]!==undefined){ y[k]=x[k]; var t='HSX1:'+b64u(JSON.stringify(y)); if(t.length>600) delete y[k]; } }); s='HSX1:'+b64u(JSON.stringify(y)); log('TV qua mã TV: tin dài, chỉ gửi phần chính ('+Object.keys(y).join(',')+')'); }
   if(s.length<=600) b.en=s;
-  else log('TV qua mã TV: tin quá dài, TV chỉ nhận chữ ('+s.length+')');
   return b;
 }
 function relayUnpack(j){
@@ -5076,7 +5078,11 @@ function speak(t,res){
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
     return made.then(function(c){
       if(S.clipN-my>=2&&Date.now()-t0>9000){ log('đọc trên TV: bỏ qua một câu cũ để giọng theo kịp chữ'); return; }
-      if(!c||!c.ok){ if(where==='tv'||where==='both'&&same) devSpeak(t,mode,g,who,null,true,src); return; }   /* the TV's voice could not be made: this computer reads, the line is never silent */
+      /* the chosen voice could not be made for this line: no other voice reads it in between (that sounded like the
+         TV's own voice cutting in). Only when it keeps failing (3 lines in a row) this computer reads, so it is not silent */
+      if(!c||!c.ok){ S.clipFail=(S.clipFail||0)+1; log('đọc trên TV: chưa tạo được giọng cho câu này'+(c&&c.err==='ai'?' (giọng AI chưa sẵn sàng)':'')+', bỏ qua câu đó');
+        if(S.clipFail>=3&&(where==='tv'||where==='both'&&same)) devSpeak(t,mode,g,who,null,true,src); return; }
+      S.clipFail=0;
       if(where==='both'&&same) D.playClip(c,rate,pitch,true);
       tvSay(c,rate,same?pitch:1);
     });

@@ -596,7 +596,7 @@ function takeAll(j,after){
   if(j.items&&j.items.length){ j.items.forEach(function(it){ if(+it.seq>after) handle(unpack(it)); }); return; }
   handle(unpack(j));
 }
-var mids=[], midsPic=[];
+var mids=[], midsPic=[], sayAt=-600000;
 function handle(j){
   pcAt=Date.now(); if(j.hasOwnProperty('hb')) hbOn=true;
   /* came both ways: show it once. A box as the computer drew it (its picture, home network only) still replaces the
@@ -608,7 +608,7 @@ function handle(j){
   var pcOff=j.rd===false;
   /* "auto": the computer decides where lines are read. pcv: the computer sends its own voice for the TV to play
      (kind "say"), so the TV's voice stays quiet even on "Luôn đọc": two voices read the same line */
-  var readIt=!pcOff&&!j.pcv&&(P.read==='on'||(P.read==='auto'&&!!j.speak));
+  var readIt=!pcOff&&!j.pcv&&Date.now()-sayAt>60000&&(P.read==='on'||(P.read==='auto'&&!!j.speak));   /* the computer's voice came in the last minute: the TV's voice stays quiet */
   if(pcOff||(kind==='ctl'&&P.read==='auto'&&j.hasOwnProperty('speak')&&!j.speak)) sayStop();   /* an area or a notice never cuts the line being read */
   var size=+j.size||0, pos=j.pos||'', changed=false;
   if(size>=10&&size!==P.size){ P.size=size; save('size',size); changed=true; }
@@ -626,7 +626,7 @@ function handle(j){
   if(j.hasOwnProperty('hdmi')&&packaged){ var hn=+j.hdmi; if(hn>=1&&hn<=4&&hn!==P.src){ P.src=hn; save('src',hn); P.srcPick=true; save('srcPick',true); setSource(hn); } }   /* chosen on the computer: kept */
   if(j.hasOwnProperty('vol')&&+j.vol>=30&&+j.vol<=300) P.vol=+j.vol;   /* how loud the voice is, in percent */
   if(changed){ applyLook(); if(cov) coverPlace(); }
-  if(kind==='say'){ if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
+  if(kind==='say'){ sayAt=Date.now(); try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){} if(!pcOff&&packaged) sayClip(j.clip,j.rate); return; }   /* never shown: it is only the sound of a line */
   if(kind==='hb'){ syncState(j); return; }   /* "still here", with what should be on the TV now */
   if(kind==='hello'||kind==='ctl') return;
   if(kind==='clr'){ clearTimeout(hideT); $('sub').className=(P.pos==='top'?'top':'')+(cov?' cov':''); return; }   /* the game's own subtitle is gone: so is the Vietnamese */
