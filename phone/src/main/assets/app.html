@@ -10777,6 +10777,10 @@ if(IOS){
     var b=document.createElement('button'); b.type='button'; b.className='hs-btn'; b.id='hsDarkBtn'; b.title='Màn hình tối để đỡ hao pin, Hóng Sub vẫn dịch và đọc';
     b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span>Tắt màn hình</span>';
     b.addEventListener('click',on); d.parentNode.appendChild(b);
+    /* the note about it: in the tips of the play screen, and under the buttons where it stays visible while playing */
+    var NOTE='Muốn tắt màn hình mà vẫn dịch: bấm <b>Tắt màn hình</b>, màn hình tối lại, úp điện thoại xuống là tắt hẳn. Chạm 2 lần để mở lại. <b>Đừng bấm nút nguồn và đừng chuyển sang app khác</b>: iPhone sẽ dừng Hóng Sub, ngừng dịch.';
+    var tip=document.querySelector('.hs-tipr'); if(tip&&tip.parentNode){ var r=document.createElement('div'); r.className='hs-tipr'; r.innerHTML='<span class="hs-tipk">Tắt màn hình iPhone vẫn dịch</span><span>'+NOTE.replace(/<\/?b>/g,'')+'</span>'; tip.parentNode.appendChild(r); }
+    var row=d.parentNode; if(row.parentNode){ var n=document.createElement('p'); n.className='hs-note'; n.id='hsDarkNote'; n.style.cssText='margin:8px 2px 0;grid-column:1/-1'; n.innerHTML=NOTE; var tgs=row.parentNode.querySelectorAll(':scope>.dk-tg'), lastTg=tgs[tgs.length-1]||row; row.parentNode.insertBefore(n,lastTg.nextSibling); }
   })();
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chọn nguồn hình game';
     if($('hsPick')) $('hsPick').style.display='none';
