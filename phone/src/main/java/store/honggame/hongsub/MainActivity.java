@@ -274,6 +274,7 @@ public class MainActivity extends Activity {
 
     private void nativeCall(String cmd, String id) {
         if ("psnLogin".equals(cmd)) PsnLogin.show(this, json -> reply(id, json));
+        else if ("psnForget".equals(cmd)) PsnLogin.forget(() -> reply(id, "{\"ok\":true}"));
         else if ("psnCancel".equals(cmd)) { PsnLogin.cancel(); reply(id, "{\"ok\":true}"); }
         else if (cmd != null && cmd.startsWith("samsungLogin:")) SamsungTv.login(this, cmd.substring(13), json -> reply(id, json));
         else if ("samsungClose".equals(cmd)) { SamsungTv.close(); reply(id, "{\"ok\":true}"); }

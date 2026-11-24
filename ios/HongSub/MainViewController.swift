@@ -80,6 +80,8 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
         switch cmd {
         case "psnLogin":
             PsnLogin.present(from: self) { [weak self] res in self?.reply(id, res) }
+        case "psnForget":
+            PsnLogin.forget { [weak self] in self?.reply(id, ["ok": true]) }
         case "psnCancel":
             PsnLogin.cancel()
             reply(id, ["ok": true])

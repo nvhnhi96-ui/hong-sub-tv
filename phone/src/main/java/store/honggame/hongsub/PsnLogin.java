@@ -69,6 +69,16 @@ final class PsnLogin {
         if (d != null) d.done(json);
     }
 
+    /* "Đổi tài khoản": Sony's page remembers who signed in (cookies) and went straight back into the OLD account,
+       the new one could never be entered (11/2026). Its cookies are removed first. Hóng Sub's own page keeps its
+       settings elsewhere (not in cookies), nothing of it is lost. */
+    static void forget(Runnable then) {
+        try {
+            CookieManager cm = CookieManager.getInstance();
+            cm.removeAllCookies(ok -> { try { cm.flush(); } catch (Exception ignored) { } main.post(then); });
+        } catch (Exception e) { main.post(then); }
+    }
+
     static void cancel() { main.post(() -> finish("{\"ok\":false,\"err\":\"closed\"}")); }
 
     @SuppressLint("SetJavaScriptEnabled")

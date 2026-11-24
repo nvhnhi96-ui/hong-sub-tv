@@ -25,6 +25,22 @@ final class PsnLogin: UIViewController, WKNavigationDelegate {
         vc.present(nav, animated: true)
     }
 
+    /// "Đổi tài khoản": Sony's page remembers who signed in and went straight back into the OLD account, the new one
+    /// could never be entered (11/2026). What Sony's pages keep on this phone is removed first; Hóng Sub's own page
+    /// (127.0.0.1) keeps everything.
+    static func forget(done: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            let store = WKWebsiteDataStore.default(), types = WKWebsiteDataStore.allWebsiteDataTypes()
+            store.fetchDataRecords(ofTypes: types) { recs in
+                let sony = recs.filter { r in
+                    let n = r.displayName.lowercased()
+                    return n.contains("sony") || n.contains("playstation")
+                }
+                store.removeData(ofTypes: types, for: sony) { done() }
+            }
+        }
+    }
+
     static func cancel() { DispatchQueue.main.async { current?.finish(["ok": false, "err": "closed"]) } }
 
     private func finish(_ r: [String: Any]) {
