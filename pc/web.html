@@ -8098,8 +8098,7 @@ function hsMobilePs(){
       find:function(){ return ask('tvfind 1800','tvfind',5000).then(function(r){ return (r&&r.list||[]).map(function(x){ var j={}; try{ j=JSON.parse(x.text); }catch(e){} j.ip=x.addr; return j; }).filter(function(j){ return j.app==='hongsubtv'; }); }); },
       ping:function(ip){ return tvAsk(ip,'/ping',null); },
       send:function(ip,o){ return tvAsk(ip,'/sub',o); }
-    },
-    raw:function(line){ return open().then(function(w){ w.send(line); }); }
+    }
   };
 }
 DPS=(D&&D.ps)||hsMobilePs();
@@ -8884,7 +8883,7 @@ function mpFind(k){
 function mpPick(k,t){
   save(k==='lg'?'mpLgIp':'mpTzIp',t.ip);
   if(k==='lg'){ var ip=$('mpLgIp'); if(ip) ip.value=t.ip;
-    mpTvMsg('lg','ok','Đã chọn '+t.name+' ('+t.ip+').'+(t.dev&&PH?' TV đang bật Developer Mode: gõ Passphrase rồi bấm Cài app lên TV.':' Mở app Hóng Sub trên TV rồi gõ Mã TV đang hiện vào ô dưới.')); }
+    mpTvMsg('lg','ok','Đã chọn '+t.name+' ('+t.ip+').'+(t.dev&&(mpLgNat()||LGJ.ok())?' TV đang bật Developer Mode: gõ Passphrase rồi bấm Cài app lên TV.':' Mở app Hóng Sub trên TV rồi gõ Mã TV đang hiện vào ô dưới.')); }
   else { var ti=$('mpTzIpIn'); if(ti) ti.value=t.ip; mpTvMsg('samsung','ok','Đã chọn '+t.name+(t.model?' ('+t.model+')':'')+', IP '+t.ip+'. TV đã có app: bấm Mở Hóng Sub trên TV. Chưa có: mở mục cài ở dưới, bấm Cài app lên TV.'); mpTzReady(); }
 }
 /* TV Samsung: opened through its remote-control service on port 8001 (the TV may ask once to allow the phone) */
@@ -8902,8 +8901,275 @@ function mpTzOpen(){
   });
 }
 function mpTzReady(){ var b=$('mpTzOpen'); if(b) b.hidden=!load('mpTzIp',''); window.hsTzOpen=load('mpTzIp','')?mpTzOpen:null; tvState(); }
-/* TV LG from the Android app: install, open, update over SSH with the TV's Developer Mode key */
-function mpLg(a){ return new Promise(function(res){ var id='lg'+Date.now()+Math.random().toString(36).slice(2,5); var cbs=window.hsNatCbs=window.hsNatCbs||{}; cbs[id]=res; try{ PH.nat('lg:'+JSON.stringify(a),id); }catch(e){ delete cbs[id]; res({ok:false,err:String(e)}); } }); }
+/* ---------- TV LG: put the Hóng Sub app on the TV from the iPhone ----------
+   The same steps as the Android app (LgTv.java) and LG's own ares-install: the TV's Developer Mode app hands out an
+   SSH key (Key Server, port 9991) locked with the passphrase shown on the TV; with it the phone copies the .ipk over
+   SSH (port 9922, user "prisoner") and asks the TV to install it. The iPhone app has no SSH of its own, so this page
+   speaks SSH (version 2: Diffie-Hellman group 14, AES-CTR, HMAC, an RSA key) over the phone core's plain TCP
+   connection, with the browser's own cryptography. The key is kept, so later the phone opens and updates the app on
+   the TV without the passphrase. */
+var LGJ=(function(){
+  function raw(){ return (DPS&&DPS.raw)||(D&&D.tzraw)||null; }
+  var TE=new TextEncoder(), TD=new TextDecoder();
+  var APP='store.honggame.hongsubtv', TEMP='/media/developer/temp', LUNA='/usr/bin/luna-send-pub';
+  var IPK='https://github.com/nvhnhi96-ui/hong-sub-tv/releases/latest/download/hong-sub-lg.ipk';
+  function cat(a){ var n=0; a.forEach(function(x){ n+=x.length; }); var o=new Uint8Array(n), k=0; a.forEach(function(x){ o.set(x,k); k+=x.length; }); return o; }
+  function b64(u){ var s='', i; for(i=0;i<u.length;i+=0x8000) s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
+  function unb64(s){ var t=atob(String(s||'').replace(/[^A-Za-z0-9+/=]/g,'')), o=new Uint8Array(t.length); for(var i=0;i<t.length;i++) o[i]=t.charCodeAt(i); return o; }
+  function b64u(u){ return b64(u).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function hex(s){ var o=new Uint8Array(s.length/2); for(var i=0;i<o.length;i++) o[i]=parseInt(s.substr(i*2,2),16); return o; }
+  function u32(n){ var o=new Uint8Array(4); new DataView(o.buffer).setUint32(0,n>>>0); return o; }
+  function str(x){ if(typeof x==='string') x=TE.encode(x); return cat([u32(x.length),x]); }
+  function bigOf(u){ var h='0'; for(var i=0;i<u.length;i++) h+=('0'+u[i].toString(16)).slice(-2); return BigInt('0x'+h); }
+  function bytesOf(n){ var h=n.toString(16); if(h.length%2) h='0'+h; return n===0n?new Uint8Array(0):hex(h); }
+  function mpint(n){ var b=bytesOf(n); if(b.length&&b[0]&0x80) b=cat([new Uint8Array([0]),b]); return str(b); }
+  function mpintRaw(b){ var i=0; while(i<b.length-1&&b[i]===0) i++; b=b.subarray(i); if(b.length&&b[0]&0x80) b=cat([new Uint8Array([0]),b]); if(b.length===1&&b[0]===0) b=new Uint8Array(0); return str(b); }
+  function modpow(b,e,m){ var r=1n; b%=m; while(e>0n){ if(e&1n) r=r*b%m; e>>=1n; b=b*b%m; } return r; }
+  function rnd(n){ var o=new Uint8Array(n); crypto.getRandomValues(o); return o; }
+  function digest(alg,d){ return crypto.subtle.digest(alg,d).then(function(h){ return new Uint8Array(h); }); }
+  /* reading SSH fields */
+  function Rd(u){ this.u=u; this.p=0; }
+  Rd.prototype.b=function(){ return this.u[this.p++]; };
+  Rd.prototype.n=function(){ var v=new DataView(this.u.buffer,this.u.byteOffset+this.p,4).getUint32(0); this.p+=4; return v; };
+  Rd.prototype.s=function(){ var n=this.n(), o=this.u.subarray(this.p,this.p+n); this.p+=n; return o; };
+  Rd.prototype.t=function(){ return TD.decode(this.s()); };
+  /* ---- MD5 (only to open the key the TV hands out: OpenSSL locks it with MD5 of the passphrase) ---- */
+  function md5(d){
+    var K=[],S=[7,12,17,22,5,9,14,20,4,11,16,23,6,10,15,21],i; for(i=0;i<64;i++) K[i]=Math.floor(Math.abs(Math.sin(i+1))*4294967296)>>>0;
+    var n=d.length, m=new Uint8Array(((n+8)>>6)+1<<6); m.set(d); m[n]=0x80; var bits=n*8, dv=new DataView(m.buffer);
+    dv.setUint32(m.length-8,bits>>>0,true); dv.setUint32(m.length-4,Math.floor(bits/4294967296),true);
+    var a0=0x67452301,b0=0xefcdab89,c0=0x98badcfe,d0=0x10325476;
+    for(var o=0;o<m.length;o+=64){ var M=[]; for(i=0;i<16;i++) M[i]=dv.getUint32(o+i*4,true);
+      var A=a0,B=b0,C=c0,Dd=d0;
+      for(i=0;i<64;i++){ var F,g; if(i<16){ F=(B&C)|(~B&Dd); g=i; } else if(i<32){ F=(Dd&B)|(~Dd&C); g=(5*i+1)%16; } else if(i<48){ F=B^C^Dd; g=(3*i+5)%16; } else { F=C^(B|~Dd); g=(7*i)%16; }
+        F=(F+A+K[i]+M[g])>>>0; A=Dd; Dd=C; C=B; var sh=S[(i>>4)*4+(i%4)]; B=(B+((F<<sh)|(F>>>(32-sh))))>>>0; }
+      a0=(a0+A)>>>0; b0=(b0+B)>>>0; c0=(c0+C)>>>0; d0=(d0+Dd)>>>0; }
+    var out=new Uint8Array(16), ov=new DataView(out.buffer); ov.setUint32(0,a0,true); ov.setUint32(4,b0,true); ov.setUint32(8,c0,true); ov.setUint32(12,d0,true); return out;
+  }
+  /* ---- the TV's key: PEM "RSA PRIVATE KEY", locked with the passphrase (AES-CBC, key from MD5) ---- */
+  function der(u){ var p=0; function node(){ var tag=u[p++], len=u[p++]; if(len&0x80){ var k=len&0x7f; len=0; while(k--) len=len*256+u[p++]; } var s=p; p+=len; return {tag:tag,v:u.subarray(s,s+len)}; }
+    var seq=node(); if(seq.tag!==0x30) throw new Error('key'); u=seq.v; p=0; var out=[]; while(p<u.length){ var x=node(); if(x.tag!==2) throw new Error('key'); out.push(x.v); } return out; }
+  function trim0(b){ var i=0; while(i<b.length-1&&b[i]===0) i++; return b.subarray(i); }
+  function openKey(pem,pass){
+    pem=String(pem||'');
+    if(/BEGIN OPENSSH PRIVATE KEY|BEGIN ENCRYPTED PRIVATE KEY/.test(pem)) return Promise.reject(new Error('Khóa từ TV có dạng chưa hỗ trợ.'));
+    var m=/-----BEGIN RSA PRIVATE KEY-----([\s\S]*?)-----END RSA PRIVATE KEY-----/.exec(pem); if(!m) return Promise.reject(new Error('Khóa từ TV không đúng.'));
+    var body=m[1], dek=/DEK-Info:\s*([A-Z0-9-]+),([0-9A-Fa-f]+)/.exec(body), data=unb64(body.replace(/^[A-Za-z-]+:.*$/mg,''));
+    var plain;
+    if(!dek) plain=Promise.resolve(data);
+    else {
+      var alg=dek[1], iv=hex(dek[2]), pw=TE.encode(String(pass||'')), salt=iv.subarray(0,8), klen=alg==='AES-128-CBC'?16:alg==='AES-192-CBC'?24:alg==='AES-256-CBC'?32:0;
+      if(!klen) return Promise.reject(new Error('Khóa từ TV khóa bằng kiểu '+alg+', chưa hỗ trợ.'));
+      var k=new Uint8Array(0), prev=new Uint8Array(0); while(k.length<klen){ prev=md5(cat([prev,pw,salt])); k=cat([k,prev]); } k=k.subarray(0,klen);
+      plain=crypto.subtle.importKey('raw',k,{name:'AES-CBC'},false,['decrypt']).then(function(ck){ return crypto.subtle.decrypt({name:'AES-CBC',iv:iv},ck,data); }).then(function(b){ return new Uint8Array(b); });
+    }
+    return plain.then(function(p){
+      var f; try{ f=der(p); }catch(e){ throw new Error('pass'); } if(f.length<9) throw new Error('pass');
+      var n=trim0(f[1]), e=trim0(f[2]);
+      var jwk={kty:'RSA',n:b64u(n),e:b64u(e),d:b64u(trim0(f[3])),p:b64u(trim0(f[4])),q:b64u(trim0(f[5])),dp:b64u(trim0(f[6])),dq:b64u(trim0(f[7])),qi:b64u(trim0(f[8])),ext:true};
+      var blob=cat([str('ssh-rsa'),mpintRaw(e),mpintRaw(n)]);
+      return {jwk:jwk,blob:blob};
+    },function(){ throw new Error('pass'); });
+  }
+  function rsaSign(jwk,hash,data){ var j={}; for(var k in jwk) j[k]=jwk[k]; delete j.alg;
+    return crypto.subtle.importKey('jwk',j,{name:'RSASSA-PKCS1-v1_5',hash:hash},false,['sign']).then(function(k){ return crypto.subtle.sign('RSASSA-PKCS1-v1_5',k,data); }).then(function(s){ return new Uint8Array(s); }); }
+  /* ---- a plain TCP connection through the phone's core ---- */
+  function Tcp(ip,port){ this.ip=ip; this.port=port; this.id='l'+(Date.now()%1e7).toString(36)+Math.random().toString(36).slice(2,5); this.buf=new Uint8Array(0); this.dead=false; this.wake=null; }
+  Tcp.prototype.open=function(ms){ var me=this, R=raw(); if(!R) return Promise.reject(new Error('missing'));
+    me.off=R.on(function(j){ if(!j||j.id!==me.id) return; if(j.ev==='tcpdata'){ me.buf=cat([me.buf,unb64(j.b64)]); } else if(j.ev==='tcpclose') me.dead=true; else return; if(me.wake){ var w=me.wake; me.wake=null; w(); } });
+    return R.ask('tcpopen '+me.id+' '+me.ip+' '+me.port,'tcp',ms||10000,me.id).then(function(r){ if(!r||!r.ok){ if(me.off) me.off(); throw new Error(r&&r.err==='refused'?'refused':'noconnect'); } }); };
+  Tcp.prototype.send=function(u){ return raw().send('tcpsend '+this.id+' '+b64(u)); };
+  Tcp.prototype.need=function(n,ms){ var me=this, end=Date.now()+(ms||20000);
+    return new Promise(function(res,rej){ (function look(){ if(me.buf.length>=n){ res(); return; } if(me.dead){ rej(new Error('closed')); return; }
+      var left=end-Date.now(); if(left<=0){ rej(new Error('timeout')); return; } var t=setTimeout(function(){ me.wake=null; look(); },Math.min(left,500)); me.wake=function(){ clearTimeout(t); look(); }; })(); }); };
+  Tcp.prototype.take=function(n){ var o=this.buf.slice(0,n); this.buf=this.buf.slice(n); return o; };
+  Tcp.prototype.close=function(){ try{ raw().send('tcpclose '+this.id); }catch(e){} if(this.off) this.off(); };
+  /* the key from the TV's Key Server (plain HTTP on port 9991) */
+  function getKey(ip){
+    var t=new Tcp(ip,9991);
+    return t.open(8000).then(function(){ return t.send(TE.encode('GET /webos_rsa HTTP/1.0\r\nHost: '+ip+':9991\r\nConnection: close\r\n\r\n')); })
+      .then(function(){ return t.need(1e9,8000).catch(function(e){ if(!t.dead&&e.message!=='closed') throw e; }); })
+      .then(function(){ t.close(); var s=TD.decode(t.buf), i=s.indexOf('\r\n\r\n'); if(!/^HTTP\/1\.[01] 200/.test(s)||i<0) throw new Error('key'); return s.slice(i+4); },function(e){ t.close(); throw e; });
+  }
+  /* ---- SSH ---- */
+  var P14=BigInt('0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AACAA68FFFFFFFFFFFFFFFF');
+  var P1=BigInt('0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381FFFFFFFFFFFFFFFF');
+  var KEX=['diffie-hellman-group14-sha256','diffie-hellman-group-exchange-sha256','diffie-hellman-group14-sha1','diffie-hellman-group-exchange-sha1','diffie-hellman-group1-sha1','ext-info-c'];
+  var HOSTK=['rsa-sha2-256','rsa-sha2-512','ssh-rsa','ecdsa-sha2-nistp256','ssh-ed25519'];
+  var CIPH=['aes128-ctr','aes256-ctr','aes192-ctr'], MACS=['hmac-sha2-256','hmac-sha1'];
+  function pick(mine,theirs,what){ for(var i=0;i<mine.length;i++) if(theirs.indexOf(mine[i])>=0) return mine[i]; throw new Error('TV không hỗ trợ cách mã hóa '+what+' ('+theirs.join(',').slice(0,80)+')'); }
+  function Ssh(ip){ this.ip=ip; this.t=new Tcp(ip,9922); this.sin=0; this.sout=0; this.cs=null; this.sc=null; this.q=[]; this.chs={}; this.nextCh=0; }
+  /* one direction's keys: AES-CTR (the counter moves on by the bytes used) and HMAC */
+  function Dir(c){ this.c=c; }
+  function ctrAdd(iv,n){ var v=bigOf(iv)+BigInt(n); v&=(1n<<128n)-1n; var b=bytesOf(v), o=new Uint8Array(16); o.set(b,16-b.length); return o; }
+  Dir.prototype.crypt=function(data){ var me=this, iv=me.iv; me.iv=ctrAdd(me.iv,data.length/16);
+    return crypto.subtle.encrypt({name:'AES-CTR',counter:iv,length:128},me.key,data).then(function(b){ return new Uint8Array(b); }); };
+  Dir.prototype.peek=function(block){ return crypto.subtle.encrypt({name:'AES-CTR',counter:this.iv,length:128},this.key,block).then(function(b){ return new Uint8Array(b); }); };
+  Dir.prototype.mac=function(seq,data){ return crypto.subtle.sign('HMAC',this.hk,cat([u32(seq),data])).then(function(b){ return new Uint8Array(b); }); };
+  Ssh.prototype.sendPkt=function(payload){
+    var me=this, bs=me.cs?16:8, pad=bs-((payload.length+5)%bs); if(pad<4) pad+=bs;
+    var pkt=cat([u32(payload.length+pad+1),new Uint8Array([pad]),payload,rnd(pad)]), seq=me.sout; me.sout=(me.sout+1)>>>0;
+    if(!me.cs) return me.t.send(pkt);
+    /* one packet after another: the counter and the sequence number must stay in order */
+    me.wq=(me.wq||Promise.resolve()).then(function(){ return Promise.all([me.cs.mac(seq,pkt),me.cs.crypt(pkt)]).then(function(r){ return me.t.send(cat([r[1],r[0]])); }); });
+    return me.wq;
+  };
+  Ssh.prototype.readPkt=function(ms){
+    var me=this, t=me.t, seq=me.sin;
+    if(!me.sc) return t.need(5,ms).then(function(){ var n=new DataView(t.buf.buffer,t.buf.byteOffset,4).getUint32(0); return t.need(4+n,ms).then(function(){ var p=t.take(4+n); me.sin=(me.sin+1)>>>0; return p.subarray(5,4+n-p[4]); }); });
+    var ml=me.sc.ml;
+    return t.need(16,ms).then(function(){ return me.sc.peek(t.buf.subarray(0,16)); }).then(function(first){
+      var n=new DataView(first.buffer,0,4).getUint32(0); if(n>300000||(n+4)%16) throw new Error('Kết nối với TV bị lỗi (gói tin hỏng).');
+      return t.need(4+n+ml,ms).then(function(){ var enc=t.take(4+n), mac=t.take(ml);
+        return me.sc.crypt(enc).then(function(p){ return me.sc.mac(seq,p).then(function(m){ for(var i=0;i<ml;i++) if(m[i]!==mac[i]) throw new Error('Kết nối với TV bị lỗi (sai mã kiểm tra).'); me.sin=(me.sin+1)>>>0; return p.subarray(5,4+n-p[4]); }); }); });
+    });
+  };
+  /* the next packet the session cares about (keep-alives and notes from the TV are answered or skipped) */
+  Ssh.prototype.next=function(ms){ var me=this;
+    return me.readPkt(ms).then(function(p){ var k=p[0];
+      if(k===2||k===4||k===53) return me.next(ms);                                       /* ignore, debug, banner */
+      if(k===1){ var r=new Rd(p); r.b(); r.n(); throw new Error('TV đóng kết nối: '+r.t()); }
+      if(k===80){ var g=new Rd(p); g.b(); g.t(); if(g.b()) me.sendPkt(new Uint8Array([82])); return me.next(ms); }   /* a global request: "not supported" */
+      return p; }); };
+  Ssh.prototype.connect=function(){
+    var me=this, t=me.t, VC='SSH-2.0-HongSub_1.0', VS='', IC, IS, kex, hk, ciph, mac, x, e, ks, f, K, H, alg;
+    return t.open(10000).then(function(){ return t.send(TE.encode(VC+'\r\n')); }).then(function(){
+      return (function line(){ return t.need(1,15000).then(function(){ var s=TD.decode(t.buf), i=s.indexOf('\n'); if(i<0) return t.need(t.buf.length+1,15000).then(line);
+        var l=t.take(TE.encode(s.slice(0,i+1)).length); var v=TD.decode(l).replace(/\r?\n$/,''); if(v.indexOf('SSH-')===0){ VS=v; return; } return line(); }); })();
+    }).then(function(){
+      IC=cat([new Uint8Array([20]),rnd(16),str(KEX.join(',')),str(HOSTK.join(',')),str(CIPH.join(',')),str(CIPH.join(',')),str(MACS.join(',')),str(MACS.join(',')),str('none'),str('none'),str(''),str(''),new Uint8Array([0]),u32(0)]);
+      return me.sendPkt(IC).then(function(){ return me.next(15000); });
+    }).then(function(p){
+      if(p[0]!==20) throw new Error('kex'); IS=p; var r=new Rd(p); r.p=17; var L=[]; for(var i=0;i<10;i++) L.push(r.t().split(','));
+      kex=pick(KEX,L[0],'kex'); hk=pick(HOSTK,L[1],'khóa máy'); ciph=pick(CIPH,L[3],'dữ liệu'); mac=pick(MACS,L[5],'kiểm tra');
+      pick(CIPH,L[2],'dữ liệu'); pick(MACS,L[4],'kiểm tra');
+      var gex=kex.indexOf('group-exchange')>=0, G=2n, gexHead=new Uint8Array(0);
+      /* group exchange: the TV names the group first (asked for 2048 bits, as LG's tool does) */
+      var grp=gex?me.sendPkt(cat([new Uint8Array([34]),u32(1024),u32(2048),u32(8192)])).then(function(){ return me.next(20000); }).then(function(p){
+          if(p[0]!==31) throw new Error('kex'); var r=new Rd(p); r.b(); var pb=r.s(), gb=r.s(); me.P=bigOf(pb); G=bigOf(gb);
+          gexHead=cat([u32(1024),u32(2048),u32(8192),mpint(me.P),mpint(G)]); })
+        :Promise.resolve().then(function(){ me.P=kex.indexOf('group1-')>=0?P1:P14; });
+      return grp.then(function(){ x=bigOf(rnd(64)); e=modpow(G,x,me.P);
+        return me.sendPkt(cat([new Uint8Array([gex?32:30]),mpint(e)])); }).then(function(){ return me.next(20000); }).then(function(p){ me.gexHead=gexHead; me.gex=gex; return p; });
+    }).then(function(p){
+      if(p[0]!==(me.gex?33:31)) throw new Error('kex'); var r=new Rd(p); r.b(); ks=r.s(); f=bigOf(r.s()); r.s();   /* the TV's signature is not checked: the person picked this TV on the home network, as LG's own tool does */
+      if(f<=1n||f>=me.P-1n) throw new Error('kex');
+      K=modpow(f,x,me.P); alg=kex.indexOf('sha256')>=0?'SHA-256':'SHA-1';
+      return digest(alg,cat([str(VC),str(VS),str(IC),str(IS),str(ks),me.gexHead,mpint(e),mpint(f),mpint(K)]));
+    }).then(function(h){
+      H=h; me.sid=h; var Kb=mpint(K);
+      function derive(letter,len){ return digest(alg,cat([Kb,H,TE.encode(letter),me.sid])).then(function(k1){ var all=k1;
+        return (function more(){ if(all.length>=len) return all.subarray(0,len); return digest(alg,cat([Kb,H,all])).then(function(k){ all=cat([all,k]); return more(); }); })(); }); }
+      var klen=ciph==='aes256-ctr'?32:ciph==='aes192-ctr'?24:16, mh=mac==='hmac-sha1'?'SHA-1':'SHA-256', ml=mh==='SHA-1'?20:32;
+      return me.sendPkt(new Uint8Array([21])).then(function(){ return me.next(15000); }).then(function(p){ if(p[0]!==21) throw new Error('kex');
+        return Promise.all([derive('A',16),derive('B',16),derive('C',klen),derive('D',klen),derive('E',ml),derive('F',ml)]); }).then(function(k){
+        function dir(iv,ek,mk){ var d=new Dir(); d.iv=iv; d.ml=ml;
+          return Promise.all([crypto.subtle.importKey('raw',ek,{name:'AES-CTR'},false,['encrypt']),crypto.subtle.importKey('raw',mk,{name:'HMAC',hash:mh},false,['sign'])]).then(function(r){ d.key=r[0]; d.hk=r[1]; return d; }); }
+        return Promise.all([dir(k[0],k[2],k[4]),dir(k[1],k[3],k[5])]).then(function(d){ me.cs=d[0]; me.sc=d[1]; me.kexName=kex+' '+ciph+' '+mac; });
+      });
+    }).then(function(){
+      return me.sendPkt(cat([new Uint8Array([5]),str('ssh-userauth')])).then(function(){ return me.next(15000); });
+    }).then(function(p){
+      if(p[0]===7){ var r=new Rd(p); r.b(); var n=r.n(); for(var i=0;i<n;i++){ var nm=r.t(), v=r.t(); if(nm==='server-sig-algs') me.sigAlgs=v.split(','); } return me.next(15000); }
+      return p;
+    }).then(function(p){ if(p[0]!==6) throw new Error('Không mở được phần đăng nhập SSH của TV.'); });
+  };
+  Ssh.prototype.auth=function(key){
+    var me=this, algs=(me.sigAlgs&&me.sigAlgs.indexOf('rsa-sha2-256')>=0)?['rsa-sha2-256','ssh-rsa']:['ssh-rsa','rsa-sha2-256'];
+    function tryAlg(i){
+      if(i>=algs.length) throw new Error('auth');
+      var a=algs[i], head=cat([new Uint8Array([50]),str('prisoner'),str('ssh-connection'),str('publickey'),new Uint8Array([1]),str(a),str(key.blob)]);
+      return rsaSign(key.jwk,a==='ssh-rsa'?'SHA-1':'SHA-256',cat([str(me.sid),head])).then(function(sig){
+        return me.sendPkt(cat([head,str(cat([str(a),str(sig)]))])); }).then(function(){ return me.next(15000); }).then(function(p){
+        if(p[0]===52) return; if(p[0]===51) return tryAlg(i+1); throw new Error('auth'); });
+    }
+    return tryAlg(0);
+  };
+  /* one command on the TV: input goes to its standard input; onLine sees each output line and ends early with true,
+     or fails with a text */
+  Ssh.prototype.exec=function(cmd,input,onLine,ms){
+    var me=this, lid=me.nextCh++, rid=-1, rwin=0, rmax=32768, out='', err='', line='', done=false, end=Date.now()+(ms||30000), WIN=1<<21, used=0;
+    function left(){ return Math.max(1000,end-Date.now()); }
+    /* only this command's packets: a command closed early (the install keeps talking) may still send its last ones */
+    function nx(ms){ return me.next(ms).then(function(p){ if(p[0]>=91&&p[0]<=100&&new DataView(p.buffer,p.byteOffset+1,4).getUint32(0)!==lid) return nx(ms); return p; }); }
+    function handle(p){ var r=new Rd(p), k=r.b();
+      if(k===93){ r.n(); rwin+=r.n(); return; }
+      if(k===94||k===95){ r.n(); if(k===95) r.n(); var d=r.s(); used+=d.length; var t=TD.decode(d,{stream:true});
+        if(used>WIN/2){ me.sendPkt(cat([new Uint8Array([93]),u32(rid),u32(used)])); used=0; }
+        if(k===95){ err+=t; return; } out+=t;
+        if(onLine){ for(var i=0;i<t.length;i++){ var c=t[i]; if(c!=='\n'){ line+=c; continue; } var l=line.trim(); line=''; if(!l) continue; var v=onLine(l); if(typeof v==='string') throw new Error(v); if(v){ done=true; return; } } }
+        return; }
+      if(k===96) return; if(k===97){ done=true; return; }
+      if(k===98){ r.n(); var nm=r.t(); if(r.b()) me.sendPkt(cat([new Uint8Array([100]),u32(rid)])); if(nm==='exit-status') me.lastExit=r.n(); return; }
+    }
+    function loop(){ if(done) return Promise.resolve(); if(Date.now()>end) return Promise.reject(new Error('timeout')); return nx(left()).then(function(p){ handle(p); return loop(); }); }
+    function waitWin(){ if(rwin>0) return Promise.resolve(); return nx(left()).then(function(p){ handle(p); if(done) throw new Error('TV đóng lệnh giữa chừng'); return waitWin(); }); }
+    function sendAll(u){ var o=0; return (function more(){ if(o>=u.length) return Promise.resolve(); return waitWin().then(function(){ var n=Math.min(u.length-o,rwin,rmax-64,32000); var part=u.subarray(o,o+n); o+=n; rwin-=n;
+      return me.sendPkt(cat([new Uint8Array([94]),u32(rid),str(part)])).then(more); }); })(); }
+    return me.sendPkt(cat([new Uint8Array([90]),str('session'),u32(lid),u32(WIN),u32(32768)])).then(function(){ return nx(15000); }).then(function(p){
+      if(p[0]!==91) throw new Error('TV không mở được kênh lệnh'); var r=new Rd(p); r.b(); r.n(); rid=r.n(); rwin=r.n(); rmax=r.n();
+      return me.sendPkt(cat([new Uint8Array([98]),u32(rid),str('exec'),new Uint8Array([1]),str(cmd)]));
+    }).then(function(){ return (function ok(){ return nx(15000).then(function(p){ if(p[0]===99) return; if(p[0]===100) throw new Error('TV từ chối lệnh'); handle(p); return ok(); }); })(); })
+    .then(function(){ if(input) return sendAll(input).then(function(){ return me.sendPkt(cat([new Uint8Array([96]),u32(rid)])); }); if(!onLine) return me.sendPkt(cat([new Uint8Array([96]),u32(rid)])); })
+    .then(loop).then(function(){ me.sendPkt(cat([new Uint8Array([97]),u32(rid)])); return out; },function(e){ try{ me.sendPkt(cat([new Uint8Array([97]),u32(rid)])); }catch(x){} throw e; });
+  };
+  Ssh.prototype.close=function(){ var me=this; try{ me.sendPkt(cat([new Uint8Array([1]),u32(11),str('bye'),str('')])); }catch(e){} setTimeout(function(){ me.t.close(); },300); };
+  /* ---- the steps (as the Android app) ---- */
+  var IPR=/^\d{1,3}(\.\d{1,3}){3}$/;
+  function st(){ return load('lgj',{})||{}; }
+  function err(m){ return {ok:false,err:m}; }
+  function launchCmd(code,pc){ var params={}; if(code){ params.code=code; if(pc) params.pc=pc; } return LUNA+" -n 1 'luna://com.webos.applicationManager/launch' '"+JSON.stringify({id:APP,params:params}).replace(/'/g,'')+"'"; }
+  function session(ip,pem,pass){ var s=new Ssh(ip);
+    return openKey(pem,pass).then(function(k){ return s.connect().then(function(){ return s.auth(k); }).then(function(){ return s; }); }).catch(function(e){ s.close(); throw e; }); }
+  function download(){
+    var R=raw(); if(!R) return Promise.reject(new Error('missing'));
+    return R.call('http:'+JSON.stringify({url:IPK,headers:{'User-Agent':'HongSub'}})).then(function(r){ if(!r||!r.ok) throw new Error((r&&r.err)||'mạng'); if(r.status!==200) throw new Error('HTTP '+r.status); var d=unb64(r.b64||''); if(d.length<1000) throw new Error('file'); return d; });
+  }
+  function install(ip,pass,code,pc,saved,say){
+    var s0=st(), pem;
+    if(saved){ ip=s0.ip||''; pass=s0.pass||''; if(!s0.key) return Promise.resolve(err('no-tv')); }
+    ip=String(ip||'').trim(); pass=String(pass||'').trim().toUpperCase();
+    if(!IPR.test(ip)) return Promise.resolve(err('Nhập địa chỉ IP của TV LG (ví dụ 192.168.1.20), hoặc bấm Tìm TV LG.'));
+    if(!saved&&pass.length<4) return Promise.resolve(err('Gõ Passphrase (6 chữ đang hiện trong app Developer Mode trên TV).'));
+    var s=null;
+    say('Đang lấy khóa từ TV...');
+    return (saved?Promise.resolve(s0.key):getKey(ip).catch(function(){ throw {m:'Không lấy được khóa từ TV. Trên TV mở app Developer Mode, kiểm tra Dev Mode Status đang bật và bật Key Server, rồi thử lại.'}; }))
+    .then(function(k){ pem=k; say('Đang kết nối với TV...');
+      return session(ip,pem,pass).catch(function(e){ var m=String(e&&e.message||e);
+        if(/^(pass|auth)$/.test(m)) throw {m:'Sai mã Passphrase. Gõ đúng 6 chữ đang hiện trong app Developer Mode trên TV.'};
+        if(m==='refused'||m==='noconnect') throw {m:'Không kết nối được TV. Kiểm tra TV và điện thoại cùng Wi-Fi, Dev Mode Status đang bật.'};
+        throw {m:'Không kết nối được TV ('+m.slice(0,80)+'). Kiểm tra TV và điện thoại cùng Wi-Fi, Dev Mode Status đang bật.'}; }); })
+    .then(function(x){ s=x; say('Đang tải app Hóng Sub cho TV LG...'); return download().catch(function(e){ throw {m:'Không tải được app ('+(e&&e.message||e)+'). Kiểm tra mạng của điện thoại.'}; }); })
+    .then(function(ipk){ say('Đang chép app lên TV...');
+      return s.exec('/bin/mkdir -p '+TEMP,null,null,15000).then(function(){ return s.exec('/bin/cat > "'+TEMP+'/hong-sub-lg.ipk"',ipk,null,120000); }); })
+    .then(function(){ say('TV đang cài app...');
+      var req=JSON.stringify({id:APP,ipkUrl:TEMP+'/hong-sub-lg.ipk',subscribe:true});
+      return s.exec(LUNA+" -i 'luna://com.webos.appInstallService/dev/install' '"+req+"'",null,function(l){
+        var j; try{ j=JSON.parse(l); }catch(e){ return null; } var d=j.details||{}, sst=String(d.state||'');
+        if(/FAILED/i.test(sst)||(j.returnValue===false)) return String(d.reason||j.errorText||sst||'install');
+        if(/installed/i.test(sst)||/^SUCCESS/i.test(sst)) return true; return null; },120000).catch(function(e){ throw {m:'Cài trên TV lỗi: '+(e&&e.message||e)}; }); })
+    .then(function(){ return s.exec('/bin/rm -f "'+TEMP+'/hong-sub-lg.ipk"',null,null,10000).catch(function(){}); })
+    .then(function(){ say('Đang mở Hóng Sub trên TV...'); return s.exec(launchCmd(code,pc),null,null,15000).catch(function(){}); })
+    .then(function(){ save('lgj',{ip:ip,key:pem,pass:pass,at:Date.now()}); s.close(); return {ok:true}; },
+      function(e){ if(s) s.close(); var m=e&&e.m?e.m:String(e&&e.message||e); return err(m.slice(0,200)); });
+  }
+  function launch(code,pc){ var s0=st(); if(!s0.ip||!s0.key) return Promise.resolve(err('no-tv'));
+    var s=null; return session(s0.ip,s0.key,s0.pass||'').then(function(x){ s=x; return s.exec(launchCmd(code,pc),null,null,15000); })
+      .then(function(){ s.close(); return {ok:true}; },function(e){ if(s) s.close(); return err(String(e&&e.message||e).slice(0,160)); }); }
+  /* the same calls as the Android app's: {do:"install"|"update"|"launch"|"state"|"forget", ip, pass, code, pc} */
+  function handle(a,say){
+    a=a||{}; say=say||function(){}; var code=String(a.code||'').toUpperCase().replace(/[^A-Z0-9]/g,''), pc=String(a.pc||''); if(!/^\d{1,3}(\.\d{1,3}){3}:\d{2,5}$/.test(pc)) pc='';
+    if(a['do']==='install') return install(a.ip,a.pass,code,pc,false,say);
+    if(a['do']==='update') return install('','',code,pc,true,say);
+    if(a['do']==='launch') return launch(code,pc);
+    if(a['do']==='forget'){ save('lgj',{}); return Promise.resolve({ok:true}); }
+    var s0=st(); return Promise.resolve({ok:true,ip:s0.ip||'',installed:!!s0.key,at:s0.at||0});
+  }
+  return {handle:handle,ok:function(){ return !!raw(); },_ssh:Ssh,_key:openKey,_getKey:getKey};
+})();
+/* TV LG from the phone: install, open, update over SSH with the TV's Developer Mode key (Android: the app's own SSH; iPhone: LGJ above) */
+function mpLgNat(){ return !!(PH&&PH.nat)&&!IOS; }
+function mpLg(a){ if(!mpLgNat()) return LGJ.handle(a,function(t){ mpTvMsg('lg','',t); }); return new Promise(function(res){ var id='lg'+Date.now()+Math.random().toString(36).slice(2,5); var cbs=window.hsNatCbs=window.hsNatCbs||{}; cbs[id]=res; try{ PH.nat('lg:'+JSON.stringify(a),id); }catch(e){ delete cbs[id]; res({ok:false,err:String(e)}); } }); }
 function mpLgOpen(){
   mpTvMsg('lg','','Đang mở Hóng Sub trên TV...');
   return (S.lanPc?Promise.resolve(S.lanPc):DPS.lan.addr()).then(function(pc){ return mpLg({do:'launch',code:mpCode('lg'),pc:pc||''}); }).then(function(r){
@@ -8932,7 +9198,7 @@ function mpTvInit(){
   /* the computer's install parts and notes are for the Windows app */
   [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] .hs-web,.tvp[data-k=samsung] .hs-web'),function(n){ n.style.display='none'; });
   [].forEach.call(document.querySelectorAll('.tvp[data-k=lg] > .hs-note,.tvp[data-k=samsung] > .hs-note'),function(n){ if(/Mã TV được điền sẵn|không cần gõ mã/.test(n.textContent)) n.textContent=n.textContent.replace(/ Mã TV được điền sẵn khi cài từ máy tính\./,' Cài từ điện thoại Android hoặc máy tính thì mã TV được điền sẵn.').replace(/ Cài từ máy tính này thì TV tự nối với máy tính, không cần gõ mã\./,' Điện thoại nối với app trên TV bằng Mã TV.'); });
-  var andr=!!(PH&&PH.nat)&&!IOS;   /* the phone that can put the app on a TV LG (Android) sees those steps, the other one how to do it once elsewhere */
+  var andr=mpLgNat()||LGJ.ok();   /* both phone apps put the app on a TV LG (Android with its own SSH, iPhone through this page); a phone without either sees how to do it elsewhere */
   [].forEach.call(document.querySelectorAll('#mpLgBox .mp-and'),function(n){ n.hidden=!andr; }); [].forEach.call(document.querySelectorAll('#mpLgBox .mp-ios'),function(n){ n.hidden=andr; });
   if(!andr){ [].forEach.call(document.querySelectorAll('#mpLgBox .mp-ios'),function(n){ n.style.setProperty('display','flex','important'); }); [].forEach.call(document.querySelectorAll('#mpLgBox .mp-and'),function(n){ n.style.setProperty('display','none','important'); }); }
   $('mpLgFind').addEventListener('click',function(){ mpFind('lg'); });
@@ -8967,11 +9233,13 @@ function mpTvInit(){
       mpTvMsg('samsung','ok','Đã cài và mở Hóng Sub trên TV Samsung, mã TV '+tvCodeFor('samsung')+'. Có thể tắt Developer mode trên TV. Bấm Gửi thử để xem chữ trên TV.'); tvState();
     },function(e){ b.disabled=false; mpTvMsg('samsung','err',String(e&&e.message||e)); log('cài app TV Samsung lỗi: '+String(e&&e.message||e)); });
   });
-  if(andr){
+  if(andr&&mpLgNat()){
     var prevNat=window.hsNat;   /* answers from the app for the TV LG part come back here */
     window.hsNat=function(id,res){ var cbs=window.hsNatCbs||{}; if(cbs[id]){ var f=cbs[id]; delete cbs[id]; if(typeof res==='string'){ try{ res=JSON.parse(res); }catch(e){ res={ok:false,err:res}; } } f(res||{}); return; } if(prevNat) prevNat(id,res); };
     var prevEvt=window.hsPhoneEvt;
     window.hsPhoneEvt=function(type,data){ if(type==='lg'){ var d={}; try{ d=typeof data==='string'?JSON.parse(data||'{}'):(data||{}); }catch(e){} if(d.t) mpTvMsg('lg','',d.t); return; } return prevEvt&&prevEvt(type,data); };
+  }
+  if(andr){
     mpLg({do:'state'}).then(mpLgUi);
     setInterval(mpLgAutoUpdate,15000);
     $('mpLgGo').addEventListener('click',function(){
