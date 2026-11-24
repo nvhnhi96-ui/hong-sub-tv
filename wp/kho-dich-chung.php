@@ -113,7 +113,16 @@ add_action('rest_api_init', function () {
 
 // Hong Sub: nap ban dich co san (vd ban Viet hoa cua mot game) vao kho dich chung. Chi quan tri vien.
 if (!function_exists('hgs_tm_import')) {
-    function hgs_tm_import($req) {
+    function hgs_tm_markall($req) {
+    global $wpdb; $t = hgs_tm_table();
+    $g   = hgs_tm_game((string) $req->get_param('game'));
+    $std = $req->get_param('std') === '0' ? 0 : 1;
+    if ($g === '') return new WP_Error('bad', 'thieu ten game', array('status' => 400));
+    $n = $wpdb->query($wpdb->prepare("UPDATE $t SET std=%d WHERE g=%s AND kind='s' AND q<=2 AND std<>%d", $std, $g, $std));
+    return array('ok' => true, 'game' => $g, 'std' => $std, 'updated' => (int) $n,
+                 'now' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE g=%s AND kind='s' AND std=1", $g)));
+}
+function hgs_tm_import($req) {
         global $wpdb;
         $t  = hgs_tm_table();
         $gn = hgs_tm_clean($req->get_param('game'), 120);
@@ -142,6 +151,12 @@ if (!function_exists('hgs_tm_import')) {
 }
 add_action('rest_api_init', function () {
     register_rest_route('hgs-sub/v1', '/tm/import', array('methods' => 'POST', 'callback' => 'hgs_tm_import',
+        'permission_callback' => function () { return current_user_can('manage_options'); }));
+
+    // Danh dau ca kho cua mot game la "dich theo cai dat goc cua game" (std=1), sau khi cong cu "Dich lai toan bo"
+    // da duyet het cau thoai cua game do theo luat hien tai. Chi cau thoai (kind='s'), khong dung toi chu tren man
+    // hinh (kind='z') va khong dung toi cau nhap san (q=3). Chi quan tri vien chay duoc. Bo dau: std=0.
+    register_rest_route('hgs-sub/v1', '/tm/markall', array('methods' => 'POST', 'callback' => 'hgs_tm_markall',
         'permission_callback' => function () { return current_user_can('manage_options'); }));
 });
 
