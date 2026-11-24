@@ -9693,6 +9693,28 @@ if(!D&&DPS){
 /* ---------- the iPhone app: same page as the Android app, without screen sharing (iOS does not allow it) ---------- */
 if(IOS){
   phoneCommon(true);
+  /* "Tắt màn hình, vẫn dịch" (11/2026). iOS stops Hóng Sub when the phone is locked or another app is in front, so the
+     screen is made dark with Hóng Sub still in front: a black page, the brightness at its lowest, and the screen goes
+     fully off when the phone lies face down (the app turns on the sensor used during phone calls). Two taps bring it back. */
+  (function(){
+    if(!(window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.hs)) return;
+    var nat=function(cmd){ try{ webkit.messageHandlers.hs.postMessage({cmd:cmd,id:'dark'}); }catch(e){} };
+    var ov=document.createElement('div'); ov.id='hsDark';
+    ov.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#000;color:#6b7280;display:none;align-items:center;justify-content:center;text-align:center;padding:32px;font-size:16px;line-height:1.6;touch-action:none;-webkit-user-select:none;user-select:none';
+    ov.innerHTML='<div id="hsDarkTx"><b style="color:#9ca3af">Màn hình đang tối, Hóng Sub vẫn dịch</b><br>Úp điện thoại xuống bàn: màn hình tắt hẳn.<br>Chạm 2 lần để mở lại.<br><br>Đừng bấm nút nguồn: khoá máy là ngừng dịch.</div>';
+    document.body.appendChild(ov);
+    var last=0, hideT=0;
+    function hint(){ var t=document.getElementById('hsDarkTx'); t.style.opacity='1'; clearTimeout(hideT); hideT=setTimeout(function(){ t.style.transition='opacity 1.5s'; t.style.opacity='0'; },6000); }
+    function on(){ ov.style.display='flex'; hint(); nat('darkOn'); log('iPhone: màn hình tối, vẫn dịch'); }
+    function off(){ if(ov.style.display==='none') return; ov.style.display='none'; nat('darkOff'); log('iPhone: mở lại màn hình'); }
+    window.hsDarkOff=function(){ ov.style.display='none'; };   /* the app left the front: the brightness is already back */
+    ov.addEventListener('touchend',function(e){ e.preventDefault(); var n=Date.now(); if(n-last<600) off(); else { last=n; hint(); } });
+    ov.addEventListener('click',function(e){ e.preventDefault(); });
+    var d=$('hsDraw'); if(!d||!d.parentNode) return;
+    var b=document.createElement('button'); b.type='button'; b.className='hs-btn'; b.id='hsDarkBtn'; b.title='Màn hình tối để đỡ hao pin, Hóng Sub vẫn dịch và đọc';
+    b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span>Tắt màn hình</span>';
+    b.addEventListener('click',on); d.parentNode.appendChild(b);
+  })();
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chọn nguồn hình game';
     if($('hsPick')) $('hsPick').style.display='none';
     if($('hsCam')) $('hsCam').style.display='none';   /* no camera pointed at the TV (not workable) */

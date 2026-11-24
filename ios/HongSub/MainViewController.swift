@@ -9,6 +9,26 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 
+    /* "Tắt màn hình, vẫn dịch": iOS stops an app that is locked or behind another app (no video decoding there), so the
+       screen is made dark while Hóng Sub stays in front: brightness at the lowest under a black page, and the
+       proximity sensor on, so the screen goes fully off when the phone lies face down (as during a phone call) */
+    private var darkBright: CGFloat = -1
+    private func dark(_ on: Bool) {
+        if on {
+            if darkBright < 0 { darkBright = UIScreen.main.brightness }
+            UIScreen.main.brightness = 0
+            UIDevice.current.isProximityMonitoringEnabled = true
+        } else {
+            UIDevice.current.isProximityMonitoringEnabled = false
+            if darkBright >= 0 { UIScreen.main.brightness = darkBright; darkBright = -1 }
+        }
+    }
+    @objc private func leftApp() {
+        guard darkBright >= 0 else { return }
+        dark(false)
+        web.evaluateJavaScript("window.hsDarkOff&&window.hsDarkOff()", completionHandler: nil)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = bg
@@ -41,6 +61,7 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
             web.trailingAnchor.constraint(equalTo: g.trailingAnchor)
         ])
         UIApplication.shared.isIdleTimerDisabled = true   // the phone stays awake while translating
+        NotificationCenter.default.addObserver(self, selector: #selector(leftApp), name: UIApplication.didEnterBackgroundNotification, object: nil)
         load()
     }
 
@@ -61,6 +82,12 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
             PsnLogin.present(from: self) { [weak self] res in self?.reply(id, res) }
         case "psnCancel":
             PsnLogin.cancel()
+            reply(id, ["ok": true])
+        case "darkOn":
+            dark(true)
+            reply(id, ["ok": true])
+        case "darkOff":
+            dark(false)
             reply(id, ["ok": true])
         case "samsungClose":
             SamsungLogin.close()
