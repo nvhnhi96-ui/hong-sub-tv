@@ -8560,10 +8560,10 @@ if(PH){
     [].forEach.call(e.querySelectorAll('p'),function(p){ p.className=''; p.hidden=true; });
     var p=e.querySelector('p'); if(p){ p.hidden=false; p.textContent='Bấm nút dưới, cho phép Hóng Sub ghi màn hình, rồi mở app PS Remote Play. Trên game có nút H nổi màu vàng: bấm vào để khoanh phụ đề, bắt đầu dịch, dịch cả màn hình.'; }
     if($('hsPick')) $('hsPick').textContent='Chia sẻ màn hình';
-    if($('hsCam')){ $('hsCam').textContent='Camera chĩa vào TV'; $('hsCam').classList.add('hs-ph-cam'); }
+    if($('hsCam')) $('hsCam').style.display='none';   /* the phone camera pointed at the TV: left out (11/2026: not workable, angle, glare, small text) */
     var row=$('hsPick')&&$('hsPick').parentNode; if(row&&!document.getElementById('hs'+'QuadBtn')){ var qb=document.createElement('button'); qb.type='button'; qb.className='hs-btn'; qb.id='hsQuadBtn'; qb.textContent='Khoanh 4 góc TV'; qb.hidden=true; qb.addEventListener('click',function(){ quadEdit(true); }); $('hsDraw').parentNode.insertBefore(qb,$('hsDraw')); }
     setInterval(function(){ var qb=document.getElementById('hs'+'QuadBtn'); if(qb) qb.hidden=!(S.cam&&S.stream); },1000);
-    var mp=e.querySelector('p'); if(mp) mp.textContent='Cách 1: chia sẻ màn hình khi chơi bằng app PS Remote Play trên điện thoại. Cách 2: chơi trên TV, kê điện thoại trên giá cho camera nhìn trọn màn hình TV, bấm Camera chĩa vào TV. Chữ Việt hiện trên TV qua app Hóng Sub TV (vào Kết nối TV, gõ mã TV).'; })();
+    var mp=e.querySelector('p'); if(mp) mp.textContent='Chia sẻ màn hình khi chơi bằng app PS Remote Play trên điện thoại. Chữ Việt hiện trên TV qua app Hóng Sub TV (vào Kết nối TV, gõ mã TV).'; })();
   (function(){ var h=$('hsHint'); if(!h||!window.MutationObserver) return; var fix=function(){ if(/chuột/.test(h.textContent)) h.textContent=h.textContent.replace(/Kéo chuột/g,'Kéo ngón tay'); }; new MutationObserver(fix).observe(h,{childList:true,characterData:true,subtree:true}); fix(); })();
   $('hsSpeak').addEventListener('change',function(){ phState(S.running); });
   (function(){   /* phone: drop the browser / Windows-only notes, add phone steps */
@@ -8575,9 +8575,8 @@ if(PH){
     ['hsSpeakWhere','hsTvRead'].forEach(function(id){ var sl=$(id); if(!sl) return; [].forEach.call(sl.options,function(o){ if(o.value==='pc') o.textContent='Điện thoại (giọng của điện thoại)'; else o.textContent=o.textContent.replace(/máy tính/g,'điện thoại'); }); });
     var kn=document.getElementById('p-ketnoi'), col=kn&&kn.querySelector('.dk-cols>div'); if(!col) return;
     var c=document.createElement('div'); c.className='dk-card';
-    c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2><p class="hs-note">Có hai cách, chọn cách hợp với bạn:</p>'
+    c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2>'
       +'<ol class="dk-steps"><li><b>Chơi trên điện thoại:</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Cài app <b>PS Remote Play</b> trên điện thoại và kết nối PS5. Mở Hóng Sub, bấm <b>Chia sẻ màn hình</b>, rồi mở PS Remote Play. Bấm nút <b>H</b> vàng nổi trên game để khoanh phụ đề và bắt đầu dịch.</li>'
-      +'<li><b>Chơi trên TV:</b> kê điện thoại trên giá sao cho camera thấy trọn màn hình TV. Bấm <b>Camera chĩa vào TV</b>, kéo 4 chấm vàng vào 4 góc TV, khoanh dòng phụ đề rồi bấm Bắt đầu dịch.</li>'
       +'<li><b>Hiện chữ Việt lên TV:</b> cài app Hóng Sub TV (mục bên dưới), gõ mã đang hiện trên TV vào ô <b>Mã TV</b>. Điện thoại và TV không cần chung mạng.</li></ol>';
     col.insertBefore(c,col.firstChild);
   })();
@@ -10391,7 +10390,7 @@ if(!D&&DPS){
     [].forEach.call(sec.querySelectorAll('.hs-note,li,label'),function(n){ if(/Máy tính|máy tính/.test(n.innerHTML)) n.innerHTML=n.innerHTML.replace(/Máy tính/g,'Điện thoại').replace(/máy tính/g,'điện thoại'); });
     var h=sec.querySelector('h2'); if(h) h.textContent='PS5 / PS4 ngay trong Hóng Sub';
     var go=$('hsPsGo'); if(go) go.textContent='Chơi PS5 / PS4';
-    var e=$('hsEmpty'), p=e&&e.querySelector('p'); if(p){ p.hidden=false; p.className=''; p.textContent='Bấm Chơi PS5 / PS4: Hóng Sub nối thẳng với máy PS qua Chơi từ xa, không cần app của Sony. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt, gửi chữ lên TV. Hoặc dùng camera chĩa vào TV.'; }
+    var e=$('hsEmpty'), p=e&&e.querySelector('p'); if(p){ p.hidden=false; p.className=''; p.textContent='Bấm Chơi PS5 / PS4: Hóng Sub nối thẳng với máy PS qua Chơi từ xa, không cần app của Sony. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt, gửi chữ lên TV.'; }
   })();
   (function(){   /* the "how to use on a phone" card: Remote Play inside Hóng Sub first */
     var kn=document.getElementById('p-ketnoi'), col=kn&&kn.querySelector('.dk-cols>div'); if(!col) return;
@@ -10399,7 +10398,6 @@ if(!D&&DPS){
     if(!c){ c=document.createElement('div'); c.className='dk-card'; col.insertBefore(c,col.firstChild); }
     c.innerHTML='<h2>Dùng Hóng Sub trên điện thoại</h2>'
       +'<ol class="dk-steps"><li><b>Chơi PS5 / PS4 ngay trong Hóng Sub (khuyên dùng):</b> trên PS5 bật Settings › System › Remote Play › Enable Remote Play. Điện thoại và PS5 dùng chung Wi-Fi. Làm 3 bước ở mục <b>PS5 / PS4 ngay trong Hóng Sub</b> bên dưới: đăng nhập PSN, bật Chơi từ xa, chọn máy PS (lần đầu ghép bằng mã 8 số) rồi bấm Kết nối. Bạn vẫn chơi bằng tay cầm trên TV, điện thoại đọc phụ đề, dịch và đọc tiếng Việt.</li>'
-      +'<li><b>Camera chĩa vào TV:</b> kê điện thoại trên giá sao cho camera thấy trọn màn hình TV. Bấm <b>Camera chĩa vào TV</b>, kéo 4 chấm vàng vào 4 góc TV, khoanh dòng phụ đề rồi bấm Bắt đầu dịch.</li>'
       +(PH?'<li><b>App PS Remote Play của Sony:</b> bấm <b>Chia sẻ màn hình</b> rồi mở PS Remote Play. Bấm nút <b>H</b> vàng nổi trên game để khoanh phụ đề.</li>':'')
       +'<li><b>Hiện chữ Việt lên TV:</b> cài app Hóng Sub TV (mục bên dưới), gõ mã đang hiện trên TV vào ô <b>Mã TV</b>.</li></ol>';
     var ps=$('hsPsSec'); if(ps&&ps.parentNode===col&&c.nextSibling!==ps) col.insertBefore(ps,c.nextSibling);
@@ -10415,7 +10413,7 @@ if(!D&&DPS){
 if(IOS){
   (function(){ var e=$('hsEmpty'); if(!e) return; var b=e.querySelector('b'); if(b) b.textContent='Chọn nguồn hình game';
     if($('hsPick')) $('hsPick').style.display='none';
-    if($('hsCam')) $('hsCam').textContent='Camera chĩa vào TV';
+    if($('hsCam')) $('hsCam').style.display='none';   /* no camera pointed at the TV (not workable) */
     [].forEach.call(document.querySelectorAll('.hs-web'),function(el){ if(el.closest('.dk-nav')) return; if(!el.classList.contains('hs-note')||/Cửa sổ nổi/.test(el.textContent)) el.style.display='none'; });
     var h=$('hsHint'); if(h&&window.MutationObserver){ var fix=function(){ if(/chuột/.test(h.textContent)) h.textContent=h.textContent.replace(/Kéo chuột/g,'Kéo ngón tay'); }; new MutationObserver(fix).observe(h,{childList:true,characterData:true,subtree:true}); fix(); }
   })();
