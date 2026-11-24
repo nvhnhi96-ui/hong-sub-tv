@@ -527,6 +527,7 @@ static void cmd_tvfind(int ms)
 		if(r <= 0) continue;
 		rb[r] = 0;
 		if(!strstr(rb, "hongsubtv")) continue;
+		if(fl < (socklen_t)sizeof(from) || from.sin_family != AF_INET || from.sin_addr.s_addr == 0) continue;   /* a reply without the sender's address (seen on iPhones) is no use */
 		char addr[20]; inet_ntop(AF_INET, &from.sin_addr, addr, sizeof(addr));
 		bool dup = false; for(int k = 0; k < nseen; k++) if(!strcmp(seen[k], addr)) dup = true;
 		if(dup || nseen >= 40) continue;
@@ -682,6 +683,7 @@ static void cmd_discover(int ms, const char *extra)
 		if(r <= 0) continue;
 		rb[r] = 0;
 		if(strncmp(rb, "HTTP/1.1", 8) != 0) continue;
+		if(fl < (socklen_t)sizeof(from) || from.sin_family != AF_INET || from.sin_addr.s_addr == 0) continue;   /* a reply without the console's address (seen on iPhones): pairing with 0.0.0.0 failed every time */
 		char addr[20]; inet_ntop(AF_INET, &from.sin_addr, addr, sizeof(addr));
 		bool dup = false; for(int k = 0; k < nseen; k++) if(!strcmp(seen[k], addr)) dup = true;
 		if(dup || nseen >= 40) continue;

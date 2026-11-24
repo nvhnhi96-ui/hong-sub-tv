@@ -9025,7 +9025,7 @@ function hsMobilePs(){
       return Promise.race([callNat('psnForget'),new Promise(function(r){ setTimeout(r,2500); })]).then(function(){ return true; }); },
     discover:function(ip){
       return ask('discover 1600'+(ip?' '+ip:''),'discover',6000).then(function(r){
-        var found={}; (r&&r.list||[]).forEach(function(x){ var h=parseReply(x.addr,x.text); if(h) found[h.id]=h; });
+        var found={}; (r&&r.list||[]).forEach(function(x){ if(!/^\d+\.\d+\.\d+\.\d+$/.test(x.addr||'')||/^0\./.test(x.addr)) return; var h=parseReply(x.addr,x.text); if(h) found[h.id]=h; });   /* an iPhone sometimes hears the PS without its address (0.0.0.0): pairing with that failed every time */
         var list=Object.keys(found).map(function(k){ var h=found[k], reg=cfg.hosts[h.id]; if(reg&&reg.addr!==h.addr){ reg.addr=h.addr; keep(); } h.registered=!!reg; return h; });
         Object.keys(cfg.hosts).forEach(function(k){ var reg=cfg.hosts[k]; if(!found[reg.id]) list.push({id:reg.id,name:reg.name,ps5:reg.ps5,addr:reg.addr,state:'offline',registered:true}); });
         return list;
@@ -9201,7 +9201,7 @@ function psWatchTick(){
   if(PS.pinWait){ PS.t0=Date.now(); psWaitDraw(0,'Máy PS có mã khóa: nhập mã trong Hóng Sub để vào máy'); return; }
   var s=Math.round((Date.now()-PS.t0)/1000);
   psWaitDraw(s, PS.pk?'Đã nhận dữ liệu hình, đang giải hình':PS.conn?'Đã nối máy, đang chờ máy gửi hình':'Đang nối với máy');
-  if(s===10&&PS.pk>0&&!PS.sw){ PS.sw=true; log('PS: 10 giây có '+PS.pk+' gói hình nhưng chưa giải được, đổi sang giải bằng phần mềm'); if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; } PS.waitKey=true; psIdr(); }
+  if(s===10&&PS.pk>0&&!PS.sw&&psSwOk()){ PS.sw=true; log('PS: 10 giây có '+PS.pk+' gói hình nhưng chưa giải được, đổi sang giải bằng phần mềm'); if(PS.dec){ try{PS.dec.close();}catch(e){} PS.dec=null; } PS.waitKey=true; psIdr(); }
   if(s===12&&!PS.pk){ log('PS: 12 giây chưa nhận gói hình nào (đã nối: '+(PS.conn?'có':'chưa')+')'); psFwCheck(true); }
   if(s>=30) psRetry('30 giây chưa có hình ('+PS.pk+' gói)');
 }
@@ -9225,7 +9225,7 @@ function psFreezeTick(){
       PS.frz=0; PS.retrying=true; try{ DPS.stop(false); }catch(e){} psStopView(); PS.retrying=true;
       setTimeout(function(){ psPlay(hq,PS.q?{res:1080,fps:60,br:15000}:null); },2500); return; }
   }
-  if(PS.frz===3){ log('PS: mở lại bộ giải hình'); if(PS.dec){ try{PS.dec.close();}catch(e){} } PS.dec=null; PS.waitKey=true; if(pk<1500) PS.sw=!PS.sw; PS.lastIdr=0; psIdr(); }
+  if(PS.frz===3){ log('PS: mở lại bộ giải hình'); if(PS.dec){ try{PS.dec.close();}catch(e){} } PS.dec=null; PS.waitKey=true; if(pk<1500&&psSwOk()) PS.sw=!PS.sw; PS.lastIdr=0; psIdr(); }
   if(PS.frz>=7){
     PS.frz=0; var h=PS.last; if(!h) return;
     S.frzLog=S.frzLog.filter(function(t){ return now-t<600000; });
@@ -9459,19 +9459,39 @@ function psStopView(){
   if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
   PS.host=null;
 }
+/* the software decoder: the iPhone has none (its web view only decodes the picture with the phone's chip), and some
+   machines refuse it: there asking for it left the picture frozen ("Decoder creation failed") */
+function psSwOk(){ return !IOS&&!PS.noSw; }
+/* the iPhone takes the picture decoder away while Hóng Sub is behind another app or the screen is locked ("Decoder
+   failure"), and stops the connection for those seconds. Coming back: a new decoder and a fresh whole picture at once,
+   and such a failure does not count as the decoder being bad */
+function psBgLately(){ return document.hidden||Date.now()-(S.psVisAt||0)<4000; }
+document.addEventListener('visibilitychange',function(){
+  if(typeof PS==='undefined'||!PS.host) return;
+  if(document.hidden){ S.psHidAt=Date.now(); return; }
+  S.psVisAt=Date.now(); PS.lastFr=Date.now(); PS.frz=0;
+  if(!PS.dec||PS.dec.state==='closed') PS.dec=null;
+  PS.waitKey=true; PS.lastIdr=0; psIdr();
+  if(S.psHidAt) log('PS: quay lại app sau '+Math.round((Date.now()-S.psHidAt)/100)/10+' giây, xin hình mới');
+});
 function psDecoder(codec){
   PS.dec=new VideoDecoder({
     output:function(f){
       /* show at the screen's own pace: keep only the newest frame and draw it on the next refresh (no bunching, no backlog) */
-      if(PS.pend) PS.pend.close(); PS.pend=f; PS.lastFr=Date.now();
+      if(PS.pend) PS.pend.close(); PS.pend=f; PS.lastFr=Date.now(); if(PS.decErr||PS.decTry){ PS.decErr=0; PS.decTry=0; }
       if(document.hidden){ psPaint(); }   /* screen off / behind another app: no screen refresh to wait for */
       else if(!PS.raf){ PS.raf=requestAnimationFrame(psPaint); PS.rafT=setTimeout(psPaint,50); }   /* timer: still drawn if the window is covered */
       if(++PS.frames===1){ PS.vAt=Date.now(); psWatchStop(); log('PS: có hình '+PS.cvs.width+'x'+PS.cvs.height+' sau '+Math.round((Date.now()-PS.t0)/100)/10+' giây'); psMsg('ok','Đã vào máy. Chúc chơi vui!'); PS.err=''; PS.retry=0; if(PS.host) tvNotice('Đã kết nối '+PS.host.name+'. Phụ đề tiếng Việt sẽ hiện ở đây.'); if(!S.running&&!(D&&D.selftest)) startRun(); }
     },
-    error:function(e){ psJank(); PS.decErr=(PS.decErr||0)+1; log('PS: giải hình lỗi '+((e&&e.message)||e)); if(PS.decErr>=2) PS.sw=true; PS.dec=null; PS.waitKey=true; psIdr(); }
+    error:function(e){
+      var m=String((e&&e.message)||e), bg=psBgLately();
+      log('PS: giải hình lỗi '+m+(bg?' (app vừa ở nền)':''));
+      if(PS.sw&&/creat|support/i.test(m)){ PS.noSw=true; PS.sw=false; log('PS: máy này không giải hình bằng phần mềm được, dùng lại chip giải hình'); }
+      else if(!bg){ psJank(); PS.decErr=(PS.decErr||0)+1; if(PS.decErr>=2&&psSwOk()) PS.sw=true; }
+      PS.dec=null; PS.waitKey=true; PS.lastIdr=0; psIdr(); }
   });
-  try{ PS.dec.configure({codec:codec,optimizeForLatency:true,hardwareAcceleration:PS.sw?'prefer-software':'no-preference'}); }
-  catch(e){ log('PS: không mở được bộ giải '+codec+': '+e.message); try{PS.dec.close();}catch(x){} PS.dec=null; PS.sw=true; return; }
+  try{ PS.dec.configure({codec:codec,optimizeForLatency:true,hardwareAcceleration:PS.sw&&psSwOk()?'prefer-software':'no-preference'}); }
+  catch(e){ log('PS: không mở được bộ giải '+codec+': '+e.message); try{PS.dec.close();}catch(x){} PS.dec=null; if(PS.sw){ PS.noSw=true; PS.sw=false; } else PS.sw=psSwOk(); return; }
   PS.codec=codec; log('PS: bộ giải hình '+codec+(PS.sw?' (phần mềm)':''));
 }
 function psPaint(){
@@ -9607,7 +9627,7 @@ function psEvent(ev){
   else if(ev.ev==='closed'){ if(!PS.retrying&&PS.host&&!PS.frames&&!PS.err){ PS.err='kết nối đóng khi chưa có hình'; autoReport('ps-closed','Kết nối đóng khi chưa có hình ('+(ev.code)+') '+String(ev.err||'').slice(0,120)); psMsg('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại.'); status('err','Kết nối với máy PS bị đóng trước khi có hình. Bấm Kết nối lại ở trang Kết nối PS và TV.'); } psStopView(); }
 }
 function psInit(){
-  window.hsPsT={PS:PS,dps:DPS,ev:psEvent,tick:psWatchTick};   /* for testing */
+  window.hsPsT={PS:PS,dps:DPS,ev:psEvent,tick:psWatchTick,dec:psDecoder};   /* for testing */
   if(!DPS) return;
   DPS.onVideo(psVideo); DPS.onAudioHeader(psAudioHeader); DPS.onAudio(psAudio); DPS.onEvent(psEvent);
   document.addEventListener('keydown',function(e){psKey(e,true);},true);
