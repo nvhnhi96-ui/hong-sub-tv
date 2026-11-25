@@ -584,6 +584,18 @@ const VOICE_NAME = 'Giọng Việt Hóng Sub (có sẵn)';
    with the character) closed Piper and opened it again, and the old one closing took the new one's line with it:
    every line failed and nothing was read ("giọng hs:piper không đọc được"). */
 let piper = null;
+/* Hóng Sub's own voice is made at the reading speed set in the app (25/11/2026: "nhanh mà vẫn tròn chữ"): Piper says
+   each sound shorter itself (length_scale), clearer than a sound made at speed 1 and played faster, which cuts the
+   sounds short and blurs the tones. Up to 2x is made this way, the rest (and the catching up) is played faster.
+   bk: the speed already in the sound, the player plays it at (speed asked / bk). */
+let piperScale = 1;
+function piperSpeedSet(rate) {
+  const r = Math.max(0.8, Math.min(2, Number(rate) || 1)), sc = Math.round(100 / r / 5) * 5 / 100;
+  if (Math.abs(sc - piperScale) < 0.001) return;
+  piperScale = sc;
+  if (piper) { const p = piper; piper = null; try { p.kill(); } catch (e) { /* ignore */ } }   /* the next line starts it at the new speed; lines in flight are asked again */
+}
+function piperTag(voice) { return !voice || voice === 'hs:piper' ? 'p' + piperScale.toFixed(2) : ''; }
 function piperPaths() {
   const dir = resDir('voices');
   return { exe: findFile(dir, n => /^piper\.exe$/i.test(n)), model: findFile(dir, n => /\.onnx$/i.test(n)) };
@@ -594,9 +606,9 @@ function piperStart() {
   if (!exe || !model) return false;
   const out = path.join(os.tmpdir(), 'hongsub-voice'); fs.mkdirSync(out, { recursive: true });
   let p;
-  try { p = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', '1.00', '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true }); }
+  try { p = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', piperScale.toFixed(2), '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true }); }
   catch (e) { return false; }
-  p.q = []; p.out = ''; piper = p;
+  p.q = []; p.out = ''; p.bk = 1 / piperScale; piper = p;
   p.stdout.setEncoding('utf8');
   p.stdout.on('data', (d) => {
     p.out += d; let i;
@@ -604,7 +616,7 @@ function piperStart() {
       const line = p.out.slice(0, i).trim(); p.out = p.out.slice(i + 1);
       if (!/\.wav$/i.test(line)) continue;
       const done = p.q.shift(); if (!done) continue;
-      try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64'), rateApply: true }); } catch (e) { done({ err: String(e) }); }
+      try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64'), rateApply: true, bk: p.bk }); } catch (e) { done({ err: String(e) }); }
     }
   });
   p.stderr.on('data', () => {});
@@ -715,7 +727,7 @@ function vcDir() { if (!vc.dir) { vc.dir = path.join(app.getPath('userData'), 'v
 function vcIdx() {
   if (vc.idx) return vc.idx;
   vc.idx = new Map();
-  try { fs.readdirSync(vcDir()).forEach((f) => { const m = /^([0-9a-f]{40})\.[an]\.(wav|mp3)$/.exec(f); if (m) vc.idx.set(m[1], f); }); } catch (e) { /* ignore */ }
+  try { fs.readdirSync(vcDir()).forEach((f) => { const m = /^([0-9a-f]{40})\.[an](?:\.b\d+)?\.(wav|mp3)$/.exec(f); if (m) vc.idx.set(m[1], f); }); } catch (e) { /* ignore */ }
   setTimeout(vcPrune, 20000);
   return vc.idx;
 }
@@ -739,13 +751,13 @@ function vcGet(key, make) {
   const p = (async () => {
     const f = vcIdx().get(key);
     if (f) {
-      try { const buf = await fs.promises.readFile(path.join(vcDir(), f)); if (buf.length >= 200) return { buf, mime: /mp3$/.test(f) ? 'audio/mpeg' : 'audio/wav', ra: f.charAt(41) === 'a' }; } catch (e) { /* ignore */ }
+      try { const buf = await fs.promises.readFile(path.join(vcDir(), f)); if (buf.length >= 200) { const bm = /\.b(\d+)\./.exec(f); return { buf, mime: /mp3$/.test(f) ? 'audio/mpeg' : 'audio/wav', ra: f.charAt(41) === 'a', bk: bm ? +bm[1] / 100 : 1 }; } } catch (e) { /* ignore */ }
       vc.idx.delete(key);
     }
     const r = await make();
     if (!r || !r.buf || r.buf.length < 200) return null;
     if (!r.fb) {
-      const name = key + '.' + (r.ra ? 'a' : 'n') + '.' + (r.mime === 'audio/mpeg' ? 'mp3' : 'wav');
+      const name = key + '.' + (r.ra ? 'a' : 'n') + (r.bk && Math.abs(r.bk - 1) > 0.001 ? '.b' + Math.round(r.bk * 100) : '') + '.' + (r.mime === 'audio/mpeg' ? 'mp3' : 'wav');
       fs.promises.writeFile(path.join(vcDir(), name), r.buf).then(() => { vc.idx.set(key, name); }, () => {});
     }
     return r;
@@ -1025,18 +1037,19 @@ function setupIpc() {
      the line is not known yet) is played faster instead, as Hóng Sub's own voice always is */
   const speakKept = async (text, voice, rate, warm) => {
     voice = voice || ''; rate = rate || 1;
-    const baked = voice.startsWith('win:') || voice.startsWith('az:'), k1 = vcKey('S', text, voice, baked ? '1' : '');
+    const baked = voice.startsWith('win:') || voice.startsWith('az:'), k1 = vcKey('S', text, voice, baked ? '1' : piperTag(voice));
     let raw = null;
-    const mk = (rt) => async () => { raw = await speakRaw(text, voice, rt); return raw && raw.wav ? { buf: Buffer.from(raw.wav, 'base64'), mime: raw.mime || 'audio/wav', ra: !!raw.rateApply, fb: (/^(gg|az):/.test(voice) && raw.mime !== 'audio/mpeg') || (!baked && !raw.rateApply) } : null; };
+    const mk = (rt) => async () => { raw = await speakRaw(text, voice, rt); return raw && raw.wav ? { buf: Buffer.from(raw.wav, 'base64'), mime: raw.mime || 'audio/wav', ra: !!raw.rateApply, bk: raw.bk || 1, fb: (/^(gg|az):/.test(voice) && raw.mime !== 'audio/mpeg') || (!baked && !raw.rateApply) } : null; };
     if (!baked || warm || vcHas(k1)) {
       const r = await vcGet(k1, mk(1));
-      if (r) return { wav: r.buf.toString('base64'), mime: r.mime, rateApply: true };   /* made at speed 1: the speed is set when it plays */
+      if (r) return { wav: r.buf.toString('base64'), mime: r.mime, rateApply: true, bk: r.bk || 1 };   /* made at speed 1 (or Hóng Sub's voice at the speed set: bk): the rest of the speed is set when it plays */
       if (!baked || warm) return raw || { err: 'no sound' };
     }
     const r = await vcGet(vcKey('S', text, voice, rate.toFixed(2)), mk(rate));
     return r ? { wav: r.buf.toString('base64'), mime: r.mime, rateApply: r.ra } : (raw || { err: 'no sound' });
   };
   ipcMain.handle('speak', (e, text, voice, rate) => { if (!text) return { stop: true }; return speakKept(String(text), voice, rate, false); });
+  ipcMain.on('voice-base', (e, rate) => piperSpeedSet(rate));
   /* the voice of a line expected next, made while the current one is read. S: a piece read on this computer,
      A: a whole line in an AI voice, C: a whole line for the TV */
   ipcMain.handle('voice-warm', async (e, kind, text, voice) => {
@@ -1064,19 +1077,19 @@ function setupIpc() {
     return buf ? { buf, mime: 'audio/wav', ra: true } : null;
   });
   let clipErr = '';
-  const clipKept = (text, voice, warm) => vcGet(vcKey('C', text, voice, ''), async () => {
-    let buf = null, mime = 'audio/wav', fb = false;
+  const clipKept = (text, voice, warm) => vcGet(vcKey('C', text, voice, piperTag(voice)), async () => {
+    let buf = null, mime = 'audio/wav', fb = false, bk = 1;
     if (voice.startsWith('gg:')) { try { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; } catch (x) { if (warm) return null; throw x; } }
     else if (voice.startsWith('az:')) { try { buf = await azSpeak(text, voice); mime = 'audio/mpeg'; } catch (x) { buf = null; } }
     else if (voice.startsWith('win:')) { const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: 1 }, 20000); if (r.wav) buf = Buffer.from(r.wav, 'base64'); }
     let why = '';
-    if (!buf) { fb = /^(gg|az|win):/.test(voice); const r = await piperSpeak(text); if (r.wav) buf = Buffer.from(r.wav, 'base64'); else why = 'piper: ' + (r.err || '?'); }
+    if (!buf) { fb = /^(gg|az|win):/.test(voice); const r = await piperSpeak(text); if (r.wav) { buf = Buffer.from(r.wav, 'base64'); bk = r.bk || 1; } else why = 'piper: ' + (r.err || '?'); }
     /* Piper could not read it: the online voice, then Windows' own, as for a line read on this computer (the TV got
        nothing at all before, while this computer went on reading with the online voice) */
     if (!buf && !warm && Date.now() > (onlineOff['gg:'] || 0)) { try { buf = await onlineTts.gg(text, (u, o) => net.fetch(u, o)); mime = 'audio/mpeg'; fb = true; } catch (x) { buf = null; why += '; google: ' + String(x && x.message || x).slice(0, 60); } }
     if (!buf && !warm) { fb = true; const r = await ttsCall({ cmd: 'speak', text: b64(text), voice: '', rate: 1 }, 20000); if (r && r.wav) buf = Buffer.from(r.wav, 'base64'); else why += '; windows: ' + ((r && r.err) || 'no sound'); }
     if (!buf) clipErr = why;
-    return buf ? { buf, mime, ra: true, fb } : null;
+    return buf ? { buf, mime, ra: true, fb, bk } : null;
   });
   const speakRaw = async (text, voice, rate) => {
     if (voice.startsWith('win:')) return ttsCall({ cmd: 'speak', text: b64(text), voice: voice.slice(4), rate: rate || 1 }, 20000);
@@ -1167,7 +1180,7 @@ function setupIpc() {
       const buf = r && r.buf, mime = r ? r.mime : 'audio/wav';
       if (!buf || buf.length < 200) return { ok: false, err: clipErr || 'no sound' };
       const id = lgApi && lgApi.clipPut ? lgApi.clipPut(buf, mime) : '';
-      return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length, dur: wavDur(buf, mime) };
+      return { ok: true, id, mime, b64: buf.toString('base64'), bytes: buf.length, dur: wavDur(buf, mime), bk: (r && r.bk) || 1 };
     } catch (err) { return { ok: false, err: String(err && err.message || err) }; }
   });
   /* Android TV: the clip goes to the TV in the message itself (the TV may not reach this computer through Windows Firewall) */

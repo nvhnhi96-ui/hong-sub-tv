@@ -122,7 +122,7 @@ public class OverlayService extends Service {
                 /* every line is read in full, in order, at the speed the computer set: a new line waits for the one being
                    read; nothing is sped up to catch up and nothing is left out (25/11/2026) */
                 if (clips.size() >= 60) clips.pollFirst();   // the clip files are reused after 64
-                clips.add(new Object[]{f, Math.min(3f, rate)});
+                clips.add(new Object[]{f, Math.min(3f, rate), System.currentTimeMillis()});
                 if (clipPlayer == null) clipNext();
             });
         } catch (Exception ignored) { }
@@ -140,7 +140,8 @@ public class OverlayService extends Service {
             mp.setOnCompletionListener(x -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); });
             mp.setOnErrorListener((x, a, b) -> { x.release(); if (clipPlayer == x) clipPlayer = null; clipNext(); return true; });
             mp.prepare();
-            float r = (Float) it[1];
+            /* catching up (25/11/2026): over 5 s late, a little faster until caught up; every line read in full */
+            float r = Math.min(3f, (Float) it[1] * boost(System.currentTimeMillis() - (Long) it[2]));
             if (Math.abs(r - 1f) > 0.01f) { try { mp.setPlaybackParams(new PlaybackParams().setSpeed(r)); } catch (Exception ignored) { } }
             clipPlayer = mp;
             mp.start();
@@ -155,6 +156,15 @@ public class OverlayService extends Service {
     }
     private int ttsSeq;
     private void ttsDone() { if (ttsPending.decrementAndGet() < 0) ttsPending.set(0); }
+    /* the speed set, and only when the voice is over 5 s late a little faster (1.2x, up to 1.5x at 20 s late) until it
+       has caught up (under 2 s late). Every line is read in full, none is left out (the owner's choice, 25/11/2026) */
+    private boolean catchOn = false;
+    private final ArrayDeque<Long> ttsAt = new ArrayDeque<>();
+    private volatile long ttsLate = 0;
+    private float boost(long lag) {
+        if (lag > 5000) catchOn = true; else if (lag < 2000) catchOn = false;
+        return catchOn ? 1.2f + 0.3f * Math.min(1f, Math.max(0, lag - 5000) / 15000f) : 1f;
+    }
     private LanServer lan;
     private final Runnable hideRunnable = () -> { if (box != null) box.setVisibility(View.GONE); };
 
@@ -188,7 +198,7 @@ public class OverlayService extends Service {
                 ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
                 try { tts.setSpeechRate(1.2f); } catch (Exception ignored) { }   // the TV's own voice at 1.0 trails behind the character
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String id) { }
+                    @Override public void onStart(String id) { synchronized (ttsAt) { Long a = ttsAt.pollFirst(); if (a != null) ttsLate = System.currentTimeMillis() - a; } }
                     @Override public void onDone(String id) { ttsDone(); }
                     @Override public void onError(String id) { ttsDone(); }
                     @Override public void onStop(String id, boolean interrupted) { ttsDone(); }
@@ -841,7 +851,9 @@ public class OverlayService extends Service {
             main.postDelayed(hideRunnable, holdMs);
             if (speakIt && ttsReady) {   // every line read in full: it waits for the one being read, faster when lines wait
                 int wait = ttsPending.getAndIncrement();
-                try { tts.setSpeechRate(1.2f); } catch (Exception ignored) { }   // the same speed whatever waits (25/11/2026: no catching up)
+                long now = System.currentTimeMillis(), lag;
+                synchronized (ttsAt) { if (wait == 0) ttsAt.clear(); lag = Math.max(wait > 0 ? ttsLate : 0, ttsAt.isEmpty() ? 0 : now - ttsAt.peekFirst()); ttsAt.addLast(now); }
+                try { tts.setSpeechRate(1.2f * boost(lag)); } catch (Exception ignored) { }   // the TV's own voice: 1.2, a little faster only when over 5 s late
                 tts.speak(vi, TextToSpeech.QUEUE_ADD, ttsParams(), "line" + (++ttsSeq));
             }
         });
