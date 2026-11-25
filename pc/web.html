@@ -3845,7 +3845,9 @@ function engineSet(k){
   } else if(k==='piper') pick=(dv.filter(function(v){return v.id==='hs:piper';})[0]||{}).id||'';
   else if(k==='gg') pick=(dv.filter(function(v){return /^gg:/.test(v.id||'');})[0]||{}).id||'';
   else if(k==='az'){ pick=(dv.filter(function(v){return /^az:/.test(v.id||'');})[0]||{}).id||''; if(!pick){ say('Chưa có mã Azure. Dán mã ở Cài đặt › Mã AI, khung "Giọng Azure", rồi bấm lại.'); return; } }
-  else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ say(MAC?'Mac chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng đọc của Mac" ở dưới, tải giọng Linh (Tiếng Việt), rồi mở lại Hóng Sub.':'Windows chưa có giọng tiếng Việt. Bấm "Mở cài đặt giọng nói của Windows" ở dưới, thêm giọng Tiếng Việt (Microsoft An), rồi mở lại Hóng Sub.'); return; } }
+  else if(k==='win'){ var w=dv.filter(function(v){return /^win:/.test(v.id||'');})[0]; pick=w?w.id:''; if(!w){ /* the button "ở dưới" these words pointed at is no longer on the page: the settings open from here */
+    if(D&&D.voiceSettings) try{ D.voiceSettings(); }catch(e){}
+    say(MAC?'Mac chưa có giọng tiếng Việt. Đã mở Cài đặt hệ thống › Trợ năng › Nội dung được đọc: bấm Giọng hệ thống › Quản lý giọng, tải giọng Linh (Tiếng Việt), rồi mở lại Hóng Sub.':'Windows chưa có giọng tiếng Việt. Đã mở Cài đặt › Thời gian & ngôn ngữ › Giọng nói: ở mục Quản lý giọng nói bấm Thêm giọng nói, tìm Tiếng Việt, cài giọng Microsoft An, rồi mở lại Hóng Sub.'); return; } }
   if(!pick){ say('Bộ đọc này chưa sẵn sàng trên máy.'); return; }
   sel.value=pick; sel.dispatchEvent(new Event('change'));
 }
