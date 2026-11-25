@@ -340,6 +340,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         <span class="hs-sp"></span>
         <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
         <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối</button>
+        <button class="hs-btn hs-dk hs-off" id="hsPsMute" type="button" aria-pressed="false" title="Tắt hoặc bật tiếng game phát trên máy này (phím M khi đang chơi)">Tắt tiếng game</button>
         <span class="hs-dk hs-off dk-q" id="hsPlayQW" title="Hình giật, trễ hoặc hay đứng: chọn thấp hơn. Mạng dây, máy mạnh: chọn nét cao. Đổi xong Hóng Sub tự kết nối lại."><label for="hsPlayQ">Chất lượng hình</label><select class="hs-in" id="hsPlayQ"></select></span>
         <button class="hs-btn" id="hsDraw" type="button" disabled>Chỉnh vùng phụ đề</button>
         <button class="hs-btn" id="hsPick2" type="button" disabled>Đổi cửa sổ</button>
@@ -8723,9 +8724,10 @@ function psFreezeTick(){
   }
 }
 setInterval(psFreezeTick,1000);
-/* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
-   sound back) */
-function gameMuted(){ return camOnTv(); }   /* PS sound on the TV: here too, in step with the TV (psDelay) */
+/* "Tắt tiếng game" (back 25/11/2026, off unless turned on): the game's sound goes through one volume knob, turned to 0
+   or back; reading aloud is not affected. Also quiet with a capture card while the TV plays the sound (camOnTv). */
+if(!load('gameMute2',false)){ save('gameMute2',true); save('gameMute',false); }   /* whoever had it on before it was taken out starts with sound */
+function gameMuted(){ return !!load('gameMute',false)||camOnTv(); }   /* PS sound on the TV: here too, in step with the TV (psDelay) */
 /* a capture card with the TV on the PS5's own HDMI: the TV has the game's sound already, so this computer stays quiet
    (it only listens, for reading the characters' voices) */
 function camOnTv(){ return !!S.camSrc&&S.tvOk===true; }   /* a capture card: the game's sound is on the TV already (HDMI), this computer stays quiet as before */
@@ -8809,8 +8811,10 @@ function psDelay(){
   return Math.max(0,Math.min(1.5,(S.tvLat+(S.tvAlat2>0?4:12)-own-psLeadMs()+tvTrim())/1000));
 }
 function gameMuteSet(on){
-  save('gameMute',!!on);
-  if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(on?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=on?0:1; }
+  save('gameMute',!!on); var q=gameMuted();
+  if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(q?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=q?0:1; }
+  var b=$('hsPsMute'); if(b){ b.textContent=on?'Bật tiếng game':'Tắt tiếng game'; b.setAttribute('aria-pressed',on?'true':'false'); b.classList.toggle('on',!!on); }
+  var c=$('hsGameMute'); if(c) c.checked=!!on;
 }
 function playQSync(){ var a=$('hsPsQ'), b=$('hsPlayQ'); if(!a||!b) return; if(b.options.length!==a.options.length) b.innerHTML=a.innerHTML; b.value=a.value; }
 /* The PS refused the session at once and said why (RP-Application-Reason). A lower quality does not help: tell the
@@ -8929,7 +8933,7 @@ function psStartView(){
   PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
   if(window.hsGo&&!(D&&D.selftest)) hsGo('choi');
   S.offlineDemo=false; setStream(PS.stream,null);
-  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
+  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
   psPadStart();
 }
 function psStopView(){
@@ -8939,7 +8943,7 @@ function psStopView(){
   if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; } PS.lastAh=null;
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
-  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
+  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
   if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
   PS.host=null;
 }
@@ -9084,6 +9088,7 @@ function psPadPoll(){
 }
 function psKey(e,down){
   if(!PS.host||($('hsPsWatch')&&$('hsPsWatch').checked)) return; var t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+  if(down&&e.code==='KeyM'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); gameMuteSet(!load('gameMute',false)); return; }   /* M: game sound off / on */
   if(KEY_BTN[e.code]){ e.preventDefault(); e.stopPropagation(); PS.keys[e.code]=down; }
 }
 function psPadStart(){ psPadStop(); PS.padTimer=setInterval(psPadPoll,8); }
@@ -9135,7 +9140,9 @@ function psInit(){
     setTimeout(function(){ psPlay(h); },1800);
   });
   $('hsPsQ').addEventListener('change',playQSync);
-  gameMuteSet(false);
+  if($('hsPsMute')) $('hsPsMute').addEventListener('click',function(){ gameMuteSet(!load('gameMute',false)); status('run',load('gameMute',false)?'Đã tắt tiếng game':'Đã bật tiếng game'); later(function(){ if(S.running) runStatus(); },2000); });
+  if($('hsGameMute')) $('hsGameMute').addEventListener('change',function(){ gameMuteSet(this.checked); });
+  gameMuteSet(!!load('gameMute',false));
   if($('hsTvTrim')){ var trimUi=function(){ var v=tvTrim(); $('hsTvTrim').value=v; if($('hsTvTrimV')) $('hsTvTrimV').textContent=(v>0?'+':'')+v+' ms'; };
     trimUi(); $('hsTvTrim').addEventListener('input',function(){ save('tvTrim',+this.value||0); trimUi(); psDelaySet(true); });
     $('hsTvTrim').addEventListener('change',function(){ var v=tvTrim(); log('tiếng game: chỉnh khớp tay '+(v>0?'+':'')+v+' ms'); });

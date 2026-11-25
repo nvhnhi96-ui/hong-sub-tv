@@ -846,6 +846,7 @@ html.hs-phone .hs-spkmenu .hs-btn{width:100%;min-height:46px;font-size:15px}
                 <button class="hs-btn" id="hsPick2" type="button" disabled title="Chọn lại nguồn hình"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5 15a8 8 0 0 0 14 2M19 9A8 8 0 0 0 5 7"/></svg><span>Đổi nguồn</span></button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
                 <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối PS5</button>
+                <button class="hs-btn hs-dk hs-off" id="hsPsMute" type="button" aria-pressed="false" title="Tắt hoặc bật tiếng game phát trên máy này (phím M khi đang chơi)">Tắt tiếng game</button>
                 <span class="hs-dk hs-off dk-q" id="hsPlayQW" title="Hình giật, trễ hoặc hay đứng: chọn thấp hơn. Mạng dây, máy mạnh: chọn nét cao. Đổi xong Hóng Sub tự kết nối lại."><label for="hsPlayQ">Chất lượng hình</label><select class="hs-in" id="hsPlayQ"></select></span>
                 <button class="hs-btn hs-web" id="hsPip" type="button" disabled title="Cửa sổ nhỏ luôn nằm trên game, hiện phụ đề tiếng Việt"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg><span>Cửa sổ nổi</span></button>
               </div>
@@ -878,6 +879,7 @@ html.hs-phone .hs-spkmenu .hs-btn{width:100%;min-height:46px;font-size:15px}
                 <label class="hs-sw">Giọng riêng cho từng nhân vật <input type="checkbox" id="dkQCast" checked></label>
                 <label class="hs-sw" hidden title="Khi chơi PS5 trong Hóng Sub, máy PS tự tắt tiếng ở TV. Bật mục này: tiếng game phát ở loa TV và máy tính cùng lúc, khớp nhau; giọng đọc tiếng Việt phát ở nơi chọn trong mục Đọc ở (mặc định: máy tính). Cần app Hóng Sub TV cùng mạng nhà.">Tiếng game phát ở TV <input type="checkbox" id="hsTvSound"></label>
                 <div class="dk-set" id="hsTvTrimRow" style="margin:2px 0 8px"><div class="lab"><label for="hsTvTrim">Chỉnh khớp tiếng với TV</label><output id="hsTvTrimV" style="white-space:nowrap">0 ms</output></div><input class="hs-range" id="hsTvTrim" type="range" min="-300" max="300" step="10" value="0"><p class="hs-note">Hóng Sub tự căn cho tiếng ở máy tính và TV ra cùng lúc. Vẫn nghe vang thì kéo từng nấc tới khi hai tiếng nhập làm một: tiếng máy tính ra <b>sau</b> TV thì kéo sang trái, ra <b>trước</b> TV thì kéo sang phải. Chỉnh một lần, Hóng Sub nhớ.</p></div>
+                <label class="hs-sw">Tắt tiếng game (khi chơi PS5 / PS4 trong Hóng Sub) <input type="checkbox" id="hsGameMute"></label>
                 <label class="hs-sw">Tự dịch chữ khác trên màn hình (nhiệm vụ, nút, menu, tin nhắn) <input type="checkbox" id="dkQLive"></label>
                 <label class="hs-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="dkQFs"></label>
                 <p class="hs-note" style="margin:2px 0 6px">Hóng Sub tự dịch chữ trên màn hình (nhiệm vụ, hướng dẫn, tin nhắn). Muốn dịch cả menu đang mở: bật "Dịch menu bằng nút mic trên tay cầm" ở Cài đặt rồi bấm <b>nút mic</b>, lật trang hay di chuyển là tự dịch tiếp, bấm lần nữa hoặc vào lại game là tắt.</p>
@@ -9793,9 +9795,10 @@ function psFreezeTick(){
   }
 }
 setInterval(psFreezeTick,1000);
-/* the game's sound goes through one volume knob, always on ("Tắt tiếng game" was taken out: whoever had it on gets the
-   sound back) */
-function gameMuted(){ return camOnTv(); }   /* PS sound on the TV: here too, in step with the TV (psDelay) */
+/* "Tắt tiếng game" (back 25/11/2026, off unless turned on): the game's sound goes through one volume knob, turned to 0
+   or back; reading aloud is not affected. Also quiet with a capture card while the TV plays the sound (camOnTv). */
+if(!load('gameMute2',false)){ save('gameMute2',true); save('gameMute',false); }   /* whoever had it on before it was taken out starts with sound */
+function gameMuted(){ return !!load('gameMute',false)||camOnTv(); }   /* PS sound on the TV: here too, in step with the TV (psDelay) */
 /* a capture card with the TV on the PS5's own HDMI: the TV has the game's sound already, so this computer stays quiet
    (it only listens, for reading the characters' voices) */
 function camOnTv(){ return !!S.camSrc&&S.tvOk===true; }   /* a capture card: the game's sound is on the TV already (HDMI), this computer stays quiet as before */
@@ -9879,8 +9882,10 @@ function psDelay(){
   return Math.max(0,Math.min(1.5,(S.tvLat+(S.tvAlat2>0?4:12)-own-psLeadMs()+tvTrim())/1000));
 }
 function gameMuteSet(on){
-  save('gameMute',!!on);
-  if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(on?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=on?0:1; }
+  save('gameMute',!!on); var q=gameMuted();
+  if(PS.again&&PS.actx) try{ PS.again.gain.setTargetAtTime(q?0:1,PS.actx.currentTime,0.03); }catch(e){ PS.again.gain.value=q?0:1; }
+  var b=$('hsPsMute'); if(b){ b.textContent=on?'Bật tiếng game':'Tắt tiếng game'; b.setAttribute('aria-pressed',on?'true':'false'); b.classList.toggle('on',!!on); }
+  var c=$('hsGameMute'); if(c) c.checked=!!on;
 }
 function playQSync(){ var a=$('hsPsQ'), b=$('hsPlayQ'); if(!a||!b) return; if(b.options.length!==a.options.length) b.innerHTML=a.innerHTML; b.value=a.value; }
 /* The PS refused the session at once and said why (RP-Application-Reason). A lower quality does not help: tell the
@@ -9999,7 +10004,7 @@ function psStartView(){
   PS.stream=PS.cvs.captureStream(12);   /* for reading the subtitles only: fewer copies leave more room for a smooth picture */
   if(window.hsGo&&!(D&&D.selftest)) hsGo('choi');
   S.offlineDemo=false; setStream(PS.stream,null);
-  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
+  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.remove('hs-off');}); playQSync();
   psPadStart();
 }
 function psStopView(){
@@ -10009,7 +10014,7 @@ function psStopView(){
   if(PS.adec){ try{PS.adec.close();}catch(e){} PS.adec=null; } PS.lastAh=null;
   if(PS.cvs&&PS.cvs.parentNode) PS.cvs.parentNode.removeChild(PS.cvs);
   if(PS.stream){ PS.stream.getTracks().forEach(function(t){t.stop(); t.dispatchEvent(new Event('ended'));}); PS.stream=null; }
-  ['hsPsFull','hsPsEnd','hsPlayQW'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
+  ['hsPsFull','hsPsEnd','hsPlayQW','hsPsMute'].forEach(function(id){ if($(id)) $(id).classList.add('hs-off');});
   if(document.fullscreenElement) document.exitFullscreen().catch(function(){});
   PS.host=null;
 }
@@ -10154,6 +10159,7 @@ function psPadPoll(){
 }
 function psKey(e,down){
   if(!PS.host||($('hsPsWatch')&&$('hsPsWatch').checked)) return; var t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT') return;
+  if(down&&e.code==='KeyM'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); gameMuteSet(!load('gameMute',false)); return; }   /* M: game sound off / on */
   if(KEY_BTN[e.code]){ e.preventDefault(); e.stopPropagation(); PS.keys[e.code]=down; }
 }
 function psPadStart(){ psPadStop(); PS.padTimer=setInterval(psPadPoll,8); }
@@ -10205,7 +10211,9 @@ function psInit(){
     setTimeout(function(){ psPlay(h); },1800);
   });
   $('hsPsQ').addEventListener('change',playQSync);
-  gameMuteSet(false);
+  if($('hsPsMute')) $('hsPsMute').addEventListener('click',function(){ gameMuteSet(!load('gameMute',false)); status('run',load('gameMute',false)?'Đã tắt tiếng game':'Đã bật tiếng game'); later(function(){ if(S.running) runStatus(); },2000); });
+  if($('hsGameMute')) $('hsGameMute').addEventListener('change',function(){ gameMuteSet(this.checked); });
+  gameMuteSet(!!load('gameMute',false));
   if($('hsTvTrim')){ var trimUi=function(){ var v=tvTrim(); $('hsTvTrim').value=v; if($('hsTvTrimV')) $('hsTvTrimV').textContent=(v>0?'+':'')+v+' ms'; };
     trimUi(); $('hsTvTrim').addEventListener('input',function(){ save('tvTrim',+this.value||0); trimUi(); psDelaySet(true); });
     $('hsTvTrim').addEventListener('change',function(){ var v=tvTrim(); log('tiếng game: chỉnh khớp tay '+(v>0?'+':'')+v+' ms'); });
