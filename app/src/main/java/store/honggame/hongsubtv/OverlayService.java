@@ -755,6 +755,12 @@ public class OverlayService extends Service {
         for (String line : viView.getText().toString().split("\n")) widest = Math.max(widest, viView.getPaint().measureText(line));
         // too long for the original's lines: the words go on another line and the letters keep their size,
         // so every subtitle is the same size (they only get smaller if the box would cover almost half the screen)
+        // the lines the phone/computer chose (the same as on its screen): a little smaller letters keep them as they are
+        if (widest > avail && widest * 0.85f <= avail) {
+            viView.setTextSize(TypedValue.COMPLEX_UNIT_PX, viView.getTextSize() * avail / widest * 0.98f);
+            coverHeight();
+            return;
+        }
         if (widest > avail) {
             CharSequence t = viView.getText();
             if (t.toString().indexOf('\n') >= 0) viView.setText(t.toString().replace('\n', ' '));

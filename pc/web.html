@@ -3137,7 +3137,7 @@ function tvMsg(cls,t){var m=$('hsTvMsg'); m.hidden=false; m.className='hs-msg '+
 function TVD(){ return (D&&D.tv)||(DPS&&DPS.tv)||null; }
 function tvIp(){ var el=$('hsTvIp'); return TVD()&&el&&S.tvType==='android'?(el.value||'').trim():''; }
 /* the TV shows the subtitle the way it is set for the computer: size, colour, background, width */
-function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(10,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(20,Math.min(100,+st.width||80)),hgt:Math.max(40,Math.min(300,+st.hgt||100)),lm:lineMatch()}; }
+function tvLook(){ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); return {font:subFontKey(),size:Math.max(10,Math.min(90,Math.round((+$('hsSize').value||28)*30/28))),col:/^#[0-9A-Fa-f]{6}$/.test(st.color||'')?st.color:'#FFFFFF',bg:Math.max(0,Math.min(100,+st.bg||0)),wid:Math.max(20,Math.min(100,+st.width||80)),hgt:Math.max(40,Math.min(300,+st.hgt||100)),lm:true}; }   /* lines as given: the original's, or the ones the play screen chose */
 function lanTv(){ return S.tvType==='lg'||S.tvType==='samsung'; }
 /* who answers the TV LG / Samsung app on the home network: the computer (pc/lg.js) or the phone (its core) */
 function LGP(){ return (D&&D.lg)||(DPS&&DPS.lan)||null; }
@@ -3519,12 +3519,14 @@ function show(res,quiet){
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){ var mc=h.role==='main'&&mainOn()?mainCol():''; return '<li>'+(h.who?'<b>'+esc(h.who)+(h.role==='main'?' ★':'')+':</b> ':'')+(mc?'<span style="color:'+mc+'">'+esc(h.vi)+'</span>':esc(h.vi))+'<small>'+(h.voice?'🔊 ':'')+esc(h.en)+'</small></li>';}).join('');
   pipRender(vl?voWrap(html):html,$('hsEn').textContent,vl);
   S.lastHtml=html; S.voHtml=vl?html:''; S.voCur=vl; coverShow(html0,vl);   /* over the original subtitle: only the line said now */
-  if(D) D.sub(stageFs()?{html:'',en:''}:{html:coverOn()?html0:html,en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
-  phSub({who:who,c:ch&&ch.c||'',vi:vi,en:$('hsEn').textContent,vo:vl,mcol:mcol});
+  var viT=lcs?vi:viSame(vi,who,html0), htmlT=html0;
+  if(viT!==vi) htmlT=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+(mcol?'<span class="vi-main" style="color:'+mcol+'">':'')+esc(viT).replace(/\n/g,'<br>')+(mcol?'</span>':'');
+  if(D) D.sub(stageFs()?{html:'',en:''}:{html:coverOn()?htmlT:(pr?html:htmlT),en:$('hsEn').textContent,size:vl?vl.size:+$('hsSize').value,vo:vl?{color:vl.color,bg:vl.bg/100,family:FONTS[vl.font].css,fontUrl:fontUrl(vl.font)}:null});
+  phSub({who:who,c:ch&&ch.c||'',vi:viT,en:$('hsEn').textContent,vo:vl,mcol:mcol});
   if(pr&&!coverOn()&&!lcs){   /* the TV: the line before on top in grey, the new one under it */
-    var pl=(pr.who?pr.who+': ':'')+String(pr.vi||'').replace(/\n/g,' '), cl=String(vi||'').split('\n');
-    tvPush(pl+'\n'+(who?who+': ':'')+vi,en,'',false,vl,mcol,['#8f949c'].concat(cl.map(function(){ return mcol||''; })));
-  } else tvPush(vi,en,who,false,vl,mcol,lcs);
+    var pl=(pr.who?pr.who+': ':'')+String(pr.vi||'').replace(/\n/g,' '), cl=String(viT||'').split('\n');
+    tvPush(pl+'\n'+(who?who+': ':'')+viT,en,'',false,vl,mcol,['#8f949c'].concat(cl.map(function(){ return mcol||''; })));
+  } else tvPush(viT,en,who,false,vl,mcol,lcs);
 
   if(quiet) return;   /* a corrected line: already read aloud, its time on screen goes on */
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
@@ -3590,6 +3592,27 @@ function viFit(d,maxW){
   best.cut.slice().reverse().forEach(function(k){ var p=sp[k], rest=p.n.splitText(p.i); rest.nodeValue=rest.nodeValue.slice(1); rest.parentNode.insertBefore(document.createElement('br'),rest); });
   return best.cut.length+1;
 }
+/* the lines viFit left in a box, as plain text */
+function fitTextLines(d){ var t=document.createElement('div'); return String(d.innerHTML).split(/<br\s*\/?>/i).map(function(h){ t.innerHTML=h; return t.textContent.replace(/\s+/g,' ').trim(); }).filter(Boolean); }
+/* viFit away from the screen, when the play screen did not draw this line (no game picture): the same rule on a
+   1920x1080 picture, "Cỡ chữ" as the play screen draws it, the translation area's width */
+function viFitOff(html){
+  var R=S.region||{w:0.8}, fs=Math.max(8,(+$('hsSize').value||28)*1.7), d=S.fitM;
+  if(!d){ d=S.fitM=document.createElement('div'); d.setAttribute('aria-hidden','true'); d.style.cssText='position:fixed;left:-20000px;top:0;visibility:hidden;pointer-events:none;line-height:1.3'; document.body.appendChild(d); }
+  d.style.fontFamily=subFont(); d.style.fontSize=fs+'px'; d.innerHTML=html; var n=0;
+  for(var i=0;i<6;i++){ n=viFit(d,Math.max(60,(+R.w||0.8)*1920-40)); if(n!==-1) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }
+  return n>0?fitTextLines(d):null;
+}
+/* the TV, the phone's floating subtitle and the Windows floating window get the lines the play screen chose, so all
+   of them break the Vietnamese at the same words (11/2026). The original's lines when that is what the switch says. */
+function viSame(vi,who,html0){
+  if(lineMatch()||!vi||/class="hs-part|<div/i.test(html0||'')) return vi;
+  var L=S.fitOut&&S.fitOut.html===html0?S.fitOut.lines:null;
+  if(!L) L=viFitOff(html0);
+  if(!L||!L.length) return vi;
+  if(who){ var pre=String(who)+':'; if(L[0].indexOf(pre)===0) L=[L[0].slice(pre.length).trim()].concat(L.slice(1)).filter(Boolean); }
+  return L.join('\n');
+}
 function coverEl(){ var c=document.getElementById('hsCoverBox'); if(!c){ c=document.createElement('div'); c.id='hsCoverBox'; c.className='hs-cover'; c.hidden=true; c.innerHTML='<div></div>'; $('hsStage').appendChild(c); } return c; }
 function stageFs(){ var f=document.fullscreenElement||document.webkitFullscreenElement; return !!f&&f===$('hsStage'); }
 function coverAt(){ return coverOn()||stageFs(); }   /* full screen: always on the original subtitle */
@@ -3617,7 +3640,8 @@ function coverUp(c,html,b,st,ox,oy){
   var size=+$('hsSize').value||28, sk=Math.max(.4,Math.min(2.5,size/28));
   var fs=Math.max(8,xb>0?xb*b.h/fontRatio(subFont(),!!sb.caps)*sk:size*30/28*u); d.style.fontSize=fs+'px';
   var R1=S.region||a, rW=Math.max(w,R1.w*b.w); if(rW>w){ w=Math.min(b.w,rW); lx=Math.max(b.l,Math.min(b.l+b.w-w,cx-w/2)); c.style.left=(ox+lx)+'px'; c.style.width=w+'px'; }   /* as wide as the translation area */
-  var fitU=0; if(!lineMatch()) for(var fj=0;fj<6;fj++){ fitU=viFit(d,w-48*u); if(fitU!==-1||fs<=9*u) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }   /* one line if it fits, else cut where the sentence pauses */
+  var fitU=0; if(!lineMatch()) for(var fj=0;fj<6;fj++){ fitU=viFit(d,w-48*u); if(fitU!==-1||fs<=9*u) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }
+  S.fitOut={html:html,lines:fitU>0?fitTextLines(d):null};   /* one line if it fits, else cut where the sentence pauses */
   if(fitU<=0){ d.style.whiteSpace=lineMatch()?'nowrap':'';
     if(lineMatch()&&d.scrollWidth>w-48*u){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); } }   /* too long for the original's lines: one more line */
   for(var i=0;i<12&&c.offsetHeight>b.h*0.42&&fs>9*u;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }   /* smaller only when it would cover almost half the picture */
@@ -3648,6 +3672,7 @@ function coverShow(html,vl){
      longer than that goes on two lines cut where the sentence pauses (viFit) */
   var R0=S.region||r, regL=b.l+R0.x*b.w, regW=Math.max(60,R0.w*b.w), padX=r.spot||w<360?16:40, fitN=0;
   if(!lineMatch()) for(var fi=0;fi<6;fi++){ fitN=viFit(d,regW-padX); if(fitN!==-1||fs<=9) break; fs*=0.92; d.style.fontSize=fs+'px'; d.innerHTML=html; }
+  S.fitOut={html:html,lines:fitN>0?fitTextLines(d):null};
   if(fitN>0){ var need=d.scrollWidth+padX, w0=r.spot?w:Math.min(w,regW), nw=Math.min(regW,Math.max(need,r.spot?w0:Math.min(w0,need+80))), left0=parseFloat(c.style.left)-ox;
     var nl=r.spot&&r.al==='l'?left0:r.spot&&r.al==='r'?left0+w-nw:left0+w/2-nw/2; nl=Math.max(Math.max(b.l,regL),Math.min(Math.min(b.l+b.w,regL+regW)-nw,nl));
     c.style.left=(ox+nl)+'px'; c.style.width=nw+'px'; }
@@ -4573,7 +4598,7 @@ function zUnitLines(vi,U,n){
   if(v.length!==U.length){ var s=viSents(v.join(' ')); if(s.length===U.length) v=s; else return lineSplitS(vi,n); }
   return v.map(function(t,i){ return lineSplitS(t,U[i].k); }).join('\n');
 }
-function lineMatch(){ return true; }
+function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
 function runStatus(){
   status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':S.via==='local'?' bằng AI trên máy':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
@@ -6999,7 +7024,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={tmEarly:function(t){ return tmEarly(t); },ocrTake:function(t,f,d){ return ocrTake(t,f,d); },dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={viSame:viSame,viFitOff:viFitOff,lineMatch:lineMatch,tmEarly:function(t){ return tmEarly(t); },ocrTake:function(t,f,d){ return ocrTake(t,f,d); },dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
@@ -7379,8 +7404,9 @@ function tvVol(){ var v=+load('tvVol',150); return Math.max(50,Math.min(300,v||1
   });
 })();
 function toastOnce(m){ status('warn',m); }
-/* Vietnamese breaks lines like the original subtitle: always, on every app (11/2026); the switch stays hidden */
-(function(){ var l=$('hsLines'); if(l){ l.checked=true; save('lines',true); } })();
+/* "Chữ Việt xuống dòng giống phụ đề gốc": off by default (one line when it fits, a long line cut where the sentence
+   pauses: viFit); whoever wants the original's lines turns it on (11/2026) */
+(function(){ var l=$('hsLines'); if(l){ if(!load('linesFit2',false)){ save('linesFit2',true); save('lines',false); } var lv=load('lines',null); l.checked=lv===null?false:!!lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
 (function(){ var c=document.getElementById('hsSubSpot'); if(!c) return; c.checked=load('subspot',true);
   c.addEventListener('change',function(){ save('subspot',c.checked); S.placeK=null; placeSync(); if(S.coverHtml) coverShow(S.coverHtml); if(S.hist[0]) tvPush(S.hist[0].vi,S.hist[0].en,S.hist[0].who,false); }); })();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
@@ -7726,7 +7752,7 @@ function quadEdit(on){
 function phVoices(){ try{ return JSON.parse(PH.voices()||'[]').map(function(v){ return {name:v.name,lang:v.lang||'vi-VN',ph:true}; }); }catch(e){ return []; } }
 function phSub(o){
   if(!PH) return;
-  try{ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); o.size=+$('hsSize').value; o.col=st.color||'#FFFFFF'; o.bg=st.bg==null?74:+st.bg; o.wid=st.width||80; o.hgt=st.hgt||100; o.lm=lineMatch(); o.font=subFontKey(); o.hold=S.hold;
+  try{ var st=load('ovStyle',{color:'#FFFFFF',bg:74,width:80}); o.size=+$('hsSize').value; o.col=st.color||'#FFFFFF'; o.bg=st.bg==null?74:+st.bg; o.wid=st.width||80; o.hgt=st.hgt||100; o.lm=true; o.font=subFontKey(); o.hold=S.hold;
     if(o.vo){ o.size=o.vo.size; o.col=o.vo.color; o.bg=o.vo.bg; o.font=o.vo.font; o.voice=1; } delete o.vo;
     if(o.mcol) o.col=o.mcol; delete o.mcol;
     PH.sub(JSON.stringify(o)); }catch(e){}

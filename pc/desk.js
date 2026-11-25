@@ -102,7 +102,7 @@ function applyStyle(push){
   $('dkPrevEn').style.display=$('hsShowEn').checked?'':'none';
   $('hsVi').style.color=ST.color==='#FFFFFF'?'':ST.color;
   A.save('ovStyle',ST);
-  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100,family:A.fonts[ST.font].css,fontUrl:A.fontUrl(ST.font),hgt:ST.hgt,lm:$('hsLines')?$('hsLines').checked:true}});
+  if(push!==false) D.sub({style:{color:ST.color,bg:ST.bg/100,family:A.fonts[ST.font].css,fontUrl:A.fontUrl(ST.font),hgt:ST.hgt,lm:true}});
 }
 document.querySelectorAll('#dkColor button').forEach(function(b){ b.addEventListener('click',function(){ ST.color=b.dataset.c; applyStyle(); }); });
 $('dkBg').addEventListener('input',function(){ ST.bg=+this.value; applyStyle(); });
