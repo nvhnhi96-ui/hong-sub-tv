@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
         r4.addView(codeBtn);
         right.addView(r4);
 
-        TextView help = text("Cần cài giúp? Gọi hoặc Zalo Hóng Game Store: 0949 099 992 · 0367 879 283", 14, MUTED, false);
+        TextView help = text("Cần hỗ trợ cài đặt? Vào nhóm Telegram Hóng Sub để được hướng dẫn.", 14, MUTED, false);
         help.setPadding(0, dp(18), 0, 0);
         right.addView(help);
         return sv;

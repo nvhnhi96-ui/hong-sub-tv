@@ -24,10 +24,10 @@ Cài đặt, mã AI bạn nhập, danh sách máy PS và TV chỉ lưu trên má
 Hóng Sub không dành riêng cho trẻ em dưới 13 tuổi và không cố ý thu thập dữ liệu của trẻ em.
 
 ## 5. Liên hệ
-Hỗ trợ kỹ thuật Hóng Sub: 0367 879 283 (Zalo) · https://honggame.store
+Hỗ trợ kỹ thuật Hóng Sub: nhóm Telegram Hóng Sub · https://honggame.store
 
 ---
 
 # Privacy Policy – Hóng Sub (English summary)
 
-Hóng Sub translates PS5/PS4 game subtitles into Vietnamese. No account, no ads, no tracking, no data sales. Game video is processed on the device and is not uploaded to our servers. Subtitle text (occasionally a small image of the subtitle area) is sent only to the translation service the user chooses (e.g. Google Gemini with the user's own key) to be translated. Translated game lines (text only, no personal data) may be stored on honggame.store to be reused. PlayStation Remote Play credentials stay on the device. Connection error logs with technical details (no personal data, AI keys masked) may be sent to honggame.store for support. Settings are stored on the device only. Contact: +84 367 879 283, https://honggame.store
+Hóng Sub translates PS5/PS4 game subtitles into Vietnamese. No account, no ads, no tracking, no data sales. Game video is processed on the device and is not uploaded to our servers. Subtitle text (occasionally a small image of the subtitle area) is sent only to the translation service the user chooses (e.g. Google Gemini with the user's own key) to be translated. Translated game lines (text only, no personal data) may be stored on honggame.store to be reused. PlayStation Remote Play credentials stay on the device. Connection error logs with technical details (no personal data, AI keys masked) may be sent to honggame.store for support. Settings are stored on the device only. Contact: the Hóng Sub Telegram group, https://honggame.store
