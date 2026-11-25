@@ -4573,7 +4573,7 @@ function zUnitLines(vi,U,n){
   if(v.length!==U.length){ var s=viSents(v.join(' ')); if(s.length===U.length) v=s; else return lineSplitS(vi,n); }
   return v.map(function(t,i){ return lineSplitS(t,U[i].k); }).join('\n');
 }
-function lineMatch(){ var c=$('hsLines'); return !c||c.checked; }
+function lineMatch(){ return true; }
 function runStatus(){
   status('run',(S.via==='tm'?'Đang dùng câu có sẵn trong kho dịch chung':S.via==='free'?'Đang dịch bằng máy dịch miễn phí'+(keys().length||groqKeys().length||orKeys().length?' (mã tạm hết lượt)':''):'Đang dịch'+(S.via==='groq'?' bằng Groq':S.via==='smart'?' bằng AI thông minh':S.via==='local'?' bằng AI trên máy':''))+(S.saved?', đã bỏ qua '+S.saved+' câu trùng':''));
 }
@@ -7338,7 +7338,8 @@ function tvVol(){ var v=+load('tvVol',150); return Math.max(50,Math.min(300,v||1
   });
 })();
 function toastOnce(m){ status('warn',m); }
-(function(){ var l=$('hsLines'); if(l){ if(!load('linesFit',false)){ save('linesFit',true); save('lines',false); } var lv=load('lines',null); if(lv!==null) l.checked=lv; l.addEventListener('change',function(){ save('lines',this.checked); }); } })();
+/* Vietnamese breaks lines like the original subtitle: always, on every app (11/2026); the switch stays hidden */
+(function(){ var l=$('hsLines'); if(l){ l.checked=true; save('lines',true); } })();
 (function(){ var c=document.getElementById('hsSubSpot'); if(!c) return; c.checked=load('subspot',true);
   c.addEventListener('change',function(){ save('subspot',c.checked); S.placeK=null; placeSync(); if(S.coverHtml) coverShow(S.coverHtml); if(S.hist[0]) tvPush(S.hist[0].vi,S.hist[0].en,S.hist[0].who,false); }); })();
 (function(){ var c=$('hsCover'); if(!c) return; var v=load('cover',null); if(v!==null) c.checked=v; c.addEventListener('change',function(){ save('cover',this.checked); placeSync(); if(!this.checked) coverHide(); else if(S.hist[0]) coverShow(esc(S.hist[0].vi)); }); })();
@@ -8367,11 +8368,14 @@ function psAccUi(){
 /* pairing failed: say which of the three usual causes it is (the core's own words tell them apart), and from the
    second failure send the log to the shop: a customer who cannot pair never gets to connect, so the shop never
    heard of it (11/2026) */
+/* iPhone only finds and pairs with the console when Local Network is allowed for the app */
+function psIosLan(){ return IOS?' iPhone: vào Cài đặt › Quyền riêng tư & Bảo mật › Mạng cục bộ, bật cho Hóng Sub, rồi tắt hẳn app và mở lại.':''; }
 function psPairFail(h,r){
   var lg=(PS.regLog||[]).join(' | '), err=(r&&r.err)||'', scr=h.ps5?'Settings › System › Remote Play › Link Device':'Settings › Remote Play Connection Settings › Add Device', why, t;
-  if(!lg){ why='khong ro'; t='Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy'+(err?' ('+err+')':'')+'.'; }
+  if(!lg){ why='khong ro'; t='Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy'+(err?' ('+err+')':'')+'.'+psIosLan(); }
+  else if(/failed to send search|broken pipe|assign requested/i.test(lg)){ why='dien thoai chua gui duoc toi may'; t=psDev().charAt(0).toUpperCase()+psDev().slice(1)+' chưa gửi được tới máy PS.'+psIosLan()+' Tắt VPN'+(IOS?' và iCloud Private Relay':'')+', dùng chung Wi-Fi với máy PS rồi bấm Ghép lại.'; }
   else if(/refused/i.test(lg)){ why='may chua mo man hinh ma'; t='Máy PS chưa mở màn hình hiện mã 8 số, hoặc màn hình đó đã đóng. Trên máy PS vào '+scr+', để nguyên màn hình đang hiện mã rồi nhập mã và bấm Ghép lại.'; }
-  else if(/search/i.test(lg)&&!/received search response/i.test(lg)){ why='khong thay may tra loi'; t='Không thấy máy PS trả lời. '+psDev().charAt(0).toUpperCase()+psDev().slice(1)+' và máy PS phải cùng một mạng Wi-Fi (tắt 4G và VPN trên '+psDev()+'), máy PS đang mở màn hình hiện mã 8 số ở '+scr+'.'; }
+  else if(/search/i.test(lg)&&!/received search response/i.test(lg)){ why='khong thay may tra loi'; t='Không thấy máy PS trả lời. '+psDev().charAt(0).toUpperCase()+psDev().slice(1)+' và máy PS phải cùng một mạng Wi-Fi (tắt 4G và VPN trên '+psDev()+'), máy PS đang mở màn hình hiện mã 8 số ở '+scr+'.'+psIosLan(); }
   else { why='may tu choi ma hoac tai khoan'; t='Máy PS từ chối. Thường do một trong hai: mã 8 số gõ sai hoặc đã hết hạn (mã chỉ sống 5 phút, lấy mã mới), hoặc tài khoản đang dùng trên máy PS khác tài khoản PSN đã đăng nhập ở bước 1. Trên máy PS hãy vào đúng người dùng của tài khoản đó rồi lấy mã.'; }
   psMsg('err','Ghép chưa được. '+t);
   PS.pairFail=(PS.pairFail||0)+1;
@@ -9041,7 +9045,7 @@ async function psAutoRun(auto){
   try{
     if(!PS.acc||!PS.acc.loggedIn){ await psRefresh(); if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Bước 1: đăng nhập PSN trước (chỉ một lần).'); psLogin(); return; } }
     var list=await psFind(); var reg=(list||[]).filter(function(h){return h.registered;});
-    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 3: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên máy PS (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).':'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', rồi bấm Tìm lại hoặc nhập địa chỉ IP của máy PS.'); return; }
+    if(!reg.length){ psMsg('warn',(list||[]).length?'Bước 3: bấm Ghép máy ở máy của bạn, nhập mã 8 số đang hiện trên máy PS (Cài đặt › Hệ thống › Chơi từ xa › Liên kết thiết bị).'+(IOS?' Nếu không ghép được:'+psIosLan().replace(' iPhone:',''):''):'Chưa thấy máy. Bật PS5/PS4, cùng mạng với '+psDev()+', rồi bấm Tìm lại hoặc nhập địa chỉ IP của máy PS.'+psIosLan()); return; }
     var h=reg.filter(function(x){return x.state==='ready';})[0]||reg.filter(function(x){return x.state!=='offline';})[0]||reg[0];
     if(h.state==='offline'){ psMsg('','Đang thử bật '+h.name+' ở '+h.addr+'...'); h.state='standby'; }
     tvNotice((h.state==='ready'?'Đang kết nối ':'Đang bật ')+h.name+'...');
