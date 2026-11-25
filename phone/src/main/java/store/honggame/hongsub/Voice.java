@@ -58,7 +58,7 @@ final class Voice {
         if (tts == null || !ready || text == null || text.trim().isEmpty()) return;
         try {
             for (android.speech.tts.Voice v : vi) if (name != null && name.endsWith(v.getName())) { tts.setVoice(v); break; }
-            tts.setSpeechRate(Math.max(0.5f, Math.min(2.5f, rate)));
+            tts.setSpeechRate(Math.max(0.5f, Math.min(3f, rate)));
             tts.setPitch(Math.max(0.5f, Math.min(2f, pitch)));
             Bundle b = new Bundle();
             b.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1f);

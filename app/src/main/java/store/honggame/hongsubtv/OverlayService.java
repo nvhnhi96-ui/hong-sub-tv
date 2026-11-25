@@ -122,7 +122,7 @@ public class OverlayService extends Service {
                 /* every line is read in full, in order, at the speed the computer set: a new line waits for the one being
                    read; nothing is sped up to catch up and nothing is left out (25/11/2026) */
                 if (clips.size() >= 60) clips.pollFirst();   // the clip files are reused after 64
-                clips.add(new Object[]{f, Math.min(2.4f, rate)});
+                clips.add(new Object[]{f, Math.min(3f, rate)});
                 if (clipPlayer == null) clipNext();
             });
         } catch (Exception ignored) { }

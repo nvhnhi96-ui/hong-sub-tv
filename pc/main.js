@@ -644,7 +644,7 @@ async function azSpeak(text, voice, rate) {
   const name = String(voice || '').replace(/^az:/, '') || 'vi-VN-HoaiMyNeural';
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
   try {
-    const pr = rate && Math.abs(rate - 1) > 0.02 ? Math.round((Math.min(2.5, Math.max(0.5, rate)) - 1) * 100) : 0;   /* Azure speaks faster itself: clearer than playing the sound faster */
+    const pr = rate && Math.abs(rate - 1) > 0.02 ? Math.round((Math.min(3, Math.max(0.5, rate)) - 1) * 100) : 0;   /* Azure speaks faster itself: clearer than playing the sound faster */
     const r = await net.fetch('https://' + cfg.az.region + '.tts.speech.microsoft.com/cognitiveservices/v1', {
       method: 'POST', signal: ctl.signal,
       headers: { 'Ocp-Apim-Subscription-Key': cfg.az.key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'HongSub' },

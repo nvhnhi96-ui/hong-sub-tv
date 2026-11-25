@@ -1363,7 +1363,7 @@ div.kn-step{margin-top:8px}
             </div>
             <div class="dk-set">
               <div class="lab"><label for="hsRate">Tốc độ đọc</label><output><span id="hsRateV">1.1</span>x</output></div>
-              <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
+              <input class="hs-range" id="hsRate" type="range" min="0.8" max="3" step="0.1" value="1.1">
             </div>
             <label class="hs-sw dk-sw">Đọc kịp lời nhân vật (câu dài thì tự đọc nhanh hơn) <input type="checkbox" id="hsFit"></label>
             <p class="hs-note" id="hsVoiceTip" hidden></p>
@@ -4970,7 +4970,7 @@ function ggNext(){
 }
 function ggWeb(t,rate,queue){
   if(!queue) ggStop();                                /* every subtitle is read in full: waiting lines are read faster */
-  var r=Math.max(0.5,Math.min(2,rate||1));           /* the speed set in the app, also when lines wait (25/11/2026: no catching up) */
+  var r=Math.max(0.5,Math.min(3,rate||1));           /* the speed set in the app, also when lines wait (25/11/2026: no catching up) */
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
 }
@@ -5746,6 +5746,26 @@ function tmFind0(text,strict){
   }
   return null;
 }
+/* ---------- a line of the store known from its first words (25/11/2026: "thấy chữ xuất hiện là đọc ngay") ----------
+   A line that does not end with a full stop yet was read once more before anything was done with it, and a game that
+   writes its lines letter by letter was waited for (up to "Chờ chữ hiện đủ", 0.9 s). When the words read so far are
+   the beginning of exactly one line of the shared store, that line is it: its Vietnamese shows and is read at once.
+   - among the few lines the store expects next: 14 letters are enough;
+   - anywhere in the store: 24 letters and 4 words, and only one line may begin that way.
+   A wrong guess corrects itself: the reading that follows no longer fits, and is translated as a new line. */
+function tmEarly(txt){
+  try{
+    var T=S.tm; if(!T||!T.n||!T.seq||!T.seq.length) return null;
+    var k=trKey(txt), nw=wordsOf(txt); if(k.length<14||nw<3) return null;
+    var ok=function(sk){ var e=T.map[sk]; return e&&e.en&&e.vi&&!tmJunk(e)&&sk.length>=k.length+4&&sk.lastIndexOf(k,0)===0; };
+    var i0=T.pos!=null?T.ix[T.pos]:null, hit=null, n=0, i;
+    if(i0!=null) for(i=i0+1;i<=i0+8&&i<T.seq.length;i++) if(ok(T.seq[i])){ if(hit!==T.seq[i]) n++; hit=T.seq[i]; }
+    if(n!==1){ hit=null; n=0; if(k.length<24||nw<4) return null;
+      for(i=0;i<T.seq.length&&n<2;i++) if(ok(T.seq[i])){ n++; hit=T.seq[i]; } }
+    if(n!==1||!hit) return null;
+    return {k:hit,en:T.map[hit].en};
+  }catch(e){ return null; }
+}
 function tmJunk(e){ return junkPair(e.en,e.vi); }
 function junkPair(en,vi){ var a=deTone(en), b=deTone(vi); return !b||a===b||creditPair(en,vi); }   /* not translated, or a modder's credit put in place of a line */
 function creditPair(en,vi){ var a=deTone(en), b=deTone(vi); return /viet ?hoa|red team|nhom dich|ban dich boi|dich boi/.test(b)&&!/viet ?hoa|red team|translat/.test(a); }   /* not translated, or a modder's credit put in place of a line */
@@ -6470,6 +6490,12 @@ function ocrTake(txt,force,done){
   }
   S.hintAt=0;
   var complete=/[.!?…"”'’)\]]\s*$/.test(txt);
+  if(!force&&!complete&&!done){
+    /* still the line found from its first words, a little more of it written: nothing to do */
+    if(S.early&&Date.now()-S.early.at<15000&&S.early.k.lastIndexOf(trKey(txt),0)===0){ S.cand=null; return; }
+    var ea=tmEarly(txt);
+    if(ea){ S.early={k:ea.k,at:Date.now()}; S.earlyN=(S.earlyN||0)+1; log('mấy chữ đầu khớp một câu trong kho, hiện và đọc ngay không chờ chữ hiện đủ: '+String(txt).replace(/\s+/g,' ').slice(0,50)); txt=ea.en; complete=true; }
+  }
   if(!force&&!complete&&!done){                                                   /* maybe still typing out: confirm with one more reading */
     var stable=S.cand&&similar(S.cand.t,txt), tooLong=S.cand&&Date.now()-S.cand.at>S.wait;
     /* another line already (not the same words growing): the line read before was whole, it is translated first */
@@ -6898,8 +6924,23 @@ var WT=(function(){
   }catch(e){ return null; }
 })();
 function later(fn,ms){ return WT?WT.set(fn,ms,false):setTimeout(fn,ms); }
-function stopTimer(){ if(WT) WT.clear(S.timer); else clearInterval(S.timer); S.timer=null; }
-function restartTimer(){ stopTimer(); S.timer=WT?WT.set(tick,S.interval,true):setInterval(tick,S.interval); }
+function stopTimer(){ if(WT){ WT.clear(S.timer); WT.clear(S.lookT); } else { clearInterval(S.timer); clearInterval(S.lookT); } S.timer=null; S.lookT=null; }
+function restartTimer(){ stopTimer(); S.timer=WT?WT.set(tick,S.interval,true):setInterval(tick,S.interval); S.lookT=WT?WT.set(fastLook,100,true):setInterval(fastLook,100); }
+/* the subtitle area is looked at every 0.3 s; a line that appeared right after a look waited for the next one. A very
+   small picture of the area is compared 10 times a second (no reading): when the area was quiet and has just changed,
+   the look happens now. Scenery moving behind the area changes all the time and triggers nothing (25/11/2026) */
+var lkc=document.createElement('canvas'); lkc.width=48; lkc.height=10; var lkx=lkc.getContext('2d',{willReadFrequently:true});
+function fastLook(){
+  try{
+    if(!S.running||!S.stream||!S.region||S.ocrBusy||S.micMenu) return;
+    var fs0=frameSrc(), vw=fs0.w, vh=fs0.h, R=S.region, now=Date.now(); if(!vw) return;
+    lkx.drawImage(fs0.el,R.x*vw,R.y*vh,R.w*vw,R.h*vh,0,0,48,10);
+    var d=lkx.getImageData(0,0,48,10).data, g=new Uint8Array(480), big=0, p=S.lookPrev;
+    for(var i=0;i<480;i++){ g[i]=(d[i*4]*3+d[i*4+1]*6+d[i*4+2])/10; if(p&&Math.abs(g[i]-p[i])>30) big++; }
+    S.lookPrev=g; if(!p) return;
+    if(big>=10){ var quiet=now-(S.lookChg||0)>350; S.lookChg=now; if(quiet&&now-(S.lastTickAt||0)>90&&now-(S.lookFire||0)>250){ S.lookFire=now; S.lookN=(S.lookN||0)+1; tick(); } }
+  }catch(e){}
+}
 /* open the connections to the translators before the first line appears: the first answer comes ~0.3-0.8s sooner */
 S.warmAt=0;
 function warmNet(keep){
@@ -7898,7 +7939,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={tmEarly:function(t){ return tmEarly(t); },ocrTake:function(t,f,d){ return ocrTake(t,f,d); },dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
@@ -8312,7 +8353,7 @@ function reportText(){
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length+', đọc phụ đề: '+($('hsSpeak').checked?'bật':'TẮT')+', đọc ở: '+speakWhere()+', giọng dùng: '+(D?devPick(voiceMode()==='ai'?'auto':voiceMode(),'',''):'trình duyệt')+(D&&D.speakState?', lần đọc gần nhất: '+JSON.stringify(D.speakState()):''),
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
-    'Cài đặt: '+JSON.stringify({tuDichChuKhac:!!fsLiveOn(),micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
+    'Cài đặt: '+JSON.stringify({khopSomTuKho:S.earlyN||0,nhinNhanh:S.lookN||0,tuDichChuKhac:!!fsLiveOn(),micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
 }
