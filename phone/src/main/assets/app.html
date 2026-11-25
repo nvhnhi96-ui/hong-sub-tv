@@ -5368,18 +5368,20 @@ function dictWord(tok,lineCaps){
     return tok;
   }
   var allCaps=/^[A-Z0-9|']+$/.test(tok)&&(lineCaps||/[A-Z]{2}/.test(tok)), cap=/^[A-Z][a-z0-9|']+$/.test(tok);
-  if(low.length<3&&!/[0-9|]/.test(low)) return tok;
+  if(low.length<=3&&!/[0-9|]/.test(low)) return tok;   /* a short word is not "corrected" on a guess ("ons" of "add-ons" became "ous") */
   if(cap&&!allCaps&&!/[0-9|]/.test(tok)&&!DICT_APOS[low]) return tok;   /* a Capitalised word not in the list is most likely a name */
   if(DICT_APOS[low]) { var f=DICT_APOS[low]; return allCaps?f.toUpperCase():cap?f[0].toUpperCase()+f.slice(1):f; }
   var c=dictCands(low); if(!c.length) return tok;
-  var pick=c.filter(function(x){ return DICT.common[x]; }); if(pick.length!==1) pick=c.length===1&&!cap?c:[]; if(!pick.length) return tok;   /* a Capitalised word (maybe a name) only becomes a common word */
+  var pick=c.filter(function(x){ return DICT.common[x]; }); if(pick.length!==1) pick=c.length===1&&!cap&&low.length>=6?c:[]; if(!pick.length) return tok;   /* a rare word as the only guess: for long words only ("dong" became "doug") */   /* a Capitalised word (maybe a name) only becomes a common word */
   var w=pick[0]; DICT.fixes++;
   return allCaps?w.toUpperCase():(/^[A-Z0-9|]/.test(tok)&&/^[A-Z]/.test(tok.replace(/^[0-9|]/,'I')))?w[0].toUpperCase()+w.slice(1):w;
 }
 function dictFix(text){
   if(!DICT.common||!text||LG()!=='en') return text;
   var L=String(text).replace(/[^A-Za-z]/g,''), lineCaps=L.length>=4&&L.replace(/[^A-Z]/g,'').length/L.length>0.85;   /* a line in CAPITALS */
-  var out=String(text).replace(/[A-Za-z0-9|][A-Za-z0-9|'’]*[A-Za-z0-9]|[A-Za-z]/g,function(tok){ return dictWord(tok,lineCaps); });
+  var out=String(text).replace(/[A-Za-z0-9|][A-Za-z0-9|'’]*[A-Za-z0-9]|[A-Za-z]/g,function(tok,off,all){
+    if(all.charAt(off-1)==='-'||all.charAt(off+tok.length)==='-') return dictHas(tok.toLowerCase())||!/[0-9|]/.test(tok)?tok:dictWord(tok,lineCaps);   /* a part of a hyphenated word is left as read */
+    return dictWord(tok,lineCaps); });
   if(out!==text&&DICT.fixes<=30) log('sửa chữ đọc sai: '+String(text).replace(/\s+/g,' ').slice(0,90)+' → '+out.replace(/\s+/g,' ').slice(0,90));
   return out;
 }
@@ -6658,14 +6660,24 @@ function subPrio(){ return !!S.running&&!!(S.cand||S.forceOcr||Date.now()-(S.sub
 /* a reading of the screen text or the screen check that began before a subtitle line appeared: between two of its
    boxes it gives the reader to the subtitle (read at once), then goes on where it was. Waiting for the whole screen to
    be read put ~0.5-1 s on every line while the screen text was on */
+/* 25/11/2026, a problem report from a game menu with a moving picture behind it: the subtitle area "changed" all the
+   time (clouds, birds), so one reading of the screen text gave way at every box, up to 1.5 s each time: readings took
+   4.6 to 17 s, and the Vietnamese came 6 to 34 s after the screen changed, while the AI itself answered in under a
+   second. Giving way is now for real subtitle lines only:
+   - not while the changes in the subtitle area bring no line (subScenery);
+   - at most 1.5 s in all during one reading;
+   - after giving way twice with no line coming: no giving way for a while (longer each time, 20 s at most). */
 function ocrYield(t0){
+  var spent=0;
   return async function(){
     if(!S.running||!((S.subChgAt||0)>t0)||S.subYield===S.subChgAt) return;
-    S.subYield=S.subChgAt; var at=Date.now(), since=S.subReadEnd||0;
+    if(spent>=1500||subScenery()||Date.now()<(S.yOff||0)) return;
+    S.subYield=S.subChgAt; var at=Date.now(), since=S.subReadEnd||0, shown0=S.lastShownAt||0;
     S.ocrBusy=false; if(!S.quick) S.quick=later(function(){ S.quick=null; tick(); },0);
     while(Date.now()-at<1500){ await new Promise(function(r){ later(r,25); }); if(!S.ocrBusy&&(S.subReadEnd||0)>since) break; }
     while(S.ocrBusy&&Date.now()-at<3000) await new Promise(function(r){ later(r,25); });
-    S.ocrBusy=true;
+    S.ocrBusy=true; spent+=Date.now()-at;
+    if(!S.cand&&(S.lastShownAt||0)===shown0){ S.yMiss=(S.yMiss||0)+1; if(S.yMiss>=2) S.yOff=Date.now()+Math.min(20000,3000*S.yMiss); } else S.yMiss=0;
   };
 }
 function subTalk(){ return Date.now()-(S.lastShownAt||0)<6000; }
@@ -8015,7 +8027,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
@@ -8147,7 +8159,9 @@ function flTick(my){
      with the same words at the same place. Before, every such read was taken as it was: half words and cut lines
      got boxes and were sent to the AI again and again, over the boxes already there (11/2026: "dịch menu bằng mic
      ảnh hưởng đến việc tự dịch chữ khác trên màn hình") */
-  if(fresh>=(S.fl.mic?8:40)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:6000))) flRead(my,S.fl.mic?'m':false);
+  /* a small change (the line of text under a menu entry, one label) used to wait 6 s for its turn: 40 changed points
+     were needed to read at once. Now 16, and a smaller change is read after 2.5 s (only the changed part is read) */
+  if(fresh>=(S.fl.mic?8:16)||(fresh>0&&now-S.fl.last>(S.fl.mic?1500:2500))) flRead(my,S.fl.mic?'m':false);
   else if(S.fl.mic&&dirtyN>=8&&now-S.fl.last>1200) flRead(my,'m');
   /* text drawn straight over moving scenery (an objective, a button hint while the player runs): nothing under it
      ever stands still, so it was never read. Seen once, it is looked at again a moment later (same text at the same
