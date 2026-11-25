@@ -2490,21 +2490,29 @@ async function vipCheck(code){
 /* the light VIP server: the same check and translation as the full one, without starting all of WordPress (about
    half a second less a line). A file the full server writes; while it is missing or not ready, the full one for a while */
 var VIPLITE='https://honggame.store/hgs-vip.php'; S.vipLiteOff=0;
-async function vipAskCall(body,ms){
+/* onDelta: the VIP server sends the AI's answer as it is written (events "data: {d: piece}", the last one the whole
+   answer with final:1), so the first sentence can show and be read early (25/11/2026). A server that does not stream
+   answers in one piece as before. */
+async function vipAskCall(body,ms,onDelta){
   if(Date.now()>=S.vipLiteOff){
     var ctl=new AbortController(), to=setTimeout(function(){ ctl.abort(); },ms||15000), r=null, j=null;
-    try{ r=await fetch(VIPLITE,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); j=await r.json().catch(function(){ return null; }); }
+    if(onDelta) body.stream=1;
+    try{ r=await fetch(VIPLITE,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(onDelta&&r.ok&&r.body&&/event-stream/.test(r.headers.get('content-type')||'')){ var fin=null;
+        await sseRead(r,function(o){ if(o&&o.final){ fin=o; return ''; } return o&&o.d||''; },onDelta);
+        j=fin||{code:'vip_busy',message:'VIP: câu trả lời bị ngắt giữa chừng'}; }
+      else j=await r.json().catch(function(){ return null; }); }
     catch(e){ clearTimeout(to); if(e&&e.name==='AbortError'){ var n=new Error('VIP: máy chủ trả lời chậm'); n.net=true; throw n; } r=null; }   /* slow: the line is not sent twice */
     clearTimeout(to);
     if(r&&j&&(j.ok||(j.code&&j.code!=='vip_light'))) return {r:r,j:j,lite:1};
     S.vipLiteOff=Date.now()+10*60e3; log('VIP: máy chủ nhanh chưa dùng được'+(r?' ('+r.status+')':'')+', dùng máy chủ thường 10 phút');
   }
-  return vipCall('ask',body,ms);
+  delete body.stream; return vipCall('ask',body,ms);
 }
-async function vipAsk(prompt,b64,schema,mode,ms){
+async function vipAsk(prompt,b64,schema,mode,ms,onDelta){
   var body={code:S.vip.code,dev:vipDev(),prompt:prompt,shape:JSON.stringify(vipShape(schema))}; if(b64) body.img=b64; if(mode) body.mode=mode;
   var t0=performance.now(), x;
-  try{ x=await vipAskCall(body,ms||15000); }catch(e){ S.vipDown=Date.now()+8e3; throw e; }   /* back to the VIP server quickly: a VIP member's lines are not sent with their own keys */
+  try{ x=await vipAskCall(body,ms||15000,!b64&&!mode?onDelta:null); }catch(e){ S.vipDown=Date.now()+8e3; throw e; }   /* back to the VIP server quickly: a VIP member's lines are not sent with their own keys */
   if(x.r.ok&&x.j.ok){
     count('vip-server','v');
     if(S.model!=='VIP'){ S.model='VIP'; $('hsModelTag').textContent='Máy chủ VIP'; }
@@ -3770,7 +3778,7 @@ function hedged(order,key,prompt,b64,schema,onDelta){
    The own keys come back only when the VIP package has no lines left for today, so the subtitles do not get worse. */
 async function gemini(prompt,b64,schema,onDelta){
   if(vipOn()&&Date.now()>=S.vipOut){
-    if(Date.now()>=S.vipDown) return await vipAsk(prompt,b64,schema);
+    if(Date.now()>=S.vipDown) return await vipAsk(prompt,b64,schema,null,null,onDelta);
     var e=new Error('VIP tạm bận, thử lại sau giây lát'); e.cool=true; throw e;   /* the VIP server stumbled a moment ago: this line goes to Groq or the free translator */
   }
   return geminiOwn(prompt,b64,schema,onDelta);
