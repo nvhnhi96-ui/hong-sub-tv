@@ -210,7 +210,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.367';
+var VERSION='1.0.368';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -220,6 +220,31 @@ var packaged=typeof tizen!=='undefined';   /* installed on a Samsung TV */
 /* ---------- settings kept on the TV ---------- */
 function load(k,d){ try{ var v=localStorage.getItem('hs.'+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } }
 function save(k,v){ try{ localStorage.setItem('hs.'+k,JSON.stringify(v)); }catch(e){} }
+
+/* ---------- why the app closed: a short diary kept on the TV ----------
+   Some TVs close the app by themselves (customers: "nó hay out app"). The steps that matter are written down; when the
+   app opens again after a close nobody asked for (no Back-Back), the diary goes to Hóng Sub's bug reports, so the
+   cause shows: the TV put the app in the background first (an input switch, the PS5 taking over the TV through
+   HDMI-CEC, the Home key), or the app was cut off with no warning (the TV short of memory). */
+var TL=load('tlog',[]); if(!Array.isArray(TL)) TL=[];
+function tlog(m){ try{ var d=new Date(), p=function(x){ return ('0'+x).slice(-2); }; TL.push(p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+String(m).slice(0,160)); if(TL.length>60) TL=TL.slice(-60); save('tlog',TL); }catch(e){} }
+function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess',s0); }catch(e){} tlog('đóng app: '+why); }
+(function(){
+  var prev=load('sess',null), now=Date.now();
+  if(prev&&!prev.quit&&prev.at&&now-prev.at<6*3600e3&&TL.length&&now-(+load('tlogRep',0))>20*60e3){
+    save('tlogRep',now);
+    var tail=TL.slice(-4).join(' | '), bg=/TV ẩn app/.test(TL.slice(-3).join(' ')), ran=Math.max(0,Math.round(((prev.at||now)-(prev.start||now))/1000));
+    var text='Hóng Sub - báo lỗi\nApp TV tự thoát\nBản: App TV '+(window.tizen?'Samsung':'LG')+' '+VERSION+'\nTV: '+navigator.userAgent+'\nLần trước chạy khoảng '+ran+' giây, còn chạy lúc '+new Date(prev.at).toLocaleString()+'\nMã TV: '+load('code','')+'\n\nNhật ký:\n'+TL.join('\n');
+    var body={kind:'tv-out',ver:('App TV '+(window.tizen?'Samsung':'LG')+' '+VERSION).slice(0,60),head:((bg?'TV đưa app ra nền rồi đóng':'App TV bị tắt ngang, không báo trước')+' | '+tail).slice(0,200),text:text.slice(-60000)};
+    setTimeout(function(){ try{ xhr('POST','https://honggame.store/wp-json/hgs-sub/v1/report',body,function(){}); }catch(e){} },6000);
+  }
+  TL=TL.slice(-25); tlog('--- mở app, bản '+VERSION);
+  var s0={start:now,at:now,quit:false}; save('sess',s0);
+  setInterval(function(){ var c=load('sess',null)||s0; if(c.quit) return; c.at=Date.now(); save('sess',c); },10000);
+  window.addEventListener('error',function(e){ tlog('lỗi trang: '+(e&&e.message)+' dòng '+(e&&e.lineno)); });
+  document.addEventListener('visibilitychange',function(){ tlog(document.hidden?'TV ẩn app':'app hiện lại'); });
+  window.addEventListener('pagehide',function(){ tlog('trang đóng (pagehide)'); });
+})();
 var P={
   code:load('code',''),
   src:load('src',webos?1:0),        /* HDMI port of the console, 0 = no picture (subtitles only) */
@@ -247,13 +272,13 @@ if(!/^[A-Z0-9]{4,8}$/.test(P.code)){ P.code=''; for(var i=0;i<6;i++) P.code+=ALP
 /* ---------- picture from the console: webOS lets an app show an HDMI input inside the page ---------- */
 var video=$('tvin'), srcOk=false;
 function setSource(n){
-  srcOk=false;
+  srcOk=false; tlog('mở hình HDMI '+n);
   while(video.firstChild) video.removeChild(video.firstChild);
   if(!n){ video.style.display='none'; homeShow(); return; }
   video.style.display='block';
   var s=document.createElement('source');
   s.setAttribute('type','service/webos-external'); s.setAttribute('src','ext://hdmi:'+n);
-  s.addEventListener('error',function(){ srcFail(n); });
+  s.addEventListener('error',function(){ tlog('HDMI '+n+' lỗi nguồn hình'); srcFail(n); });
   video.appendChild(s); gameSound();
   try{ video.load(); var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){}
   /* in a web browser (not the installed app) the TV may not allow HDMI inside the page */
@@ -297,7 +322,8 @@ function gameSound(){
   try{ video.muted=false; video.volume=1; }catch(e){}
   try{ var at=video.audioTracks; if(at&&at.length){ var any=false; for(var i=0;i<at.length;i++) if(at[i].enabled) any=true; if(!any) at[0].enabled=true; } }catch(e){}
 }
-video.addEventListener('playing',function(){ srcOk=true; homeHide(); gameSound(); });
+video.addEventListener('playing',function(){ if(!srcOk) tlog('hình HDMI đang chạy'); srcOk=true; homeHide(); gameSound(); });
+['error','ended','emptied','abort'].forEach(function(ev){ video.addEventListener(ev,function(){ if(video.style.display!=='none') tlog('hình HDMI: '+ev+(video.error?' (mã '+video.error.code+')':'')); }); });
 video.addEventListener('volumechange',function(){ if(video.muted) gameSound(); });
 video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); gameSound(); });
 function homeShow(){ $('home').className=''; }
@@ -738,7 +764,7 @@ document.addEventListener('keydown',function(e){
     if(k===13&&onBtn) return;                                                   /* OK on a button: the button handles it */
     if(k===13||k===457||k===404){ panel(true); e.preventDefault(); return; }    /* OK, info, green */
     if($('home').className!=='off'&&(k===37||k===38||k===39||k===40)){ homeMove(k===37||k===38?-1:1); e.preventDefault(); return; }
-    if(k===461||k===10009||k===27||k===8){ if($('home').className==='off'&&P.src){ pill('Bấm Back lần nữa để thoát',false); if(e.timeStamp-(window.__bk||0)<2500) quit(); window.__bk=e.timeStamp; } else quit(); e.preventDefault(); return; }
+    if(k===461||k===10009||k===27||k===8){ if($('home').className==='off'&&P.src){ pill('Bấm Back lần nữa để thoát',false); if(e.timeStamp-(window.__bk||0)<2500){ tlEnd('Back 2 lần'); quit(); } window.__bk=e.timeStamp; } else { tlEnd('Back'); quit(); } e.preventDefault(); return; }
     if(k>=49&&k<=52){ P.src=k-48; save('src',P.src); P.srcPick=true; save('srcPick',true); setSource(P.src); pill('Hình từ HDMI '+P.src,false); return; }
     pill(okAt?'Hóng Sub đang chờ phụ đề':'Đang kết nối...',false); return;
   }
@@ -815,14 +841,14 @@ function setSource(n){
   /* the port did not open (the PS5 still off or waking, the TV just started and has no list of inputs yet): the app
      tries again by itself every 5 s for a minute, and at once when the TV sees a device come on. Before, the message
      stayed until someone picked the port again with the remote */
-  var fail=function(e){ if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){}
+  var fail=function(e){ tlog('HDMI '+n+' không mở được: '+((e&&(e.message||e.name))||'TV từ chối')); if(P.src!==n) return; document.documentElement.className=''; srcFail(n); try{ $('hState').textContent+=' ('+((e&&(e.message||e.name))||'TV từ chối')+')'; }catch(x){}
     clearTimeout(window.srcT); window.srcTry=(window.srcTry||0)+1;
     if(window.srcTry<=12){ try{ $('hState').textContent+=' Hóng Sub tự thử lại sau 5 giây.'; }catch(x){} window.srcT=setTimeout(function(){ if(P.src===n&&!srcOk&&!document.hidden) setSource(n); },5000); } };
   var go=function(src){
     try{
       tizen.tvwindow.setSource(src,function(){
         /* BEHIND: the game picture goes under the page, so the Vietnamese subtitles stay on top (the default, FRONT, covers them) */
-        tizen.tvwindow.show(function(){ if(P.src!==n) return; srcOk=true; window.srcTry=0; clearTimeout(window.srcT); window.srcAt=Date.now(); document.documentElement.className='see'; homeHide();
+        tizen.tvwindow.show(function(){ tlog('hình HDMI '+n+' đang hiện (tvwindow)'); if(P.src!==n) return; srcOk=true; window.srcTry=0; clearTimeout(window.srcT); window.srcAt=Date.now(); document.documentElement.className='see'; homeHide();
           /* the first times: what to do if the game picture turns black (the PS5's HDCP protection) */
           var nb=+load('hdcpTip',0); if(nb<3){ save('hdcpTip',nb+1); setTimeout(function(){ pill('Hình game bị đen? Trên PS5: Cài đặt › Hệ thống › HDMI › tắt "Bật HDCP"',false); },2500); } },
           fail,['0px','0px','100%','100%'],'MAIN','BEHIND');
@@ -865,7 +891,7 @@ function ipAsk(){
   try{ tizen.systeminfo.getPropertyValue('WIFI_NETWORK',function(n){ if(n&&n.ipAddress) ipShow(n.ipAddress); },function(){}); }catch(e){}
 }
 /* a device comes on at an HDMI port (the PS5 wakes): the picture that could not open is asked for again */
-try{ tizen.systeminfo.addPropertyValueChangeListener('VIDEOSOURCE',function(){ if(P.src&&!srcOk&&!document.hidden){ window.srcTry=0; clearTimeout(window.srcT); window.srcT=setTimeout(function(){ if(P.src&&!srcOk) setSource(P.src); },1200); } }); }catch(e){}
+try{ tizen.systeminfo.addPropertyValueChangeListener('VIDEOSOURCE',function(){ tlog('TV báo cổng HDMI thay đổi'); if(P.src&&!srcOk&&!document.hidden){ window.srcTry=0; clearTimeout(window.srcT); window.srcT=setTimeout(function(){ if(P.src&&!srcOk) setSource(P.src); },1200); } }); }catch(e){}
 try{ ['ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','1','2','3','4'].forEach(function(k){ try{ tizen.tvinputdevice.registerKey(k); }catch(e){} }); }catch(e){}
 /* the app really went to the background (not the short blink some TVs give while the HDMI picture opens): let the
    TV's picture go */
@@ -891,7 +917,7 @@ document.addEventListener('visibilitychange',function(){ if(document.hidden) set
       /* switched over once already and still the old page (the internet copy not refreshed yet): no reopening in a loop */
       var tr=load('updTry',{}); if(tr&&tr.v===v&&Date.now()-tr.t<6*3600e3) return; save('updTry',{v:v,t:Date.now()});
       pill('Đang cập nhật Hóng Sub lên '+v+'...',false);
-      setTimeout(function(){ location.replace('index.html'); },2500);
+      setTimeout(function(){ tlEnd('cập nhật lên '+v); location.replace('index.html'); },2500);
     };
     try{ x.open('GET',LIVE+'version.txt?t='+Date.now(),true); x.send(); }catch(e){}
   }
