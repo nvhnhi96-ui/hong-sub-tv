@@ -3698,17 +3698,40 @@ function mScore(m,i){
 }
 function fastOrder(models){ return models.map(function(m,i){return {m:m,s:mScore(m,i)};}).sort(function(a,b){return a.s-b.s;}).map(function(x){return x.m;}); }
 function noteLat(m,ms){ S.lat[m]=S.lat[m]?Math.round(S.lat[m]*.6+ms*.4):Math.round(ms); S.latAt[m]=Date.now(); save('lat',S.lat); save('latat',S.latAt); }
-function gCall(model,key,prompt,b64,schema,ctl){
+/* ---------- the AI's answer read as it is written (25/11/2026: "AI dịch tới đâu hiện và đọc tới đó") ----------
+   sseRead: reads a streamed answer (lines "data: {...}"), each piece of text goes through pick(); onDelta gets the
+   text written so far. viPart: the "vi" value of a JSON answer still being written. */
+async function sseRead(r,pick,onDelta){
+  var rd=r.body.getReader(), dec=new TextDecoder(), buf='', acc='';
+  for(;;){ var x=await rd.read(); if(x.done) break; buf+=dec.decode(x.value,{stream:true}); var i;
+    while((i=buf.indexOf('\n'))>=0){ var ln=buf.slice(0,i).trim(); buf=buf.slice(i+1); if(ln.indexOf('data:')!==0) continue; var d=ln.slice(5).trim(); if(!d||d==='[DONE]') continue;
+      try{ var t=pick(JSON.parse(d)); if(t){ acc+=t; try{ onDelta(acc); }catch(e){} } }catch(e){} } }
+  return acc;
+}
+function viPart(acc){
+  var m=/"vi"\s*:\s*"/.exec(String(acc||'')); if(!m) return null;
+  var i=m.index+m[0].length, out='', s2=acc;
+  for(;i<s2.length;i++){ var c=s2.charAt(i);
+    if(c==='\\'){ var n=s2.charAt(i+1); if(!n) break; out+=n==='n'?'\n':n==='t'?' ':n==='u'?String.fromCharCode(parseInt(s2.substr(i+2,4),16)||32):n; i+=n==='u'?5:1; continue; }
+    if(c==='"') return {t:out,closed:true};
+    out+=c; }
+  return {t:out,closed:false};
+}
+function gCall(model,key,prompt,b64,schema,ctl,onDelta){
   var gc={responseMimeType:'application/json',responseSchema:schema,maxOutputTokens:1024};
   var tc=thinkCfg(model); if(tc) gc.thinkingConfig=tc;
   var parts=[{text:prompt}]; if(b64) parts.push({inlineData:{mimeType:'image/jpeg',data:b64}});
   var t0=performance.now(); (S.kreq[key]=S.kreq[key]||[]).push(Date.now());
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:gc})})
-    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {r:r,j:j,model:model,key:key,ms:performance.now()-t0};});});
+  var st=!!onDelta&&!b64&&!!(window.ReadableStream&&window.TextDecoder);
+  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+(st?':streamGenerateContent?alt=sse&key=':':generateContent?key=')+encodeURIComponent(key),{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:parts}],generationConfig:gc})})
+    .then(function(r){
+      if(st&&r.ok&&r.body) return sseRead(r,function(o){ var c=o.candidates&&o.candidates[0]; return c&&c.content&&c.content.parts?c.content.parts.map(function(p){ return p.thought?'':(p.text||''); }).join(''):''; },onDelta)
+        .then(function(acc){ return {r:r,j:{candidates:[{content:{parts:[{text:acc}]}}]},model:model,key:key,ms:performance.now()-t0}; });
+      return r.json().catch(function(){return {};}).then(function(j){return {r:r,j:j,model:model,key:key,ms:performance.now()-t0};});});
 }
 /* send to the fastest model on this key. Every request uses quota (also one cancelled half way), so a second
    request only starts when the first is really late (4-6 s), on another key and a model still open there. */
-function hedged(order,key,prompt,b64,schema){
+function hedged(order,key,prompt,b64,schema,onDelta){
   return new Promise(function(resolve,reject){
     var done=false, pending=0, ctls=[], bad=null, t0=performance.now(), ht=null, next=0, list=order.slice(0,2), st={}, back={};
     S.gN++;
@@ -3724,7 +3747,7 @@ function hedged(order,key,prompt,b64,schema){
       if(!k||(next>1&&k===key)) return false;
       var ctl=new AbortController(); ctls.push(ctl); pending++; st[m]=performance.now();
       var to=setTimeout(function(){ctl.abort();},9000);
-      gCall(m,k,prompt,b64,schema,ctl).then(function(res){
+      gCall(m,k,prompt,b64,schema,ctl,next===1?onDelta:null).then(function(res){
         clearTimeout(to); pending--; back[m]=true; if(done) return;
         if(res.r.ok) finish(res); else { if(res.r.status===429) gRest(res.key,res.model,res.j,(res.j&&res.j.error&&res.j.error.message)||''); bad=res; if(pending===0) finish(bad); }
       },function(e){
@@ -3745,14 +3768,14 @@ function hedged(order,key,prompt,b64,schema){
 /* A VIP member's lines go to the VIP server ONLY: the customer's own Gemini keys are never asked while VIP works, so
    their own free quota stays untouched (before: both went out together on every line and whichever answered first won).
    The own keys come back only when the VIP package has no lines left for today, so the subtitles do not get worse. */
-async function gemini(prompt,b64,schema){
+async function gemini(prompt,b64,schema,onDelta){
   if(vipOn()&&Date.now()>=S.vipOut){
     if(Date.now()>=S.vipDown) return await vipAsk(prompt,b64,schema);
     var e=new Error('VIP tạm bận, thử lại sau giây lát'); e.cool=true; throw e;   /* the VIP server stumbled a moment ago: this line goes to Groq or the free translator */
   }
-  return geminiOwn(prompt,b64,schema);
+  return geminiOwn(prompt,b64,schema,onDelta);
 }
-async function geminiOwn(prompt,b64,schema){
+async function geminiOwn(prompt,b64,schema,onDelta){
   if(!gKeys().length){ var nk=new Error(vipOn()?'VIP tạm bận, thử lại sau giây lát':'cool'); nk.cool=true; throw nk; }
   var models=S.models&&S.models.length?S.models:FALLBACK;
   var lastErr=null;
@@ -3767,7 +3790,7 @@ async function geminiOwn(prompt,b64,schema){
     if(!liveM.length){ if(order.length&&!lastErr){ lastErr=new Error('cool'); lastErr.cool=true; } continue; }
     order=liveM;
     var res;
-    try{ res=await hedged(order,key,prompt,b64,schema); }
+    try{ res=await hedged(order,key,prompt,b64,schema,onDelta); }
     catch(e){ lastErr=new Error(e&&e.name==='AbortError'?'Gemini phản hồi quá chậm, thử lại...':'Mất kết nối mạng'); continue; }
     var r=res.r, j=res.j, model=res.model; key=res.key;
     if(r.ok){
@@ -3819,7 +3842,7 @@ function groqPick(){
   return null;
 }
 function jsonFrom(t){ t=String(t||'').replace(/<think>[\s\S]*?<\/think>/g,''); var a=t.indexOf('{'), b=t.lastIndexOf('}'); if(a<0||b<a) return null; try{return JSON.parse(t.slice(a,b+1));}catch(e){return null;} }
-async function groq(prompt,b64,shape){
+async function groq(prompt,b64,shape,onDelta){
   if(b64){ var nv=new Error('Groq không đọc ảnh'); throw nv; }               /* Groq has no picture models now */
   var models=await groqModels();
   if(models.indexOf(S.gModel)<0) S.gModel=models[0];
@@ -3829,9 +3852,12 @@ async function groq(prompt,b64,shape){
     var body={model:S.gModel,temperature:0.2,max_completion_tokens:1024,
       messages:[{role:'user',content:[{type:'text',text:prompt+'\nReply with JSON only, exactly this shape: '+shape}].concat(b64?[{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]:[])}]};
     if(!S.gNoFmt[S.gModel]) body.response_format={type:'json_object'};
+    var st=!!onDelta&&!S.gNoStream&&!!(window.ReadableStream&&window.TextDecoder); if(st) body.stream=true;
     if(!S.gNoReason[S.gModel]){ if(/qwen3/i.test(S.gModel)) body.reasoning_effort='none'; else if(/gpt-oss/i.test(S.gModel)) body.reasoning_effort='low'; }
     var r,j;
-    try{ r=await fetch(GROQ+'/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body)}); j=await r.json().catch(function(){return {};}); }
+    try{ r=await fetch(GROQ+'/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(st&&r.ok&&r.body){ var acc=await sseRead(r,function(o){ var c=o.choices&&o.choices[0]; return c&&c.delta&&c.delta.content||''; },onDelta); count(key,'q'); var jr=jsonFrom(acc); if(jr) return jr; S.gNoStream=true; continue; }
+      j=await r.json().catch(function(){return {};}); }
     catch(e){ lastErr=new Error('Mất kết nối mạng'); continue; }
     if(r.ok){ count(key,'q'); var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:''; return jsonFrom(txt); }
     var msg=(j.error&&j.error.message)||('HTTP '+r.status); lastErr=new Error(msg); lastErr.status=r.status;
@@ -4584,7 +4610,7 @@ function show(res,quiet){
   var html0=html; if(pr) html='<div class="hs-prev">'+pr.html+'</div>'+html;
   $('hsVi').classList.remove('placeholder'); $('hsVi').innerHTML=vl?voWrap(html):html; if(vl) voApply($('hsVi').firstChild,vl);
   $('hsEn').textContent=$('hsShowEn').checked?(res._voice?'🔊 ':'')+en:'';
-  if(quiet&&S.hist.length) S.hist[0]={en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}; else S.hist.unshift({en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
+  if((quiet||res._spoken)&&S.hist.length) S.hist[0]={en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}; else S.hist.unshift({en:en,vi:vi,who:who,role:lw.role,voice:!!res._voice}); S.hist=S.hist.slice(0,40);
   $('hsHistN').textContent=S.hist.length;
   $('hsHist').innerHTML=S.hist.slice(1).map(function(h){ var mc=h.role==='main'&&mainOn()?mainCol():''; return '<li>'+(h.who?'<b>'+esc(h.who)+(h.role==='main'?' ★':'')+':</b> ':'')+(mc?'<span style="color:'+mc+'">'+esc(h.vi)+'</span>':esc(h.vi))+'<small>'+(h.voice?'🔊 ':'')+esc(h.en)+'</small></li>';}).join('');
   pipRender(vl?voWrap(html):html,$('hsEn').textContent,vl);
@@ -4600,7 +4626,7 @@ function show(res,quiet){
 
   if(quiet) return;   /* a corrected line: already read aloud, its time on screen goes on */
   if($('hsSpeak').checked&&vi) VO.muteUntil=Date.now()+Math.min(15000,900+vi.length*80/(parseFloat($('hsRate').value)||1));
-  speak(vi,res);
+  speak(res._spoken?viRest(vi,res._spoken):vi,res);   /* a finished line whose first part was read already: the rest */
   clearTimeout(S.holdT);
   if(S.hold>0) S.holdT=setTimeout(function(){ $('hsVi').innerHTML=''; $('hsEn').textContent=''; pipRender('',''); coverHide(); S.lastHtml=''; if(D) D.sub({html:'',en:''}); phSub({vi:''}); if(tvIp()||tvCode().length>=4) tvSend({kind:'clr',vi:''}).catch(function(){}); },S.hold*1000);
 }
@@ -5787,8 +5813,31 @@ function punctFix(en,vi){
   if(E.length===V.length&&E.length>1) return V.map(function(v,i){ return punctLine(E[i],v); }).join('\n');
   return punctLine(String(en||'').replace(/\s*\n\s*/g,' '),String(vi).replace(/\s*\n\s*/g,'\n'));
 }
+/* the first sentence(s) of a line the AI is still writing: shown and read now; the finished line replaces it and only
+   what was not read yet is read. Only when nothing earlier is waiting to show, and not when the TV reads with its own
+   voice (it would read the line twice). */
+function partShow(j,pv,via){
+  try{
+    if(!S.running||S.ready.length||j.seq<=S.shownSeq||Object.keys(S.live).some(function(k){ return +k<j.seq; })) return;
+    if($('hsSpeak').checked&&speakWhere()!=='pc'&&!tvClipOn()) return;
+    var res=splitSpeaker({en:j.text,vi:pv},j.text); if(!res||!res.vi) return;
+    res._whoDone=true; res._nl=1; res._t0=j.t0;
+    S.partSeq=j.seq; j.spoke=res.vi; S.partN=(S.partN||0)+1;
+    S.shownSeq=j.seq; S.lastShownAt=Date.now();
+    log('AI ('+via+') vừa viết xong câu đầu, hiện và đọc trước'+(j.t0?' sau '+((Date.now()-j.t0)/1000).toFixed(1)+' giây từ lúc thấy chữ':'')+': '+res.vi);
+    show(res);
+  }catch(e){}
+}
+/* what of the finished line was not read with its first part */
+function viRest(vi,said){
+  var W=String(vi||'').split(/\s+/).filter(Boolean), P=String(said||'').split(/\s+/).filter(Boolean), n=0;
+  for(var i=0;i<P.length&&i<W.length;i++){ if(deTone(W[i])===deTone(P[i])) n++; }
+  if(!P.length||n<P.length*0.8) return vi;   /* worded differently: read in full */
+  return W.slice(P.length).join(' ');
+}
 function takeOne(res,seq,raw){
   res=splitSpeaker(res,raw);
+  if(res&&seq===S.partSeq&&res.en&&res.vi){ S.partSeq=0; res.vi=punctFix(res.en||raw,res.vi); S.lastEn=res.en; S.lastRaw=raw||res.en; S.lastShownAt=Date.now(); S.maskShown=S.ocrMask; S.subMiss=0; S.lastTm=false; show(res); speedLog(res); return true; }   /* the finished line of a part shown already */
   if(res&&res.vi){ res.vi=punctFix(res.en||raw,res.vi); if(res._tm) res.vi=caseFix(res.en||raw,res.vi); }   /* a line from the shared store too: it ends and is capitalised like the English on this screen */
   if(!res||!res.en||!res.vi){ coverBack(); return false; }
   if(similar(res.en,S.lastEn)){ coverBack(); return false; }
@@ -6435,7 +6484,8 @@ async function translateText(j){
     else if((res=nearRecent(j.text))){ log('giống câu vừa dịch (chữ trên hình đọc lệch), không gửi AI'); }
     else{
       log('chưa có trong kho, gửi AI: '+String(j.text).replace(/\s+/g,' ').slice(0,120));
-      res=await specOr(j,ck,function(){ return askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); }); });
+      res=await specOr(j,ck,function(){ return askText(textPrompt(j.text,j.nl,j.enl),j.text,null,null,false,speakPrefer(),function(r2,via2){ aiUpgrade(j,ck,r2,via2); },function(pv,via){ partShow(j,pv,via); }); });
+      if(res&&j.spoke) res._spoken=j.spoke;
       if(!res||!String(res.vi||'').trim()){ S.emptyTx[ck]=Date.now(); }
       else fullAgain(j,ck,res);
       if(res&&res.vi){ S.trCache[ck]=res; S.trCacheN.push(ck); if(S.trCacheN.length>300) delete S.trCache[S.trCacheN.shift()];
@@ -6528,7 +6578,7 @@ function speakPrefer(){ var p=preferMode(); return $('hsSpeak').checked&&fitOn()
 function gExpect(){ var ms=S.models&&S.models.length?S.models:FALLBACK; var m=fastOrder(ms)[0]; return S.lat[m]||0; }
 /* how long the machine translation (ready in ~0.6 s) waits for the AI's finished line before it is shown instead */
 var FREE_WAIT=4000;
-function askText(prompt,text,schema,shape,plain,prefer,upgrade){
+function askText(prompt,text,schema,shape,plain,prefer,upgrade,part){
   schema=schema||SCHEMA_SUB; shape=shape||SHAPE_SUB; prefer=prefer||preferMode();
   var hasG=keys().length>0, hasQ=groqKeys().length>0, hasO=orReady(), hasL=!!text&&shape===SHAPE_SUB&&localOk();
   return new Promise(function(resolve,reject){
@@ -6538,7 +6588,18 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
     function accept(r,via){ if(done) return; done=true; tookVia=via; clearAll(); S.via=via; resolve(r); }
     function aiLeft(){ return (hasG&&!failed.g)||(hasQ&&!failed.q)||(hasO&&!failed.o)||(hasL&&!failed.l); }
     function holdFree(){ return held&&held.via==='free'; }
+    /* part(): the first finished sentence(s) of the line, the moment the AI has written them, so they show and are read
+       while the rest is written. Once a part went out, the finished line is taken from the same AI (another AI's words
+       would not go on from what was read), unless that AI fails. */
+    var partK='', alt=null, partSent=false;
+    function delta(k){ if(!part||shape!==SHAPE_SUB) return null; return function(acc){
+      if(partSent||done) return; var v=viPart(acc); if(!v||v.closed) return;
+      var re=/[.!?…]+["”'’)\]]*(?=\s+\S)/g, mm, end=-1; while((mm=re.exec(v.t))) end=mm.index+mm[0].length;
+      if(end<10) return; var pv=v.t.slice(0,end).trim(); if(pv.length<10) return;
+      partSent=true; partK=k; try{ part(pv,k==='g'?'gemini':'groq'); }catch(e){} }; }
     function got(r,via){
+      var vk=via==='gemini'?'g':via==='groq'?'q':via==='smart'?'o':via==='local'?'l':'f';
+      if(!done&&partK&&vk!==partK&&!failed[partK]){ if(!alt) alt={r:r,via:via}; return; }
       if(done){ if(upgrade&&tookVia==='free'&&via!=='free'&&!upgraded&&r&&r.vi){ upgraded=true; upgrade(r,via); } return; }   /* the machine translation showed first: the AI's line replaces it */
       /* only the finished translation is shown: the machine translation waits for the AI (up to FREE_WAIT) and shows only when the AI is slow or fails */
       if(via==='free'&&aiLeft()){ if(!held){ held={r:r,via:via}; tms.push(later(function(){ if(holdFree()) accept(held.r,held.via); },Math.max(0,FREE_WAIT-(Date.now()-t0)))); } return; }
@@ -6551,6 +6612,7 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
     }
     function lose(k,e){
       errs.push(e); live--; failed[k]=true; if(k==='o') oDead=true;
+      if(!done&&k===partK&&alt){ var a2=alt; alt=null; return accept(a2.r,a2.via); }   /* the AI that wrote the part failed: another AI's line */
       if(done){ if(upgrade&&tookVia==='free'&&!upgraded&&hasL&&!started.l&&k!=='f') run('l',true); return; }   /* the machine translation is up and the online AI failed: the AI on this computer improves it */
       if(held&&(k==='o'||live<=0||(holdFree()&&!aiLeft()))) return accept(held.r,held.via);
       if(!startedAll()) startNext();
@@ -6559,7 +6621,7 @@ function askText(prompt,text,schema,shape,plain,prefer,upgrade){
     function startedAll(){ return (started.g||!hasG)&&(started.q||!hasQ)&&(started.o||!hasO)&&(started.l||!hasL)&&(started.f||!S.allowFree); }
     function run(k,force){
       if(started[k]||(done&&!force)) return; started[k]=true; live++;
-      var p=k==='g'?gemini(prompt,null,schema):k==='q'?groq(prompt,null,shape):k==='o'?orAsk(prompt,shape):k==='l'?localAsk(text):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
+      var p=k==='g'?gemini(prompt,null,schema,delta('g')):k==='q'?groq(prompt,null,shape,delta('q')):k==='o'?orAsk(prompt,shape):k==='l'?localAsk(text):plain?gtx(text).then(function(v){return {vi:v};}):freeTr(text);
       p.then(function(r){ if(r&&typeof r==='object') got(r,k==='g'?'gemini':k==='q'?'groq':k==='o'?'smart':k==='l'?'local':'free'); else lose(k,new Error('trống')); },function(e){ lose(k,e); });
     }
     function startNext(){ if(hasG&&!started.g) run('g'); else if(hasO&&!started.o) run('o'); else if(hasQ&&!started.q) run('q'); else if(hasL&&!started.l) run('l'); else if(S.allowFree&&!started.f) run('f'); }
@@ -8110,7 +8172,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={viSame:viSame,viFitOff:viFitOff,lineMatch:lineMatch,tmEarly:function(t){ return tmEarly(t); },ocrTake:function(t,f,d){ return ocrTake(t,f,d); },dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={logT:function(){ return LOG.slice(-60); },askText:function(){ return askText.apply(null,arguments); },translateText:function(j){ return translateText(j); },textPrompt:function(a,b,c){ return textPrompt(a,b,c); },viSame:viSame,viFitOff:viFitOff,lineMatch:lineMatch,tmEarly:function(t){ return tmEarly(t); },ocrTake:function(t,f,d){ return ocrTake(t,f,d); },dictFixT:function(t){ return dictFix(t); },viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
@@ -8525,7 +8587,7 @@ function reportText(){
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length+', đọc phụ đề: '+($('hsSpeak').checked?'bật':'TẮT')+', đọc ở: '+speakWhere()+', giọng dùng: '+(D?devPick(voiceMode()==='ai'?'auto':voiceMode(),'',''):'trình duyệt')+(D&&D.speakState?', lần đọc gần nhất: '+JSON.stringify(D.speakState()):''),
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
-    'Cài đặt: '+JSON.stringify({khopSomTuKho:S.earlyN||0,nhinNhanh:S.lookN||0,tuDichChuKhac:!!fsLiveOn(),micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
+    'Cài đặt: '+JSON.stringify({docTruocCauDau:S.partN||0,khopSomTuKho:S.earlyN||0,nhinNhanh:S.lookN||0,tuDichChuKhac:!!fsLiveOn(),micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
 }
