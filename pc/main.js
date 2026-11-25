@@ -600,15 +600,29 @@ function piperPaths() {
   const dir = resDir('voices');
   return { exe: findFile(dir, n => /^piper\.exe$/i.test(n)), model: findFile(dir, n => /\.onnx$/i.test(n)) };
 }
+/* Piper that stops right after it starts, again and again, is not started for 10 minutes: each start loads the 60 MB
+   voice and took the computer's time from the game (stutter) while nothing was read anyway; other voices read meanwhile */
+const piperBad = { n: 0, until: 0 };
 function piperStart() {
   if (piper) return true;
+  if (Date.now() < piperBad.until) return false;
   const { exe, model } = piperPaths();
   if (!exe || !model) return false;
   const out = path.join(os.tmpdir(), 'hongsub-voice'); fs.mkdirSync(out, { recursive: true });
+  /* the voice's settings file on huggingface was updated (11/2026) with sounds written as two letters ("aɪ", "oʊ"...),
+     which this Piper refuses at start ("Phonemes must be one codepoint"): it stopped at once, every line ended with
+     "voice stopped" and nothing was read. Those entries are dropped from a copy that Piper reads instead
+     (Vietnamese never uses them). */
+  let cfgArg = [];
+  try {
+    const j = JSON.parse(fs.readFileSync(model + '.json', 'utf8')), m = j.phoneme_id_map || {};
+    const bad = Object.keys(m).filter(k => Array.from(k).length !== 1);
+    if (bad.length) { bad.forEach(k => { delete m[k]; }); const cp = path.join(out, 'voice-config.json'); fs.writeFileSync(cp, JSON.stringify(j)); cfgArg = ['--config', cp]; }
+  } catch (e) { /* Piper reads the file next to the model */ }
   let p;
-  try { p = spawn(exe, ['--model', model, '--output_dir', out, '--length_scale', piperScale.toFixed(2), '--sentence_silence', '0.1'], { cwd: path.dirname(exe), windowsHide: true }); }
+  try { p = spawn(exe, ['--model', model].concat(cfgArg, ['--output_dir', out, '--length_scale', piperScale.toFixed(2), '--sentence_silence', '0.1']), { cwd: path.dirname(exe), windowsHide: true }); }
   catch (e) { return false; }
-  p.q = []; p.out = ''; p.bk = 1 / piperScale; piper = p;
+  p.q = []; p.out = ''; p.bk = 1 / piperScale; p.t0 = Date.now(); p.ok = false; piper = p;
   p.stdout.setEncoding('utf8');
   p.stdout.on('data', (d) => {
     p.out += d; let i;
@@ -616,12 +630,17 @@ function piperStart() {
       const line = p.out.slice(0, i).trim(); p.out = p.out.slice(i + 1);
       if (!/\.wav$/i.test(line)) continue;
       const done = p.q.shift(); if (!done) continue;
+      p.ok = true; piperBad.n = 0;
       try { const buf = fs.readFileSync(line); fs.unlink(line, () => {}); done({ wav: buf.toString('base64'), rateApply: true, bk: p.bk }); } catch (e) { done({ err: String(e) }); }
     }
   });
   p.stderr.on('data', () => {});
   p.stdin.on('error', () => {});
-  const gone = () => { if (piper === p) piper = null; while (p.q.length) p.q.shift()({ err: 'voice stopped' }); };   /* only this process's own lines */
+  const gone = () => {
+    if (piper === p) piper = null;
+    if (!p.ok && Date.now() - p.t0 < 4000 && !p.killed) { if (++piperBad.n >= 3) { piperBad.n = 0; piperBad.until = Date.now() + 10 * 60e3; } }
+    while (p.q.length) p.q.shift()({ err: 'voice stopped' });   /* only this process's own lines */
+  };
   p.on('exit', gone); p.on('error', gone);
   return true;
 }

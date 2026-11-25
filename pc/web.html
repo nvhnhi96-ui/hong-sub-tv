@@ -3513,7 +3513,9 @@ function noDash(en,vi){ vi=String(vi||''); if(/[-–—]/.test(String(en||''))) 
 function show(res,quiet){
   var vi=noDash(res.en||'',(res.vi||'').trim()).trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
   var multi=!!(res._lp&&res._lp.length>1&&res._lp[res._lp.length-1]>0);   /* several people talking at once: always line by line */
-  vi=(lineMatch()||multi)&&res._enl&&res._enl.length>1?alignVi(vi,res._enl):lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
+  var sep=!lineMatch()&&!multi&&enSeparate(res._enl||en.split('\n'));   /* "Woah!" / "Get off me!": two lines said apart, not one long line */
+  S.keepLines=sep||multi;
+  vi=(lineMatch()||multi||sep)&&res._enl&&res._enl.length>1?alignVi(vi,res._enl):lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var pv=res._voice?ptVoice((res._t0||Date.now()-3000)-200,(res._t1||Date.now())+200):ptVoice(subSince(),Date.now());
   /* a "name:" the AI found that is not written with a colon in what was read (a sticker, a sign: "BORN TO FISH")
      is not a speaker label */
@@ -3595,7 +3597,7 @@ setInterval(placeSync,1500);
    d: the box's text element, already holding the line and its font. Returns the number of lines, 0 when it is not a
    single speaker's line (left as it was), -1 when even three lines do not fit (the letters then get a little smaller). */
 function viFit(d,maxW){
-  if(/class="who"[\s\S]*class="who"|<div/i.test(d.innerHTML)) return 0;
+  if(/class="who"[\s\S]*class="who"|<div/i.test(d.innerHTML)||S.keepLines) return 0;
   d.innerHTML=d.innerHTML.replace(/\s*<br\s*\/?>\s*/gi,' '); d.style.whiteSpace='nowrap';
   var total=d.scrollWidth; if(total<=maxW) return 1;
   var tw=document.createTreeWalker(d,NodeFilter.SHOW_TEXT), sp=[], n, txt='';
@@ -3640,7 +3642,7 @@ function viFitOff(html){
 /* the TV, the phone's floating subtitle and the Windows floating window get the lines the play screen chose, so all
    of them break the Vietnamese at the same words (11/2026). The original's lines when that is what the switch says. */
 function viSame(vi,who,html0){
-  if(lineMatch()||!vi||/class="hs-part|<div/i.test(html0||'')) return vi;
+  if(lineMatch()||S.keepLines||!vi||/class="hs-part|<div/i.test(html0||'')) return vi;
   var L=S.fitOut&&S.fitOut.html===html0?S.fitOut.lines:null;
   if(!L) L=viFitOff(html0);
   if(!L||!L.length) return vi;
@@ -4460,7 +4462,19 @@ function subBoxFrom(o,W,H){
 function subAbove(){
   var R0=S.region; if(!R0) return null; var b=S.subBox;
   if(!b||Date.now()-b.at>60000) return {x:R0.x,y:R0.y,w:R0.w,h:R0.h};
-  return {x:R0.x+b.x*R0.w,y:R0.y+b.y*R0.h,w:b.w*R0.w,h:b.h*R0.h};
+  return aboveSteady({x:R0.x+b.x*R0.w,y:R0.y+b.y*R0.h,w:b.w*R0.w,h:b.h*R0.h},(b.lh||b.h/Math.max(1,b.n||1))*R0.h);
+}
+/* where the Vietnamese sits above the English, kept still between lines (25/11/2026: "vị trí hiện chữ dịch nhảy lung
+   tung"): the English subtitle's bottom and centre hardly move in a game, its top does (one line, two lines, a name
+   read with it). So the box stands on a steady bottom, as high as the most lines seen in the last 30 s, and moves
+   only when the subtitle itself moves (more than ~1.5 lines up or down, or sideways). */
+function aboveSteady(r,lh){
+  var now=Date.now(), St=S.abvSt, bot=r.y+r.h, cx=r.x+r.w/2; lh=Math.max(0.005,lh||r.h);
+  var n=Math.max(1,Math.min(4,Math.round(r.h/lh)));
+  if(!St||now-St.at>45000||Math.abs(bot-St.bot)>1.6*lh||Math.abs(cx-St.cx)>0.12){ St=S.abvSt={bot:bot,cx:cx,lh:lh,n:n,nAt:now,at:now}; }
+  else { St.at=now; St.lh=St.lh*0.8+lh*0.2; if(n>=St.n){ St.n=n; St.nAt=now; } else if(now-St.nAt>30000){ St.n=n; St.nAt=now; } if(bot>St.bot) St.bot=bot; }
+  var y=Math.min(St.bot-St.n*St.lh,r.y);   /* never over the English line shown now */
+  return {x:Math.max(0,St.cx-r.w/2),y:Math.max(0,y),w:r.w,h:Math.max(0.01,St.bot-y)};
 }
 function subRect(){
   var R0=S.region; if(!R0) return null;
@@ -4603,6 +4617,19 @@ function alignVi(vi,enl){
 function viSents(t){ return String(t||'').replace(/\s*\n\s*/g,' ').split(/(?<=[.!?…。！？])\s+(?=[A-ZÀ-ỸĐ0-9"'“‘(\[\-–—{])/).map(function(x){ return x.trim(); }).filter(Boolean); }
 /* n lines, breaking between sentences: as many sentences as lines gives one per line; fewer sentences get lines by
    their length; more sentences are grouped in order, as evenly as the sentence ends allow */
+/* the original subtitle's lines are separate things said (each its own line on the TV and the picture), not one long
+   line the game wrapped: a line that ends a sentence (. ! ? …), the next starting with a dash, or a name or label on
+   its own ("Stefanie Gates" over "Take a seat.") (25/11/2026: "chưa nhận diện được 2 câu thoại khác nhau") */
+function enSeparate(enl){
+  var L=(enl||[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean); if(L.length<2) return false;
+  for(var i=0;i<L.length-1;i++){
+    var a=L[i], b=L[i+1];
+    if(/[.!?…]["'”’)\]]*$/.test(a)&&!/^[a-z]/.test(b)) return true;
+    if(/^[-–—]\s*\S/.test(b)) return true;
+    if(!/[,.;:!?…]$/.test(a)&&a.split(/\s+/).length<=3&&/^[A-Za-z][\w'’.-]*(\s+[A-Z][\w'’.-]*){0,2}$/.test(a)&&/(^|\s)[A-Z]/.test(a)&&/^[A-Z]/.test(b)) return true;   /* a name card, even cut at its start while it slides in ("anie Gates") */
+  }
+  return false;
+}
 function lineSplitS(vi,n){
   vi=String(vi||'').trim(); if(!vi||n<=1) return lineSplit(vi,n);
   var have=vi.split('\n').map(function(x){ return x.trim(); }).filter(Boolean); if(have.length===n) return have.join('\n');

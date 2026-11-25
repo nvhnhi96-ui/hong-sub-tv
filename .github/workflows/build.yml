@@ -195,6 +195,8 @@ jobs:
           $hf = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/vi/vi_VN/vais1000/medium'
           Invoke-WebRequest "$hf/vi_VN-vais1000-medium.onnx" -OutFile voices\vi_VN-vais1000-medium.onnx
           Invoke-WebRequest "$hf/vi_VN-vais1000-medium.onnx.json" -OutFile voices\vi_VN-vais1000-medium.onnx.json
+          # the newer settings file lists sounds of two letters ("aɪ") that this Piper refuses at start: keep one-letter ones
+          python -c "import json,sys; p=sys.argv[1]; d=json.load(open(p,encoding='utf-8')); m=d.get('phoneme_id_map',{}); d['phoneme_id_map']={k:v for k,v in m.items() if len(k)==1}; json.dump(d,open(p,'w',encoding='utf-8'),ensure_ascii=False)" voices\vi_VN-vais1000-medium.onnx.json
           try { Invoke-WebRequest https://raw.githubusercontent.com/rhasspy/piper/master/LICENSE.md -OutFile voices\PIPER-LICENSE-MIT.txt } catch { }
           "Giọng đọc: Piper (MIT, https://github.com/rhasspy/piper)`r`nGiọng tiếng Việt: vi_VN-vais1000-medium, huấn luyện từ VAIS-1000 Vietnamese Speech Synthesis Corpus, giấy phép CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).`r`nNguồn: https://huggingface.co/rhasspy/piper-voices" | Out-File voices\NGUON-GIONG-DOC.txt -Encoding utf8
           # the AI voice server script: the app copies it over the one in the downloaded voice pack when it changes
