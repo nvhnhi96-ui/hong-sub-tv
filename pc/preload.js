@@ -13,7 +13,9 @@ let audio = null, seq = 0;
    - when lines come faster than they can be read, the line being read speeds up and the waiting ones are read
      faster the more of them wait (up to 1.8x). */
 const lines = []; let cur = null;
-const STUCK_MS = 9000, BACKLOG_MAX = 12;   /* 12 lines waiting: only a broken voice gets there */
+/* 25/11/2026, the owner: "không cần tăng tốc giọng khi đọc không kịp câu, đọc đầy đủ không bỏ câu". The voice keeps
+   the speed set in the app, whatever waits behind it: no line is sped up to catch up, none is left out. */
+const STUCK_MS = 9000, BACKLOG_MAX = 500;
 /* a line that made no sound for STUCK_MS (its voice was never made): it goes and the next line is read; before, one
    such line kept the reading silent for the rest of the session */
 setInterval(() => { if (cur && !cur.playing && !cur.startAt && Date.now() - Math.max(cur.at, cur.curAt || 0) > STUCK_MS) { said(cur, false, 'giọng không trả lời, bỏ qua câu'); cutCur(); startNext(); } }, 1500);
@@ -92,7 +94,7 @@ function prepare(L) {
 function finish(L) { if (cur === L) { cur = null; audio = null; startNext(); } }
 /* a waiting line has its voice: it is read as soon as nothing else is (never over or instead of the line being read) */
 function takeOver(L) { if (!cur) startNext(); }
-function speedOf(c) { return Math.max(1, Math.min(1.8, c.boost * (c.hurry || 1), 2.4 / Math.max(1, c.rate || 1))); }   /* never faster than 2.4x in all */
+function speedOf(c) { return 1; }   /* no catching up: the speed set in the app (before: up to 1.8x when lines waited) */
 /* the speed a line starts at: faster the more lines wait behind it */
 function backlogBoost() { return lines.length ? Math.min(1.6, 1.15 + 0.12 * lines.length) : 1; }
 function cutCur() { const c = cur; if (!c) return; if (audio) { try { audio.pause(); } catch (e) { /* ignore */ } } audio = null; lineDrop(c); cur = null; }

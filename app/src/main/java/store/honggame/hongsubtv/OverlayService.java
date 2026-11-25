@@ -116,18 +116,13 @@ public class OverlayService extends Service {
         try {
             byte[] data = Base64.decode(b64, Base64.DEFAULT);
             if (data.length < 200) return;
-            File f = new File(getCacheDir(), "clip" + (++clipSeq % 8) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
+            File f = new File(getCacheDir(), "clip" + (++clipSeq % 64) + (mime != null && mime.contains("mpeg") ? ".mp3" : ".wav"));
             try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
             safePost(() -> {
-                /* every line is read in full, none is cut or skipped: a new line waits for the one being read, which
-                   speeds up; the waiting lines are read faster the more of them wait, so the voice catches up */
-                if (clips.size() >= 8) clips.pollFirst();   // only when far, far behind
-                boolean behind = clipPlayer != null || !clips.isEmpty();
-                float boost = behind ? Math.min(1.6f, 1.15f + 0.12f * clips.size()) : 1f;
-                clips.add(new Object[]{f, Math.min(2.4f, rate * boost)});
-                if (clipPlayer != null) {
-                    try { float sp = Math.min(2.4f, Math.max(clipPlayer.getPlaybackParams().getSpeed(), 1f) * 1.25f); clipPlayer.setPlaybackParams(new PlaybackParams().setSpeed(sp)); } catch (Exception ignored) { }
-                }
+                /* every line is read in full, in order, at the speed the computer set: a new line waits for the one being
+                   read; nothing is sped up to catch up and nothing is left out (25/11/2026) */
+                if (clips.size() >= 60) clips.pollFirst();   // the clip files are reused after 64
+                clips.add(new Object[]{f, Math.min(2.4f, rate)});
                 if (clipPlayer == null) clipNext();
             });
         } catch (Exception ignored) { }
@@ -840,7 +835,7 @@ public class OverlayService extends Service {
             main.postDelayed(hideRunnable, holdMs);
             if (speakIt && ttsReady) {   // every line read in full: it waits for the one being read, faster when lines wait
                 int wait = ttsPending.getAndIncrement();
-                try { tts.setSpeechRate(Math.min(1.9f, 1.2f + 0.15f * Math.max(0, wait))); } catch (Exception ignored) { }
+                try { tts.setSpeechRate(1.2f); } catch (Exception ignored) { }   // the same speed whatever waits (25/11/2026: no catching up)
                 tts.speak(vi, TextToSpeech.QUEUE_ADD, ttsParams(), "line" + (++ttsSeq));
             }
         });

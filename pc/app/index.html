@@ -1364,7 +1364,7 @@ div.kn-step{margin-top:8px}
               <div class="lab"><label for="hsRate">Tốc độ đọc</label><output><span id="hsRateV">1.1</span>x</output></div>
               <input class="hs-range" id="hsRate" type="range" min="0.8" max="1.8" step="0.1" value="1.1">
             </div>
-            <label class="hs-sw dk-sw">Đọc kịp lời nhân vật (câu dài thì tự đọc nhanh hơn) <input type="checkbox" id="hsFit" checked></label>
+            <label class="hs-sw dk-sw">Đọc kịp lời nhân vật (câu dài thì tự đọc nhanh hơn) <input type="checkbox" id="hsFit"></label>
             <p class="hs-note" id="hsVoiceTip" hidden></p>
           </div>
         </div>
@@ -4969,7 +4969,7 @@ function ggNext(){
 }
 function ggWeb(t,rate,queue){
   if(!queue) ggStop();                                /* every subtitle is read in full: waiting lines are read faster */
-  var r=Math.max(0.5,Math.min(2,(rate||1)*(queue&&(gAud||GQ.length)?Math.min(1.6,1.15+0.12*GQ.length):1)));
+  var r=Math.max(0.5,Math.min(2,rate||1));           /* the speed set in the app, also when lines wait (25/11/2026: no catching up) */
   ggChunks(t).forEach(function(c){ GQ.push({t:c,r:r}); });
   if(!gAud) ggNext();
 }
@@ -5018,7 +5018,7 @@ function devSpeak(t,mode,g,who,pitch,queue,src){
   if(mode==='gg:vi'||!v0||!('speechSynthesis' in window)){ ggWeb(t,rate,queue); return; }   /* the Google voice (online): any browser, no Vietnamese voice needed */
   /* every line is read in full: a new one waits for the line being read, and is read faster the more lines wait */
   if(!queue) speechSynthesis.cancel();
-  else if(speechSynthesis.speaking||speechSynthesis.pending){ S.ssWait=(S.ssWait||0)+1; rate=Math.min(2,rate*Math.min(1.6,1.15+0.12*S.ssWait)); }
+  else if(speechSynthesis.speaking||speechSynthesis.pending) S.ssWait=(S.ssWait||0)+1;   /* it waits its turn, at the speed set in the app (25/11/2026: no catching up) */
   var v=v0;
   var u=new SpeechSynthesisUtterance(t); u.lang='vi-VN'; u.rate=rate; u.pitch=pitch||1; u.voice=v; u.onstart=function(){ S.ssAt=Date.now(); S.ssWait=Math.max(0,(S.ssWait||0)-1); }; speechSynthesis.speak(u);
 }
@@ -5083,7 +5083,7 @@ function speak(t,res){
   S.clipQ=(S.clipQ||Promise.resolve()).then(function(){
     return made.then(function(c){
       /* the speed from the real length of the clip and the time the character still talks */
-      if(c&&c.ok&&c.dur>0&&fit){ var lf=Math.max(fit.floor,fit.due-Date.now())/1000, wait=Math.max(0,S.clipN-my); rate=Math.round(Math.max(fit.base,Math.min(2,c.dur/lf*(1+0.15*wait)))*20)/20; }
+      if(c&&c.ok&&c.dur>0&&fit){ var lf=Math.max(fit.floor,fit.due-Date.now())/1000, wait=Math.max(0,S.clipN-my); rate=Math.round(Math.max(fit.base,Math.min(2,c.dur/lf))*20)/20; }
       /* the chosen voice could not be made for this line: no other voice reads it in between (that sounded like the
          TV's own voice cutting in). Only when it keeps failing (3 lines in a row) this computer reads, so it is not silent */
       if(!c||!c.ok){ S.clipFail=(S.clipFail||0)+1; log('đọc trên TV: chưa tạo được giọng cho câu này'+(c&&c.err==='ai'?' (giọng AI chưa sẵn sàng)':c&&c.err?' ('+String(c.err).slice(0,120)+')':!c?' (không nhận được trả lời)':'')+', bỏ qua câu đó');
@@ -8229,7 +8229,10 @@ bindRange('hsRate','hsRateV','rate');
   gm.addEventListener('change',function(){ setTimeout(apply,0); }); var ps=$('hsPreset'); if(ps) ps.addEventListener('change',function(){ setTimeout(apply,0); });
   setTimeout(apply,0);
 })();
-(function(){ var c=$('hsFit'); if(!c) return; c.checked=load('fit',true)!==false; c.addEventListener('change',function(){ save('fit',c.checked); }); })();
+/* "Đọc kịp lời nhân vật" also makes the voice faster (a long line is read faster to end with the character). Off by
+   default from 25/11/2026 ("không cần tăng tốc giọng"), and turned off once on machines where it was on; whoever
+   wants it turns it on again */
+(function(){ var c=$('hsFit'); if(!c) return; if(!load('fitOff1',false)){ save('fitOff1',true); save('fit',false); } c.checked=load('fit',false)===true; c.addEventListener('change',function(){ save('fit',c.checked); }); })();
 bindRange('hsSize','hsSizeV','size',function(v){$('hsSubBox').style.setProperty('--subsize',v+'px'); if(S.pip){S.pip.document.getElementById('vi').style.fontSize=v+'px';}});
 (function(){
   /* where lines are read aloud: the same choice on the Voice page and in the TV card */
