@@ -4412,8 +4412,11 @@ function voApply(el,vl){
 function voWrap(html){ return '<span class="vo-line">'+html+'</span>'; }
 /* the previous speaker's line, dimmed above the new one: off (the user wants the old line gone when the next speaker talks) */
 var PREV_DIM=false;
+/* a dash the original does not have ("Bất cứ - điều gì ngươi đối mặt" for "Whatever you face"): the AI (or a stored
+   line) put it in, it is taken out */
+function noDash(en,vi){ vi=String(vi||''); if(/[-–—]/.test(String(en||''))) return vi; return vi.replace(/[ \t]+[-–—]+[ \t]+/g,' ').replace(/(^|\n)[ \t]*[-–—]+[ \t]*/g,'$1').replace(/[ \t]*[-–—]+[ \t]*(\n|$)/g,'$1'); }
 function show(res,quiet){
-  var vi=(res.vi||'').trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
+  var vi=noDash(res.en||'',(res.vi||'').trim()).trim(), en=(res.en||'').trim(), who=(res.speaker||'').trim();
   var multi=!!(res._lp&&res._lp.length>1&&res._lp[res._lp.length-1]>0);   /* several people talking at once: always line by line */
   vi=(lineMatch()||multi)&&res._enl&&res._enl.length>1?alignVi(vi,res._enl):lineSplitS(vi,lineMatch()?(res._nl||1):1);               /* as many lines as the original subtitle, a new sentence on a new line */
   var pv=res._voice?ptVoice((res._t0||Date.now()-3000)-200,(res._t1||Date.now())+200):ptVoice(subSince(),Date.now());
@@ -7557,7 +7560,7 @@ function fsKeep(b){
 }
 /* the text that goes to the translator: with its button markers when it has buttons */
 function fsT(b){ return b.ic&&b.ic.length?b.et:b.en; }
-function fsVi(b,vi){ vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,String(vi||'').trim()))); return b.ic&&b.ic.length?zIcFix(b.et,vi,b.ic):vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim(); }
+function fsVi(b,vi){ vi=fsViLines(b.en,caseFix(b.en,punctFix(b.en,noDash(b.en,String(vi||'').trim())))); return b.ic&&b.ic.length?zIcFix(b.et,vi,b.ic):vi.replace(/\{\{\d+\}\}/g,'').replace(/\s{2,}/g,' ').trim(); }
 /* the Vietnamese on as many lines as the original block (a paragraph from the shared store comes as one line) */
 function fsLinesLike(en,vi){
   var n=String(en||'').split('\n').length, v=String(vi||'');
@@ -7603,6 +7606,26 @@ async function fsRead(sx,sy,sw,sh,maxW){
       return;
     }
     var keepI=raw.map(function(l,i){ return fsOk(l,b.conf)?i:-1; }).filter(function(i){ return i>=0; });
+    /* one block of the reader holding a title, a column of labels and a paragraph (Assassin's Creed Mirage's
+       difficulty panel: "Master Assassin", "Enemy Health" ... "Pickpocket Difficulty", then two lines of text). As one
+       paragraph its Vietnamese was drawn as one lump at the top, over the labels. Two or more short labels in a row
+       are rows, each over its own line; the sentences between or after them are a paragraph of their own */
+    if(b.ls&&b.ls.length===raw.length&&keepI.length===raw.length&&raw.length>=2){
+      var tl=raw.map(function(l){ return String(fsOk(l,b.conf)||'').trim(); });
+      var isL=tl.map(function(t,i){ var nx=tl[i+1]; return t.split(/\s+/).length<=4&&t.length<=32&&!/[.,;:!?…]["”’)]?$/.test(t)&&!(nx&&/^[a-z]/.test(nx)); });
+      /* a new unit starts after a short label when the next line starts with a capital ("Pickpocket Difficulty" over
+         "Balanced stealth and combat experience"), and after a full sentence when a label follows */
+      var units=[], u0=0; for(var ri=1;ri<=tl.length;ri++){ if(ri===tl.length||isL[ri-1]&&/^[A-Z0-9]/.test(tl[ri])||isL[ri]&&/[.!?…]["”’)]?$/.test(tl[ri-1])){ units.push({a:u0,b:ri-1}); u0=ri; } }
+      if(units.length>1){
+        units.forEach(function(r){
+          if(r.a===r.b){ var lq=b.ls[r.a], wq=fsWords(lq,raw[r.a]); put(cell({x:px(wq.x),y:py(lq.y),w:pw(wq.w),h:ph(lq.h),lh:ph(lq.h),en:tl[r.a],conf:b.conf,al:wq.al||'',row:isL[r.a]?1:0},lq),[r.a],true); return; }
+          var idx=[], lr=[], X0=1e9, X1=-1e9; for(var q2=r.a;q2<=r.b;q2++){ var l2=b.ls[q2], w2b=fsWords(l2,raw[q2]); idx.push(q2); lr.push({x:px(w2b.x),y:py(l2.y),w:pw(w2b.w),h:ph(l2.h)}); X0=Math.min(X0,w2b.x); X1=Math.max(X1,w2b.x+w2b.w); }
+          var la=b.ls[r.a], lz=b.ls[r.b], lh2=idx.reduce(function(s2,q3){ return s2+b.ls[q3].h; },0)/idx.length;
+          put({x:px(X0),y:py(la.y),w:pw(X1-X0),h:ph(lz.y+lz.h-la.y),lh:ph(lh2),en:tl.slice(r.a,r.b+1).join('\n'),conf:b.conf,lr:lr},idx,false);
+        });
+        return;
+      }
+    }
     if(keepI.length===1&&b.ls&&b.ls.length===raw.length){ var l1=b.ls[keepI[0]], w1=fsWords(l1,raw[keepI[0]]);   /* one line kept (the others were icons or scraps): that line's own box */
       put(cell({x:px(w1.x),y:py(l1.y),w:pw(w1.w),h:ph(l1.h),lh:ph(l1.h),en:lines[0],conf:b.conf,al:w1.al||''},l1),keepI,true); return; }
     if(raw.length===1&&b.ls&&b.ls[0]){ var w2=fsWords(b.ls[0],raw[0]); put(cell({x:px(w2.x),y:py(b.y),w:pw(w2.w),h:ph(b.h),lh:ph(b.lh),en:lines[0],conf:b.conf,al:w2.al||''},b.ls[0]),[0],true); return; }   /* one line: its words only, an icon beside it stays visible */
@@ -7954,6 +7977,14 @@ function flTick(my){
      boxes go at once; otherwise the box is read again on its own and only goes when its text is not there any more
      (text over moving scenery stays put) */
   var moved=0; for(i=0;i<N;i++) if(S.fl.still[i]===0) moved++;
+  /* the screen went blank (black between two screens, a loading screen), or the place of a box became flat (no
+     letters can be there): its box goes at once, also a box kept over moving scenery. Before, the boxes of a menu
+     stayed up over the black screen after it closed */
+  if(S.fl.items.length){ var gs=0, gq=0; for(i=0;i<N;i++){ gs+=g[i]; gq+=g[i]*g[i]; } var gm=gs/N, gsd=Math.sqrt(Math.max(0,gq/N-gm*gm));
+    var n1=S.fl.items.length;
+    if(gsd<6) S.fl.items=[];
+    else S.fl.items=S.fl.items.filter(function(it){ if(!flChanged(g,it)) return true; var p=flPatch(g,it), lo=255, hi=0; for(var q=0;q<p.length;q++){ if(p[q]<lo) lo=p[q]; if(p[q]>hi) hi=p[q]; } return !p.length||hi-lo>=12; });
+    if(S.fl.items.length!==n1){ log('chữ trên màn hình: '+(gsd<6?'màn hình trống, bỏ hết khung':'chỗ chữ đã trống, bỏ '+(n1-S.fl.items.length)+' khung')); flDraw(); } }
   var ch=S.fl.items.filter(function(it){ return flChanged(g,it); });
   if(ch.length&&(moved>N*0.6||ch.length===S.fl.items.length&&moved>N*0.35)){ var n0=S.fl.items.length;
     S.fl.items=S.fl.items.filter(function(it){ return ch.indexOf(it)<0||it.hud; });   /* a box known to sit over moving scenery is read again instead: the scenery always changes under it */
