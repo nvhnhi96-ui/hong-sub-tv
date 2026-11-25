@@ -1041,8 +1041,12 @@ function setupIpc() {
     const ok = r && [r.x, r.y, r.w, r.h].every((v) => typeof v === 'number' && v >= 0 && v <= 1.01) && r.w > 0.02 && r.h > 0.02;
     subPlace = ok ? { x: r.x, y: r.y, w: r.w, h: r.h, spot: !!r.spot, al: /^[lcr]$/.test(r.al || '') ? r.al : 'c', lh: +r.lh || 0, fz: +r.fz > 0 && +r.fz < 0.5 ? +r.fz : 0 } : null; applyPlace();
   });
-  ipcMain.handle('voices', async () => {
+  ipcMain.handle('voices', async (e, fresh) => {
     const list = [];
+    if (fresh && tts) {   /* a new helper sees voices installed since it started: the old one is let go first */
+      const old = tts; await new Promise((ok) => { const t = setTimeout(ok, 2000); old.once('exit', () => { clearTimeout(t); ok(); }); try { old.kill(); } catch (x) { ok(); } });
+      if (tts === old) tts = null;
+    }
     const pp = piperPaths(); if (pp.exe && pp.model) list.push({ name: VOICE_NAME, lang: 'vi-VN', id: 'hs:piper' });
     const r = await ttsCall({ cmd: 'voices' }, 20000);
     (r.voices || []).forEach(v => list.push({ name: v.name, lang: v.lang, id: 'win:' + v.name }));

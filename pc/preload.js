@@ -224,7 +224,7 @@ const api = {
   zoneSize: (id, w, h) => ipcRenderer.send('zone-size', id, w, h),
   zonesReset: () => ipcRenderer.invoke('zones-reset'),
   zonesPanel: (on) => ipcRenderer.invoke('zones-panel', on),
-  voices: () => ipcRenderer.invoke('voices'),
+  voices: (fresh) => ipcRenderer.invoke('voices', !!fresh),   /* fresh: ask Windows again (a voice added while the app is open) */
   /* queue=true for subtitles (wait for the line being read), false for samples and tests (cut in right away) */
   speakState: () => (lastSpeak ? Object.assign({}, lastSpeak, { doiKip: catchOn, ghiChu: lastNote, cho: waits.length ? Math.round(waits.slice().sort((x, y) => x - y)[waits.length >> 1]) : null, choMax: waits.length ? Math.max.apply(null, waits) : null, dangCho: lines.length }) : lastSpeak),
   /* fit: {due: when the character stops talking (ms), floor: the least time to give the line (ms), base: the speed set in the app} */
