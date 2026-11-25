@@ -5904,7 +5904,9 @@ async function tick(force){
   motionSample();
   micPadPoll(); micIconLook();   /* the mic button: areas set to it, or the whole screen when in a menu */
   if(guardOn()&&!force){
-    if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()&&!subPrio()) guardProbe();
+    /* while stopped nothing reads the subtitle area, so a subtitle waiting to be read (S.cand, S.forceOcr) never cleared
+       and held this check back for good: back in the game the translating stayed stopped for minutes */
+    if(now>=GUARD.next&&!S.ocrBusy&&ocrOn()&&(GUARD.kind||!subPrio())) guardProbe();
     if(GUARD.kind){ if(S.coverHtml) coverHide(); return; }                   /* PS5 screens or the game map: nothing is translated */
   } else if(GUARD.kind){ GUARD.kind=''; GUARD.neg=0; }
   if(readMode()==='local'&&!ocrOn()&&OCR.loading){ if(!S.ocrWait){ S.ocrWait=true; status('busy','Đang chuẩn bị bộ đọc chữ...'); } return; }
