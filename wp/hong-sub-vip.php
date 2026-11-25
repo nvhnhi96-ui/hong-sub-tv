@@ -115,9 +115,9 @@ if (!function_exists('hgs_vip_table')) {
         $row = $code !== '' ? $wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE code=%s", $code)) : null;
         if (!$row) {
             set_transient($ipk, (int) get_transient($ipk) + 1, HOUR_IN_SECONDS);
-            return hgs_vip_err('vip_bad', 'Mã VIP không đúng. Kiểm tra lại từng ký tự, hoặc nhắn nhóm Telegram Hóng Sub.', 403);
+            return hgs_vip_err('vip_bad', 'Mã VIP không đúng. Kiểm tra lại từng ký tự, hoặc nhắn nhóm Telegram Hóng Sub (t.me/honggamesub).', 403);
         }
-        if ((int) $row->off) return hgs_vip_err('vip_off', 'Mã VIP này đã bị khóa. Nhắn nhóm Telegram Hóng Sub.', 403);
+        if ((int) $row->off) return hgs_vip_err('vip_off', 'Mã VIP này đã bị khóa. Nhắn nhóm Telegram Hóng Sub (t.me/honggamesub).', 403);
         $now = time();
         if ($row->dev === '') {
             $exp = gmdate('Y-m-d H:i:s', $now + max(1, (int) $row->days) * DAY_IN_SECONDS);
@@ -125,9 +125,9 @@ if (!function_exists('hgs_vip_table')) {
                 $dev, gmdate('Y-m-d H:i:s', $now), $exp, $row->id));
             $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $t WHERE id=%d", $row->id));
         }
-        if ($row->dev !== $dev) return hgs_vip_err('vip_device', 'Mã VIP này đang dùng trên máy khác. Muốn đổi máy, nhắn nhóm Telegram Hóng Sub.', 403);
+        if ($row->dev !== $dev) return hgs_vip_err('vip_device', 'Mã VIP này đang dùng trên máy khác. Muốn đổi máy, nhắn nhóm Telegram Hóng Sub (t.me/honggamesub).', 403);
         $until = $row->expires ? strtotime($row->expires . ' UTC') : 0;
-        if ($until && $until < $now) return hgs_vip_err('vip_expired', 'Mã VIP đã hết hạn ngày ' . hgs_vip_date('d/m/Y', $until) . '. Gia hạn tại Hóng Game Store, hoặc nhắn nhóm Telegram Hóng Sub.', 403);
+        if ($until && $until < $now) return hgs_vip_err('vip_expired', 'Mã VIP đã hết hạn ngày ' . hgs_vip_date('d/m/Y', $until) . '. Gia hạn tại Hóng Game Store, hoặc nhắn nhóm Telegram Hóng Sub (t.me/honggamesub).', 403);
         $row->until = $until;
         return $row;
     }
@@ -161,7 +161,7 @@ if (!function_exists('hgs_vip_table')) {
         global $wpdb;
         $r = hgs_vip_reg_table();
         $ipk = 'hgs_vip_rg_' . md5(hgs_vip_ip());
-        if ((int) get_transient($ipk) >= 6) return hgs_vip_err('vip_limit', 'Bạn đã gửi nhiều đăng ký. Shop sẽ liên hệ sớm, hoặc nhắn nhóm Telegram Hóng Sub.', 429);
+        if ((int) get_transient($ipk) >= 6) return hgs_vip_err('vip_limit', 'Bạn đã gửi nhiều đăng ký. Shop sẽ liên hệ sớm, hoặc nhắn nhóm Telegram Hóng Sub (t.me/honggamesub).', 429);
         $name  = mb_substr(trim(sanitize_text_field((string) $req->get_param('name'))), 0, 80);
         $phone = preg_replace('/\D/', '', (string) $req->get_param('phone'));
         if (strpos($phone, '84') === 0 && strlen($phone) >= 11) $phone = '0' . substr($phone, 2);

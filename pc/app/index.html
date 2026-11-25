@@ -1175,7 +1175,7 @@ div.kn-step{margin-top:8px}
               <p class="hs-note">Đang chơi mà bị kẹt: về <b>Màn hình chơi</b>, bấm nút vàng <b>Gợi ý nhiệm vụ</b> dưới khung phụ đề. Gợi ý hiện ngay trên game (và trên TV nếu đang nối TV).</p>
               <div class="hs-msg" id="hsHintOut" hidden></div>
             </div>
-            <p class="hs-note">Hỗ trợ gói VIP: nhắn <b>nhóm Telegram Hóng Sub</b>.</p>
+            <p class="hs-note">Hỗ trợ gói VIP: nhắn <b data-url="https://t.me/honggamesub" style="cursor:pointer;text-decoration:underline">nhóm Telegram Hóng Sub</b>.</p>
           </div>
         </div>
       </section>
@@ -1575,8 +1575,8 @@ div.kn-step{margin-top:8px}
           <div>
             <div class="dk-card">
               <h2>Hóng Game Store</h2>
-              <p>754 Hùng Vương, Ngã Bảy, Cần Thơ.<br>Hỗ trợ Hóng Sub: vào <b>nhóm Telegram Hóng Sub</b>.</p>
-              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
+              <p>754 Hùng Vương, Ngã Bảy, Cần Thơ.<br>Hỗ trợ Hóng Sub: vào <b data-url="https://t.me/honggamesub" style="cursor:pointer;text-decoration:underline">nhóm Telegram Hóng Sub</b>.</p>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://t.me/honggamesub">Vào nhóm Telegram</button><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
             </div>
             <div class="dk-card hs-web">
               <h2>Phần mềm Hóng Sub cho Windows</h2>
@@ -2315,7 +2315,7 @@ function vipOrderPoll(){
     var j=x.j||{};
     if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Đã nhận tiền, VIP đã bật! Cảm ơn bạn đã ủng hộ Hóng Game Store.'); return; }
     if(j.status==='old'||x.r.status===404){ S.vipOrder=null; save('viporder',null); var pay=$('hsVipPay'); if(pay&&!pay.hidden){ pay.hidden=true; $('hsVipForm').hidden=false; } return; }
-    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung chuyển khoản, hoặc nhắn nhóm Telegram Hóng Sub.');
+    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung chuyển khoản, hoặc nhắn nhóm Telegram Hóng Sub: t.me/honggamesub');
     var vis=$('hsVipPay')&&!$('hsVipPay').hidden;
     S.vipOrderT=setTimeout(vipOrderPoll,vis?4000:30000);
   },function(){ S.vipOrderT=setTimeout(vipOrderPoll,15000); });

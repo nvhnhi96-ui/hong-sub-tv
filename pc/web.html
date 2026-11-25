@@ -558,7 +558,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
         </details>
       </section>
 
-      <div class="hs-shop">Cần hỗ trợ cài đặt? Vào <b>nhóm Telegram Hóng Sub</b> để được hướng dẫn. <b>Hóng Game Store</b>, 754 Hùng Vương, Ngã Bảy, Cần Thơ.</div>
+      <div class="hs-shop">Cần hỗ trợ cài đặt? Vào <a href="https://t.me/honggamesub" target="_blank" rel="noopener"><b>nhóm Telegram Hóng Sub</b></a> để được hướng dẫn. <b>Hóng Game Store</b>, 754 Hùng Vương, Ngã Bảy, Cần Thơ.</div>
     </aside>
   </div>
 
@@ -1375,7 +1375,7 @@ function vipOrderPoll(){
     var j=x.j||{};
     if(j.status==='done'&&j.code){ vipOn2(j.code,j.until,'Đã nhận tiền, VIP đã bật! Cảm ơn bạn đã ủng hộ Hóng Game Store.'); return; }
     if(j.status==='old'||x.r.status===404){ S.vipOrder=null; save('viporder',null); var pay=$('hsVipPay'); if(pay&&!pay.hidden){ pay.hidden=true; $('hsVipForm').hidden=false; } return; }
-    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung chuyển khoản, hoặc nhắn nhóm Telegram Hóng Sub.');
+    if(j.status==='short') vipRegMsg('warn','Shop mới nhận '+vipMoney(j.got)+' trên '+vipMoney(j.amount)+'. Chuyển thêm phần còn thiếu với cùng nội dung chuyển khoản, hoặc nhắn nhóm Telegram Hóng Sub: t.me/honggamesub');
     var vis=$('hsVipPay')&&!$('hsVipPay').hidden;
     S.vipOrderT=setTimeout(vipOrderPoll,vis?4000:30000);
   },function(){ S.vipOrderT=setTimeout(vipOrderPoll,15000); });
