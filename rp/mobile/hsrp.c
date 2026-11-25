@@ -269,12 +269,20 @@ static void *regist_thread(void *arg)
 		snprintf(regist_result, sizeof(regist_result), "{\"ev\":\"regist\",\"ok\":false,\"err\":\"account\"}");
 	else
 	{
-		ChiakiRegist regist;
-		ChiakiErrorCode err = chiaki_regist_start(&regist, &log, &info, regist_cb, NULL);
-		if(err != CHIAKI_ERR_SUCCESS)
-			snprintf(regist_result, sizeof(regist_result), "{\"ev\":\"regist\",\"ok\":false,\"err\":\"%s\"}", chiaki_error_string(err));
-		else
+		/* first as chiaki does it (a UDP socket "connected" to the console). On iPhones that socket was sometimes refused
+		   at once ("Regist failed to send search: Broken pipe", 11/2026) while finding the console (plain sendto) worked:
+		   a failure that quick is tried again the way finding does it, an unconnected socket sending to the console */
+		for(int attempt = 0; attempt < 2; attempt++)
 		{
+			ChiakiRegist regist;
+			regist_done = 0;
+			uint64_t t0 = now_ms();
+			ChiakiErrorCode err = chiaki_regist_start(&regist, &log, &info, regist_cb, NULL);
+			if(err != CHIAKI_ERR_SUCCESS)
+			{
+				snprintf(regist_result, sizeof(regist_result), "{\"ev\":\"regist\",\"ok\":false,\"err\":\"%s\"}", chiaki_error_string(err));
+				break;
+			}
 			for(int i = 0; i < 300 && !regist_done; i++) sleep_ms(100);
 			if(!regist_done)
 			{
@@ -282,6 +290,10 @@ static void *regist_thread(void *arg)
 				snprintf(regist_result, sizeof(regist_result), "{\"ev\":\"regist\",\"ok\":false,\"err\":\"timeout\"}");
 			}
 			chiaki_regist_fini(&regist);
+			bool quick_fail = regist_done && strstr(regist_result, "\"err\":\"failed\"") && now_ms() - t0 < 1500;
+			if(!quick_fail || info.broadcast) break;
+			{ char m[] = "Regist: trying again with an unconnected socket"; log_cb(CHIAKI_LOG_INFO, m, NULL); }
+			info.broadcast = true;
 		}
 	}
 	emit_event(regist_result);
