@@ -54,18 +54,33 @@ target_link_libraries(hs_jerasure hs_gf)
 
 # ---- chiaki-lib, home-network part ----
 set(L "${CHIAKI_DIR}/lib/src")
+# regist.c, with one fix: when it pairs with an unconnected (broadcast) socket it clears the
+# port for bind() and never puts it back, so the search goes to port 0 and fails with
+# "Can't assign requested address". iPhone needs that path (a connected UDP socket gives
+# "Broken pipe" there), so the copy we build sets the PS port back after bind().
+file(READ "${L}/regist.c" HS_REGIST)
+set(HS_A4 "->sin_addr.s_addr = ip;")
+set(HS_A6 "->sin6_addr), &ip, sizeof(struct in6_addr));")
+string(FIND "${HS_REGIST}" "${HS_A4}" HS_F4)
+string(FIND "${HS_REGIST}" "${HS_A6}" HS_F6)
+if(HS_F4 LESS 0 OR HS_F6 LESS 0)
+	message(FATAL_ERROR "regist.c changed: the pairing port fix no longer applies")
+endif()
+string(REPLACE "${HS_A4}" "${HS_A4} ((struct sockaddr_in *)send_addr)->sin_port = htons(REGIST_PORT);" HS_REGIST "${HS_REGIST}")
+string(REPLACE "${HS_A6}" "${HS_A6} ((struct sockaddr_in6 *)send_addr)->sin6_port = htons(REGIST_PORT);" HS_REGIST "${HS_REGIST}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/hs_regist.c" "${HS_REGIST}")
 set(CHIAKI_SRC
 	${L}/common.c ${L}/sock.c ${L}/session.c ${L}/thread.c ${L}/base64.c ${L}/http.c ${L}/log.c ${L}/ctrl.c
 	${L}/rpcrypt.c ${L}/takion.c ${L}/senkusha.c ${L}/streamconnection.c ${L}/ecdh.c ${L}/launchspec.c ${L}/random.c
 	${L}/gkcrypt.c ${L}/audio.c ${L}/audioreceiver.c ${L}/audiosender.c ${L}/videoreceiver.c ${L}/frameprocessor.c
 	${L}/packetstats.c ${L}/discovery.c ${L}/congestioncontrol.c ${L}/stoppipe.c ${L}/reorderqueue.c
 	${L}/discoveryservice.c ${L}/feedback.c ${L}/feedbacksender.c ${L}/controller.c ${L}/takionsendbuffer.c
-	${L}/time.c ${L}/fec.c ${L}/regist.c ${L}/orientation.c ${L}/bitstream.c
+	${L}/time.c ${L}/fec.c "${CMAKE_CURRENT_BINARY_DIR}/hs_regist.c" ${L}/orientation.c ${L}/bitstream.c
 	${L}/remote/rudp.c ${L}/remote/rudpsendbuffer.c
 	"${CMAKE_CURRENT_BINARY_DIR}/takion.pb.c")
 add_library(hs_chiaki STATIC ${CHIAKI_SRC} stubs.c)
 target_include_directories(hs_chiaki PUBLIC "${CHIAKI_DIR}/lib/include" "${CMAKE_CURRENT_BINARY_DIR}" "${TP}/nanopb")
-target_include_directories(hs_chiaki PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shim")
+target_include_directories(hs_chiaki PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shim" "${L}")
 target_compile_definitions(hs_chiaki PUBLIC CHIAKI_LIB_ENABLE_MBEDTLS PB_C99_STATIC_ASSERT
 	CHIAKI_VERSION_MAJOR=1 CHIAKI_VERSION_MINOR=10 CHIAKI_VERSION_PATCH=1 CHIAKI_VERSION="chiaki-ng-1.10.1-hongsub")
 target_link_libraries(hs_chiaki protobuf-nanopb-static hs_jerasure mbedtls mbedx509 mbedcrypto)
