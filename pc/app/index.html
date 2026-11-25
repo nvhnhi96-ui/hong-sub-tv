@@ -4385,7 +4385,13 @@ function viLike(s){
   var w=norm(String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d')).split(' ').filter(function(x){return x.length>1;}); if(w.length<4) return false;
   return w.filter(function(x){ return VI_TALK.indexOf(' '+x+' ')>=0||VI_SYL.indexOf(' '+x+' ')>=0; }).length/w.length>=0.5;
 }
+/* letters only Vietnamese writes (not é, à, ñ... of French or Spanish names) */
+var VI_ONLY=/[ăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịĩọỏốồổỗộớờởỡợụủũứừửữựỳỵỷỹ]/i;
 function viPlain(s){
+  /* Vietnamese text: one word in three (and at least one) carries a letter only Vietnamese has. Short Vietnamese
+     ("Cài đặt", "Đa phương tiện", "Tiếp tục") is caught too; before, under three words it was translated */
+  var ws=String(s||'').split(/\s+/).filter(function(x){ return /\p{L}/u.test(x); }), vw=ws.filter(function(x){ return VI_ONLY.test(x)||/u[ôồốổỗộ]|i[êềếểễệ]|y[êềếểễệ]/i.test(x); }).length;   /* and "uô, iê, yê" (nuôi, tiền, yêu) */
+  if(vw&&vw>=Math.max(1,ws.length/3)) return true;
   if(enLike(s)&&!/[ăâđêôơưàáảãạèéẻẽẹìíỉĩịòóỏõọùúủũụỳýỷỹỵ]/i.test(s)) return false;
   var w=norm(s).split(' ').filter(function(x){return x.length>1;}); if(w.length<3) return false;
   var n=w.filter(function(x){ return VI_SYL.indexOf(' '+x+' ')>=0; }).length;
@@ -5184,9 +5190,8 @@ var LANGS={
   en:{n:'Tiếng Anh',e:'English',ocr:'',sc:'lat'}, ja:{n:'Tiếng Nhật',e:'Japanese',ocr:'ja',sc:'cjk'}, zh:{n:'Tiếng Trung',e:'Chinese',ocr:'',sc:'cjk'},
   ko:{n:'Tiếng Hàn',e:'Korean',ocr:'ko',sc:'kor'}, fr:{n:'Tiếng Pháp',e:'French',ocr:'latin',sc:'lat'}, de:{n:'Tiếng Đức',e:'German',ocr:'latin',sc:'lat'},
   es:{n:'Tiếng Tây Ban Nha',e:'Spanish',ocr:'latin',sc:'lat'}, pt:{n:'Tiếng Bồ Đào Nha',e:'Portuguese',ocr:'latin',sc:'lat'}, it:{n:'Tiếng Ý',e:'Italian',ocr:'latin',sc:'lat'},
-  ru:{n:'Tiếng Nga',e:'Russian',ocr:'ru',sc:'cyr'},
-  vi:{n:'Tiếng Việt (game đã Việt hóa: chỉ đọc to)',e:'Vietnamese',ocr:'',sc:'lat'}
-};
+  ru:{n:'Tiếng Nga',e:'Russian',ocr:'ru',sc:'cyr'}
+};   /* "Tiếng Việt (game đã Việt hóa)" is gone: Vietnamese on the screen is never translated (viPlain), whatever the setting */
 /* a game that already shows Vietnamese subtitles: nothing to translate, Hóng Sub only reads them aloud */
 function viMode(){ return LG()==='vi'; }
 var OCR_LANG=window.HS_OCR_LANG||'https://cdn.jsdelivr.net/gh/nvhnhi96-ui/hong-sub-tv@1417b96b57792dda0270801c2ac01a03a5aceaa1/web/ocr/lang/';
@@ -7857,7 +7862,7 @@ function flDraw(){
   fsUntangle(flLayer);
   if(!S.fs.on) fsOverlaySync();
 }
-if(/[?&]hstest\b/.test(location.search)) window.__hsT={micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
+if(/[?&]hstest\b/.test(location.search)) window.__hsT={viPlain:viPlain,micPressed:function(h,o){ micPressed(h,o); },guardKind:guardKind,guardSet:guardSet,voAhead:function(r){ voAhead(r); },voWarm:function(a,b,c,d){ voWarm(a,b,c,d); },S:S,GUARD:GUARD,flDraw:flDraw,fsNoOverlap:fsNoOverlap,fsUntangle:fsUntangle,flLayer:flLayer,videoBox:videoBox,flStart:flStart,flTick:flTick,flRead:flRead,flStill:flStill,fsRead:fsRead,ocrLoad:ocrLoad,video:video,flSkip:flSkip,dictJunk:dictJunk,fsWorth:fsWorth,flOwns:flOwns};   /* only for Hóng Sub's own layout test page */
 window.addEventListener('resize',function(){ if(S.fl.on) flDraw(); });
 /* the small picture points under a box (160x90 grey picture) */
 function flRect(it){ var x0=Math.max(0,Math.floor(it.x*160)), y0=Math.max(0,Math.floor(it.y*90)), x1=Math.min(160,Math.ceil((it.x+it.w)*160)), y1=Math.min(90,Math.ceil((it.y+it.h)*90)); return [x0,y0,Math.max(x0+1,x1),Math.max(y0+1,y1)]; }
