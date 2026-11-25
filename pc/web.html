@@ -336,7 +336,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
       <div class="hs-ctrl">
         <button class="hs-btn pri" id="hsRun" type="button" disabled>Bắt đầu dịch <kbd>Space</kbd></button>
         <button class="hs-btn" id="hsFull" type="button" disabled title="Dịch menu, nhiệm vụ, mô tả vật phẩm đang có trên màn hình">Dịch cả màn hình <kbd>T</kbd></button>
-        <button class="hs-btn" id="hsMenuBtn" type="button" disabled title="Dịch menu đang mở, tự dịch tiếp khi chuyển trang, bấm lần nữa để tắt. Giống bấm nút mic trên tay cầm">Dịch menu <kbd>M</kbd></button>
+        <button class="hs-btn" id="hsMenuBtn" type="button" style="display:none" disabled title="Dịch menu đang mở, tự dịch tiếp khi chuyển trang, bấm lần nữa để tắt. Giống bấm nút mic trên tay cầm">Dịch menu <kbd>M</kbd></button>
         <span class="hs-sp"></span>
         <button class="hs-btn hs-dk hs-off" id="hsPsFull" type="button" title="Chơi toàn màn hình, Esc để thoát">Toàn màn hình</button>
         <button class="hs-btn hs-dk hs-off" id="hsPsEnd" type="button">Ngắt kết nối</button>
@@ -5964,7 +5964,7 @@ function micAreas(){ return S.zones.some(function(z){ return z.on&&z.mode==='key
    - no such area: the whole screen ("Dịch cả màn hình") */
 S.micAt=0; S.micMenu=null;
 /* the same as the mic button, from a key, the app's "Dịch menu" button or the phone: translation is started if needed */
-function micPress(how){ if(!S.stream){ status('warn','Chọn nguồn hình trước rồi bấm Dịch menu.'); return; } if(!S.running) startRun(); S.micAt=0; micPressed(how,true); }   /* the app's own button or key: always */
+function micPress(how){ if(!S.stream){ status('warn','Chọn nguồn hình trước rồi mới dịch menu được.'); return; } if(!S.running) startRun(); S.micAt=0; micPressed(how,true); }   /* the app's own button or key: always */
 /* a small sign on the picture while a menu is being translated, and the button's look */
 function micBadge(){
   var on=!!S.micMenu, b=$('hsMenuBtn'); if(b){ b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); }
