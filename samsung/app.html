@@ -210,7 +210,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.353';
+var VERSION='1.0.354';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -499,7 +499,7 @@ function playNext(){
   var it=aq.shift(), c=ac();
   if(!it.buf||!c){ playNext(); return; }
   var s=c.createBufferSource(), cur={src:s};
-  s.buffer=it.buf; if(s.playbackRate){ var pr=(it.rate||1)*(it.fast?Math.min(1.6,1.15+0.1*aq.length):1); if(pr!==1) s.playbackRate.value=pr; }
+  s.buffer=it.buf; if(s.playbackRate){ var pr=it.rate||1; if(pr!==1) s.playbackRate.value=pr; }   /* the speed the computer set, also when lines wait (25/11/2026: no catching up, no line left out) */
   /* volume set on the computer: above 100% the voice is amplified, with a limiter so it does not crackle */
   var g=(P.vol||150)/100, out=c.destination;
   if(g!==1&&c.createGain){ try{ var gn=c.createGain(); gn.gain.value=g; var lim=c.createDynamicsCompressor?c.createDynamicsCompressor():null;
@@ -515,11 +515,11 @@ function say(t){
   if(window.speechSynthesis&&viVoice){
     var ss=window.speechSynthesis;
     var busy=ss.speaking||ss.pending;                 /* every line read in full: it waits its turn, faster when lines wait */
-    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=busy?1.35:1.1; u.volume=Math.min(1,(P.vol||150)/100);
+    var u=new SpeechSynthesisUtterance(t); u.voice=viVoice; u.lang=viVoice.lang; u.rate=1.1; u.volume=Math.min(1,(P.vol||150)/100);
     ss.speak(u); return;
   }
   var behind=!!audio||aq.length>0;                   /* every line read in full: waiting lines are read faster */
-  if(aq.length>=16) aq.splice(0,aq.length-8);
+  if(aq.length>=80) aq.splice(0,aq.length-60);
   chunks(t).forEach(function(c){ var it={t:c,fast:behind,done:false,buf:null}; aq.push(it); ttsLoad(it); });
   playNext();
 }
@@ -527,7 +527,7 @@ function say(t){
 function sayClip(id,rate){
   if(!P.pc||!id) return;
   var behind=!!audio||aq.length>0;
-  if(aq.length>=8) aq.shift();
+  if(aq.length>=60) aq.shift();
   var it={url:'http://'+P.pc+'/voice?id='+encodeURIComponent(id),rate:+rate||1,fast:behind,done:false,buf:null};
   aq.push(it); ttsLoad(it); playNext();
 }
