@@ -10337,7 +10337,7 @@ var LGJ=(function(){
   function Tcp(ip,port){ this.ip=ip; this.port=port; this.id='l'+(Date.now()%1e7).toString(36)+Math.random().toString(36).slice(2,5); this.buf=new Uint8Array(0); this.dead=false; this.wake=null; }
   Tcp.prototype.open=function(ms){ var me=this, R=raw(); if(!R) return Promise.reject(new Error('missing'));
     me.off=R.on(function(j){ if(!j||j.id!==me.id) return; if(j.ev==='tcpdata'){ me.buf=cat([me.buf,unb64(j.b64)]); } else if(j.ev==='tcpclose') me.dead=true; else return; if(me.wake){ var w=me.wake; me.wake=null; w(); } });
-    return R.ask('tcpopen '+me.id+' '+me.ip+' '+me.port,'tcp',ms||10000,me.id).then(function(r){ if(!r||!r.ok){ if(me.off) me.off(); throw new Error(r&&r.err==='refused'?'refused':'noconnect'); } }); };
+    return R.ask('tcpopen '+me.id+' '+me.ip+' '+me.port,'tcp',ms||10000,me.id).then(function(r){ if(!r||!r.ok){ if(me.off) me.off(); var er=new Error(r&&r.err==='refused'?'refused':'noconnect'); er.why=(r&&r.err)||'no answer'; throw er; } }); };
   Tcp.prototype.send=function(u){ return raw().send('tcpsend '+this.id+' '+b64(u)); };
   Tcp.prototype.need=function(n,ms){ var me=this, end=Date.now()+(ms||20000);
     return new Promise(function(res,rej){ (function look(){ if(me.buf.length>=n){ res(); return; } if(me.dead){ rej(new Error('closed')); return; }
@@ -10493,7 +10493,14 @@ var LGJ=(function(){
     if(!saved&&pass.length<4) return Promise.resolve(err('Gõ Passphrase (6 chữ đang hiện trong app Developer Mode trên TV).'));
     var s=null;
     say('Đang lấy khóa từ TV...');
-    return (saved?Promise.resolve(s0.key):getKey(ip).catch(function(){ throw {m:'Không lấy được khóa từ TV. Trên TV mở app Developer Mode, kiểm tra Dev Mode Status đang bật và bật Key Server, rồi thử lại.'}; }))
+    return (saved?Promise.resolve(s0.key):getKey(ip).catch(function(e){ var m=String(e&&e.message||e), lan=(typeof psIosLan==='function'?psIosLan():'');
+      try{ log('TV LG: lấy khóa ở '+ip+':9991 lỗi: '+m+(e&&e.why?' ('+e.why+')':'')); }catch(x){}
+      var ipTip=' Xem đúng IP của TV ngay trong app Developer Mode (dòng IP), nếu nhà có nhiều TV thì chọn đúng TV đó.';
+      var exp=' Nếu Dev Mode Status đã tắt hoặc Remain Session còn 00:00 thì bật lại Dev Mode Status (TV tự khởi động lại), mở lại app Developer Mode.';
+      throw {m:m==='refused'?'TV ở '+ip+' chưa mở Key Server. Trên TV mở app Developer Mode, bấm Key Server cho chuyển sang ON và để nguyên app đó, rồi bấm Cài lại.'+exp+ipTip
+        :m==='missing'?'Bản app này chưa cài được TV LG. Cập nhật Hóng Sub lên bản mới nhất.'
+        :(m==='noconnect'||m==='timeout')?'Không tới được TV ở '+ip+'. TV và điện thoại phải cùng một Wi-Fi/modem (tắt 4G và VPN).'+lan+ipTip
+        :'TV ở '+ip+' trả khóa không đúng ('+m.slice(0,40)+'). Trên app Developer Mode tắt Key Server rồi bật lại, rồi bấm Cài lại.'+exp}; }))
     .then(function(k){ pem=k; say('Đang kết nối với TV...');
       return session(ip,pem,pass).catch(function(e){ var m=String(e&&e.message||e);
         if(/^(pass|auth)$/.test(m)) throw {m:'Sai mã Passphrase. Gõ đúng 6 chữ đang hiện trong app Developer Mode trên TV.'};
@@ -10985,12 +10992,19 @@ var TZI=(function(){
       if(m==='auth') throw new Error('TV đòi xác nhận '+dev+': trên TV chọn Cho phép (Allow) rồi bấm Cài lại.');
       if(m!=='refused'&&m!=='closed') throw e;
       return tvSays().then(function(d){
-        var on=d?String(d.developerMode)==='1':null, tip=d?String(d.developerIP||'').trim():'', name=d&&d.name?' ('+String(d.name).replace(/^\[TV\]\s*/,'')+')':'';
+        var on=d&&d.developerMode!=null&&String(d.developerMode)!==''?String(d.developerMode)==='1':null, tip=d?String(d.developerIP||'').trim():'', name=d&&d.name?' ('+String(d.name).replace(/^\[TV\]\s*/,'')+')':'';
         if(/^\d+\.\d+\.\d+\.\d+$/.test(tip)) tip=tip.split('.').map(function(o){ return String(parseInt(o,10)); }).join('.');   /* "192.168.001.005" as some TVs keep it */
+        if(tip==='0.0.0.0') tip='';
+        try{ log('TV Samsung: cổng cài app '+m+'; TV báo '+(d?'developerMode='+d.developerMode+' developerIP='+(d.developerIP||'-')+(d.name?' '+d.name:''):'không trả lời')+'; '+dev+' này '+(my||'?')); }catch(x){}
         if(d&&d.pcIp){ my=d.pcIp; myT=my; open='Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 trên remote › Developer mode: On, Host PC IP: '+myT+', bấm OK'; fix=open+', rồi '+boot+'.'; }   /* the address this computer really uses to reach the TV */
         var mine=(d&&d.pcIps)||[], other=on&&tip&&my&&tip!==my&&mine.indexOf(tip)>=0;
         var wrong=on&&tip&&my&&tip!==my&&!other;
-        var t=on===false?'TV'+name+' chưa bật Developer mode nên chưa nhận cài app. '+fix+' Xong bấm Cài lại.'
+        /* some TVs keep the Host PC IP back to front (192.168.1.8 becomes 8.1.168.192): then it must be typed back to front */
+        var back=tip&&my&&tip!==my&&tip.split('.').reverse().join('.')===my, myBack=my?my.split('.').reverse().join('.'):'';
+        var t=back?'TV'+name+' lưu ngược ô Host PC IP thành '+tip+' (kiểu hiển thị của TV). Trên TV: Ứng dụng (Apps) › bấm 1 2 3 4 5 › Developer mode: On, ô Host PC IP gõ ngược là '+myBack+', bấm OK, rồi '+boot+'. Xong bấm Cài lại.'
+          :on===false&&tip&&tip===my?'TV'+name+' đã ghi đúng Host PC IP '+tip+' nhưng Developer mode chưa có hiệu lực. Hãy '+boot+' (TV phải tắt hẳn, màn hình tắt rồi tự bật lại), rồi bấm Cài lại. Nếu vẫn vậy: vào lại Developer mode xem còn ở On không.'
+          :on===false&&tip?'TV'+name+' đang tắt Developer mode, ô Host PC IP đang ghi '+tip+' (không phải '+dev+' này). '+fix+' Xong bấm Cài lại.'
+          :on===false?'TV'+name+' chưa bật Developer mode nên chưa nhận cài app. '+fix+' Xong bấm Cài lại.'
           :other?'TV'+name+' đang ghi Host PC IP là '+tip+'. Số này là của '+dev+' này, nhưng '+dev+' có nhiều đường mạng (Wi-Fi và dây mạng) và đang nối với TV bằng IP '+my+'. Sửa ô Host PC IP trên TV thành '+my+' (hoặc tắt bớt Wi-Fi hay rút dây mạng), rồi '+boot+'. Xong bấm Cài lại.'
           :wrong?'TV'+name+' đã bật Developer mode nhưng đang ghi Host PC IP là '+tip+', còn '+dev+' này là '+my+'. '+open.replace('Developer mode: On, ','')+' (sửa đúng số này), rồi '+boot+'. Xong bấm Cài lại.'
           :on&&m==='refused'?'TV'+name+' đã bật Developer mode'+(tip?' đúng cho '+dev+' này':'')+' nhưng chưa khởi động lại nên chưa nhận cài app. Hãy '+boot+', rồi bấm Cài lại.'
