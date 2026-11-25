@@ -8420,7 +8420,7 @@ function psRefresh(){ return DPS.state().then(function(st){ PS.acc=st; psAccUi()
 var STATE_TXT={ready:'Đang bật',standby:'Đang nghỉ',offline:'Không thấy',unknown:'?'};
 function psList(){
   var L=$('hsPsList');
-  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm lại.</p>'; return; }
+  if(!PS.hosts.length){ L.innerHTML='<p class="hs-note">Chưa thấy máy PS nào. Bật PS5/PS4 (để chế độ nghỉ cũng được), dùng chung modem/wifi với '+psDev()+', rồi bấm Tìm lại.'+(IOS?'<br><b>iPhone:</b> vào Cài đặt › Quyền riêng tư &amp; Bảo mật › Mạng cục bộ, bật cho Hóng Sub, rồi tắt hẳn app và mở lại.':'')+'</p>'; return; }
   L.innerHTML=PS.hosts.map(function(h,i){
     return '<div class="hs-ps" data-i="'+i+'"><div class="r"><div class="kn-h"><b>'+esc(h.name)+'</b>'+
       '<small><span class="st '+h.state+'">'+(STATE_TXT[h.state]||h.state)+'</span>, '+(h.ps5?'PS5':'PS4')+', '+esc(h.addr||'')+(h.app?', đang chơi '+esc(h.app):'')+'</small></div>'+
@@ -8676,7 +8676,7 @@ function psRepair(h){
   if(!PS.acc||!PS.acc.loggedIn){ psMsg('warn','Đăng nhập PSN trước, rồi bấm Ghép lại.'); return; }
   psMsg('','Đang bỏ ghép cũ...');
   DPS.forget(h.id).then(function(){ return psFind(h.addr); }).then(function(){
-    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm lại.'); return; }
+    var i=PS.hosts.findIndex(function(x){ return x.id===h.id||x.addr===h.addr; }); if(i<0){ psMsg('warn','Chưa thấy '+(h.name||'máy')+'. Bật PS5, rồi bấm Tìm lại.'+psIosLan()); return; }
     var box=document.querySelector('.hs-ps[data-i="'+i+'"]'), pb=box&&box.querySelector('[data-a=pair]'); if(pb) pb.click();
     if(box) box.scrollIntoView({behavior:'smooth',block:'center'});
   });
@@ -8987,7 +8987,7 @@ function psSteps(){
       (DPS.loginUrl?'<details class="kn-tip"><summary>Đăng nhập xong mà hiện ra trang trắng?</summary><p class="hs-note">Copy link của trang trắng đó (địa chỉ có chữ <b>redirect?code=</b>), dán vào ô dưới rồi bấm <b>Xong</b>. Đừng gửi link này cho ai: trong link có mã đăng nhập của bạn.</p>'+
         '<div class="hs-row" style="flex-wrap:nowrap"><input class="hs-in" data-x="psurl" placeholder="Dán link trang trắng vào đây" aria-label="Link trang trắng sau khi đăng nhập" spellcheck="false" autocomplete="off" style="flex:1;min-width:0"><button class="hs-btn pri" type="button" data-x="psurlgo">Xong</button></div></details>':'');
   /* 2: Remote Play switched on, on the PS itself (nothing tells the computer, so the person says when it is done; a paired machine proves it) */
-  var how2='Trên máy PS mở '+(only4?RP4:RP5)+', bật <b>Enable Remote Play</b> (Bật Chơi từ xa).'+(only4?'':'<br><small>PS4: '+RP4+', bật Enable Remote Play.</small>')+'<br>Máy PS và '+dev+' dùng chung một modem/Wi-Fi.';
+  var how2='Trên máy PS mở '+(only4?RP4:RP5)+', bật <b>Enable Remote Play</b> (Bật Chơi từ xa).'+(only4?'':'<br><small>PS4: '+RP4+', bật Enable Remote Play.</small>')+'<br>Máy PS và '+dev+' dùng chung một modem/Wi-Fi.'+(IOS?'<br><b>iPhone:</b> vào Cài đặt › Quyền riêng tư &amp; Bảo mật › Mạng cục bộ, bật cho Hóng Sub (không bật thì app không thấy máy PS), rồi tắt hẳn app và mở lại.':'');
   var h2=ok2?(reg.length?'Đã bật.':'Đã bật. <button class="dk-link" type="button" data-x="rpno">Xem lại cách bật</button>')
     :how2+(cur===2?'<div class="hs-row"><button class="hs-btn pri" type="button" data-x="rpok">Đã bật xong</button></div>':'');
   /* 3: the machine: pair it once (8 digits), then Kết nối */
@@ -8998,7 +8998,7 @@ function psSteps(){
   else if(PS.err) h3='<span class="kn-err">Chưa kết nối được: '+esc(PS.err)+'.</span> Bấm <b>Kết nối</b> để thử lại.';
   else if(reg.length) h3='Bấm <b>Kết nối</b>: Hóng Sub tự bật máy PS (nếu đang nghỉ) và nhận hình. Đang Chơi từ xa ở thiết bị khác (điện thoại, PS Portal) thì thoát ở thiết bị đó trước.';
   else if(found.length) h3='Lần đầu cần ghép máy: bấm <b>Ghép máy</b>, rồi nhập <b>mã 8 số</b> lấy trên máy PS ở '+(only4?'<b>Settings › Remote Play Connection Settings › Add Device</b>.':'<b>Settings › System › Remote Play › Link Device</b> (Chơi từ xa › Liên kết thiết bị).<br><small>PS4: Settings › Remote Play Connection Settings › Add Device.</small>')+'<br><b>Lưu ý:</b> tài khoản đang dùng trên máy PS (tài khoản bật Chơi từ xa) phải <b>trùng với tài khoản PSN đã đăng nhập</b> ở bước 1. Khác tài khoản thì ghép không được.';
-  else h3='Nhập địa chỉ IP thì xem IP trên PS5 ở <b>Settings › Network › Connection Status</b>.';
+  else h3='Nhập địa chỉ IP thì xem IP trên PS5 ở <b>Settings › Network › Connection Status</b>.'+(IOS?'<br><b>iPhone chưa thấy máy:</b> vào Cài đặt › Quyền riêng tư &amp; Bảo mật › Mạng cục bộ, bật cho Hóng Sub, rồi tắt hẳn app và mở lại.':'');
   if(cur===1&&!bad3) h3=found.length?'Đã thấy '+esc(found.map(function(h){ return h.name; }).join(', '))+' trong mạng. Làm xong các bước trên rồi '+(reg.length?'kết nối':'ghép máy')+' ở đây.':'Làm xong các bước trên, rồi chọn máy PS ở đây.';
   function put(el,html){
     if(el.dataset.h===html) return;

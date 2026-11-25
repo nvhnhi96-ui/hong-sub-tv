@@ -145,6 +145,7 @@ div.kn-step{margin-top:8px}
 .kn-b > .hs-msg{margin-top:10px;background:var(--panel)!important;border:1px solid var(--line2)}
 .kn-b .hs-pslist{margin-top:10px}
 .kn-miss{margin-top:10px!important}
+.ios-only{display:none}html.hs-ios .ios-only{display:inline}
 .kn-lab{display:block;margin:10px 0 4px;font-size:13px;font-weight:600}
 .kn-sub{margin:6px 0 0;padding-left:19px;font-size:13.5px;line-height:1.55;color:var(--muted);display:grid;gap:3px}.kn-sub b{color:var(--ink)}
 .kn-copy{display:flex;align-items:center;gap:12px;margin-top:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--panel)}
@@ -548,7 +549,7 @@ div.kn-step{margin-top:8px}
                 <li class="kn-step" id="hsPsS2"><i class="kn-n">2</i><div class="kn-b"><h3>Bật “Chơi từ xa” trên máy PS</h3><div class="kn-d" id="hsPsS2B"></div></div></li>
                 <li class="kn-step" id="hsPsS3"><i class="kn-n">3</i><div class="kn-b"><h3>Chọn máy PS của bạn</h3><div class="kn-d" id="hsPsS3B"></div>
                   <div id="hsPsList" class="hs-pslist"></div>
-                  <p class="hs-note kn-miss">Không thấy máy của bạn? <button class="dk-link" id="hsPsFind" type="button">Tìm lại</button> hoặc <button class="dk-link" id="hsPsIpBtn" type="button">nhập địa chỉ IP của máy PS</button>.</p>
+                  <p class="hs-note kn-miss">Không thấy máy của bạn? <button class="dk-link" id="hsPsFind" type="button">Tìm lại</button> hoặc <button class="dk-link" id="hsPsIpBtn" type="button">nhập địa chỉ IP của máy PS</button>.<span class="ios-only"><br><b>iPhone:</b> vào Cài đặt › Quyền riêng tư &amp; Bảo mật › Mạng cục bộ, bật cho Hóng Sub, rồi tắt hẳn app và mở lại (không bật thì app không thấy máy PS và TV).</span></p>
                   <div class="hs-psip" id="hsPsIpBox" hidden><input class="hs-in" id="hsPsIp" placeholder="VD: 192.168.1.20" inputmode="decimal" aria-label="Địa chỉ IP của máy PS"><button class="hs-btn" id="hsPsIpGo" type="button">Tìm</button></div>
                 </div></li>
               </ol>
