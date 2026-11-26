@@ -9,6 +9,27 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 
+    /* full screen for the game picture: the page fills the whole screen (also under the notch and the home bar), the
+       status bar and the home bar hidden, and the phone turned sideways */
+    private var fullOn = false
+    private var safeCons: [NSLayoutConstraint] = []
+    private var fullCons: [NSLayoutConstraint] = []
+    override var prefersStatusBarHidden: Bool { fullOn }
+    override var prefersHomeIndicatorAutoHidden: Bool { fullOn }
+    private func setFull(_ on: Bool) {
+        guard on != fullOn else { return }
+        fullOn = on
+        NSLayoutConstraint.deactivate(on ? safeCons : fullCons)
+        NSLayoutConstraint.activate(on ? fullCons : safeCons)
+        setNeedsStatusBarAppearanceUpdate()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
+        if #available(iOS 16.0, *), let sc = view.window?.windowScene {
+            sc.requestGeometryUpdate(.iOS(interfaceOrientations: on ? .landscape : .all)) { _ in }
+            setNeedsUpdateOfSupportedInterfaceOrientations()
+        }
+    }
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { fullOn ? .landscape : .allButUpsideDown }
+
     /* "Tắt màn hình, vẫn dịch": iOS stops an app that is locked or behind another app (no video decoding there), so the
        screen is made dark while Hóng Sub stays in front: brightness at the lowest under a black page, and the
        proximity sensor on, so the screen goes fully off when the phone lies face down (as during a phone call) */
@@ -54,12 +75,19 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
         if #available(iOS 16.4, *) { web.isInspectable = true }
         view.addSubview(web)
         let g = view.safeAreaLayoutGuide
-        NSLayoutConstraint.activate([
+        safeCons = [
             web.topAnchor.constraint(equalTo: g.topAnchor),
             web.bottomAnchor.constraint(equalTo: g.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: g.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: g.trailingAnchor)
-        ])
+        ]
+        fullCons = [
+            web.topAnchor.constraint(equalTo: view.topAnchor),
+            web.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            web.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ]
+        NSLayoutConstraint.activate(safeCons)
         UIApplication.shared.isIdleTimerDisabled = true   // the phone stays awake while translating
         NotificationCenter.default.addObserver(self, selector: #selector(leftApp), name: UIApplication.didEnterBackgroundNotification, object: nil)
         load()
@@ -84,6 +112,9 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
             PsnLogin.forget { [weak self] in self?.reply(id, ["ok": true]) }
         case "psnCancel":
             PsnLogin.cancel()
+            reply(id, ["ok": true])
+        case "fullOn", "fullOff":
+            setFull(cmd == "fullOn")
             reply(id, ["ok": true])
         case "darkOn":
             dark(true)

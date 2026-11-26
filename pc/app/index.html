@@ -245,7 +245,12 @@ body.desk .hs-dk.hs-off{display:none!important}
 #hsGame2{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;outline:none}
 .hs-stage:fullscreen{background:#000;border-radius:0;aspect-ratio:auto;width:100vw;height:100vh;max-width:none}.hs-stage:fullscreen .hs-ov{opacity:0;pointer-events:none}.hs-stage:fullscreen .hs-hint,.hs-stage:fullscreen .hs-empty,.hs-stage:fullscreen .hs-region{display:none!important}
 .hs-fsbar{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:8px;align-items:center;padding:8px 10px;background:rgba(12,13,16,.88);border:1px solid rgba(255,255,255,.12);border-radius:12px;opacity:0;transition:opacity .2s;pointer-events:none;font-size:14px;color:#fff;white-space:nowrap}
-.hs-fsbar.on{opacity:1;pointer-events:auto}.hs-stage:not(:fullscreen) .hs-fsbar{display:none}.hs-fsbar .hs-btn{margin:0}.hs-fsbar span{opacity:.7;padding:0 6px}
+.hs-fsbar.on{opacity:1;pointer-events:auto}.hs-stage:not(:fullscreen) .hs-fsbar{display:none}
+/* the phone apps: full screen drawn by the page (the phones' web views have no real full screen for a page part) */
+html.hs-pfs,html.hs-pfs body{overflow:hidden!important;background:#000}
+html.hs-pfs .hs-stage{position:fixed!important;inset:0!important;z-index:2147483000;margin:0!important;background:#000;border-radius:0;aspect-ratio:auto;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important}
+html.hs-pfs .hs-stage .hs-ov{opacity:0;pointer-events:none}html.hs-pfs .hs-stage .hs-hint,html.hs-pfs .hs-stage .hs-empty,html.hs-pfs .hs-stage .hs-region{display:none!important}
+html.hs-pfs .hs-stage .hs-fsbar span{display:none}html.hs-pfs .hs-stage .hs-fsbar{display:flex;flex-wrap:wrap;justify-content:center;white-space:normal;max-width:94vw;top:max(10px,env(safe-area-inset-top))}.hs-fsbar .hs-btn{margin:0}.hs-fsbar span{opacity:.7;padding:0 6px}
 #hsPsFull{display:none!important}
 
 /* guide */
@@ -4593,7 +4598,7 @@ function viSame(vi,who,html0){
   return L.join('\n');
 }
 function coverEl(){ var c=document.getElementById('hsCoverBox'); if(!c){ c=document.createElement('div'); c.id='hsCoverBox'; c.className='hs-cover'; c.hidden=true; c.innerHTML='<div></div>'; $('hsStage').appendChild(c); } return c; }
-function stageFs(){ var f=document.fullscreenElement||document.webkitFullscreenElement; return !!f&&f===$('hsStage'); }
+function stageFs(){ if(document.documentElement.classList.contains('hs-pfs')) return true; var f=document.fullscreenElement||document.webkitFullscreenElement; return !!f&&f===$('hsStage'); }
 function coverAt(){ return coverOn()||stageFs(); }   /* full screen: always on the original subtitle */
 /* the Vietnamese is always on the game picture in the play screen: over the original subtitle ("Đè chữ Việt" on, or full
    screen), else right above it, so the English stays visible */
@@ -8932,15 +8937,24 @@ if(PH){
 }
 
 /* ---------- full screen: the game picture fills the screen, the Vietnamese lines sit right on the English ones ---------- */
+/* phone apps: the page draws the full screen itself; the app hides the bars and turns the picture sideways */
+function phoneFull(on){
+  document.documentElement.classList.toggle('hs-pfs',!!on);
+  try{ if(PH&&PH.screenFull) PH.screenFull(!!on); }catch(e){}
+  try{ if(IOS&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.hs) webkit.messageHandlers.hs.postMessage({cmd:on?'fullOn':'fullOff',id:'f'+Date.now()}); }catch(e){}
+  if(window.__hsOnFs) window.__hsOnFs();
+  setTimeout(function(){ try{ window.dispatchEvent(new Event('resize')); }catch(e){} },400);
+}
+window.hsFullOff=function(){ if(document.documentElement.classList.contains('hs-pfs')) phoneFull(false); };
 function stageFull(){
   var st=$('hsStage');
+  if(PH||IOS){ if(stageFs()) phoneFull(false); else if(S.stream) phoneFull(true); return; }
   if(stageFs()){ try{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){} return; }
   if(!S.stream) return;
   try{ var pr=(st.requestFullscreen||st.webkitRequestFullscreen).call(st); if(pr&&pr.then) pr.then(fsFocus).catch(function(){}); }catch(e){}
 }
 function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) try{ PS.cvs.focus(); }catch(e){} }   /* the PS5 controls keep working */
 (function(){
-  if(PH||IOS) return;
   var ref=$('hsDraw'); if(!ref) return;
   var b=document.createElement('button'); b.type='button'; b.className='hs-btn'; b.id='hsStFs'; b.disabled=true;
   b.title='Hình game và chữ dịch toàn màn hình. Phím F hoặc bấm đúp vào hình; Esc để thoát.'; b.innerHTML='Toàn màn hình <kbd>F</kbd>';
@@ -8954,6 +8968,8 @@ function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) tr
     if(k==='run') S.running?stopRun():startRun(); else if(k==='all') fullScreen(); else if(k==='now'){ if(S.stream) tick(true); } else if(k==='out') stageFull();
     runLbl(); fsFocus(); });
   $('hsStage').addEventListener('mousemove',wake);
+  if(PH||IOS){ b.innerHTML='Toàn màn hình'; b.title='Hình game và chữ dịch toàn màn hình, xoay ngang điện thoại. Chạm vào hình để hiện nút, bấm đúp hoặc nút Thoát để ra.';
+    $('hsStage').addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('.hs-fsbar')) return; wake(); }); }
   $('hsStage').addEventListener('dblclick',function(e){ if(drawing||!S.stream) return; if(e.target.closest&&e.target.closest('.hs-fsbar,.hs-quad,button')) return; stageFull(); });
   var onFs=function(){
     var on=stageFs(); document.documentElement.classList.toggle('hs-stfs',on);
@@ -8962,7 +8978,7 @@ function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) tr
     if(S.fs&&S.fs.on) fsDraw();
     setTimeout(function(){ if(S.coverHtml||S.lastHtml) coverShow(S.coverHtml||S.lastHtml); if(!on&&!coverOn()) coverHide(); if(S.fs&&S.fs.on) fsDraw(); if(typeof zShow==='function') zShow(); },250);
   };
-  document.addEventListener('fullscreenchange',onFs); document.addEventListener('webkitfullscreenchange',onFs);
+  document.addEventListener('fullscreenchange',onFs); document.addEventListener('webkitfullscreenchange',onFs); window.__hsOnFs=onFs;
   setInterval(function(){ b.disabled=!S.stream; },800);
 })();
 

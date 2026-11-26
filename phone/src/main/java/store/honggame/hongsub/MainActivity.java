@@ -236,7 +236,25 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) { }
     }
 
+    /* full screen for the game picture: the status and navigation bars hidden (they come back with a swipe), the phone
+       may turn sideways; the Back key leaves full screen first */
+    private boolean fullOn = false;
+    @SuppressWarnings("deprecation")
+    private void setFull(boolean on) {
+        fullOn = on;
+        View d = getWindow().getDecorView();
+        d.setSystemUiVisibility(on ? (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE) : View.SYSTEM_UI_FLAG_VISIBLE);
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode = on ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            getWindow().setAttributes(lp);
+        }
+        setRequestedOrientation(on ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+    }
+
     private void goBack() {
+        if (fullOn && web != null) { web.evaluateJavascript("window.hsFullOff&&window.hsFullOff()", null); setFull(false); return; }
         if (web != null && web.canGoBack()) { web.goBack(); return; }
         moveTaskToBack(true);   // keep Hóng Sub running behind the game
     }
@@ -265,6 +283,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void place(String json) { CaptureService.post("place", json); }
         @JavascriptInterface public void zones(String json) { CaptureService.post("zones", json); }
         @JavascriptInterface public void full(String json) { CaptureService.post("full", json); }
+        @JavascriptInterface public void screenFull(boolean on) { main.post(() -> setFull(on)); }
         @JavascriptInterface public void state(String json) { CaptureService.post("state", json); }
         @JavascriptInterface public void openUrl(String url) { main.post(() -> MainActivity.this.openUrl(url)); }
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }
