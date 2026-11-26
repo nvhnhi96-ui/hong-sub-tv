@@ -16,19 +16,21 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
     private var fullCons: [NSLayoutConstraint] = []
     override var prefersStatusBarHidden: Bool { fullOn }
     override var prefersHomeIndicatorAutoHidden: Bool { fullOn }
-    private func setFull(_ on: Bool) {
-        guard on != fullOn else { return }
+    private var fullTurn = false
+    private func setFull(_ on: Bool, turn: Bool = true) {
+        guard on != fullOn || (on && turn != fullTurn) else { return }
         fullOn = on
+        fullTurn = on && turn
         NSLayoutConstraint.deactivate(on ? safeCons : fullCons)
         NSLayoutConstraint.activate(on ? fullCons : safeCons)
         setNeedsStatusBarAppearanceUpdate()
         setNeedsUpdateOfHomeIndicatorAutoHidden()
         if #available(iOS 16.0, *), let sc = view.window?.windowScene {
-            sc.requestGeometryUpdate(.iOS(interfaceOrientations: on ? .landscape : .all)) { _ in }
+            sc.requestGeometryUpdate(.iOS(interfaceOrientations: fullTurn ? .landscape : .allButUpsideDown)) { _ in }
             setNeedsUpdateOfSupportedInterfaceOrientations()
         }
     }
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { fullOn ? .landscape : .allButUpsideDown }
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { fullTurn ? .landscape : .allButUpsideDown }
 
     /* "Tắt màn hình, vẫn dịch": iOS stops an app that is locked or behind another app (no video decoding there), so the
        screen is made dark while Hóng Sub stays in front: brightness at the lowest under a black page, and the
@@ -113,8 +115,8 @@ final class MainViewController: UIViewController, WKScriptMessageHandler, WKNavi
         case "psnCancel":
             PsnLogin.cancel()
             reply(id, ["ok": true])
-        case "fullOn", "fullOff":
-            setFull(cmd == "fullOn")
+        case "fullOn", "fullOnFree", "fullOff":
+            setFull(cmd != "fullOff", turn: cmd == "fullOn")
             reply(id, ["ok": true])
         case "darkOn":
             dark(true)

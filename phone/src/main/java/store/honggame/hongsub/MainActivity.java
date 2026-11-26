@@ -240,7 +240,9 @@ public class MainActivity extends Activity {
        may turn sideways; the Back key leaves full screen first */
     private boolean fullOn = false;
     @SuppressWarnings("deprecation")
-    private void setFull(boolean on) {
+    private void setFull(boolean on) { setFull(on, on); }
+    @SuppressWarnings("deprecation")
+    private void setFull(boolean on, boolean turn) {
         fullOn = on;
         View d = getWindow().getDecorView();
         d.setSystemUiVisibility(on ? (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -250,7 +252,7 @@ public class MainActivity extends Activity {
             lp.layoutInDisplayCutoutMode = on ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
             getWindow().setAttributes(lp);
         }
-        setRequestedOrientation(on ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        setRequestedOrientation(on && turn ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
 
     private void goBack() {
@@ -283,7 +285,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void place(String json) { CaptureService.post("place", json); }
         @JavascriptInterface public void zones(String json) { CaptureService.post("zones", json); }
         @JavascriptInterface public void full(String json) { CaptureService.post("full", json); }
-        @JavascriptInterface public void screenFull(boolean on) { main.post(() -> setFull(on)); }
+        @JavascriptInterface public void screenFull(boolean on, boolean turn) { main.post(() -> setFull(on, turn)); }
         @JavascriptInterface public void state(String json) { CaptureService.post("state", json); }
         @JavascriptInterface public void openUrl(String url) { main.post(() -> MainActivity.this.openUrl(url)); }
         @JavascriptInterface public String version() { return Updater.current(MainActivity.this); }

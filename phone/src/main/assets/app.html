@@ -251,7 +251,10 @@ body.desk .hs-dk.hs-off{display:none!important}
 html.hs-pfs,html.hs-pfs body{overflow:hidden!important;background:#000}
 html.hs-pfs .hs-stage{position:fixed!important;inset:0!important;z-index:2147483000;margin:0!important;background:#000;border-radius:0;aspect-ratio:auto;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important}
 html.hs-pfs .hs-stage .hs-ov{opacity:0;pointer-events:none}html.hs-pfs .hs-stage .hs-hint,html.hs-pfs .hs-stage .hs-empty,html.hs-pfs .hs-stage .hs-region{display:none!important}
-html.hs-pfs .hs-stage .hs-fsbar span{display:none}html.hs-pfs .hs-stage .hs-fsbar{display:flex;flex-wrap:wrap;justify-content:center;white-space:normal;max-width:94vw;top:max(10px,env(safe-area-inset-top))}.hs-fsbar .hs-btn{margin:0}.hs-fsbar span{opacity:.7;padding:0 6px}
+html.hs-pfs .hs-stage .hs-fsbar span{display:none}
+.hs-pfsbtn{display:none;position:absolute;right:10px;bottom:10px;z-index:35;width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(12,13,16,.72);color:#fff;align-items:center;justify-content:center;padding:0}
+.hs-pfsbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+html.hs-phone .hs-stage.hs-live .hs-pfsbtn{display:flex}html.hs-pfs .hs-pfsbtn{display:none!important}html.hs-pfs .hs-stage .hs-fsbar{display:flex;flex-wrap:wrap;justify-content:center;white-space:normal;max-width:94vw;top:max(10px,env(safe-area-inset-top))}.hs-fsbar .hs-btn{margin:0}.hs-fsbar span{opacity:.7;padding:0 6px}
 #hsPsFull{display:none!important}
 
 /* guide */
@@ -9068,17 +9071,19 @@ if(PH){
 
 /* ---------- full screen: the game picture fills the screen, the Vietnamese lines sit right on the English ones ---------- */
 /* phone apps: the page draws the full screen itself; the app hides the bars and turns the picture sideways */
-function phoneFull(on){
-  document.documentElement.classList.toggle('hs-pfs',!!on);
-  try{ if(PH&&PH.screenFull) PH.screenFull(!!on); }catch(e){}
-  try{ if(IOS&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.hs) webkit.messageHandlers.hs.postMessage({cmd:on?'fullOn':'fullOff',id:'f'+Date.now()}); }catch(e){}
+function phoneFull(on,turn){
+  /* turn: the button was pressed with the phone upright, so the app turns the picture sideways; full screen that came
+     from turning the phone itself follows the phone (upright again: back to the normal page) */
+  document.documentElement.classList.toggle('hs-pfs',!!on); S.pfsTurn=!!(on&&turn);
+  try{ if(PH&&PH.screenFull) PH.screenFull(!!on,!!(on&&turn)); }catch(e){}
+  try{ if(IOS&&window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.hs) webkit.messageHandlers.hs.postMessage({cmd:on?(turn?'fullOn':'fullOnFree'):'fullOff',id:'f'+Date.now()}); }catch(e){}
   if(window.__hsOnFs) window.__hsOnFs();
   setTimeout(function(){ try{ window.dispatchEvent(new Event('resize')); }catch(e){} },400);
 }
-window.hsFullOff=function(){ if(document.documentElement.classList.contains('hs-pfs')) phoneFull(false); };
+window.hsFullOff=function(){ if(document.documentElement.classList.contains('hs-pfs')){ phoneFull(false); S.pfsNo=innerWidth>innerHeight; } };
 function stageFull(){
   var st=$('hsStage');
-  if(PH||IOS){ if(stageFs()) phoneFull(false); else if(S.stream) phoneFull(true); return; }
+  if(PH||IOS){ if(stageFs()){ phoneFull(false); S.pfsNo=innerWidth>innerHeight; } else if(S.stream){ S.pfsNo=false; phoneFull(true,innerHeight>innerWidth); } return; }
   if(stageFs()){ try{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){} return; }
   if(!S.stream) return;
   try{ var pr=(st.requestFullscreen||st.webkitRequestFullscreen).call(st); if(pr&&pr.then) pr.then(fsFocus).catch(function(){}); }catch(e){}
@@ -9093,17 +9098,27 @@ function fsFocus(){ if(typeof PS!=='undefined'&&PS.cvs&&S.stream===PS.stream) tr
   bar.innerHTML='<button type="button" class="hs-btn pri" data-f="run"></button><button type="button" class="hs-btn" data-f="all">Dịch cả màn hình</button><button type="button" class="hs-btn" data-f="now">Dịch câu này</button><button type="button" class="hs-btn" data-f="out">Thoát toàn màn hình</button><span>Esc để thoát</span>';
   $('hsStage').appendChild(bar);
   var hideT=0, runLbl=function(){ bar.querySelector('[data-f=run]').textContent=S.running?'Dừng dịch':'Bắt đầu dịch'; bar.querySelector('[data-f=all]').classList.toggle('on',!!(S.fs&&S.fs.on)); };
-  var wake=function(){ if(!stageFs()) return; runLbl(); bar.classList.add('on'); clearTimeout(hideT); hideT=setTimeout(function(){ if(!bar.matches(':hover')) bar.classList.remove('on'); },2600); };
+  var touch=!!(PH||IOS);
+  var wake=function(){ if(!stageFs()) return; runLbl(); bar.classList.add('on'); clearTimeout(hideT); hideT=setTimeout(function(){ if(touch||!bar.matches(':hover')) bar.classList.remove('on'); },touch?3500:2600); };
   bar.addEventListener('click',function(e){ var k=e.target&&e.target.getAttribute&&e.target.getAttribute('data-f'); if(!k) return;
     if(k==='run') S.running?stopRun():startRun(); else if(k==='all') fullScreen(); else if(k==='now'){ if(S.stream) tick(true); } else if(k==='out') stageFull();
     runLbl(); fsFocus(); });
-  $('hsStage').addEventListener('mousemove',wake);
+  if(!touch) $('hsStage').addEventListener('mousemove',wake);   /* a tap also sends a mouse move: on phones only the tap counts */
   if(PH||IOS){ b.innerHTML='Toàn màn hình'; b.title='Hình game và chữ dịch toàn màn hình, xoay ngang điện thoại. Chạm vào hình để hiện nút, bấm đúp hoặc nút Thoát để ra.';
-    $('hsStage').addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('.hs-fsbar')) return; wake(); }); }
+    $('hsStage').addEventListener('click',function(e){ if(e.target.closest&&e.target.closest('.hs-fsbar,.hs-pfsbtn')) return; if(!stageFs()) return; if(bar.classList.contains('on')){ bar.classList.remove('on'); clearTimeout(hideT); } else wake(); });
+    var ob=document.createElement('button'); ob.type='button'; ob.className='hs-pfsbtn'; ob.title='Toàn màn hình'; ob.setAttribute('aria-label','Toàn màn hình');
+    ob.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    ob.addEventListener('click',function(e){ e.stopPropagation(); stageFull(); }); $('hsStage').appendChild(ob);
+    setInterval(function(){ $('hsStage').classList.toggle('hs-live',!!S.stream); },800);
+    /* turning the phone sideways while the game shows goes full screen, upright again comes back */
+    var orient=function(){ var land=innerWidth>innerHeight*1.15, on=stageFs(); if(!land) S.pfsNo=false;
+      if(land&&!on&&S.stream&&!S.pfsNo) phoneFull(true,false);
+      else if(!land&&on&&!S.pfsTurn) phoneFull(false); };
+    window.addEventListener('resize',function(){ clearTimeout(S.orT); S.orT=setTimeout(orient,350); }); }
   $('hsStage').addEventListener('dblclick',function(e){ if(drawing||!S.stream) return; if(e.target.closest&&e.target.closest('.hs-fsbar,.hs-quad,button')) return; stageFull(); });
   var onFs=function(){
     var on=stageFs(); document.documentElement.classList.toggle('hs-stfs',on);
-    if(on){ if(D){ D.sub({html:'',en:''}); } wake(); }
+    if(on){ if(D){ D.sub({html:'',en:''}); } if(!touch) wake(); }   /* phones: the buttons stay hidden until the picture is tapped */
     else { bar.classList.remove('on'); if(D&&S.lastHtml) D.sub({html:S.lastHtml,en:$('hsEn').textContent,size:+$('hsSize').value}); }
     if(S.fs&&S.fs.on) fsDraw();
     setTimeout(function(){ if(S.coverHtml||S.lastHtml) coverShow(S.coverHtml||S.lastHtml); if(!on&&!coverOn()) coverHide(); if(S.fs&&S.fs.on) fsDraw(); if(typeof zShow==='function') zShow(); },250);
