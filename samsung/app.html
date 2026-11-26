@@ -96,6 +96,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0E1014;col
 .hst{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;font-size:3vh;font-weight:700;color:#fff;margin:4vh 0 0}
 .hst .dot{-webkit-flex:none;flex:none}
 .hver{margin-top:2.4vh;font-size:2.6vh}
+.hout{margin-top:2vh;font-size:2.5vh;color:#FFD34D;border-left:.5vh solid #FFD34D;padding-left:1.4vh}
 .hstep{font-size:3.15vh;font-weight:700;line-height:1.4;color:#fff;margin:0 0 1.5vh}
 .hset{margin:2.4vh 0 1.6vh}
 .hrow{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:0 0 2.2vh}
@@ -168,6 +169,7 @@ html.see,html.see body{background:transparent!important}
     <p class="hmut">Trên máy tính: Hóng Sub › Kết nối PS và TV › chọn <span class="tvn">TV LG</span> rồi gõ mã TV này. Máy tính và TV dùng chung mạng thì phụ đề hiện nhanh hơn.</p>
     <p class="hst"><span class="dot" id="hDot"></span><span id="hState">Đang kết nối...</span></p>
     <p class="hmut hver" id="hVer"></p>
+    <p class="hmut hout" id="hOut" hidden></p>
   </div>
   <div class="hcol hr" id="homeBtns">
     <p class="hstep">1. Chọn cổng HDMI đang cắm PS5</p>
@@ -210,7 +212,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.376';
+var VERSION='1.0.377';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -237,6 +239,12 @@ function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess
     var text='Hóng Sub - báo lỗi\nApp TV tự thoát\nBản: App TV '+(window.tizen?'Samsung':'LG')+' '+VERSION+'\nTV: '+navigator.userAgent+'\nLần trước chạy khoảng '+ran+' giây, còn chạy lúc '+new Date(prev.at).toLocaleString()+'\nMã TV: '+load('code','')+'\n\nNhật ký:\n'+TL.join('\n');
     var body={kind:'tv-out',ver:('App TV '+(window.tizen?'Samsung':'LG')+' '+VERSION).slice(0,60),head:((bg?'TV đưa app ra nền rồi đóng':'App TV bị tắt ngang, không báo trước')+' | '+tail).slice(0,200),text:text.slice(-60000)};
     setTimeout(function(){ try{ xhr('POST','https://honggame.store/wp-json/hgs-sub/v1/report',body,function(){}); }catch(e){} },6000);
+  }
+  /* the TV closed the app last time without Back: tell the customer the usual cause and what to switch off on the TV
+     and the PS5 (HDMI-CEC makes the TV jump to the console's input and close the app) */
+  if(prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length){
+    var lg=!window.tizen, tip='Lần trước TV tự thoát app Hóng Sub. Nếu TV hay tự thoát: '+(lg?'trên TV vào Cài đặt › Chung › Thiết bị › tắt HDMI SimpLink (HDMI-CEC)':'trên TV vào Cài đặt › Chung › Trình quản lý thiết bị ngoài › tắt Anynet+ (HDMI-CEC)')+'; trên PS5 vào Cài đặt › Hệ thống › HDMI › tắt "Bật liên kết thiết bị HDMI". Rồi mở lại app.';
+    setTimeout(function(){ var e=document.getElementById('hOut'); if(e){ e.textContent=tip; e.hidden=false; } },0);
   }
   TL=TL.slice(-25); tlog('--- mở app, bản '+VERSION);
   var s0={start:now,at:now,quit:false}; save('sess',s0);
