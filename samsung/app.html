@@ -212,7 +212,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.383';
+var VERSION='1.0.384';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -233,7 +233,7 @@ function tlog(m){ try{ var d=new Date(), p=function(x){ return ('0'+x).slice(-2)
 function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess',s0); }catch(e){} tlog('đóng app: '+why); }
 (function(){
   var prev=load('sess',null), now=Date.now();
-  if(prev&&!prev.quit&&prev.at&&now-prev.at<6*3600e3&&TL.length&&now-(+load('tlogRep',0))>20*60e3){
+  if((packaged||window.tizen||window.PalmSystem)&&prev&&!prev.quit&&prev.at&&now-prev.at<6*3600e3&&TL.length&&now-(+load('tlogRep',0))>20*60e3){   /* the installed app only: closing a browser tab is normal */
     save('tlogRep',now);
     var tail=TL.slice(-4).join(' | '), bg=/TV ẩn app/.test(TL.slice(-3).join(' ')), ran=Math.max(0,Math.round(((prev.at||now)-(prev.start||now))/1000));
     var text='Hóng Sub - báo lỗi\nApp TV tự thoát\nBản: App TV '+(window.tizen?'Samsung':'LG')+' '+VERSION+'\nTV: '+navigator.userAgent+'\nLần trước chạy khoảng '+ran+' giây, còn chạy lúc '+new Date(prev.at).toLocaleString()+'\nMã TV: '+load('code','')+'\n\nNhật ký:\n'+TL.join('\n');
@@ -247,7 +247,7 @@ function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess
   if(!(prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length)&&cecN<3){ save('cecTip',cecN+1);
     var tip0='Trước khi chơi: '+(!window.tizen?'trên TV vào Cài đặt › Chung › Thiết bị › tắt HDMI SimpLink (HDMI-CEC)':'trên TV vào Cài đặt › Chung › Trình quản lý thiết bị ngoài › tắt Anynet+ (HDMI-CEC)')+'; trên PS5 vào Cài đặt › Hệ thống › HDMI › tắt "Bật liên kết thiết bị HDMI" và tắt "Bật HDCP". Bật PS5 trước rồi mới mở Hóng Sub. Như vậy TV không tự thoát app và hình game không bị đen.';
     setTimeout(function(){ var e=document.getElementById('hOut'); if(e){ e.textContent=tip0; e.hidden=false; } },0); }
-  if(prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length){
+  if((packaged||window.tizen||window.PalmSystem)&&prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length){
     var lg=!window.tizen, tip='Lần trước TV tự thoát app Hóng Sub. Nếu TV hay tự thoát: '+(lg?'trên TV vào Cài đặt › Chung › Thiết bị › tắt HDMI SimpLink (HDMI-CEC)':'trên TV vào Cài đặt › Chung › Trình quản lý thiết bị ngoài › tắt Anynet+ (HDMI-CEC)')+'; trên PS5 vào Cài đặt › Hệ thống › HDMI › tắt "Bật liên kết thiết bị HDMI". Rồi mở lại app.';
     setTimeout(function(){ var e=document.getElementById('hOut'); if(e){ e.textContent=tip; e.hidden=false; } },0);
   }
@@ -333,14 +333,27 @@ function srcFail(n){
 }
 function srcFailShow(n){
   if(P.src!==n) return; srcOk=false; window.srcOpen=0; video.style.display='none'; homeShow();
-  $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV không mở được hình HDMI. Phụ đề vẫn hiện ở đây; muốn có cả hình game thì cài app Hóng Sub cho LG.';
+  $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV này chưa mở được hình HDMI '+n+'. Thử cổng HDMI khác; nếu vẫn không được, cài app Hóng Sub cho TV (trên máy tính hoặc điện thoại: Kết nối › TV).';
+  webTry(n,false);
 }
+/* ---------- honggame.store/tv: the same page opened in the TV's own web browser (no app to install) ----------
+   Whether a TV's browser lets a page show the HDMI picture differs by brand and year: each result is sent once to
+   Hóng Sub's bug reports (kind tv-web) so it is known which TVs this works on. */
+function webTry(n,ok){
+  if(packaged) return;
+  var key='webTry'+(ok?'ok':'no'); if(load(key,0)) return; save(key,Date.now());
+  try{ xhr('POST','https://honggame.store/wp-json/hgs-sub/v1/report',{kind:'tv-web',ver:('TV trình duyệt '+VERSION).slice(0,60),
+    head:(ok?'Trình duyệt TV MỞ ĐƯỢC hình HDMI ':'Trình duyệt TV KHÔNG mở được hình HDMI ')+n+' | '+navigator.userAgent.slice(0,150),
+    text:'Hóng Sub - báo lỗi\nTV qua trình duyệt\nBản: '+VERSION+'\nTV: '+navigator.userAgent+'\nHDMI '+n+': '+(ok?'có hình':'không có hình')+'\n\nNhật ký:\n'+TL.join('\n')},function(){}); }catch(e){}
+}
+var wakeL=null;
+function keepAwake(){ if(packaged||!navigator.wakeLock||wakeL) return; try{ navigator.wakeLock.request('screen').then(function(w){ wakeL=w; w.addEventListener('release',function(){ wakeL=null; }); },function(){}); }catch(e){} }
 function homeBtns(){ [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.className='btn'+(+b.getAttribute('data-hdmi')===P.src?' on':''); }); }
 function gameSound(){
   try{ video.muted=false; video.volume=1; }catch(e){}
   try{ var at=video.audioTracks; if(at&&at.length){ var any=false; for(var i=0;i<at.length;i++) if(at[i].enabled) any=true; if(!any) at[0].enabled=true; } }catch(e){}
 }
-video.addEventListener('playing',function(){ if(!srcOk) tlog('hình HDMI đang chạy'); srcOk=true; homeHide(); gameSound(); });
+video.addEventListener('playing',function(){ if(!srcOk){ tlog('hình HDMI đang chạy'); webTry(P.src,true); } srcOk=true; homeHide(); gameSound(); keepAwake(); });
 ['error','ended','emptied','abort'].forEach(function(ev){ video.addEventListener(ev,function(){ if(video.style.display!=='none') tlog('hình HDMI: '+ev+(video.error?' (mã '+video.error.code+')':'')); }); });
 video.addEventListener('volumechange',function(){ if(video.muted) gameSound(); });
 video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); gameSound(); });
