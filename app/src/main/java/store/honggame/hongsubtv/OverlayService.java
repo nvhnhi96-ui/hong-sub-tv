@@ -716,12 +716,12 @@ public class OverlayService extends Service {
                 DisplayMetrics dm = new DisplayMetrics();
                 wm.getDefaultDisplay().getRealMetrics(dm);
                 lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-                lp.y = Math.max(0, (int) ((1 - abv[1]) * dm.heightPixels) + dp(2));
+                lp.y = Math.max(0, (int) ((1 - abv[1]) * dm.heightPixels) + dp(3));
                 int cx = (int) ((abv[0] + abv[2] / 2) * dm.widthPixels);
                 lp.x = Math.max(-(dm.widthPixels - lp.width) / 2, Math.min((dm.widthPixels - lp.width) / 2, cx - dm.widthPixels / 2));
             }
             float k = prefs.boxH() / 100f;
-            box.setPadding(dp(22), (int) (dp(10) * k), dp(22), (int) (dp(12) * k));
+            box.setPadding(dp(22), (int) (dp(10) * k), dp(22), (int) (dp(abv != null && !prefs.top() ? 7 : 12) * k));   // above the English: little room under the last line, the English is right below
         }
         try { wm.updateViewLayout(box, lp); } catch (Exception ignored) { }
         fitLines();

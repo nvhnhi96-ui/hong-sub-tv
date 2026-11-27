@@ -4784,7 +4784,7 @@ function coverUp(c,html,b,st,ox,oy){
   var d=c.firstChild; d.innerHTML=html; c.hidden=false;
   d.style.fontFamily=subFont(); d.style.color=/^#[0-9A-Fa-f]{6}$/.test(lk.color||'')?lk.color:'#FFFFFF'; d.style.textAlign='center'; c.style.justifyContent='center';
   c.style.background='rgba(8,8,10,'+(Math.max(0,Math.min(100,lk.bg==null?74:+lk.bg))/100)+')';
-  c.style.borderRadius=(10*u)+'px'; c.style.padding=(10*u*kh)+'px '+(22*u)+'px '+(12*u*kh)+'px';
+  c.style.borderRadius=(10*u)+'px'; c.style.padding=(10*u*kh)+'px '+(22*u)+'px '+(7*u*kh)+'px';   /* little room under the last line: the English is right below */
   c.style.left=(ox+lx)+'px'; c.style.width=w+'px'; c.style.minHeight='0'; c.style.height='auto';
   var size=+$('hsSize').value||28, sk=Math.max(.4,Math.min(2.5,size/28));
   var fs=Math.max(8,xb>0?xb*b.h/fontRatio(subFont(),!!sb.caps)*sk:size*30/28*u); d.style.fontSize=fs+'px';
@@ -4794,7 +4794,7 @@ function coverUp(c,html,b,st,ox,oy){
   if(fitU<=0){ d.style.whiteSpace=lineMatch()?'nowrap':'';
     if(lineMatch()&&d.scrollWidth>w-48*u){ d.style.whiteSpace=''; d.innerHTML=String(html).replace(/<br\s*\/?>/gi,' '); } }   /* too long for the original's lines: one more line */
   for(var i=0;i<12&&c.offsetHeight>b.h*0.42&&fs>9*u;i++){ fs*=0.9; d.style.fontSize=fs+'px'; }   /* smaller only when it would cover almost half the picture */
-  var top=oy+b.t+a.y*b.h-c.offsetHeight-2*u; c.style.top=Math.max(oy+b.t,top)+'px';
+  var top=oy+b.t+a.y*b.h-c.offsetHeight-3*u; c.style.top=Math.max(oy+b.t,top)+'px';
   S.coverHtml=html;
 }
 function coverShow(html,vl){
@@ -5586,17 +5586,17 @@ function subAbove(){
   if(!b||Date.now()-b.at>60000) return {x:R0.x,y:R0.y,w:R0.w,h:R0.h};
   return aboveSteady({x:R0.x+b.x*R0.w,y:R0.y+b.y*R0.h,w:b.w*R0.w,h:b.h*R0.h},(b.lh||b.h/Math.max(1,b.n||1))*R0.h);
 }
-/* where the Vietnamese sits above the English, kept still between lines (25/11/2026: "vị trí hiện chữ dịch nhảy lung
-   tung"): the English subtitle's bottom and centre hardly move in a game, its top does (one line, two lines, a name
-   read with it). So the box stands on a steady bottom, as high as the most lines seen in the last 30 s, and moves
-   only when the subtitle itself moves (more than ~1.5 lines up or down, or sideways). */
+/* where the Vietnamese sits above the English: its last line a set, small distance above the FIRST line of the English
+   shown now (27/11/2026, Sifu: the Vietnamese floated far above the English). Before, the box stood as high as the
+   most lines seen in the last 30 s (to keep it still, 25/11), so after a 2-3 line subtitle a 1-line one had one or two
+   empty lines between the two. Now it follows the English top; it stays still while that top moves by less than about
+   half a line (reading wobble, a taller letter), and is never over the English shown now. */
 function aboveSteady(r,lh){
-  var now=Date.now(), St=S.abvSt, bot=r.y+r.h, cx=r.x+r.w/2; lh=Math.max(0.005,lh||r.h);
-  var n=Math.max(1,Math.min(4,Math.round(r.h/lh)));
-  if(!St||now-St.at>45000||Math.abs(bot-St.bot)>1.6*lh||Math.abs(cx-St.cx)>0.12){ St=S.abvSt={bot:bot,cx:cx,lh:lh,n:n,nAt:now,at:now}; }
-  else { St.at=now; St.lh=St.lh*0.8+lh*0.2; if(n>=St.n){ St.n=n; St.nAt=now; } else if(now-St.nAt>30000){ St.n=n; St.nAt=now; } if(bot>St.bot) St.bot=bot; }
-  var y=Math.min(St.bot-St.n*St.lh,r.y);   /* never over the English line shown now */
-  return {x:Math.max(0,St.cx-r.w/2),y:Math.max(0,y),w:r.w,h:Math.max(0.01,St.bot-y)};
+  var now=Date.now(), St=S.abvSt, cx=r.x+r.w/2; lh=Math.max(0.005,lh||r.h);
+  if(!St||now-St.at>45000||Math.abs(r.y-St.y)>0.55*lh||Math.abs(cx-St.cx)>0.12){ St=S.abvSt={y:r.y,cx:cx,lh:lh,at:now}; }
+  else St.at=now;
+  var y=Math.min(St.y,r.y);
+  return {x:Math.max(0,St.cx-r.w/2),y:Math.max(0,y),w:r.w,h:Math.max(0.01,r.y+r.h-y)};
 }
 function subRect(){
   var R0=S.region; if(!R0) return null;
