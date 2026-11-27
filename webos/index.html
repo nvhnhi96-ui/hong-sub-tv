@@ -97,6 +97,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0E1014;col
 .hst .dot{-webkit-flex:none;flex:none}
 .hver{margin-top:2.4vh;font-size:2.6vh}
 .hout{margin-top:2vh;font-size:2.5vh;color:#FFD34D;border-left:.5vh solid #FFD34D;padding-left:1.4vh}
+.hbm{margin-top:2vh;font-size:2.4vh;color:#9FE6B8;border-left:.5vh solid #3DDC84;padding-left:1.4vh}
 .hstep{font-size:3.15vh;font-weight:700;line-height:1.4;color:#fff;margin:0 0 1.5vh}
 .hset{margin:2.4vh 0 1.6vh}
 .hrow{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;margin:0 0 2.2vh}
@@ -184,6 +185,7 @@ body.pan #sub{right:40vw}
       <button class="btn" type="button" id="bTest">Thử hiện chữ</button>
     </div>
     <p class="hstep">3. Bấm Bật phụ đề: hình PS5 hiện toàn màn hình, phụ đề tiếng Việt hiện đè lên game. Bấm Back để quay lại đây.</p>
+    <p class="hmut hbm" id="hBm" hidden>Lần sau mở nhanh: lưu trang này vào Dấu trang (hoặc Yêu thích) của trình duyệt TV. Mở lại trang là tự vào hình game, có sẵn phụ đề, không cần bấm gì.</p>
     <p class="hmut hset">Cỡ chữ, chỗ hiện chữ, câu tiếng Anh và giọng đọc chỉnh trên máy tính: Hóng Sub › Kết nối PS và TV. TV đổi theo ngay.</p>
     <div class="hrow">
       <button class="btn" type="button" id="bCode">Đổi mã TV</button>
@@ -330,6 +332,9 @@ function srcFail(n){
 }
 function srcFailShow(n){
   if(P.src!==n) return; srcOk=false; window.srcOpen=0; video.style.display='none'; homeShow();
+  /* the browser opened the port by itself (it worked last time) but the TV wants a press first: one press then */
+  if(window.__autoAt&&window.__autoAt===window.srcAt) return;   /* the same automatic try failing a second way */
+  if(window.__auto){ window.__auto=0; window.__autoAt=window.srcAt; $('hState').textContent='Bấm nút Bật phụ đề (nút vàng) để mở hình HDMI '+n+'.'; try{ $('bRun').focus(); }catch(e){} return; }
   $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV này chưa mở được hình HDMI '+n+'. Thử cổng HDMI khác; nếu vẫn không được, cài app Hóng Sub cho TV (trên máy tính hoặc điện thoại: Kết nối › TV).';
   webTry(n,false);
 }
@@ -350,7 +355,7 @@ function gameSound(){
   try{ video.muted=false; video.volume=1; }catch(e){}
   try{ var at=video.audioTracks; if(at&&at.length){ var any=false; for(var i=0;i<at.length;i++) if(at[i].enabled) any=true; if(!any) at[0].enabled=true; } }catch(e){}
 }
-video.addEventListener('playing',function(){ if(!srcOk){ tlog('hình HDMI đang chạy'); webTry(P.src,true); } srcOk=true; homeHide(); gameSound(); keepAwake(); });
+video.addEventListener('playing',function(){ if(!srcOk){ tlog('hình HDMI đang chạy'); webTry(P.src,true); if(!packaged){ save('webOk',P.src); window.__auto=0; } } srcOk=true; homeHide(); gameSound(); keepAwake(); });
 ['error','ended','emptied','abort'].forEach(function(ev){ video.addEventListener(ev,function(){ if(video.style.display!=='none') tlog('hình HDMI: '+ev+(video.error?' (mã '+video.error.code+')':'')); }); });
 video.addEventListener('volumechange',function(){ if(video.muted) gameSound(); });
 video.addEventListener('loadeddata',function(){ srcOk=true; homeHide(); gameSound(); });
@@ -859,7 +864,14 @@ document.addEventListener('visibilitychange',function(){ if(!document.hidden){ h
 function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }
 codeDraw(); applyLook(); hello(); poll(); lanPoll();
 /* the installed app opens the console's HDMI by itself; the browser waits for a click (TVs only play video after a press) */
-if(packaged&&P.src){ setSource(P.src); setTimeout(hdmiAuto,600); } else { if(!packaged) P.src=0; video.style.display='none'; homeBtns(); }
+/* the browser: once a port has shown the game here, opening the page again goes straight to it (honggame.store/hstv) */
+var webOk=packaged?0:+load('webOk',0);
+if(packaged&&P.src){ setSource(P.src); setTimeout(hdmiAuto,600); }
+else if(webOk>=1&&webOk<=4){ P.src=webOk; homeBtns(); window.__auto=1; setTimeout(function(){ if(window.__auto) setSource(P.src); },400); }
+else { if(!packaged) P.src=0; video.style.display='none'; homeBtns(); }
+if(!packaged&&!window.tizen&&!window.PalmSystem) $('hBm').hidden=false;
+/* a press on the remote is the person choosing: no more automatic opening */
+document.addEventListener('keydown',function(){ window.__auto=0; },true); document.addEventListener('click',function(){ window.__auto=0; },true);
 setTimeout(function(){ var b=document.querySelector('#homeBtns .btn'); if(b&&!panelOn) try{ b.focus(); }catch(e){} },300);
 window.addEventListener('resize',applyLook);
 window.hsTv={handle:handle,P:P,version:VERSION};
