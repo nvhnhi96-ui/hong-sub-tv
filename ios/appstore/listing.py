@@ -213,8 +213,17 @@ def do_no_china():
 
 
 def latest_build():
-    bs = call('GET', '/v1/builds', params={'filter[app]': APP, 'sort': '-uploadedDate', 'limit': 5})['data']
-    return [b for b in bs if b['attributes']['processingState'] == 'VALID'][0]
+    """the newest uploaded build, once Apple has processed it (waits up to 40 min; an older processed build is not taken
+    while the newest is still processing, or customers would get the old one)"""
+    for i in range(80):
+        bs = call('GET', '/v1/builds', params={'filter[app]': APP, 'sort': '-uploadedDate', 'limit': 5})['data']
+        if bs and bs[0]['attributes']['processingState'] == 'VALID':
+            return bs[0]
+        if bs and bs[0]['attributes']['processingState'] in ('FAILED', 'INVALID'):
+            raise RuntimeError('newest build ' + bs[0]['attributes']['processingState'])
+        print('   newest build still processing:', bs[0]['attributes']['version'] if bs else '-', bs[0]['attributes']['processingState'] if bs else '-')
+        time.sleep(30)
+    raise RuntimeError('newest build not processed after 40 min')
 
 
 def upsert(list_path, create_type, rel_name, rel_type, rel_id, attrs, match=None):

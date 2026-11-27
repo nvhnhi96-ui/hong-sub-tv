@@ -82,3 +82,18 @@ jobs:
       - name: Clean up the key
         if: always()
         run: rm -f "$RUNNER_TEMP/asc.p8"
+
+  # customers get it: the new build goes into the TestFlight group with the public link and to Beta App Review
+  # (before, a new build reached TestFlight but not the customers until someone added it to the group by hand)
+  testflight:
+    needs: appstore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pyjwt cryptography requests
+      - name: Give the new build to TestFlight customers
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 ios/appstore/listing.py do_testflight
