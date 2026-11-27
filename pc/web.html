@@ -3151,8 +3151,8 @@ function tvStatus(){
     if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
     return {bad:true,t:'TV Samsung chưa mở Hóng Sub (mã '+c+').'+lanWhy(),a:window.hsTzOpen?'Mở trên TV':'',f:window.hsTzOpen};
   }
-  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/tvweb, gõ mã đang hiện trên TV vào ô Mã TV.'};
-  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/tvweb với mã '+c+'.'};
+  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/hstv, gõ mã đang hiện trên TV vào ô Mã TV.'};
+  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/hstv với mã '+c+'.'};
 }
 /* "Failed to fetch" and the like: the line did not get out to the internet */
 function errVi(e){ var m=String((e&&e.message)||e||''); if(/failed to fetch|networkerror|load failed|network request failed|err_internet|err_name/i.test(m)) return 'Mất mạng khi gửi câu đi dịch. Kiểm tra Wi-Fi'+(PH||IOS?' hoặc 4G':'')+' có vào được internet.'; return m.slice(0,90); }

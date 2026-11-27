@@ -1020,7 +1020,7 @@ html.hs-phone .hs-spkmenu .hs-btn{width:100%;min-height:46px;font-size:15px}
                   <ol class="kn-steps">
                     <li class="kn-step" id="knAnd1"><i class="kn-n">1</i><div class="kn-b"><h3>Cài app Hóng Sub TV lên TV</h3>
                       <p class="hs-note">Cài xong, mở app trên TV rồi bấm "Bật phụ đề". Chỉ cài một lần.</p>
-                      <p class="hs-note"><b>Không cài được app lên TV LG / Samsung?</b> Cách dự phòng: trên TV mở trình duyệt web, gõ <b>honggame.store/tv</b>, chọn cổng HDMI đang cắm PS5, rồi nhập mã TV hiện trên màn hình vào đây. Tùy đời TV, trình duyệt có thể không hiện được hình game, khi đó vẫn nên cài app.</p>
+                      <p class="hs-note"><b>Không cài được app lên TV LG / Samsung?</b> Cách dự phòng: trên TV mở trình duyệt web, gõ <b>honggame.store/hstv</b>, chọn cổng HDMI đang cắm PS5, rồi nhập mã TV hiện trên màn hình vào đây. Tùy đời TV, trình duyệt có thể không hiện được hình game, khi đó vẫn nên cài app.</p>
                       <p class="hs-note"><b>TV hay tự thoát app Hóng Sub?</b> Thường do PS5 giành TV qua HDMI-CEC. Tắt trên TV: Samsung › Cài đặt › Chung › Trình quản lý thiết bị ngoài › Anynet+ (HDMI-CEC); LG › Cài đặt › Chung › Thiết bị › HDMI SimpLink. Tắt trên PS5: Cài đặt › Hệ thống › HDMI › "Bật liên kết thiết bị HDMI".</p>
                       <div class="hs-row"><button class="hs-btn" type="button" data-tvguide="android">Cách tải app lên TV</button></div>
                     </div></li>
@@ -4224,8 +4224,8 @@ function tvStatus(){
     if(lately) return {t:'Đang kết nối lại với TV Samsung...'};
     return {bad:true,t:'TV Samsung chưa mở Hóng Sub (mã '+c+').'+lanWhy(),a:window.hsTzOpen?'Mở trên TV':'',f:window.hsTzOpen};
   }
-  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/tvweb, gõ mã đang hiện trên TV vào ô Mã TV.'};
-  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/tvweb với mã '+c+'.'};
+  if(c.length<4) return {t:'Trên TV mở trình duyệt, vào honggame.store/hstv, gõ mã đang hiện trên TV vào ô Mã TV.'};
+  return seen?{ok:true,t:'Trình duyệt TV đang mở Hóng Sub (mã '+c+').'}:lately?{t:'Đang kết nối lại với trình duyệt TV...'}:{bad:true,t:'TV chưa mở trang honggame.store/hstv với mã '+c+'.'};
 }
 /* "Failed to fetch" and the like: the line did not get out to the internet */
 function errVi(e){ var m=String((e&&e.message)||e||''); if(/failed to fetch|networkerror|load failed|network request failed|err_internet|err_name/i.test(m)) return 'Mất mạng khi gửi câu đi dịch. Kiểm tra Wi-Fi'+(PH||IOS?' hoặc 4G':'')+' có vào được internet.'; return m.slice(0,90); }
