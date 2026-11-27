@@ -11269,7 +11269,7 @@ var TZI=(function(){
       say('TV đang cài app...');
       return tv.shell('0 vd_appinstall '+APP+' '+tmp+'/HongSub.wgt',180000,function(t){ var m=/(\d{1,3})\s*%/.exec(t); if(m) say('TV đang cài app... '+m[1]+'%'); }).then(function(out){
         if(/install failed\[|val\[fail\]/i.test(out)){
-          if(/same id and different certificate|already installed|different certificate/i.test(out)&&!run.again){ run.again=true; say('TV có bản Hóng Sub cũ khác chứng chỉ, đang gỡ...');
+          if(/same id and different certificate|already installed|different certificate|certificate not match/i.test(out)&&!run.again){ run.again=true; say('TV có bản Hóng Sub cũ khác chứng chỉ, đang gỡ...');
             return tv.shell('0 vd_appuninstall '+APP,60000).then(function(){ return tv.shell('0 vd_appuninstall '+PKG,60000).catch(function(){}); }).then(run); }
           var m=/reason:\s*([^\r\n]+)/i.exec(out)||/(install failed[^\r\n]*)/i.exec(out);
           if(/Check certificate error|certificate is not yet valid|118012|not yet valid/i.test(out)){
