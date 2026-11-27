@@ -212,7 +212,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.385';
+var VERSION='1.0.386';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -830,7 +830,7 @@ $('bRun').onclick=function(){
 };
 $('bTest').onclick=function(){ sample(); };
 $('bCode').onclick=function(){ newTvCode(); $('hState').textContent='Đã đổi mã TV. Gõ mã mới vào Hóng Sub trên máy tính.'; };
-var TVNAME='TV Samsung';
+var TVNAME=packaged?'TV Samsung':'đúng hãng TV này (LG hoặc Samsung)';
 [].forEach.call(document.querySelectorAll('.tvn'),function(el){ el.textContent=TVNAME; });
 $('hVer').textContent='Bản '+VERSION;
 $('bSet').onclick=function(){ panel(true); };
