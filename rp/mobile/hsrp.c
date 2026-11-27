@@ -1020,13 +1020,50 @@ static void *conn_thread(void *arg)
 	return NULL;
 }
 
+static int listen_on(int port)
+{
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	if(fd < 0) return -1;
+	int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+	struct sockaddr_in a; memset(&a, 0, sizeof(a));
+	a.sin_family = AF_INET; a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); a.sin_port = htons((uint16_t)port);
+	if(bind(fd, (struct sockaddr *)&a, sizeof(a)) != 0 || listen(fd, 16) != 0) { close(fd); return -1; }
+	return fd;
+}
+
+static int g_port = 0;
+static void relisten(void)
+{
+	if(g_port <= 0) return;
+	int old = g_listen;
+	if(old >= 0) close(old);
+	for(int i = 0; i < 20; i++)
+	{
+		int fd = listen_on(g_port);
+		if(fd >= 0) { g_listen = fd; hlog("hsrp listening again on 127.0.0.1:%d", g_port); return; }
+		sleep_ms(250);
+	}
+	hlog("hsrp could not listen again on %d", g_port);
+}
+
 static void *accept_thread(void *arg)
 {
 	(void)arg;
+	int bad = 0;
 	for(;;)
 	{
 		int c = accept(g_listen, NULL, NULL);
-		if(c < 0) { if(errno == EINTR || errno == ECONNABORTED) continue; sleep_ms(200); continue; }
+		if(c < 0)
+		{
+			if(errno == EINTR) continue;
+			/* iOS takes the listening socket back while the app is in the background: every accept() then fails
+			   (ECONNABORTED, at once) and the page could no longer reach the PS5 part ("thiếu thành phần kết nối",
+			   report 1160). After a run of failures, listen again on the same port */
+			if(++bad >= 5) { relisten(); bad = 0; }
+			sleep_ms(errno == ECONNABORTED ? 50 : 200);
+			continue;
+		}
+		bad = 0;
 #ifdef SO_NOSIGPIPE
 		int one = 1; setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
 #endif
@@ -1064,6 +1101,7 @@ int hsrp_start(int port, const char *token, const char *web_root)
 	socklen_t al = sizeof(a);
 	getsockname(fd, (struct sockaddr *)&a, &al);
 	g_listen = fd;
+	g_port = ntohs(a.sin_port);
 	pthread_t th;
 	pthread_create(&th, NULL, writer_thread, NULL); pthread_detach(th);
 	pthread_create(&th, NULL, accept_thread, NULL); pthread_detach(th);

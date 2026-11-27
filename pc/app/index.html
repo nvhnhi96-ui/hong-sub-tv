@@ -9519,6 +9519,8 @@ function hsMobilePs(){
     });
     return opening;
   }
+  /* the phone app's own part can be back a moment later (iPhone: it listens again after the app was in the background) */
+  function openTry(){ return open().catch(function(){ return new Promise(function(r){ setTimeout(r,1500); }).then(open); }).catch(function(){ return new Promise(function(r){ setTimeout(r,2500); }).then(open); }); }
   function send(line){ if(ws&&ws.readyState===1){ try{ ws.send(line); }catch(e){} } }
   var tvN=0;
   function tvAsk(ip,path,body){
@@ -9530,7 +9532,7 @@ function hsMobilePs(){
     });
   }
   function ask(line,ev,ms,id){
-    return open().then(function(w){ return new Promise(function(res){
+    return openTry().then(function(w){ return new Promise(function(res){
       var x={ev:ev,id:id,f:function(j){ clearTimeout(tm); res(j); }};
       var tm=setTimeout(function(){ var i=wait.indexOf(x); if(i>=0) wait.splice(i,1); res({ev:ev,ok:false,err:'timeout'}); },ms);
       wait.push(x); w.send(line); }); },function(){ return {ev:ev,ok:false,err:'missing'}; });
@@ -9582,7 +9584,7 @@ function hsMobilePs(){
     connect:function(id,o){
       var h=cfg.hosts[id]; if(!h) return Promise.resolve({ok:false,err:'not registered'});
       var res=String((o&&o.res)||720), fps=String((o&&o.fps)||30), br=(o&&o.br)?' '+o.br:'';
-      return open().then(function(w){ streaming=true; w.send('stream '+h.addr+' '+(h.ps5?1:0)+' '+h.regist_key+' '+h.morning+' '+res+' '+fps+br); return {ok:true,name:h.name}; },function(){ return {ok:false,err:'missing'}; });
+      return openTry().then(function(w){ streaming=true; w.send('stream '+h.addr+' '+(h.ps5?1:0)+' '+h.regist_key+' '+h.morning+' '+res+' '+fps+br); return {ok:true,name:h.name}; },function(){ return {ok:false,err:'missing'}; });
     },
     input:function(line){ send(line); },
     stop:function(sleep){ send(sleep?'s':'q'); },
@@ -9626,6 +9628,8 @@ function psAccUi(){
 /* iPhone only finds and pairs with the console when Local Network is allowed for the app */
 function psIosLan(){ return IOS?' iPhone: vào Cài đặt › Quyền riêng tư & Bảo mật › Mạng cục bộ, bật cho Hóng Sub, rồi tắt hẳn app và mở lại.':''; }
 function psPairFail(h,r){
+  /* the Windows / Mac app hands back the core's words with the answer (r.log); the phones send them as they come */
+  if(!(PS.regLog&&PS.regLog.length)&&r&&r.log) PS.regLog=String(r.log).split(/\r?\n/).map(function(l){ return l.replace(/^\[\d+\]\s*/,'').trim(); }).filter(Boolean).slice(-14);
   var lg=(PS.regLog||[]).join(' | '), err=(r&&r.err)||'', scr=h.ps5?'Settings › System › Remote Play › Link Device':'Settings › Remote Play Connection Settings › Add Device', why, t;
   if(!lg){ why='khong ro'; t='Kiểm tra mã 8 số còn hạn và '+psDev()+' cùng mạng với máy'+(err?' ('+err+')':'')+'.'+psIosLan(); }
   else if(/failed to send search|broken pipe|assign requested/i.test(lg)){ why='dien thoai chua gui duoc toi may'; t=psDev().charAt(0).toUpperCase()+psDev().slice(1)+' chưa gửi được tới máy PS.'+psIosLan()+' Tắt VPN'+(IOS?' và iCloud Private Relay':'')+', dùng chung Wi-Fi với máy PS rồi bấm Ghép lại.'; }
