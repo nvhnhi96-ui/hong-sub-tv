@@ -214,7 +214,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.391';
+var VERSION='1.0.393';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -868,6 +868,10 @@ function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ retur
 codeDraw(); applyLook(); hello(); poll(); lanPoll();
 /* the installed app opens the console's HDMI by itself; the browser waits for a click (TVs only play video after a press) */
 /* the browser: once a port has shown the game here, opening the page again goes straight to it (honggame.store/hstv) */
+/* the diary says where the app starts from: a TV that keeps restarting the app with no HDMI ever opened (Samsung
+   Tizen 4.0, reports 1172/1179) showed nothing else */
+tlog(P.src?'cổng HDMI đã chọn: '+P.src:'chưa chọn cổng HDMI, đang ở màn hình chính');
+setTimeout(function(){ try{ var m=performance&&performance.memory; tlog('sau 20 giây: '+(m?'bộ nhớ '+Math.round(m.usedJSHeapSize/1048576)+'/'+Math.round(m.jsHeapSizeLimit/1048576)+' MB, ':'')+(srcOk?'đang hiện hình':'chưa có hình')+(document.hidden?', app đang ẩn':'')); }catch(e){} },20000);
 var webOk=packaged?0:+load('webOk',0);
 if(packaged&&P.src){ setSource(P.src); setTimeout(hdmiAuto,600); }
 else if(webOk>=1&&webOk<=4){ P.src=webOk; homeBtns(); window.__auto=1; setTimeout(function(){ if(window.__auto) setSource(P.src); },400); }
