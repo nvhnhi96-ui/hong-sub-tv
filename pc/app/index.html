@@ -1456,7 +1456,7 @@ div.kn-step{margin-top:8px}
               </div>
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
               <label class="hs-sw dk-sw">Tự dịch chữ khác trên màn hình: nhiệm vụ, hướng dẫn nút, menu, tin nhắn (ngoài dòng phụ đề) <input type="checkbox" id="hsFsLive"></label>
-              <label class="hs-sw dk-sw">Chữ trên màn hình: chỉ dịch câu (tin nhắn, thông báo), giữ nguyên tên và nhãn <input type="checkbox" id="hsFsSent" checked></label>
+              <div class="dk-set" id="hsFsModeW"><label class="lab" for="hsFsMode">Chữ trên màn hình dịch những gì</label><select class="hs-in" id="hsFsMode"><option value="auto">Tự động: menu, màn hình đứng yên dịch hết; đang chơi chỉ dịch câu</option><option value="all">Dịch hết: cả nhãn, nút, chỉ số</option><option value="sent">Chỉ dịch câu: tin nhắn, thông báo, nhiệm vụ</option></select></div>
               <label class="hs-sw dk-sw" title="Tắt (mặc định): bấm nút mic trên tay cầm không làm gì, app chỉ tự dịch chữ trên màn hình. Bật: bấm nút mic để dịch cả menu đang mở, trong lúc đó phụ đề lời thoại tạm ngừng">Dịch menu bằng nút mic trên tay cầm <input type="checkbox" id="hsMicMenu"></label>
               <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
               <label class="hs-sw dk-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
@@ -7213,10 +7213,22 @@ function fsWorth(it){
   /* "Chỉ dịch câu": contact names (Rusty Anchor, Donnie), headers and labels (Suggested, Messages) stay as in the
      game; only what is written to be read (messages, notices, quest text) gets a box. Common game menu words that
      the dictionary knows (Unarmed, In Hand, Continue...) are still translated. */
-  if(fsSentOnly()&&!S.micMenu&&GUARD.kind!=='map'&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]) return false;   /* a menu the player asked for (mic, "Dịch menu"): all of it */
+  if(it.lblSkip) return false;   /* a label left as it is (fsLblSkip): not translated, no box */
+  if(fsMode()==='sent'&&!S.micMenu&&GUARD.kind!=='map'&&fsLabel(en)) return false;   /* a menu the player asked for (mic, "Dịch menu"): all of it */
   return true;
 }
-function fsSentOnly(){ var c=$('hsFsSent'); return c?c.checked:load('fsSent',true); }
+/* what of the other screen text is translated (27/11/2026, replaces the "chỉ dịch câu" switch, which left every label
+   of a game in English and looked like a fault):
+   auto: a still screen (menu, pause, skill tree, the death screen) all of it; while playing (the picture moves under
+         the box) only sentences, the labels that flash over the fight (HOLD, Multiplier, Level Score) stay as they are
+   all:  everything, labels and numbers' names too
+   sent: only sentences (messages, notices, quests) */
+function fsMode(){ var c=$('hsFsMode'), v=c&&c.value||load('fsMode',''); if(!v){ var o=load('fsSent',null); v=o===false?'all':'auto'; } return /^(auto|all|sent)$/.test(v)?v:'auto'; }
+function fsSentOnly(){ return fsMode()==='sent'; }
+function fsLabel(en){ en=String(en||'').trim(); return !!en&&en.split('\n').every(function(l){ return uiLike(l); })&&!GLOSS_UI_N[glossNorm(en)]; }
+/* a label not translated now: in "sent" always, in "auto" only over a moving picture (the same label on a still screen
+   later is translated then). Never for a menu the player asked for (mic) or the map. */
+function fsLblSkip(b){ var m=fsMode(); if(m==='all'||S.micMenu||GUARD.kind==='map'||!fsLabel(b&&b.en)) return false; return m==='sent'||!!(b&&b.hud); }
 var GLOSS_UI_N={}; (function(){ for(var k in GLOSS_UI) if(GLOSS_UI.hasOwnProperty(k)) GLOSS_UI_N[glossNorm(k)]=1; })();
 function fsDraw(){
   var b=videoBox(), html='', view=S.fs.on?fsView(S.fs.items):[];
@@ -8061,7 +8073,8 @@ S.fl={on:false,items:[],prev:null,still:null,dirty:null,last:0,busy:false,timer:
 var FLC_N=0;   /* how many times the picture for the screen text's colours was taken */
 function fsLiveOn(){ var c=$('hsFsLive'); return !!(c&&c.checked); }
 (function(){ var c=$('hsMapTr'); if(!c) return; c.checked=load('mapTr',true); c.addEventListener('change',function(){ save('mapTr',c.checked); if(GUARD.kind==='map'){ if(c.checked) flStart(); else if(!fsLiveOn()) flStop(); } }); })();
-(function(){ var c=$('hsFsSent'); if(!c) return; c.checked=load('fsSent',true); c.addEventListener('change',function(){ save('fsSent',c.checked); S.fsOvK=''; try{ fsDraw(); flDraw(); fsOverlaySync(); }catch(e){} }); })();
+(function(){ var c=$('hsFsMode'); if(!c) return; c.value=fsMode(); c.addEventListener('change',function(){ save('fsMode',c.value); S.fsOvK=''; try{ S.fl.items=(S.fl.items||[]).filter(function(it){ return !it.lblSkip; }); fsDraw(); flDraw(); fsOverlaySync(); }catch(e){} });
+  var lv=$('hsFsLive'), w=$('hsFsModeW'), sh=function(){ if(w) w.style.display=lv&&lv.checked?'':'none'; }; if(lv) lv.addEventListener('change',sh); setTimeout(sh,0); })();
 /* the game map: the quest list, the mission card, the legend and the button hints are translated, the place names,
    streets, shops and map signs stay as in the game. Works without "Tự dịch chữ khác" too (only while the map is open). */
 function mapOn(){ return GUARD.kind==='map'&&mapTrOn(); }
@@ -8351,9 +8364,10 @@ async function flRead(my,first){
     if(hud||busyPic&&!first) b.hud=true;   /* a box over a moving picture: kept by reading it again, not dropped the moment the picture under it changes */
     if(dictJunk(b.en)) return;                                    /* a misreading ("BREAY", "DREAATAJI KUN"): not translated, no box */
     var gx=glossExact(b.en); if(gx&&norm(gx)===norm(b.en)) return;   /* a name or brand kept as it is in this game: nothing to cover */
-    if(S.fl.items.some(function(it){ return fsNear(it,b)&&fsSameText(b.en,it.en); })) return;   /* already on screen in a box with this text (a fuller one) */
+    var lskip=fsLblSkip(b), live=function(it){ return !(it.lblSkip&&!lskip); };
+    if(S.fl.items.some(function(it){ return live(it)&&fsNear(it,b)&&fsSameText(b.en,it.en); })) return;   /* already on screen in a box with this text (a fuller one) */
     S.fl.items=S.fl.items.filter(function(it){ return !(fsNear(it,b)&&fsSameText(it.en,b.en)); });   /* a box with a piece of this text: the fuller new one replaces it */
-    var same=S.fl.items.filter(function(it){ return fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
+    var same=S.fl.items.filter(function(it){ return live(it)&&fsOverlap(it,b)>0.15; });   /* an older box under the new one (the page scrolled): it goes */
     if(same.some(function(it){ var a=norm(it.en), c=norm(b.en); return similar(it.en,b.en)||dice(it.en,b.en)>0.8||a.indexOf(c)>=0||c.indexOf(a)>=0||flWordsIn(b.en,it.en)>=0.75&&fsOverlap(it,b)>0.4; })) return;   /* already on screen (also read as one line or two, or only part of it this time) */   /* already on screen (also read as one line or two) */
     if(same.length) S.fl.items=S.fl.items.filter(function(it){ return same.indexOf(it)<0; });
     b.sig=flPatch(g2,b); b.at=Date.now();
@@ -8366,7 +8380,8 @@ async function flRead(my,first){
   S.fl.cands=conf?cOld.filter(function(k){ return !k.hit&&cNow-k.at<15000; }).map(function(k){ k.tried=1; return k; }):cNew.slice(0,cMax);
   if(!add.length){ S.fl.busy=false; return; }
   var need=[];
-  add.forEach(function(b){ var c=S.fs.cache.get(norm(fsT(b))); if(c==null&&!(b.ic&&b.ic.length)){ var gq=glossExact(b.en); if(gq) c=gq; } if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
+  add.forEach(function(b){ if(fsLblSkip(b)){ b.lblSkip=1; return; }   /* left as it is: not sent to the AI either */
+    var c=S.fs.cache.get(norm(fsT(b))); if(c==null&&!(b.ic&&b.ic.length)){ var gq=glossExact(b.en); if(gq) c=gq; } if(c!=null&&creditPair(b.en,c)) c=null; if(c==null&&!(b.ic&&b.ic.length)){ var sh=tmZone(b.en); if(sh){ c=fsLinesLike(b.en,sh); S.fs.cache.set(norm(b.en),c); } } if(c!=null) b.vi=fsLinesLike(b.en,c); else need.push(b); });
   /* text still being written (typed letter by letter, a line filling in) was read half-way, got a box and went to
      the AI; a moment later the longer text did the same, and again: pieces of sentences in boxes over each other,
      and the AI asked several times for one line. A new text with fresh changes inside it waits a moment: when the
@@ -8402,6 +8417,12 @@ async function flRead(my,first){
   if(aiOn){
     /* what the player looks at first goes first, in its own small request (it comes back sooner): the highlighted
        row, then descriptions, then the rest; each part shows as soon as it is translated */
+    /* the subtitle goes first: while a line of dialogue is being translated (or waits for it), the screen text waits
+       for it, at most 1.5 s, so the dialogue never comes later because of a menu or a label */
+    var subW=Date.now(); S.fl.subWait=0;
+    while(((S.busyTexts&&S.busyTexts.length)||(S.q&&S.q.length))&&Date.now()-subW<1500&&my===S.fl.seq) await new Promise(function(r){ setTimeout(r,60); });
+    if(Date.now()-subW>=60) S.fl.subWaitN=(S.fl.subWaitN||0)+1;
+    if(my!==S.fl.seq) return;
     var order=need.slice().sort(function(a,b){ return flPri(b)-flPri(a)||a.y-b.y; });
     var groups=order.length>5?[order.slice(0,4),order.slice(4)]:[order], fails=0;
     await Promise.all(groups.map(async function(G){
@@ -8526,7 +8547,7 @@ function reportText(){
     'Nguồn hình: '+(!S.stream?'chưa có':PS.stream&&S.stream===PS.stream?'PS chơi trong Hóng Sub':S.demo?'chạy thử':(S.stream.getVideoTracks()[0]||{}).label),
     'PS: '+(typeof PS==='undefined'||!DPS?'không có':JSON.stringify({psn:!!(PS.acc&&PS.acc.loggedIn),helper:PS.acc&&PS.acc.helper,may:(Array.isArray(PS.hosts)?PS.hosts:[]).map(function(h){return h.name+' '+h.addr+' '+h.state+(h.registered?' ghép':'');}),dang:PS.host?PS.host.name:'',goi:PS.pk||0,khung:PS.frames||0,giai:PS.codec||'',lan:PS.retry||0,loi:PS.err||'',tuongLua:!!PS.fwNeed})), 'Giọng: '+voiceMode()+', số giọng Việt: '+viVoices().length+(D&&!MAC?', giọng Windows: '+((winVoices||[]).filter(function(v){ return /^win:/.test(v.id||''); }).map(function(v){ return v.name+' ('+(v.lang||'?')+')'; }).join('; ')||'không có'):'')+', đọc phụ đề: '+($('hsSpeak').checked?'bật':'TẮT')+', đọc ở: '+speakWhere()+', giọng dùng: '+(D?devPick(voiceMode()==='ai'?'auto':voiceMode(),'',''):'trình duyệt')+(D&&D.speakState?', lần đọc gần nhất: '+JSON.stringify(D.speakState()):''),
     'TV: '+JSON.stringify({loai:S.tvType,ban:S.tvVer||'',lan:S.tvOk===true?'co':'khong',ma:tvCode(),ip:tvIp(),dt:S.lanPc||'',thayQuaMang:S.tvSeen?Math.round((Date.now()-S.tvSeen)/1000)+'s':'chua',thayThang:S.tvLanSeen?Math.round((Date.now()-S.tvLanSeen)/1000)+'s':'chua',relayLoi:S.relayBad?Math.round((Date.now()-S.relayBad)/1000)+'s':'khong',lgIp:load('mpLgIp',''),tzIp:load('mpTzIp','')}),
-    'Cài đặt: '+JSON.stringify({docTruocCauDau:S.partN||0,khopSomTuKho:S.earlyN||0,nhinNhanh:S.lookN||0,tuDichChuKhac:!!fsLiveOn(),micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
+    'Cài đặt: '+JSON.stringify({docTruocCauDau:S.partN||0,khopSomTuKho:S.earlyN||0,nhinNhanh:S.lookN||0,tuDichChuKhac:!!fsLiveOn(),cheDoChuManHinh:fsMode(),chuManHinhChoPhuDe:(S.fl&&S.fl.subWaitN)||0,micDichMenu:micMenuOn(),tocDoChuManHinh:(function(){ var a=(S.fl&&S.fl.spd||[]).slice().sort(function(x,y){ return x-y; }); return a.length?'giữa '+(a[a.length>>1]/1000).toFixed(1)+'s, chậm nhất '+(a[a.length-1]/1000).toFixed(1)+'s ('+a.length+' lần)':'chưa có'; })(),dangChay:!!(S.fl&&S.fl.on),soLanDoc:(S.fl&&S.fl.reads)||0,choVi:(S.fl&&S.fl.why)||'',dichBanDo:!!mapTrOn(),deChuViet:!!coverOn(),khungOmSat:!!($('hsSubSpot')&&$('hsSubSpot').checked),phuDeNoi:!!($('dkOvl')&&$('dkOvl').checked),coChu:+($('hsSize')&&$('hsSize').value||0),chinhCauKho:!!tmFitOn(),gopKho:!!($('hsTmShare')&&$('hsTmShare').checked),docKipLoi:!!fitOn(),tocDoDoc:+($('hsRate')&&$('hsRate').value||1),giongTv:tvVoiceSel(),phongCach:styleKey(),luatRieng:(gameRules()||'').length+' chữ',ghiChu:($('hsNotes').value||'').length+' chữ'}),
     'Lượt hôm nay: '+JSON.stringify(S.use.k), '', 'Nhật ký:'].concat(LOG).join('\n');
   return info.replace(/AIza[\w-]{20,}|AQ\.[\w.-]{20,}|gsk_\w{20,}/g,'[mã]');
 }

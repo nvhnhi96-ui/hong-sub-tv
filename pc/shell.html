@@ -1161,7 +1161,7 @@ div.kn-step{margin-top:8px}
               </div>
               <label class="hs-sw dk-sw" title="Không dịch khi đang ở màn hình chính, Control Center, cửa hàng của máy PS hay khi mở bản đồ game">Chỉ dịch khi đang chơi (tự ngừng ở màn hình PS5 và bản đồ game) <input type="checkbox" id="hsGuard" checked></label>
               <label class="hs-sw dk-sw">Tự dịch chữ khác trên màn hình: nhiệm vụ, hướng dẫn nút, menu, tin nhắn (ngoài dòng phụ đề) <input type="checkbox" id="hsFsLive"></label>
-              <label class="hs-sw dk-sw">Chữ trên màn hình: chỉ dịch câu (tin nhắn, thông báo), giữ nguyên tên và nhãn <input type="checkbox" id="hsFsSent" checked></label>
+              <div class="dk-set" id="hsFsModeW"><label class="lab" for="hsFsMode">Chữ trên màn hình dịch những gì</label><select class="hs-in" id="hsFsMode"><option value="auto">Tự động: menu, màn hình đứng yên dịch hết; đang chơi chỉ dịch câu</option><option value="all">Dịch hết: cả nhãn, nút, chỉ số</option><option value="sent">Chỉ dịch câu: tin nhắn, thông báo, nhiệm vụ</option></select></div>
               <label class="hs-sw dk-sw" title="Tắt (mặc định): bấm nút mic trên tay cầm không làm gì, app chỉ tự dịch chữ trên màn hình. Bật: bấm nút mic để dịch cả menu đang mở, trong lúc đó phụ đề lời thoại tạm ngừng">Dịch menu bằng nút mic trên tay cầm <input type="checkbox" id="hsMicMenu"></label>
               <label class="hs-sw dk-sw">Dịch bản đồ game (giữ nguyên địa danh, ký hiệu) <input type="checkbox" id="hsMapTr" checked></label>
               <label class="hs-sw dk-sw" hidden>Dịch cả màn hình: tự dịch lại khi màn hình đổi <input type="checkbox" id="hsFsAuto"></label>
