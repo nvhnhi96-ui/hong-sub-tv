@@ -1582,7 +1582,7 @@ div.kn-step{margin-top:8px}
           <div>
             <div class="dk-card">
               <h2>Gặp lỗi?</h2>
-              <p class="hs-note">Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở Zalo của shop. Gửi file đó kèm vài dòng mô tả.</p>
+              <p class="hs-note">Hóng Sub tạo file ghi lại hoạt động gần nhất (đã che mã) và mở mục Hỏi đáp – Hỗ trợ trên nhóm Telegram Hóng Sub. Gửi file đó kèm vài dòng mô tả, bot và kỹ thuật sẽ trả lời.</p>
               <div class="hs-row" style="margin-top:6px"><button class="hs-btn" id="hsReport" type="button">Gửi lỗi cho shop</button></div>
               <div class="hs-msg" id="hsReportMsg" hidden></div>
             </div>
@@ -1591,7 +1591,7 @@ div.kn-step{margin-top:8px}
             <div class="dk-card">
               <h2>Hóng Game Store</h2>
               <p>754 Hùng Vương, Ngã Bảy, Cần Thơ.<br>Hỗ trợ Hóng Sub: vào <b data-url="https://t.me/honggamesub" style="cursor:pointer;text-decoration:underline">nhóm Telegram Hóng Sub</b>.</p>
-              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://t.me/honggamesub">Vào nhóm Telegram</button><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
+              <div class="hs-row" style="margin-top:10px"><button class="hs-btn" type="button" data-url="https://t.me/honggamesub">Vào nhóm Telegram</button><button class="hs-btn" type="button" data-url="https://t.me/honggamesub/713">Khoe cài thành công</button><button class="hs-btn" type="button" data-url="https://zalo.me/0949099992">Nhắn Zalo shop</button><button class="hs-btn" type="button" data-url="https://honggame.store/hong-sub/">Hướng dẫn đầy đủ</button></div>
             </div>
             <div class="dk-card hs-web">
               <h2>Phần mềm Hóng Sub cho Windows</h2>
@@ -1663,6 +1663,13 @@ div.kn-step{margin-top:8px}
         </ol>
         <div class="hs-row" style="margin-top:10px"><button class="hs-btn pri" type="button" id="hsTvGuideTz">Mở trang cài TV Samsung</button></div>
       </div>
+    </div>
+  </div>
+  <div class="hs-modal" id="hsFbModal" role="dialog" aria-modal="true" aria-labelledby="hsFbT">
+    <div class="box" style="max-width:520px">
+      <div class="t"><b id="hsFbT">Hóng Sub chạy ngon chứ?</b><button class="hs-btn" id="hsFbX" type="button">Để sau</button></div>
+      <p class="hs-note" style="margin-top:8px">Bạn đã dịch được hơn 150 câu rồi. Thấy ổn thì chụp ảnh hoặc quay video chữ Việt lúc chơi, khoe vào mục <b>Cài thành công – Feedback</b> trên nhóm Telegram Hóng Sub giúp shop nhé. Chỗ nào chưa ổn cũng góp ý ở đó được.</p>
+      <div class="hs-row" style="margin-top:12px"><button class="hs-btn pri" id="hsFbGo" type="button">Vào nhóm khoe ngay</button></div>
     </div>
   </div>
   <div class="hs-modal" id="hsModal" role="dialog" aria-modal="true" aria-labelledby="hsModalT">
@@ -4492,6 +4499,7 @@ function show(res,quiet){
   if(pv&&!quiet) log('giọng nghe được: '+pv.f0+' Hz ('+(pv.g==='male'?'nam':pv.g==='female'?'nữ':'chưa rõ')+')'+(who?' · '+who:''));
   if(!who&&pv&&pv.g){ var vk=pv.g==='male'?(pv.f0<118?'Giọng nam trầm':'Giọng nam'):(pv.f0<215?'Giọng nữ':'Giọng nữ cao'); castMeet(vk,pv.g,'',pv); res._vk=vk; res.gender=pv.g; }
   else if(ch&&ch.g) res.gender=ch.g;
+  if(!quiet&&vi) fbCount();
   var html=(who?'<span class="who"'+(ch&&ch.c?' style="color:'+ch.c+'"':'')+'>'+esc(who)+':</span> ':'')+(mcol?'<span class="vi-main" style="color:'+mcol+'">':'')+esc(vi).replace(/\n/g,'<br>')+(mcol?'</span>':'');
   var pv2=partView(vi,res,who,ch,mcol), lcs=null;
   if(pv2){ vi=pv2.vi; html=pv2.html; lcs=pv2.cols; mcol=''; }
@@ -7133,7 +7141,7 @@ function startRun(){
   phState(true); awakeSync();
   status('run',(keys().length||groqKeys().length||orKeys().length)?'Đang dịch':'Đang dịch bằng máy dịch miễn phí (nhập mã Gemini để dịch hay hơn)'); log('bắt đầu dịch'); log('cài đặt: tự dịch chữ khác trên màn hình '+(fsLiveOn()?'BẬT':'TẮT')+', dịch bản đồ '+(mapTrOn()?'bật':'tắt')+', đè chữ Việt '+(coverOn()?'bật':'tắt')+', cách đọc '+readMode()+', đọc phụ đề '+($('hsSpeak').checked?'bật ('+speakWhere()+')':'tắt')); steps();
 }
-function stopRun(){S.running=false; stopTimer(); flStop(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''}); awakeSync();}
+function stopRun(){S.running=false; stopTimer(); flStop(); coverHide(); zTvClearAll(); GUARD.kind=''; GUARD.neg=0; if(S.stream) status('idle','Tạm dừng'); steps(); phState(false); phSub({vi:''}); awakeSync(); if(S.stream) setTimeout(fbMaybe,500);}
 /* "Dịch khi tắt màn hình" (Android phone): while translating, the phone may sleep and the translation goes on
    (subtitles and areas to the TV, reading aloud). The phone keeps the processor and Wi-Fi awake for it. */
 function awakeOk(){ return !!(PH&&PH.awake); }
@@ -8538,9 +8546,16 @@ $('hsReport').addEventListener('click',function(){
   var nd=new Date(), pad=function(n){return ('0'+n).slice(-2);}, name='HongSub_BaoLoi_'+nd.getFullYear()+pad(nd.getMonth()+1)+pad(nd.getDate())+'_'+pad(nd.getHours())+pad(nd.getMinutes())+'.txt';
   try{ var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([info],{type:'text/plain;charset=utf-8'})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},2000); }catch(e){}
   try{ navigator.clipboard.writeText(info).catch(function(){}); }catch(e){}
-  var m=$('hsReportMsg'); m.hidden=false; m.className='hs-msg ok'; m.textContent='Đã tạo file '+name+' (nằm trong thư mục Tải về) và chép sẵn nội dung. Đang mở Zalo của shop: gửi file hoặc dán (Ctrl+V) kèm mô tả lỗi.';
-  setTimeout(function(){ window.open('https://zalo.me/0949099992','_blank','noopener'); },600);
+  var m=$('hsReportMsg'); m.hidden=false; m.className='hs-msg ok'; m.textContent='Đã tạo file '+name+' (nằm trong thư mục Tải về) và chép sẵn nội dung. Đang mở nhóm Telegram Hóng Sub (mục Hỏi đáp – Hỗ trợ): gửi file hoặc dán (Ctrl+V) kèm mô tả lỗi.';
+  setTimeout(function(){ window.open('https://t.me/honggamesub/354','_blank','noopener'); },600);
 });
+/* after a good run (150+ lines shown), once: invite to show it off in the Telegram group's Feedback topic.
+   Asked only when translating is paused, never in the middle of a game. 'Để sau' asks again 400 lines later. */
+var FB_URL='https://t.me/honggamesub/713';
+function fbCount(){ save('fbCnt',load('fbCnt',0)+1); }
+function fbMaybe(){ try{ if(load('fbDone',0)||load('fbCnt',0)<load('fbAt',150)) return; $('hsFbModal').classList.add('open'); }catch(e){} }
+$('hsFbX').addEventListener('click',function(){ $('hsFbModal').classList.remove('open'); save('fbAt',load('fbCnt',0)+400); });
+$('hsFbGo').addEventListener('click',function(){ $('hsFbModal').classList.remove('open'); save('fbDone',1); window.open(FB_URL,'_blank','noopener'); });
 var STY=load('styles',{});
 function styleLoad(){ $('hsStyle').value=STY[castKey()]||''; }
 $('hsStyle').addEventListener('change',function(){ STY[castKey()]=this.value; save('styles',STY); S.hist=[]; setsChanged(); });
