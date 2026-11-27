@@ -2285,12 +2285,30 @@ function zPrompt(z,text){
 }
 function zKey(text){ return gameKey($('hsGame').value)+'|'+norm(text); }
 function zCache(k,v){ S.zcache[k]=v; var ks=Object.keys(S.zcache); if(ks.length>250) delete S.zcache[ks[0]]; save('zcache',S.zcache); }
-function tmZv(k,en){ var v=S.tm.zmap[k]; if(v&&!creditPair(en,v)) return v; var m=S.tm.map[k]; return m&&!creditPair(m.en,m.vi)?m.vi:''; }
+function tmZv(k,en){ var v=S.tm.zmap[k]; if(v&&!creditPair(en,v)) return v; var m=S.tm.map[k]; if(m&&!creditPair(m.en,m.vi)) return m.vi; var c=S.tmc&&S.tmc[k]; return c&&!creditPair(en,c)?c:''; }
+/* the labels shared in 3 games or more ("Continue", "Back", "Options"): kept on this machine, fetched again once a day */
+S.tmc=null;
+async function tmcLoad(){
+  if(S.tmc) return; S.tmc={};
+  var kept=null; try{ kept=await kvGet('tmc'); }catch(e){}
+  if(kept&&kept.m){ S.tmc=kept.m; if(Date.now()-(kept.at||0)<86400000) return; }
+  try{ var m={}, since=0;
+    for(var i=0;i<10;i++){ var r=await fetch(TMAPI+'pack?game='+encodeURIComponent('zz nhan chung')+'&since='+since,{cache:'no-store'}); if(!r.ok) return; var d=await r.json();
+      (d.lines||[]).forEach(function(l){ if(l[0]==='z'&&l[1]&&l[2]) m[trKey(l[1])]=l[2]; }); since=d.last||since; if(!d.more) break; }
+    S.tmc=m; kvSet('tmc',{m:m,at:Date.now()});
+  }catch(e){}
+}
 function tmZone(text){ var v=tmZone0(text); if(!v||glossExact(text)) return v; if(glossMiss(text,v)) return ''; return hasTok(v)?v:caseFix(text,punctFix(text,v)); }   /* a store line follows this player's dictionary and the English on screen */
+/* a label with a number ("Age 30", "Level 12", "x3 Multiplier") is kept in the store once as a pattern, the numbers
+   written NUM ("Age NUM" = "Tuổi NUM"): every number then uses the same line. NUM is put back in the order met. */
+function lblNum(en){ en=String(en||'').trim(); if(!/\d/.test(en)||/\n/.test(en)||en.split(/\s+/).length>6||/[.!?]["”’)]*$/.test(en)) return null;
+  var nums=en.match(/\d[\d,.]*/g)||[]; if(!nums.length||nums.length>3) return null; return {t:en.replace(/\d[\d,.]*/g,'NUM'),nums:nums}; }
+function lblNumVi(L,vi){ var i=0, ok=true, out=String(vi||'').replace(/NUM/g,function(){ var n=L.nums[i++]; if(n==null){ ok=false; return ''; } return n; }); return ok&&i===L.nums.length?out:''; }
 function tmZone0(text){
   var gx=glossExact(text); if(gx) return gx;
   var k=trKey(text), e=tmZv(k,text);
   if(e) return e;
+  var L=lblNum(text); if(L){ var tv=tmZv(trKey(L.t),L.t); if(tv){ var nv=lblNumVi(L,tv); if(nv) return nv; } }
   var lines=String(text).split('\n').filter(function(l){ return l.trim(); });
   if(lines.length<2) { var f=tmFind(text); return f?f.vi:''; }
   var out=[];
@@ -4882,6 +4900,7 @@ function kvDb(){ return S.kvP||(S.kvP=new Promise(function(ok){ try{ var q=index
 function kvGet(k){ return kvDb().then(function(db){ if(!db) return null; return new Promise(function(ok){ try{ var q=db.transaction('kv').objectStore('kv').get(k); q.onsuccess=function(){ ok(q.result==null?null:q.result); }; q.onerror=function(){ ok(null); }; }catch(e){ ok(null); } }); }); }
 function kvSet(k,v){ return kvDb().then(function(db){ if(!db) return false; return new Promise(function(ok){ try{ var tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=function(){ ok(true); }; tx.onerror=tx.onabort=function(){ ok(false); }; }catch(e){ ok(false); } }); }); }
 async function tmLoad(name){
+  tmcLoad();
   var g=tmGame(name); if(g===S.tm.g&&(S.tm.loading||S.tm.n||S.tm.total===0&&S.tm.g)) return;
   S.tm={g:g,name:String(name||'').trim(),map:{},zmap:{},bk:{},bg:{},seq:[],ix:{},n:0,total:-1,loading:false,hits:0,out:S.tm.out,outT:S.tm.outT,err:''};
   tmUi(); if(g.length<2) return;
@@ -5033,7 +5052,7 @@ function tmViOk(vi){
 S.tmNoShare=0;
 function tmGood(en,vi,via){
   var why=via==='free'?'máy dịch miễn phí':via==='tm'||via==='gloss'?'không phải câu AI vừa dịch':
-    dictJunk(en)?'câu tiếng Anh đọc ra không có nghĩa':!tmViOk(vi)?'câu dịch chưa đạt':'';
+    dictJunk(String(en).replace(/NUM/g,'1'))?'câu tiếng Anh đọc ra không có nghĩa':!tmViOk(vi)?'câu dịch chưa đạt':'';
   if(!why) return true;
   if(++S.tmNoShare<=8) log('không góp vào kho dịch chung ('+why+'): '+String(en).replace(/\s+/g,' ').slice(0,70));
   return false;
@@ -5320,13 +5339,13 @@ async function tmFlush(){
   var q=S.tm.out; if(!q.length) return;
   var g=q[0].g, name=q[0].name, batch=q.filter(function(x){return x.g===g;}).slice(0,25);
   try{
-    var r=await fetch(TMAPI+'add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:name,items:batch.map(function(x){return x.it;})})});
+    var r=await fetch(TMAPI+'add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:name,dev:vipDev(),items:batch.map(function(x){return x.it;})})});
     if(!r.ok) throw new Error('HTTP '+r.status);
     S.tm.out=S.tm.out.filter(function(x){ return batch.indexOf(x)<0; });
     if(S.tm.out.length) S.tm.outT=setTimeout(tmFlush,1500);
   }catch(e){ S.tm.outT=setTimeout(tmFlush,60000); }
 }
-window.addEventListener('pagehide',function(){ try{ var q=S.tm.out; if(!q.length||!navigator.sendBeacon) return; var g=q[0].g; navigator.sendBeacon(TMAPI+'add',new Blob([JSON.stringify({game:q[0].name,items:q.filter(function(x){return x.g===g;}).slice(0,25).map(function(x){return x.it;})})],{type:'application/json'})); }catch(e){} });
+window.addEventListener('pagehide',function(){ try{ var q=S.tm.out; if(!q.length||!navigator.sendBeacon) return; var g=q[0].g; navigator.sendBeacon(TMAPI+'add',new Blob([JSON.stringify({game:q[0].name,dev:vipDev(),items:q.filter(function(x){return x.g===g;}).slice(0,25).map(function(x){return x.it;})})],{type:'application/json'})); }catch(e){} });
 /* games played on this device */
 function tmPlayed(){
   var g=tmGame($('hsGame').value); if(g.length<2) return;
@@ -6851,6 +6870,8 @@ function fsIcLine(c,mine,ic){
 function fsKeep(b){
   if(!b||!b.vi||b.ic&&b.ic.length||S.via==='free'||!S.tm||!S.tm.g) return;
   if(String(b.en).replace(/\s/g,'').length<3) return;
+  var L=lblNum(b.en); if(L){ var vn=String(b.vi), k2=0; L.nums.forEach(function(n){ if(vn.indexOf(n)>=0){ vn=vn.replace(n,'NUM'); k2++; } });
+    if(k2===L.nums.length){ tmAdd('z',L.t,vn,'','',S.via); return; } return; }   /* the numbers not found in the Vietnamese: not stored (a misreading) */
   tmAdd('z',b.en,b.vi,'','',S.via);
 }
 /* the text that goes to the translator: with its button markers when it has buttons */

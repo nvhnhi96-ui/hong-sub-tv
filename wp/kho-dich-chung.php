@@ -5,7 +5,7 @@ if (!function_exists('hgs_tm_table')) {
     function hgs_tm_table() {
         global $wpdb;
         $t = $wpdb->prefix . 'hgs_tm';
-        if (get_option('hgs_tm_db') !== '2') {
+        if (get_option('hgs_tm_db') !== '3') {
             require_once ABSPATH . 'wp-admin/includes/upgrade.php';
             $c = $wpdb->get_charset_collate();
             dbDelta("CREATE TABLE $t (
@@ -22,11 +22,13 @@ if (!function_exists('hgs_tm_table')) {
   std tinyint(1) unsigned NOT NULL DEFAULT 0,
   n int(10) unsigned NOT NULL DEFAULT 1,
   t datetime NOT NULL,
+  ok tinyint(1) unsigned NOT NULL DEFAULT 1,
+  dv varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY  (id),
   UNIQUE KEY k (k),
   KEY g (g,id)
 ) $c;");
-            update_option('hgs_tm_db', '2', false);
+            update_option('hgs_tm_db', '3', false);
         }
         return $t;
     }
@@ -42,6 +44,44 @@ if (!function_exists('hgs_tm_table')) {
         $s = trim(wp_strip_all_tags(wp_check_invalid_utf8((string) $s)));
         return mb_substr(preg_replace('/[ \t]+/u', ' ', $s), 0, $max);
     }
+    // a short label of the screen (menu, button, HUD: "Give Up", "Multiplier", "Age NUM"): shared with everyone
+    // once 2 machines have translated it the same way. Until then only the machine that translated it uses it (a
+    // misreading or a bad translation from one machine stays with that machine). 27/11/2026
+    function hgs_tm_label($t, $g, $gn, $k, $en, $vi, $q, $std, $now, $fx, $dev) {
+        global $wpdb;
+        $vh = substr(md5(hgs_tm_norm($vi)), 0, 6);
+        $row = $wpdb->get_row($wpdb->prepare("SELECT id,ok,dv,q FROM $t WHERE k=%s", $k), ARRAY_A);
+        if (!$row) {
+            $wpdb->query($wpdb->prepare("INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,std,n,t,ok,dv) VALUES (%s,%s,%s,'z',%s,%s,'','',%d,%d,1,%s,0,%s)", $g, $gn, $k, $en, $vi, $q, $std, $now, $vh . ':' . $dev));
+            return;
+        }
+        if ((int) $row['ok'] === 1) {
+            $wpdb->query($wpdb->prepare("UPDATE $t SET n=n+1, vi=IF(%d=1 AND q<=2,%s,vi) WHERE id=%d", $fx, $vi, $row['id']));
+            return;
+        }
+        $votes = array();
+        foreach (array_filter(explode(';', (string) $row['dv'])) as $part) { $p = explode(':', $part, 2); if (count($p) === 2) $votes[$p[0]] = array_filter(explode(',', $p[1])); }
+        foreach ($votes as $h => $ds) $votes[$h] = array_values(array_diff($ds, array($dev)));
+        if (!isset($votes[$vh])) $votes[$vh] = array();
+        $votes[$vh][] = $dev;
+        $votes = array_filter($votes);
+        if (count($votes[$vh]) >= 2) {
+            $wpdb->query($wpdb->prepare("DELETE FROM $t WHERE id=%d", $row['id']));
+            $wpdb->query($wpdb->prepare("INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,std,n,t,ok,dv) VALUES (%s,%s,%s,'z',%s,%s,'','',%d,%d,2,%s,1,'')", $g, $gn, $k, $en, $vi, $q, $std, $now));
+            // the same label shared in 3 games or more ("Continue", "Back", "Options"): into the labels of every game
+            if (strpos($g, 'zz ') !== 0) {
+                $ng = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT g) FROM $t WHERE kind='z' AND ok=1 AND en=%s AND g NOT LIKE 'zz %%'", $en));
+                if ($ng >= 3) {
+                    $cv = $wpdb->get_var($wpdb->prepare("SELECT vi FROM $t WHERE kind='z' AND ok=1 AND en=%s AND g NOT LIKE 'zz %%' GROUP BY vi ORDER BY COUNT(*) DESC LIMIT 1", $en));
+                    $gk = sha1('zz nhan chung|z|' . hgs_tm_norm($en));
+                    if ($cv) $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $t (g,gn,k,kind,en,vi,who,gd,q,std,n,t,ok,dv) VALUES ('zz nhan chung','Nhan chung',%s,'z',%s,%s,'','',2,0,%d,%s,1,'')", $gk, $en, $cv, $ng, $now));
+                }
+            }
+            return;
+        }
+        $s = array(); foreach ($votes as $h => $ds) $s[] = $h . ':' . implode(',', array_slice($ds, -6));
+        $wpdb->query($wpdb->prepare("UPDATE $t SET n=n+1, dv=%s WHERE id=%d", substr(implode(';', $s), 0, 250), $row['id']));
+    }
     function hgs_tm_add($req) {
         global $wpdb;
         $t  = hgs_tm_table();
@@ -56,6 +96,8 @@ if (!function_exists('hgs_tm_table')) {
         if ($used > 600) return new WP_Error('busy', 'too many', array('status' => 429));
         $now = current_time('mysql', 1);
         $ok = 0;
+        $dv0 = (string) $req->get_param('dev');
+        $dev = substr(md5($dv0 !== '' ? $dv0 : $ip), 0, 8);
         foreach ($items as $it) {
             if (!is_array($it)) continue;
             $en = hgs_tm_clean(isset($it['en']) ? $it['en'] : '', 500);
@@ -71,6 +113,9 @@ if (!function_exists('hgs_tm_table')) {
             // player's personal ones. A player who uses the game's settings shows such a line as it is, with no AI.
             $std  = ($q === 2 && !empty($it['std'])) ? 1 : 0;
             $k    = sha1($g . '|' . $kind . '|' . $nm);
+            if ($kind === 'z' && $q === 2 && strpos($en, "\n") === false && count(preg_split('/\s+/u', trim($en))) <= 6 && !preg_match('/[.!?…]["”’)]*$/u', $en)) {
+                hgs_tm_label($t, $g, $gn, $k, $en, $vi, $q, $std, $now, $fx, $dev); $ok++; continue;
+            }
             $wpdb->query($wpdb->prepare(
                 "INSERT INTO $t (g,gn,k,kind,en,vi,who,gd,q,std,n,t) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,1,%s)
                  ON DUPLICATE KEY UPDATE n=n+1, std=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(std),std), vi=IF(VALUES(q)>q OR (%d=1 AND q<=2),VALUES(vi),vi), who=IF(VALUES(q)>q,VALUES(who),who), gd=IF(VALUES(q)>q AND VALUES(gd)<>'',VALUES(gd),gd), q=GREATEST(q,VALUES(q))",
@@ -86,11 +131,11 @@ if (!function_exists('hgs_tm_table')) {
         $g = hgs_tm_game($req->get_param('game'));
         if (strlen($g) < 2) return array('lines' => array(), 'last' => 0, 'more' => false, 'total' => 0);
         $since = max(0, (int) $req->get_param('since'));
-        $rows = $wpdb->get_results($wpdb->prepare("SELECT id,kind,en,vi,who,gd,std FROM $t WHERE g=%s AND id>%d ORDER BY id LIMIT 3000", $g, $since), ARRAY_N);
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT id,kind,en,vi,who,gd,std FROM $t WHERE g=%s AND id>%d AND ok=1 ORDER BY id LIMIT 3000", $g, $since), ARRAY_N);
         $last = $since; $lines = array();
         foreach ((array) $rows as $r) { $last = (int) $r[0]; $lines[] = array($r[1], $r[2], $r[3], $r[4], $r[5], (int) $r[6]); }
         $out = array('lines' => $lines, 'last' => $last, 'more' => count($lines) === 3000);
-        if ($since === 0) $out['total'] = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE g=%s", $g));
+        if ($since === 0) $out['total'] = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE g=%s AND ok=1", $g));
         return $out;
     }
     function hgs_tm_games() {
