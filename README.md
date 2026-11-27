@@ -16,4 +16,4 @@ Hỗ trợ: nhóm Telegram Hóng Sub (t.me/honggamesub) · honggame.store
 
 ## Hóng Sub cho điện thoại Android (thử nghiệm)
 Thư mục `phone/`. App ghi màn hình để đọc phụ đề trong app PS Remote Play chạy trên cùng điện thoại, dịch bằng Gemini, hiện chữ nổi, đọc giọng Việt và gửi lên Hóng Sub TV.
-Tải: `honggame.store/hongsubapp` (file `hong-sub-android.apk` trong Releases).
+Cài từ CH Play (thử nghiệm kín): vào nhóm `groups.google.com/g/hongsub-tester` › mở `play.google.com/apps/testing/store.honggame.hongsub` bấm Trở thành người thử nghiệm › cài trên CH Play. File cài trực tiếp dự phòng: `honggame.store/hongsubapp` (file `hong-sub-android.apk` trong Releases).
