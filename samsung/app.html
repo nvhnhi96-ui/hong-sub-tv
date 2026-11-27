@@ -212,7 +212,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.381';
+var VERSION='1.0.382';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -242,6 +242,11 @@ function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess
   }
   /* the TV closed the app last time without Back: tell the customer the usual cause and what to switch off on the TV
      and the PS5 (HDMI-CEC makes the TV jump to the console's input and close the app) */
+  /* the first launches: what to switch off before playing, so the TV does not jump to the PS5 and close the app */
+  var cecN=+load('cecTip',0);
+  if(!(prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length)&&cecN<3){ save('cecTip',cecN+1);
+    var tip0='Trước khi chơi: '+(!window.tizen?'trên TV vào Cài đặt › Chung › Thiết bị › tắt HDMI SimpLink (HDMI-CEC)':'trên TV vào Cài đặt › Chung › Trình quản lý thiết bị ngoài › tắt Anynet+ (HDMI-CEC)')+'; trên PS5 vào Cài đặt › Hệ thống › HDMI › tắt "Bật liên kết thiết bị HDMI" và tắt "Bật HDCP". Bật PS5 trước rồi mới mở Hóng Sub. Như vậy TV không tự thoát app và hình game không bị đen.';
+    setTimeout(function(){ var e=document.getElementById('hOut'); if(e){ e.textContent=tip0; e.hidden=false; } },0); }
   if(prev&&!prev.quit&&prev.at&&now-prev.at<3*24*3600e3&&TL.length){
     var lg=!window.tizen, tip='Lần trước TV tự thoát app Hóng Sub. Nếu TV hay tự thoát: '+(lg?'trên TV vào Cài đặt › Chung › Thiết bị › tắt HDMI SimpLink (HDMI-CEC)':'trên TV vào Cài đặt › Chung › Trình quản lý thiết bị ngoài › tắt Anynet+ (HDMI-CEC)')+'; trên PS5 vào Cài đặt › Hệ thống › HDMI › tắt "Bật liên kết thiết bị HDMI". Rồi mở lại app.';
     setTimeout(function(){ var e=document.getElementById('hOut'); if(e){ e.textContent=tip; e.hidden=false; } },0);
@@ -250,6 +255,10 @@ function tlEnd(why){ try{ var s0=load('sess',null)||{}; s0.quit=true; save('sess
   var s0={start:now,at:now,quit:false}; save('sess',s0);
   setInterval(function(){ var c=load('sess',null)||s0; if(c.quit) return; c.at=Date.now(); save('sess',c); },10000);
   window.addEventListener('error',function(e){ tlog('lỗi trang: '+(e&&e.message)+' dòng '+(e&&e.lineno)); });
+  /* the app cut off with no warning after 30-40 min on some LG TVs: the memory used goes in the diary every 5 min,
+     to see whether it grows until the TV stops the app */
+  var memLast=0; setInterval(function(){ try{ var m=performance&&performance.memory; if(!m) return; var mb=Math.round(m.usedJSHeapSize/1048576);
+    if(Math.abs(mb-memLast)>=5||!memLast){ memLast=mb; tlog('bộ nhớ '+mb+'/'+Math.round(m.jsHeapSizeLimit/1048576)+' MB, khung '+document.getElementsByTagName('*').length); } }catch(e){} },300000);
   document.addEventListener('visibilitychange',function(){ tlog(document.hidden?'TV ẩn app':'app hiện lại'); });
   window.addEventListener('pagehide',function(){ tlog('trang đóng (pagehide)'); });
 })();
@@ -282,11 +291,12 @@ var video=$('tvin'), srcOk=false;
 function setSource(n){
   srcOk=false; window.srcAt=Date.now(); tlog('mở hình HDMI '+n);
   while(video.firstChild) video.removeChild(video.firstChild);
+  window.srcOpen=n;
   if(!n){ video.style.display='none'; homeShow(); return; }
   video.style.display='block';
   var s=document.createElement('source');
   s.setAttribute('type','service/webos-external'); s.setAttribute('src','ext://hdmi:'+n);
-  s.addEventListener('error',function(){ tlog('HDMI '+n+' lỗi nguồn hình'); srcFail(n); });
+  s.addEventListener('error',function(){ tlog('HDMI '+n+' lỗi nguồn hình'); window.srcOpen=0; srcFail(n); });
   video.appendChild(s); gameSound();
   try{ video.load(); var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){}
   /* in a web browser (not the installed app) the TV may not allow HDMI inside the page */
@@ -322,7 +332,7 @@ function srcFail(n){
   srcFailShow(n);
 }
 function srcFailShow(n){
-  if(P.src!==n) return; srcOk=false; video.style.display='none'; homeShow();
+  if(P.src!==n) return; srcOk=false; window.srcOpen=0; video.style.display='none'; homeShow();
   $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV không mở được hình HDMI. Phụ đề vẫn hiện ở đây; muốn có cả hình game thì cài app Hóng Sub cho LG.';
 }
 function homeBtns(){ [].forEach.call(document.querySelectorAll('[data-hdmi]'),function(b){ b.className='btn'+(+b.getAttribute('data-hdmi')===P.src?' on':''); }); }
@@ -816,13 +826,25 @@ $('bClose').onclick=function(){ panel(false); };
 /* the settings button on top of the game shows up when the pointer moves */
 var gearT=0;
 document.addEventListener('mousemove',function(){ if($('home').className!=='off'||panelOn) return; $('gear').className='btn on'; clearTimeout(gearT); gearT=setTimeout(function(){ $('gear').className='btn'; },4000); });
-document.addEventListener('webOSRelaunch',function(){ var c=launchCode(), a=launchPc(); if(a&&a!==P.pc){ P.pc=a; save('pc',a); } if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; lanSeq=-1; codeDraw(); } hello(); if(P.src) setSource(P.src); pill('Hóng Sub đã sẵn sàng',false); });
+document.addEventListener('webOSRelaunch',function(){ var c=launchCode(), a=launchPc(); if(a&&a!==P.pc){ P.pc=a; save('pc',a); } if(c&&c!==P.code){ P.code=c; save('code',c); lastSeq=-1; lanSeq=-1; codeDraw(); } hello(); srcBack('mở lại app'); pill('Hóng Sub đã sẵn sàng',false); });
+/* the HDMI picture after the app comes back (relaunch, back from the background). LG: once the TV has the HDMI
+   input open in the page it is kept; opening it again cut the first one off ("abort") and the TV then closed the app,
+   at once or a while later (diaries 27/11/2026: "app hiện lại, giữ hình HDMI, mở hình HDMI 1, abort, emptied", then
+   cut off with no warning). Some LG TVs never say "playing" for the HDMI picture, so "open" is what the app asked
+   for, not that event. Opened again only after the app was away for over 90 s, a moment after it is back. */
+function srcBack(why){
+  if(!P.src) return;
+  var now=Date.now(), fresh=now-(window.srcAt||0)<5000, away=window.hidAt?now-window.hidAt:0;
+  if(window.tizen){ if(!fresh&&!srcOk) setSource(P.src); else tlog(why+': giữ hình HDMI đang mở'); return; }
+  if(fresh||(window.srcOpen===P.src&&away<90000)){ tlog(why+': giữ hình HDMI đang mở');
+    if(window.srcOpen===P.src&&video.paused){ try{ var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){} } return; }
+  clearTimeout(window.backT); tlog(why+': mở lại hình HDMI sau '+Math.round(away/1000)+' giây vắng');
+  window.backT=setTimeout(function(){ if(!document.hidden&&P.src&&Date.now()-(window.srcAt||0)>=5000) setSource(P.src); },1200);
+}
 /* back in front: open the HDMI picture again only if it is not open or opening. LG TVs say "visible" right as the app
    starts: opening the picture a second time in the same second cut the first one off (abort, emptied) and the TV then
    closed the app (diaries 25-26/11/2026: "mở hình HDMI 2, emptied, app hiện lại, mở hình HDMI 2, abort, pagehide") */
-document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello();
-  var fresh=Date.now()-(window.srcAt||0)<5000, playing=!window.tizen&&srcOk&&!video.paused&&!video.ended&&video.readyState>1;
-  if(P.src&&!fresh&&!playing&&!(window.tizen&&srcOk)) setSource(P.src); else if(P.src) tlog('hiện lại: giữ hình HDMI đang mở'); } else sayStop(); });
+document.addEventListener('visibilitychange',function(){ if(!document.hidden){ hello(); srcBack('hiện lại'); window.hidAt=0; } else { window.hidAt=Date.now(); sayStop(); } });
 
 function codeDraw(){ $('code').innerHTML=P.code.split('').map(function(c){ return '<span>'+c+'</span>'; }).join(''); $('pCode').textContent='Mã '+P.code; }
 codeDraw(); applyLook(); hello(); poll(); lanPoll();
