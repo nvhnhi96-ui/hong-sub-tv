@@ -212,7 +212,7 @@ html.see,html.see body{background:transparent!important}
 <script>
 (function(){
 'use strict';
-var VERSION='1.0.384';
+var VERSION='1.0.385';
 var RELAY='https://honggame.store/wp-json/hgs-sub/v1/';
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 var $=function(id){ return document.getElementById(id); };
@@ -336,7 +336,7 @@ function srcFailShow(n){
   $('hState').textContent=packaged?'Chưa thấy hình ở HDMI '+n+'. Kiểm tra máy PS5 đã bật và cắm ở cổng này.':'Trình duyệt của TV này chưa mở được hình HDMI '+n+'. Thử cổng HDMI khác; nếu vẫn không được, cài app Hóng Sub cho TV (trên máy tính hoặc điện thoại: Kết nối › TV).';
   webTry(n,false);
 }
-/* ---------- honggame.store/tv: the same page opened in the TV's own web browser (no app to install) ----------
+/* ---------- honggame.store/hstv: the same page opened in the TV's own web browser (no app to install) ----------
    Whether a TV's browser lets a page show the HDMI picture differs by brand and year: each result is sent once to
    Hóng Sub's bug reports (kind tv-web) so it is known which TVs this works on. */
 function webTry(n,ok){
