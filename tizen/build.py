@@ -145,7 +145,7 @@ UPD = r"""
 })();
 """
 rep("window.hsTv={handle:handle,P:P,version:VERSION};", TIZEN + UPD + "window.hsTv={handle:handle,P:P,version:VERSION};")
-rep("var TVNAME='TV LG';", "var TVNAME='TV Samsung';")
+rep("var TVNAME=packaged?'TV LG':", "var TVNAME=packaged?'TV Samsung':")
 # see-through page while the game shows
 rep("</style>", "html.see,html.see body{background:transparent!important}\n</style>", 1)
 

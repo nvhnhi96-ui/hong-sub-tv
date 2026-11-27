@@ -827,7 +827,7 @@ $('bRun').onclick=function(){
 };
 $('bTest').onclick=function(){ sample(); };
 $('bCode').onclick=function(){ newTvCode(); $('hState').textContent='Đã đổi mã TV. Gõ mã mới vào Hóng Sub trên máy tính.'; };
-var TVNAME='TV LG';
+var TVNAME=packaged?'TV LG':'đúng hãng TV này (LG hoặc Samsung)';
 [].forEach.call(document.querySelectorAll('.tvn'),function(el){ el.textContent=TVNAME; });
 $('hVer').textContent='Bản '+VERSION;
 $('bSet').onclick=function(){ panel(true); };

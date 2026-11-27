@@ -16,7 +16,12 @@ h = h.replace('<head>', '<head><meta name="robots" content="noindex">', 1)
 import json
 # the same way honggame.store/hong-sub carries its script (a data: script file): an inline script that decodes a long
 # encoded blob and writes it over the page made the site's firewall drop the page
-js = 'document.open();document.write(' + json.dumps(h) + ');document.close();'
+# write the TV page only after the WordPress page has finished parsing: a document.write while the
+# parser runs only inserts inline (inside the hidden theme wrapper); afterwards it replaces the whole page
+js = ('(function(){var H=' + json.dumps(h) + ',done=0;function go(){if(done)return;done=1;'
+      'try{var t=setTimeout(function(){},0);for(var i=1;i<=t;i++){clearTimeout(i);clearInterval(i);}}catch(e){}'
+      'document.open();document.write(H);document.close();}'
+      'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(go,0)});else setTimeout(go,0);})();')
 b64 = base64.b64encode(js.encode('utf-8')).decode()
 page = ('<!-- wp:html -->\n<style>html,body{background:#000!important}body>*{visibility:hidden}</style>\n'
         '<script data-no-optimize="1" data-no-defer="1" data-cfasync="false" src="data:text/javascript;charset=utf-8;base64,' + b64 + '"></script>\n<!-- /wp:html -->')
