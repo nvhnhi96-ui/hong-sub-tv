@@ -301,6 +301,7 @@ html.hs-phone .hs-gw,html.hs-phone #hsMobile,html.hs-phone #hsPip,html.hs-phone 
 .hs-quad svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.hs-quad polygon{fill:rgba(255,196,0,.12);stroke:#FFC400;stroke-width:2}
 .hs-quad i{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#FFC400;border:3px solid #111;box-shadow:0 2px 6px rgba(0,0,0,.5);touch-action:none;cursor:grab}
 .hs-quad-bar{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(12,13,16,.86);color:#fff;border-radius:10px;padding:6px 8px;font-size:13px}.hs-quad-bar span{flex:1;min-width:140px}
+.hs-tvbk{border-left:3px solid #3DDC84;line-height:1.55}
 
 </style>
 <style>
@@ -8661,7 +8662,18 @@ function reportText(){
 }
 /* a PS connection that fails sends its log to the shop by itself (AI keys hidden), so support can see why without the customer doing anything */
 var REPAPI=(location.hostname==='honggame.store'?'':'https://honggame.store')+'/wp-json/hgs-sub/v1/report';
-function tvInstallRep(k,err){ autoReport(k==='lg'?'tv-lg':'tv-samsung','Cài app TV '+(k==='lg'?'LG':'Samsung')+' lỗi: '+String(err||'').slice(0,170)); }
+function tvInstallRep(k,err){ autoReport(k==='lg'?'tv-lg':'tv-samsung','Cài app TV '+(k==='lg'?'LG':'Samsung')+' lỗi: '+String(err||'').slice(0,170));  if(!/^cập nhật:/.test(String(err||''))) tvBackup(k,true); }
+/* the app could not be put on the TV LG / Samsung: right under the error, the way that needs no install, the TV's own
+   web browser on honggame.store/hstv (it opens the HDMI picture on some TVs only, so it stays the backup) */
+function tvBackup(k,on){
+  var ids=k==='lg'?['dkLgMsg','mpLgMsg']:['dkTzMsg','mpTzMsg'], nm=k==='lg'?'LG':'Samsung';
+  ids.forEach(function(id){ var m=$(id); if(!m||!m.parentNode) return; var bx=$(id+'Bk');
+    if(!on){ if(bx) bx.hidden=true; return; }
+    if(!bx){ bx=document.createElement('div'); bx.id=id+'Bk'; bx.className='hs-msg hs-tvbk'; m.parentNode.insertBefore(bx,m.nextSibling); }
+    bx.innerHTML='<b>Chưa cài được? Dùng cách dự phòng, không cần cài app:</b><br>1. Trên TV '+nm+' mở trình duyệt web, gõ <b>honggame.store/hstv</b>.<br>2. Chọn cổng HDMI đang cắm PS5.<br>3. Gõ mã đang hiện trên TV vào ô <b>Mã TV</b> ở mục Kết nối TV, rồi bấm <b>Bật phụ đề</b> trên TV.<br>Lưu trang đó vào Dấu trang của TV, lần sau mở lại là tự vào game. Tùy đời TV, trình duyệt có thể không hiện được hình game; khi đó vẫn cần cài app.';
+    bx.hidden=false; });
+}
+window.hsTvBk=tvBackup;
 function autoReport(kind,head){
   try{
     S.repT=S.repT||{}; var now=Date.now(); if(S.repT[kind]&&now-S.repT[kind]<10*60000) return false; S.repT[kind]=now;
@@ -10455,7 +10467,7 @@ if(D){
    and update it. TV Samsung: installing needs a Samsung certificate made on a computer, so the phone finds the TV,
    opens the app on it and connects by its code. */
 var MPTV={lg:[],tz:[]};
-function mpTvMsg(k,cls,t){ if(t&&cls!=='ok'&&t!==S['mpTvLast'+k]){ S['mpTvLast'+k]=t; log('TV '+(k==='lg'?'LG':'Samsung')+': '+t); } var m=$(k==='lg'?'mpLgMsg':'mpTzMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function mpTvMsg(k,cls,t){ if(cls==='ok') tvBackup(k==='lg'?'lg':'samsung',false); if(t&&cls!=='ok'&&t!==S['mpTvLast'+k]){ S['mpTvLast'+k]=t; log('TV '+(k==='lg'?'LG':'Samsung')+': '+t); } var m=$(k==='lg'?'mpLgMsg':'mpTzMsg'); if(!m) return; m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 function mpCode(k){
   var v=String(tvCodeFor(k)||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(v.length<4){ var AL='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; v=''; for(var i=0;i<6;i++) v+=AL.charAt(Math.floor(Math.random()*AL.length));
@@ -11894,7 +11906,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 var D=window.hsDeskApi, A=window.hsApi; if(!D||!D.lg) return;
 var $=function(id){return document.getElementById(id);};
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false;
-function msg(cls,t){ var m=$('dkLgMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function msg(cls,t){ if(cls==='ok'&&window.hsTvBk) window.hsTvBk('lg',false); var m=$('dkLgMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 /* the TV app is told which TV code to listen on, so nobody has to type it */
 function code(){
   var v=String(A.tvCodeFor('lg')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -11961,7 +11973,7 @@ var D=window.hsDeskApi, A=window.hsApi; if(!D||!D.samsung||!document.getElementB
 var $=function(id){return document.getElementById(id);};
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false, st=null;
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-function msg(cls,t){ var m=$('dkTzMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function msg(cls,t){ if(cls==='ok'&&window.hsTvBk) window.hsTvBk('samsung',false); var m=$('dkTzMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 function line(id,ok,t){ var el=$(id); el.className='tzst'+(ok===true?' ok':ok===false?' bad':''); el.textContent=t?(ok===true?'✓ ':ok===false?'✗ ':'')+t:''; }
 function code(){
   var v=String(A.tvCodeFor('samsung')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');

@@ -500,7 +500,7 @@ D.version().then(function(v){ $('dkVer').textContent='Bản '+v; $('dkVerNote').
 var D=window.hsDeskApi, A=window.hsApi; if(!D||!D.lg) return;
 var $=function(id){return document.getElementById(id);};
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false;
-function msg(cls,t){ var m=$('dkLgMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function msg(cls,t){ if(cls==='ok'&&window.hsTvBk) window.hsTvBk('lg',false); var m=$('dkLgMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 /* the TV app is told which TV code to listen on, so nobody has to type it */
 function code(){
   var v=String(A.tvCodeFor('lg')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -567,7 +567,7 @@ var D=window.hsDeskApi, A=window.hsApi; if(!D||!D.samsung||!document.getElementB
 var $=function(id){return document.getElementById(id);};
 var ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', busy=false, st=null;
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-function msg(cls,t){ var m=$('dkTzMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
+function msg(cls,t){ if(cls==='ok'&&window.hsTvBk) window.hsTvBk('samsung',false); var m=$('dkTzMsg'); m.hidden=!t; m.className='hs-msg'+(cls?' '+cls:''); m.textContent=t||''; }
 function line(id,ok,t){ var el=$(id); el.className='tzst'+(ok===true?' ok':ok===false?' bad':''); el.textContent=t?(ok===true?'✓ ':ok===false?'✗ ':'')+t:''; }
 function code(){
   var v=String(A.tvCodeFor('samsung')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
